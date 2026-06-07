@@ -1,0 +1,56 @@
+# Backend — Supabase
+
+Guía para conectar la app a Supabase. Mientras no haya credenciales, la app
+sigue funcionando con almacenamiento local (sin login ni nube).
+
+## 1. Crear el proyecto
+
+1. Entra a [supabase.com](https://supabase.com) → **New project**.
+2. Guarda la contraseña de la base de datos.
+3. Espera a que se aprovisione.
+
+## 2. Aplicar el esquema
+
+Opción A — **SQL Editor** (más rápido):
+
+1. Supabase → **SQL Editor** → **New query**.
+2. Pega el contenido de [`migrations/0001_initial_schema.sql`](./migrations/0001_initial_schema.sql).
+3. **Run**.
+
+Opción B — **Supabase CLI**:
+
+```bash
+npx supabase link --project-ref <project-ref>
+npx supabase db push
+```
+
+## 3. Configurar variables de entorno
+
+1. Copia `.env.example` a `.env.local` (en `sales-app/`).
+2. Rellena con **Project Settings → API**:
+   - `NEXT_PUBLIC_SUPABASE_URL`
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+   - `SUPABASE_SERVICE_ROLE_KEY` (solo servidor)
+   - `DATABASE_URL` (**Project Settings → Database → Connection string**)
+
+## 4. Autenticación
+
+1. **Authentication → Providers**: deja **Email** habilitado.
+2. (Opcional) **Google**: pega `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` y
+   añade la URL de callback que indique Supabase en Google Cloud Console.
+3. **Authentication → URL Configuration**:
+   - Site URL: `http://localhost:3000` (y luego el dominio de producción).
+   - Redirect URLs: `http://localhost:3000/auth/callback`.
+
+## 5. Siguientes pasos (los implemento yo con las credenciales)
+
+- Páginas de login/registro + `/auth/callback` + middleware de sesión.
+- Capa de datos con Server Actions que reemplaza `localStorage`
+  manteniendo las firmas actuales de `db-store`.
+- Importación del respaldo local (`sts4_v1`) al primer inicio de sesión.
+
+## Modelo de datos
+
+`profiles`, `prospects`, `sales`, `calendar_entries`, `goals`, `activities`,
+`tool_calculations`. Todo con **RLS per-vendedor** (`auth.uid() = user_id`).
+Los datos de calculadoras se guardan como `jsonb` en `tool_calculations.data`.
