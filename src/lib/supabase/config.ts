@@ -1,5 +1,17 @@
-export const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
-export const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "";
+const viteEnv =
+  typeof import.meta !== "undefined"
+    ? (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env
+    : undefined;
+
+export const SUPABASE_URL =
+  viteEnv?.VITE_SUPABASE_URL ??
+  process.env.NEXT_PUBLIC_SUPABASE_URL ??
+  "";
+
+export const SUPABASE_ANON_KEY =
+  viteEnv?.VITE_SUPABASE_ANON_KEY ??
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ??
+  "";
 
 /**
  * Indica si Supabase está configurado vía variables de entorno.
