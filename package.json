@@ -1,18 +1,30 @@
 {
-  "name": "sales-app",
+  "name": "sales-saas",
   "version": "0.1.0",
   "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
     "dev": "next dev",
+    "dev:api": "npm run dev -w @salesapp/api",
+    "dev:web": "npm run dev -w @salesapp/web",
+    "dev:legacy": "next dev",
     "build": "next build",
+    "build:api": "npm run start -w @salesapp/api",
+    "build:web": "npm run build -w @salesapp/web",
     "start": "next start",
     "lint": "next lint",
     "gen:icons": "node scripts/generate-icons.mjs",
     "dev:clean": "node scripts/dev-clean.mjs && next dev",
+    "sync:html-theme": "node scripts/sync-html-theme.mjs",
+    "sync:shared": "node scripts/port-shared.mjs && npx esbuild src/lib/data/mappers.ts src/lib/data/sync.ts src/lib/api/validators.ts src/lib/storage/types.ts src/lib/ids.ts src/lib/constants.ts src/lib/format/dates.ts src/lib/auth/permissions.ts --bundle=false --format=esm --platform=neutral --outdir=packages/shared/src --log-level=error && node scripts/fix-shared-imports.mjs",
     "seed:demo": "node scripts/seed-demo.mjs",
     "seed:eduardo": "node scripts/seed-eduardo-prospects.mjs",
     "db:migrate:0007": "node scripts/apply-migration-0007.mjs",
-    "verify": "node scripts/verify-smoke.mjs"
+    "verify": "node scripts/verify-smoke.mjs",
+    "verify:api": "npm run verify -w @salesapp/api"
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",

@@ -1,0 +1,20 @@
+{
+  "name": "@salesapp/shared",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./supabase/config.js": "./src/supabase/config.js",
+    "./data/sync.js": "./src/data/sync.js",
+    "./data/mappers.js": "./src/data/mappers.js",
+    "./api/validators.js": "./src/api/validators.js",
+    "./auth/permissions.js": "./src/auth/permissions.js",
+    "./storage/types.js": "./src/storage/types.js",
+    "./ids.js": "./src/ids.js",
+    "./constants.js": "./src/constants.js",
+    "./format/dates.js": "./src/format/dates.js"
+  },
+  "scripts": {
+    "build": "node ../../scripts/port-shared.mjs && node ../../scripts/fix-shared-imports.mjs"
+  }
+}
