@@ -43,6 +43,10 @@ export async function PATCH(request: NextRequest, { params }: Ctx) {
   if (body.contract !== undefined) patch.contract = body.contract;
   if (body.note !== undefined) patch.note = body.note;
   if (body.status !== undefined) patch.status = sanitizeStatus(body.status);
+  if (body.processing !== undefined) patch.processing = body.processing;
+  if (body.add_processing_followup !== undefined || body.addProcessingFollowup !== undefined) {
+    patch.add_processing_followup = Boolean(body.add_processing_followup ?? body.addProcessingFollowup);
+  }
   if (body.sale_date !== undefined || body.date !== undefined) {
     patch.sale_date = toDateOrNull(body.sale_date ?? body.date);
   }

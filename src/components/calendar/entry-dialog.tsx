@@ -1,16 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { SalesModal } from "@/components/ui/sales-modal";
 import { toast } from "@/lib/toast";
 import { MONTHS, DAYS } from "@/lib/constants";
-import { activeClients, clientDisplayName } from "@/lib/clients";
-import { createEmptyClient, useDbStore } from "@/stores/db-store";
+import { useDbStore } from "@/stores/db-store";
 import { EntryType } from "@/lib/storage/types";
 
-type EType = "venta" | "nota" | "follow" | "descanso";
-type LinkMode = "personal" | "existing" | "new";
+type EType = "venta" | "follow" | "notaCliente" | "notaUsuario" | "descanso";
 
 interface EntryDialogProps {
   open: boolean;
@@ -21,177 +19,218 @@ interface EntryDialogProps {
 }
 
 const TYPE_TABS: [EType, string][] = [
-  ["venta", "Venta"], ["nota", "Nota"], ["follow", "Follow-up"], ["descanso", "Descanso"],
+  ["venta", "Venta"],
+  ["follow", "Follow-up"],
+  ["notaCliente", "Notas para el cliente"],
+  ["notaUsuario", "Notas del usuario"],
+  ["descanso", "Descanso"],
 ];
 
 export function EntryDialog({ open, onOpenChange, year, month, day }: EntryDialogProps) {
   const router = useRouter();
-  const db = useDbStore((s) => s.db);
   const addCalEntry = useDbStore((s) => s.addCalEntry);
   const addCalEntryByDate = useDbStore((s) => s.addCalEntryByDate);
-  const saveClient = useDbStore((s) => s.saveClient);
-  const addClientActivity = useDbStore((s) => s.addClientActivity);
   const addUserActivity = useDbStore((s) => s.addUserActivity);
 
   const [eType, setEType] = useState<EType>("venta");
   const [nota, setNota] = useState("");
-  const [follow, setFollow] = useState("");
-  const [linkMode, setLinkMode] = useState<LinkMode>("personal");
-  const [existingId, setExistingId] = useState("");
-  const [newName, setNewName] = useState("");
   const [remDate, setRemDate] = useState("");
   const [remTime, setRemTime] = useState("");
 
   const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
   const dow = new Date(year, month, day).getDay();
-  const clients = activeClients(db.clients);
+  const title = `${DAYS[dow]} ${day} de ${MONTHS[month]}`;
+  const subtitle = `${MONTHS[month]} ${year}`;
+
+  const clientAction = eType === "venta" || eType === "follow" || eType === "notaCliente";
+
+  const routeCopy = useMemo(() => {
+    if (eType === "venta") {
+      return <>Para evitar duplicados, las ventas se registran desde <strong>Clientes</strong>. Agenda solo funciona como punto de entrada.</>;
+    }
+    if (eType === "follow") {
+      return <>Los follow-ups relacionados con clientes deben vivir dentro del <strong>expediente del cliente</strong>.</>;
+    }
+    if (eType === "notaCliente") {
+      return <>Las notas para cliente deben guardarse dentro del <strong>expediente</strong>, no como nota suelta de Agenda.</>;
+    }
+    return <>Todo lo relacionado con un cliente se trabaja desde <strong>Clientes</strong>. Agenda solo funciona como punto de entrada y calendario operativo.</>;
+  }, [eType]);
+
+  const routeNote = useMemo(() => {
+    if (eType === "venta") {
+      return <><strong>Ruta:</strong> Agenda → Clientes → Expediente → Registro de venta.</>;
+    }
+    if (eType === "follow") {
+      return <><strong>Ruta:</strong> Agenda → Clientes → Expediente → Notas / Follow-up.</>;
+    }
+    if (eType === "notaCliente") {
+      return <><strong>Ruta:</strong> Agenda → Clientes → Expediente → Notas para el cliente.</>;
+    }
+    return <><strong>Regla operativa:</strong> si la acción pertenece a un cliente, primero abre o crea su expediente en <strong>Clientes</strong>.</>;
+  }, [eType]);
 
   const reset = () => {
-    setEType("venta"); setNota(""); setFollow(""); setLinkMode("personal");
-    setExistingId(""); setNewName(""); setRemDate(""); setRemTime("");
+    setEType("venta");
+    setNota("");
+    setRemDate("");
+    setRemTime("");
   };
 
-  const close = (v: boolean) => { if (!v) reset(); onOpenChange(v); };
+  useEffect(() => {
+    if (open) reset();
+  }, [open, day, month, year]);
+
+  const close = (v: boolean) => {
+    if (!v) reset();
+    onOpenChange(v);
+  };
+
+  const goClientsFromAgenda = () => {
+    close(false);
+    router.push(`/clients?tourDate=${dateStr}&from=agenda`);
+  };
 
   const handleSave = () => {
-    const baseNote = eType === "nota" ? nota.trim() : eType === "follow" ? follow.trim() : "Día de descanso";
-    if (!baseNote && eType !== "descanso") return toast.error("Escribe algo.");
-    const note = remTime ? `${remTime} · ${baseNote}` : baseNote;
-
-    const entry: { t: EntryType; ts: number; note: string; clientId?: string; prospectId?: string; clientName?: string } = {
-      t: eType, ts: Date.now(), note,
-    };
-
-    if (eType === "nota" || eType === "follow") {
-      if (linkMode === "existing" && existingId) {
-        const c = db.clients[existingId];
-        if (!c) return toast.error("Selecciona un cliente.");
-        entry.clientId = existingId;
-        entry.prospectId = c.prospectId || existingId;
-        entry.clientName = clientDisplayName(c);
-        addClientActivity(existingId, { type: eType, date: dateStr, title: eType === "nota" ? "Nota" : "Follow-up", note, source: "Agenda" });
-      } else if (linkMode === "new" && newName.trim()) {
-        const c = createEmptyClient(newName.trim(), dateStr);
-        saveClient(c);
-        entry.clientId = c.id;
-        entry.prospectId = c.id;
-        entry.clientName = c.name;
-        addClientActivity(c.id, { type: eType, date: dateStr, title: eType === "nota" ? "Nota" : "Follow-up", note, source: "Agenda" });
-      } else {
-        addUserActivity({ type: eType, date: dateStr, title: eType === "nota" ? "Nota personal / operativa" : "Follow-up personal / operativo", note, source: "Agenda" });
-      }
+    if (clientAction) {
+      goClientsFromAgenda();
+      return;
     }
 
-    if (remDate) addCalEntryByDate(remDate, entry);
-    else addCalEntry(year, month, day, entry);
+    if (eType === "notaUsuario") {
+      const trimmed = nota.trim();
+      if (!trimmed) return toast.error("Escribe algo.");
+      const note = remTime ? `${remTime} · ${trimmed}` : trimmed;
+      const entry: { t: EntryType; ts: number; note: string } = {
+        t: "nota",
+        ts: Date.now(),
+        note,
+      };
+      addUserActivity({
+        type: "nota",
+        date: dateStr,
+        title: "Nota del usuario",
+        note,
+        source: "Agenda",
+      });
+      if (remDate) addCalEntryByDate(remDate, entry);
+      else addCalEntry(year, month, day, entry);
+      close(false);
+      return;
+    }
 
-    reset();
-    onOpenChange(false);
+    if (eType === "descanso") {
+      const entry = { t: "descanso" as EntryType, ts: Date.now(), note: "Día de descanso" };
+      addCalEntry(year, month, day, entry);
+      close(false);
+    }
   };
 
-  const goCreateClient = () => { onOpenChange(false); router.push(`/clients/new?tourDate=${dateStr}&sale=1`); };
-  const goClients = () => { onOpenChange(false); router.push("/clients"); };
-
-  const isNote = eType === "nota" || eType === "follow";
-
   return (
-    <SalesModal open={open} onOpenChange={close} title={`${DAYS[dow]} ${day} de ${MONTHS[month]}`} sub={`${MONTHS[month]} ${year}`}>
+    <SalesModal
+      open={open}
+      onOpenChange={close}
+      popupId="m-entry"
+      title={title}
+      sub={subtitle}
+    >
       <div style={{ marginBottom: 16 }}>
-        <div className="field-label" style={{ marginBottom: 8 }}>Tipo</div>
-        <div className="seg">
+        <div className="entry-type-label">¿Qué te gustaría agregar?</div>
+        <div className="seg entry-type-seg">
           {TYPE_TABS.map(([t, label]) => (
-            <button key={t} type="button" className={`seg-btn${eType === t ? " on" : ""}`} onClick={() => setEType(t)}>{label}</button>
+            <button
+              key={t}
+              type="button"
+              className={`seg-btn${eType === t ? " on" : ""}`}
+              onClick={() => setEType(t)}
+            >
+              {label}
+            </button>
           ))}
         </div>
       </div>
 
-      {isNote && (
-        <div className="link-box">
-          <div className="link-title">Vincular registro</div>
-          <div className="link-options">
-            <button type="button" className={`link-chip${linkMode === "personal" ? " on" : ""}`} onClick={() => setLinkMode("personal")}>Personal / operativo</button>
-            <button type="button" className={`link-chip${linkMode === "existing" ? " on" : ""}`} onClick={() => setLinkMode("existing")}>Cliente existente</button>
-            <button type="button" className={`link-chip${linkMode === "new" ? " on" : ""}`} onClick={() => setLinkMode("new")}>Nuevo cliente</button>
-          </div>
-          {linkMode === "existing" && (
-            <div>
-              <label className="field-label">Seleccionar cliente</label>
-              <select value={existingId} onChange={(e) => setExistingId(e.target.value)}>
-                <option value="">{clients.length ? "Selecciona…" : "Sin clientes activos"}</option>
-                {clients.map((c) => (
-                  <option key={c.id} value={c.id}>{clientDisplayName(c)} · {c.prospectCode}</option>
-                ))}
-              </select>
-            </div>
-          )}
-          {linkMode === "new" && (
-            <div>
-              <label className="field-label">Nombre del nuevo cliente</label>
-              <input type="text" value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Nombre completo" />
-            </div>
-          )}
-          <div className="route-note" style={{ marginTop: 10 }}>Si el registro pertenece a un cliente, se guardará también dentro de su expediente. Si es personal/operativo, quedará solo en tu Agenda.</div>
-        </div>
-      )}
-
       {eType === "descanso" && (
-        <div className="hint">Este día se marcará como <strong>día de descanso</strong>. Se descontará automáticamente de tus días trabajados del mes.</div>
-      )}
-
-      {eType === "venta" && (
-        <div className="calendar-sale-route">
-          <div className="route-hero">
-            <div className="route-icon">▣</div>
-            <div className="route-title">Registrar venta desde expediente</div>
-            <div className="route-copy">Para mantener la información ordenada, las ventas no se capturan directo en Agenda. Primero crea o abre un expediente y registra la venta desde ahí.</div>
+        <div id="ef-descanso">
+          <div className="hint">
+            Este día se marcará como <strong>día de descanso</strong>. Se descontará automáticamente de tus días trabajados del mes.
           </div>
-          <div className="route-options">
-            <button type="button" className="route-card" onClick={goCreateClient}>
-              <div className="route-card-icon">＋</div>
-              <div>
-                <div className="route-card-title">Crear nuevo cliente</div>
-                <div className="route-card-sub">Crea un expediente con la fecha de tour seleccionada y registra la venta.</div>
-              </div>
-            </button>
-            <button type="button" className="route-card green" onClick={goClients}>
-              <div className="route-card-icon">↗</div>
-              <div>
-                <div className="route-card-title">Abrir clientes</div>
-                <div className="route-card-sub">Busca un expediente existente y usa el botón Registrar venta.</div>
-              </div>
-            </button>
-          </div>
-          <div className="route-note"><strong>Regla operativa:</strong> Agenda solo refleja ventas creadas desde expedientes. Así evitamos duplicar datos entre clientes, calendario y dashboard.</div>
         </div>
       )}
 
-      {isNote && (
-        <div className="link-box" style={{ margin: "12px 0" }}>
+      {clientAction && (
+        <div id="ef-venta">
+          <div className="calendar-sale-route lean-sale-route">
+            <div className="route-hero">
+              <div className="route-copy" id="agenda-client-route-copy">{routeCopy}</div>
+            </div>
+            <div className="route-options">
+              <button type="button" className="route-card primary-route" onClick={goClientsFromAgenda}>
+                <div className="route-card-icon">＋</div>
+                <div>
+                  <div className="route-card-title">Crear nuevo cliente</div>
+                  <div className="route-card-sub">
+                    Te manda a Clientes para crear primero el expediente. Después podrás registrar la acción correspondiente.
+                  </div>
+                </div>
+              </button>
+              <button type="button" className="route-card green" onClick={goClientsFromAgenda}>
+                <div className="route-card-icon">↗</div>
+                <div>
+                  <div className="route-card-title">Cliente que ya existe</div>
+                  <div className="route-card-sub">
+                    Busca su expediente en Clientes y registra o revisa la acción desde ahí.
+                  </div>
+                </div>
+              </button>
+            </div>
+            <div className="route-note" id="agenda-client-route-note">{routeNote}</div>
+          </div>
+        </div>
+      )}
+
+      {eType === "notaUsuario" && (
+        <div id="entry-reminder-wrap" className="link-box" style={{ margin: "12px 0" }}>
           <div className="link-title">Recordatorio</div>
           <div className="prospect-grid">
-            <div className="prospect-field"><label>Fecha</label><input type="date" value={remDate} onChange={(e) => setRemDate(e.target.value)} /></div>
-            <div className="prospect-field"><label>Hora opcional</label><input type="time" value={remTime} onChange={(e) => setRemTime(e.target.value)} /></div>
+            <div className="prospect-field">
+              <label>Fecha</label>
+              <input type="date" id="e-rem-date" value={remDate} onChange={(e) => setRemDate(e.target.value)} />
+            </div>
+            <div className="prospect-field">
+              <label>Hora opcional</label>
+              <input type="time" id="e-rem-time" value={remTime} onChange={(e) => setRemTime(e.target.value)} />
+            </div>
           </div>
-          <div className="route-note" style={{ marginTop: 10 }}>Si eliges fecha, este registro aparecerá en Agenda en esa fecha. La hora es opcional.</div>
+          <div className="route-note" style={{ marginTop: 10 }}>
+            Si eliges fecha, esta nota del usuario aparecerá en Agenda en esa fecha. La hora es opcional.
+          </div>
         </div>
       )}
 
-      {eType === "nota" && (
-        <div>
-          <label className="field-label">Nota</label>
-          <textarea rows={4} value={nota} onChange={(e) => setNota(e.target.value)} placeholder="Escribe tu nota..." />
-        </div>
-      )}
-      {eType === "follow" && (
-        <div>
-          <label className="field-label">Follow-up</label>
-          <textarea rows={4} value={follow} onChange={(e) => setFollow(e.target.value)} placeholder="Describe el seguimiento..." />
+      {eType === "notaUsuario" && (
+        <div id="ef-nota">
+          <label style={{ fontSize: 11, color: "var(--muted)", fontWeight: 700, letterSpacing: ".5px", textTransform: "uppercase", display: "block", marginBottom: 6 }}>
+            Notas del usuario
+          </label>
+          <textarea
+            id="e-nota-t"
+            rows={4}
+            style={{ width: "100%" }}
+            value={nota}
+            onChange={(e) => setNota(e.target.value)}
+            placeholder="Escribe una nota personal u operativa..."
+          />
         </div>
       )}
 
-      <div className="btn-row">
+      <div className="btn-row" style={{ marginTop: 20 }}>
         <button type="button" className="btn btn-ghost" onClick={() => close(false)}>Cancelar</button>
-        {eType !== "venta" && <button type="button" className="btn btn-primary" onClick={handleSave}>Guardar</button>}
+        {!clientAction && (
+          <button type="button" className="btn btn-primary" id="entry-save-btn" onClick={handleSave}>
+            Guardar
+          </button>
+        )}
       </div>
     </SalesModal>
   );

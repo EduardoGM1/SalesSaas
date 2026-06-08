@@ -116,7 +116,9 @@ export function bodyToSaleInsert(
     tours: Math.max(1, Math.trunc(Number(body.tours ?? 1) || 1)),
     contract: body.contract ?? null,
     status: sanitizeStatus(body.status),
+    processing: body.processing ?? (body.status === "no-procesable" ? "pendiente" : "procesable"),
     process_date: toDateOrNull(body.process_date ?? body.processDate),
+    add_processing_followup: Boolean(body.add_processing_followup ?? body.addProcessingFollowup ?? false),
     note: body.note ?? null,
   };
 }
@@ -137,6 +139,12 @@ export function bodyToCalInsert(body: Record<string, unknown>, userId: string): 
     tours: body.tours != null ? Math.trunc(Number(body.tours)) : null,
     contract: body.contract ?? null,
     source: body.source ?? null,
+    status: sanitizeStatus(body.status),
+    processing: body.processing ?? null,
+    process_date: toDateOrNull(body.process_date ?? body.processDate),
+    completed: Boolean(body.completed ?? false),
+    kind: body.kind ?? null,
+    client_name: body.client_name ?? body.clientName ?? null,
   };
 }
 

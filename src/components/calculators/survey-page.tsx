@@ -4,7 +4,9 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { Topbar } from "@/components/layout/topbar";
 import { SaveToolModal } from "@/components/calculators/save-tool-modal";
+import { clientDisplayName, ensureProspectIdentity } from "@/lib/clients";
 import { computeSurvey, fmt, fmtD } from "@/lib/calculations/survey";
+import { COUNTRY_CITY, COUNTRY_FLAGS } from "@/lib/constants";
 import { formatMoneyValue } from "@/lib/format/money";
 import { useToolBucketReady } from "@/hooks/use-tool-bucket-ready";
 import { useDbStore } from "@/stores/db-store";
@@ -43,32 +45,63 @@ export function SurveyPage({ clientId, backHref }: SurveyPageProps) {
   useEffect(() => {
     if (!ready) return;
     const bucket = getToolBucket("survey", mode, clientId);
+    const loaded: Record<string, string> = { ...DEFAULT_DATA };
     if (Object.keys(bucket).length) {
-      const loaded: Record<string, string> = {};
       Object.entries(bucket).forEach(([k, v]) => { loaded[k] = String(v); });
-      setData((d) => ({ ...d, ...loaded }));
       if (bucket.stype) setSType(String(bucket.stype));
       if (bucket.futureType) setFutureType(bucket.futureType === "dream" ? "dream" : "real");
     }
-  }, [ready, clientId, getToolBucket, mode]);
-
-  const result = useMemo(() => computeSurvey(data, sType), [data, sType]);
-  const update = (k: string, v: string) => setData((d) => ({ ...d, [k]: v }));
-
-  const handleSave = () => {
-    saveToolBucket("survey", mode, { ...data, stype: sType, futureType }, clientId);
     if (clientId) {
       const c = getClient(clientId);
       if (c) {
-        c.name1 = data.svp_name1 || c.name1;
-        c.name2 = data.svp_name2 || c.name2;
-        c.country = data.svp_country || c.country;
-        c.occupation1 = data.svp_occ1 || c.occupation1;
-        c.occupation2 = data.svp_occ2 || c.occupation2;
-        c.city = data.svp_city || c.city;
-        saveClient(c);
+        loaded.svp_name1 = loaded.svp_name1 || c.name1 || c.name || "";
+        loaded.svp_name2 = loaded.svp_name2 || c.name2 || "";
+        loaded.svp_country = loaded.svp_country || c.country || "";
+        loaded.svp_occ1 = loaded.svp_occ1 || c.occupation1 || "";
+        loaded.svp_occ2 = loaded.svp_occ2 || c.occupation2 || "";
+        loaded.svp_city = loaded.svp_city || c.city || "";
       }
     }
+    setData(loaded);
+  }, [ready, clientId, getToolBucket, getClient, mode]);
+
+  const client = clientId ? getClient(clientId) : undefined;
+  const pageCtx = clientId ? (clientDisplayName(client) || "Cliente") : "Calculadora libre";
+  const countries = Object.keys(COUNTRY_CITY);
+  const cities = COUNTRY_CITY[data.svp_country || ""] || ["Otro"];
+
+  const result = useMemo(() => computeSurvey(data, sType), [data, sType]);
+
+  const syncProspectToClient = (next: Record<string, string>) => {
+    if (!clientId) return;
+    const c = getClient(clientId);
+    if (!c) return;
+    const name1 = next.svp_name1 || "";
+    const name2 = next.svp_name2 || "";
+    saveClient(ensureProspectIdentity({
+      ...c,
+      name1,
+      name2,
+      name: [name1, name2].filter(Boolean).join(" / ") || name1 || c.name || "Prospecto",
+      country: next.svp_country || "",
+      city: next.svp_city || "",
+      occupation1: next.svp_occ1 || "",
+      occupation2: next.svp_occ2 || "",
+    }));
+  };
+
+  const update = (k: string, v: string) => {
+    setData((d) => {
+      const next = { ...d, [k]: v };
+      if (k === "svp_country") next.svp_city = "";
+      if (k.startsWith("svp_")) syncProspectToClient(next);
+      return next;
+    });
+  };
+
+  const handleSave = () => {
+    saveToolBucket("survey", mode, { ...data, stype: sType, futureType }, clientId);
+    if (clientId) syncProspectToClient(data);
     if (!clientId) { setSaveToolOpen(true); return; }
     setSaved(true);
     setTimeout(() => setSaved(false), 1600);
@@ -84,38 +117,63 @@ export function SurveyPage({ clientId, backHref }: SurveyPageProps) {
     <>
       <Topbar title="Survey" subtitle={clientId ? "Calculadora de viaje" : "Calculadora libre"} />
       <div className="sales-page">
-        <div className="page-head">
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
             <Link href={backHref} className="btn btn-ghost btn-sm">← Volver</Link>
             <div>
               <div className="page-title">Survey</div>
-              <div className="page-sub">{clientId ? "Expediente" : "Calculadora libre"}</div>
+              <div className="page-sub">{pageCtx}</div>
             </div>
           </div>
           <button type="button" className="btn btn-ghost btn-sm" onClick={handleClear}>Limpiar</button>
         </div>
 
-        {clientId && (
-          <div className="card client-survey-prospect show">
-            <div className="card-heading">Datos del prospecto</div>
-            <div className="card-sub">Estos datos se sincronizan con la ficha del expediente.</div>
-            <div className="client-survey-grid">
-              {[
-                ["svp_name1", "Nombre", "Nombre cliente"],
-                ["svp_name2", "Nombre", "Acompañante / copropietario"],
-                ["svp_country", "País", "País"],
-                ["svp_occ1", "Ocupación", "Ocupación cliente"],
-                ["svp_occ2", "Ocupación", "Ocupación acompañante"],
-                ["svp_city", "Ciudad", "Ciudad"],
-              ].map(([k, label, ph]) => (
-                <div key={k} className="client-survey-field">
-                  <label>{label}</label>
-                  <input type="text" placeholder={ph} value={data[k] || ""} onChange={(e) => update(k, e.target.value)} />
-                </div>
-              ))}
+        <div className={`card client-survey-prospect${clientId ? " show" : ""}`}>
+          <div className="card-heading">Datos del prospecto</div>
+          <div className="card-sub">Estos datos se sincronizan con la ficha del expediente.</div>
+          <div className="client-survey-grid">
+            <div className="client-survey-field left">
+              <label>Nombre</label>
+              <input type="text" id="svp-name1" placeholder="Nombre cliente" value={data.svp_name1 || ""} onChange={(e) => update("svp_name1", e.target.value)} />
+            </div>
+            <div className="client-survey-field center">
+              <label>País</label>
+              <select id="svp-country" value={data.svp_country || ""} onChange={(e) => update("svp_country", e.target.value)}>
+                <option value="">Selecciona país</option>
+                {countries.map((country) => (
+                  <option key={country} value={country}>{COUNTRY_FLAGS[country] || "🌐"} {country}</option>
+                ))}
+                {data.svp_country && !countries.includes(data.svp_country) && (
+                  <option value={data.svp_country}>{data.svp_country}</option>
+                )}
+              </select>
+            </div>
+            <div className="client-survey-field right">
+              <label>Nombre</label>
+              <input type="text" id="svp-name2" placeholder="Acompañante / copropietario" value={data.svp_name2 || ""} onChange={(e) => update("svp_name2", e.target.value)} />
+            </div>
+            <div className="client-survey-field left">
+              <label>Ocupación</label>
+              <input type="text" id="svp-occ1" placeholder="Ocupación cliente" value={data.svp_occ1 || ""} onChange={(e) => update("svp_occ1", e.target.value)} />
+            </div>
+            <div className="client-survey-field center">
+              <label>Ciudad</label>
+              <select id="svp-city" value={data.svp_city || ""} onChange={(e) => update("svp_city", e.target.value)}>
+                <option value="">Selecciona ciudad</option>
+                {cities.map((city) => (
+                  <option key={city} value={city}>{city}</option>
+                ))}
+                {data.svp_city && !cities.includes(data.svp_city) && (
+                  <option value={data.svp_city}>{data.svp_city}</option>
+                )}
+              </select>
+            </div>
+            <div className="client-survey-field right">
+              <label>Ocupación</label>
+              <input type="text" id="svp-occ2" placeholder="Ocupación acompañante" value={data.svp_occ2 || ""} onChange={(e) => update("svp_occ2", e.target.value)} />
             </div>
           </div>
-        )}
+        </div>
 
         <div className="card" style={{ marginBottom: 16 }}>
           <div className="card-heading">Tu viaje actual</div>
@@ -124,7 +182,7 @@ export function SurveyPage({ clientId, backHref }: SurveyPageProps) {
             <div>
               <div className="frow" style={{ paddingTop: 0, borderTop: "none" }}>
                 <div className="flabel">Noches totales</div>
-                <input type="number" min={1} style={{ width: 80, padding: "7px 8px", border: "1px solid var(--border2)", borderRadius: 8, background: "var(--surface2)" }} value={data.nights} onChange={(e) => update("nights", e.target.value)} />
+                <input type="number" id="sv-nights" min={1} style={{ width: 80 }} value={data.nights} onChange={(e) => update("nights", e.target.value)} />
               </div>
               <div className="frow">
                 <div className="flabel">Tipo de gasto</div>
@@ -137,24 +195,22 @@ export function SurveyPage({ clientId, backHref }: SurveyPageProps) {
                 <div className="flabel">Total pagado</div>
                 <div className="mfield">
                   <span className="mpfx">$</span>
-                  <input type="text" value={data.total} onChange={(e) => update("total", e.target.value)} onBlur={(e) => update("total", formatMoneyValue(e.target.value))} />
+                  <input type="text" id="sv-total" value={data.total} onChange={(e) => update("total", e.target.value)} onBlur={(e) => update("total", formatMoneyValue(e.target.value))} />
                 </div>
               </div>
-              {sType === "paquete" && (
-                <>
-                  <div className="frow">
-                    <div className="flabel">% Hotel</div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <input type="number" min={1} max={99} style={{ width: 65, padding: "7px 8px", border: "1px solid var(--border2)", borderRadius: 8 }} value={data.hpct} onChange={(e) => update("hpct", e.target.value)} />
-                      <span style={{ color: "var(--muted)", fontSize: 13 }}>%</span>
-                    </div>
+              <div id="sv-split" style={{ display: sType === "paquete" ? "block" : "none" }}>
+                <div className="frow">
+                  <div className="flabel">% Hotel</div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <input type="number" id="sv-hpct" min={1} max={99} style={{ width: 65 }} value={data.hpct} onChange={(e) => update("hpct", e.target.value)} />
+                    <span style={{ color: "var(--muted)", fontSize: 13 }}>%</span>
                   </div>
-                  <div className="g2" style={{ marginTop: 10 }}>
-                    <div className="vbox blue"><div className="vbox-val">{fmt(result.split.hval)}</div><div className="vbox-label">Hotel ({result.split.hpct}%)</div></div>
-                    <div className="vbox blue"><div className="vbox-val">{fmt(result.split.vval)}</div><div className="vbox-label">Vuelo ({100 - result.split.hpct}%)</div></div>
-                  </div>
-                </>
-              )}
+                </div>
+                <div className="g2" style={{ marginTop: 10 }}>
+                  <div className="vbox blue"><div className="vbox-val">{fmt(result.split.hval)}</div><div className="vbox-label">Hotel ({result.split.hpct}%)</div></div>
+                  <div className="vbox blue"><div className="vbox-val">{fmt(result.split.vval)}</div><div className="vbox-label">Vuelo ({100 - result.split.hpct}%)</div></div>
+                </div>
+              </div>
             </div>
             <div className="g2">
               <div className="vbox blue">
@@ -218,11 +274,11 @@ export function SurveyPage({ clientId, backHref }: SurveyPageProps) {
                 <div className="card-sub" style={{ marginBottom: 0 }}>¿A qué lugares vas a viajar en los siguientes años?</div>
               </div>
               <div className="choice-row" aria-label="Tipo de viaje futuro">
-                <label className={`choice-pill${futureType === "real" ? " on" : ""}`}>
-                  <input type="checkbox" checked={futureType === "real"} onChange={() => setFutureType("real")} /> Viajes reales
+                <label className={`choice-pill${futureType === "real" ? " on" : ""}`} id="sf-real-pill">
+                  <input type="checkbox" id="sf-real" checked={futureType === "real"} onChange={() => setFutureType("real")} /> Viajes reales
                 </label>
-                <label className={`choice-pill${futureType === "dream" ? " on" : ""}`}>
-                  <input type="checkbox" checked={futureType === "dream"} onChange={() => setFutureType("dream")} /> Viajes de sueño
+                <label className={`choice-pill${futureType === "dream" ? " on" : ""}`} id="sf-dream-pill">
+                  <input type="checkbox" id="sf-dream" checked={futureType === "dream"} onChange={() => setFutureType("dream")} /> Viajes de sueño
                 </label>
               </div>
             </div>
@@ -258,7 +314,7 @@ export function SurveyPage({ clientId, backHref }: SurveyPageProps) {
         </div>
 
         {!clientId && (
-          <div className="card">
+          <div className="card" id="sv-pattern-card">
             <div className="card-heading">Patrón de vacaciones</div>
             <div className="card-sub">Patrones encontrados</div>
             <table className="dtbl pattern-table">

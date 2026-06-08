@@ -21,6 +21,7 @@ interface WorksheetPageProps {
 
 export function WorksheetPage({ clientId, backHref }: WorksheetPageProps) {
   const { ready, mode } = useToolBucketReady(clientId);
+  const db = useDbStore((s) => s.db);
   const getToolBucket = useDbStore((s) => s.getToolBucket);
   const saveToolBucket = useDbStore((s) => s.saveToolBucket);
   const [fields, setFields] = useState({ ...FIELD_DEFAULTS });
@@ -32,13 +33,14 @@ export function WorksheetPage({ clientId, backHref }: WorksheetPageProps) {
   useEffect(() => {
     if (!ready) return;
     const b = getToolBucket("worksheet", mode, clientId);
-    const cfg = ensureWSConfig(b);
+    const globalCfg = db.settings?.worksheetConfig || {};
+    const cfg = ensureWSConfig({ ...globalCfg, ...b });
     setConfig(Object.fromEntries(WS_CONFIG_IDS.map((k) => [k, String(cfg[k] ?? WS_DEFAULTS[k])])));
     setFields({
       wv: String(b.wv ?? "20000"), we: String(b.we ?? "30"),
       wcc: String(b.wcc ?? "0"), wob: String(b.wob ?? "0"),
     });
-  }, [ready, clientId, getToolBucket, mode]);
+  }, [ready, clientId, getToolBucket, mode, db.settings?.worksheetConfig]);
 
   const result = useMemo(() => computeWorksheet(fields, config), [fields, config]);
 
@@ -123,6 +125,11 @@ export function WorksheetPage({ clientId, backHref }: WorksheetPageProps) {
           <span className={`save-confirm${saved ? " show" : ""}`}>Guardado</span>
           <button type="button" className="btn btn-primary" onClick={handleSave}>Guardar</button>
         </div>
+        {clientId && (
+          <div className="save-footer" style={{ marginTop: 8 }}>
+            <Link href={`/clients/${clientId}?openSale=1&from=worksheet`} className="btn btn-primary">Registrar venta desde Worksheet</Link>
+          </div>
+        )}
       </div>
 
       <SalesModal open={configOpen} onOpenChange={setConfigOpen} title="Configurar financiamiento" sub="Define los meses e interés anual de cada opción. Se usarán en el Worksheet.">

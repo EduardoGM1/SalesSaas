@@ -1,6 +1,8 @@
 "use client";
 
-import { Menu } from "lucide-react";
+import Link from "next/link";
+import Image from "next/image";
+import { Menu, Settings } from "lucide-react";
 import { MONTHS } from "@/lib/constants";
 import { useAppStore } from "@/stores/app-store";
 
@@ -19,22 +21,30 @@ export function Topbar({ title, subtitle, showMonthNav }: TopbarProps) {
 
   return (
     <header className="topbar">
-      <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-        <button type="button" className="tb-nav-btn lg:hidden" onClick={toggleSidebar} aria-label="Menú">
-          <Menu size={16} />
+      <div className="tb-left">
+        <button type="button" className="mobile-menu-btn" onClick={toggleSidebar} aria-label="Menú">
+          <Menu size={18} />
         </button>
         <div>
-          <div className="tb-title">{title}</div>
-          <div className="tb-sub">{subtitle}</div>
+          <div className="tb-page-title">{title}</div>
+          <div className="tb-page-sub">{subtitle}</div>
         </div>
       </div>
-      {showMonthNav && (
-        <div className="tb-month-nav">
-          <button type="button" className="tb-nav-btn" onClick={calPrev} aria-label="Mes anterior">‹</button>
-          <div className="tb-month-label">{MONTHS[calMonth]} {calYear}</div>
-          <button type="button" className="tb-nav-btn" onClick={calNext} aria-label="Mes siguiente">›</button>
+      <div className="tb-right">
+        {showMonthNav && (
+          <div className="tb-month-nav">
+            <button type="button" className="tb-nav-btn" onClick={calPrev} aria-label="Mes anterior">‹</button>
+            <div className="tb-month-label">{MONTHS[calMonth]} {calYear}</div>
+            <button type="button" className="tb-nav-btn" onClick={calNext} aria-label="Mes siguiente">›</button>
+          </div>
+        )}
+        <div className="topbar-brand" title="Saletse" aria-label="Saletse">
+          <Image src="/saletse-logo.png" alt="Saletse" width={132} height={30} priority />
         </div>
-      )}
+        <Link href="/settings" className="top-settings-btn" title="Configuración" aria-label="Configuración">
+          <Settings size={17} />
+        </Link>
+      </div>
     </header>
   );
 }

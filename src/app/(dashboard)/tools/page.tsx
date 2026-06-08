@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { FileText, Palmtree, DollarSign } from "lucide-react";
 import { Topbar } from "@/components/layout/topbar";
+import { PageBack } from "@/components/layout/page-back";
 import { useAppStore } from "@/stores/app-store";
 
 const TOOLS = [
@@ -18,6 +19,7 @@ export default function ToolsPage() {
     <>
       <Topbar title="Herramientas" subtitle="Calculadoras libres" />
       <div className="sales-page">
+        <PageBack />
         <div className="page-head">
           <div>
             <div className="page-title">Herramientas</div>

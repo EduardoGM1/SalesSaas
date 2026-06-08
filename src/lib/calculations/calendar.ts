@@ -2,6 +2,14 @@ import { MONTHS } from "@/lib/constants";
 import { getISOWeek } from "@/lib/format/dates";
 import { CalMonth, GoalMonth } from "@/lib/storage/types";
 
+export function isCalendarSaleCountable(entry: { t?: string; status?: string; processing?: string; completed?: boolean }): boolean {
+  return !!entry &&
+    entry.t === "venta" &&
+    !entry.completed &&
+    String(entry.status || "procesable") !== "no-procesable" &&
+    String(entry.processing || "procesable") !== "pendiente";
+}
+
 export function countDescansoDays(data: CalMonth): number {
   return Object.values(data.days || {}).filter((es) =>
     (es || []).some((e) => e.t === "descanso")
@@ -77,7 +85,7 @@ export function getDashboardWeeks(
     };
     g.days.forEach((d) => {
       ((data.days || {})[d] || []).forEach((e) => {
-        if (e.t === "venta") {
+        if (isCalendarSaleCountable(e)) {
           week.real += e.vol || 0;
           week.tours += e.tours || 0;
           week.sales++;

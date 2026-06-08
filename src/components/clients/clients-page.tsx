@@ -1,11 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Eye, Trash2 } from "lucide-react";
 import { SalesModal } from "@/components/ui/sales-modal";
 import { Topbar } from "@/components/layout/topbar";
+import { PageBack } from "@/components/layout/page-back";
 import { clientDisplayName, ensureProspectIdentity } from "@/lib/clients";
+import { MONTHS } from "@/lib/constants";
 import { longDate } from "@/lib/format/dates";
 import { statusLabel, statusClass } from "@/lib/format/status";
 import { createEmptyClient, useDbStore } from "@/stores/db-store";
@@ -21,21 +23,58 @@ export function ClientsPage() {
   const deleteClient = useDbStore((s) => s.deleteClient);
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
+  const [missingName, setMissingName] = useState(false);
+  const [query, setQuery] = useState("");
+  const nameRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
 
-  const sorted = Object.values(db.clients).map(ensureProspectIdentity).sort((a, b) => {
+  useEffect(() => {
+    if (!open) return;
+    setMissingName(false);
+    const timer = window.setTimeout(() => nameRef.current?.focus(), 300);
+    return () => window.clearTimeout(timer);
+  }, [open]);
+
+  const normalizedQuery = query.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+  const terms = normalizedQuery.split(/\s+/).filter(Boolean);
+  const allClients = Object.values(db.clients).map(ensureProspectIdentity);
+  const filtered = terms.length ? allClients.filter((c) => {
+    const date = c.tourDate || c.createdYmd || "";
+    const dt = date ? new Date(`${date}T00:00:00`) : null;
+    const monthName = dt && !Number.isNaN(dt.getTime()) ? MONTHS[dt.getMonth()] : "";
+    const text = [
+      clientDisplayName(c), c.name, c.name1, c.name2, c.occupation1, c.occupation2,
+      c.contract, c.prospectCode, c.city, c.country, c.status, statusLabel(c.status),
+      date, date ? longDate(date) : "", monthName, dt ? String(dt.getMonth() + 1) : "", dt ? String(dt.getFullYear()) : "",
+    ].filter(Boolean).join(" ").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    return terms.every((term) => text.includes(term));
+  }) : allClients;
+
+  const sorted = filtered.sort((a, b) => {
     const da = a.tourDate || a.createdYmd || "";
     const db2 = b.tourDate || b.createdYmd || "";
     if (db2 !== da) return db2.localeCompare(da);
     return (b.createdAt || 0) - (a.createdAt || 0);
   });
 
+  const handleOpenChange = (next: boolean) => {
+    setOpen(next);
+    if (!next) {
+      setName("");
+      setMissingName(false);
+    }
+  };
+
   const handleCreate = () => {
-    if (!name.trim()) return toast.error("Escribe al menos el nombre.");
+    if (!name.trim()) {
+      setMissingName(true);
+      toast.error("Falta el campo obligatorio: Nombre completo");
+      nameRef.current?.focus();
+      return;
+    }
     const c = createEmptyClient(name.trim());
     saveClient(c);
-    setOpen(false);
-    setName("");
+    handleOpenChange(false);
     router.push(`/clients/${c.id}`);
   };
 
@@ -45,16 +84,38 @@ export function ClientsPage() {
     <>
       <Topbar title="Clientes" subtitle="Gestión de expedientes" />
       <div className="sales-page">
+        <PageBack />
         <div className="page-head">
           <div>
             <div className="page-title">Clientes</div>
             <div className="page-sub">Gestión de expedientes</div>
           </div>
-          <button type="button" className="btn btn-primary" onClick={() => setOpen(true)}>+ Nuevo cliente</button>
+          <button type="button" className="btn btn-primary" onClick={() => handleOpenChange(true)}>+ Nuevo cliente</button>
         </div>
 
-        {!sorted.length ? (
+        <div className="client-search-card">
+          <div className="client-search-row">
+            <div className="client-search-input-wrap">
+              <input
+                type="search"
+                className="client-search-input"
+                placeholder="Buscar por nombre, acompañante, contrato, fecha, mes, año, ciudad, país o estado..."
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+              />
+            </div>
+            <button type="button" className="btn btn-ghost btn-sm" onClick={() => setQuery("")}>Limpiar</button>
+            <div className="client-search-count">
+              {terms.length ? `${sorted.length} de ${allClients.length} expedientes` : `${allClients.length} expedientes`}
+            </div>
+          </div>
+          <div className="client-search-help">El buscador filtra la base de expedientes sin modificar clientes, ventas ni actividades.</div>
+        </div>
+
+        {!allClients.length ? (
           <div className="client-empty">Sin clientes aún. Haz clic en <strong>Nuevo cliente</strong> para comenzar.</div>
+        ) : !sorted.length ? (
+          <div className="client-search-empty">No encontré expedientes con <strong>{query}</strong>.</div>
         ) : (
           <div className="client-table-card">
             <table className="client-table">
@@ -97,13 +158,33 @@ export function ClientsPage() {
         )}
       </div>
 
-      <SalesModal open={open} onOpenChange={setOpen} title="Nuevo cliente" sub="Crea el expediente con el nombre inicial. Los demás datos se completan dentro del expediente.">
-        <label className="field-label">Nombre completo cliente 1</label>
-        <input type="text" value={name} placeholder="Nombre completo" style={{ marginBottom: 18 }}
-          onChange={(e) => setName(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") handleCreate(); }} />
-        <div className="ethic-box">La información personal se considera temporal. Al cerrar o procesar la operación, debe conservarse solo lo comercial/estadístico.</div>
-        <div className="btn-row">
-          <button type="button" className="btn btn-ghost" onClick={() => setOpen(false)}>Cancelar</button>
+      <SalesModal
+        open={open}
+        onOpenChange={handleOpenChange}
+        title="Nuevo cliente"
+        sub="Crea el expediente con el nombre inicial. Los demás datos se completan dentro del expediente."
+      >
+        <div className={`newclient-field required-field${missingName ? " field-missing" : ""}`}>
+          <label className="required-label">
+            Nombre completo{" "}
+            <em style={{ fontStyle: "italic", textTransform: "none", letterSpacing: ".2px" }}>(cliente 1)</em>
+            <span className="req-star">*</span>
+          </label>
+          <input
+            ref={nameRef}
+            id="nc-name"
+            type="text"
+            value={name}
+            placeholder="Nombre completo"
+            onChange={(e) => {
+              setName(e.target.value);
+              if (e.target.value.trim()) setMissingName(false);
+            }}
+            onKeyDown={(e) => { if (e.key === "Enter") handleCreate(); }}
+          />
+        </div>
+        <div className="btn-row" style={{ marginTop: 20 }}>
+          <button type="button" className="btn btn-ghost" onClick={() => handleOpenChange(false)}>Cancelar</button>
           <button type="button" className="btn btn-primary" onClick={handleCreate}>Crear expediente</button>
         </div>
       </SalesModal>

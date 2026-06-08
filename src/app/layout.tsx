@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
+import "./html-theme.css";
+import "./saas-overrides.css";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 const jetbrains = JetBrains_Mono({ subsets: ["latin"], variable: "--font-geist-mono" });
@@ -38,8 +40,8 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="es" className={`${inter.variable} ${jetbrains.variable}`}>
-      <body className="min-h-screen font-sans antialiased" style={{ background: "#f0f4f8", color: "#1a2540" }}>{children}</body>
+    <html lang="es" className={`${inter.variable} ${jetbrains.variable}`} style={{ fontSize: "15px" }}>
+      <body className="antialiased" style={{ fontFamily: "var(--font-sans, 'Inter', sans-serif)" }}>{children}</body>
     </html>
   );
 }

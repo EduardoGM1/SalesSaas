@@ -1,10 +1,13 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { Topbar } from "@/components/layout/topbar";
+import { PageBack } from "@/components/layout/page-back";
 import { toast } from "@/lib/toast";
 import { confirmDialog } from "@/lib/confirm";
 import { MONTHS, DAYS } from "@/lib/constants";
+import { isCalendarSaleCountable } from "@/lib/calculations/calendar";
 import { fmt } from "@/lib/format/money";
 import { useAppStore } from "@/stores/app-store";
 import { useDbStore } from "@/stores/db-store";
@@ -30,7 +33,7 @@ export function CalendarPage() {
   const first = new Date(calYear, calMonth, 1).getDay();
   const dim = new Date(calYear, calMonth + 1, 0).getDate();
   const today = new Date();
-  const entries: CalEntry[] = selDay ? data.days[selDay] || [] : [];
+  const entries: CalEntry[] = selDay ? (data.days[selDay] || []).filter((entry) => !entry.completed) : [];
 
   const openAdd = () => {
     if (!selDay) return toast.info("Selecciona un día primero.");
@@ -57,16 +60,20 @@ export function CalendarPage() {
         {open && (
           <div className="dg-body">
             {items.map((e, i) => {
-              const idx = entries.indexOf(e);
+              const idx = selDay ? (data.days[selDay] || []).indexOf(e) : -1;
               return (
                 <div key={i} className="dg-entry">
                   <div style={{ flex: 1 }}>
                     {e.t === "venta" && <div className="dg-name">{fmt(e.vol || 0)} — {e.tours || 0} tour(s)</div>}
                     {e.note && <div className="dp-date" style={{ color: e.t === "venta" ? undefined : "var(--text)" }}>{e.note}</div>}
                   </div>
-                  <button type="button" className="dg-del" onClick={async () => {
-                    if (await confirmDialog("¿Eliminar este registro?") && selDay) deleteCalEntry(calYear, calMonth, selDay, idx);
-                  }}>✕</button>
+                  {e.clientId ? (
+                    <Link className="dg-link" href={`/clients/${e.clientId}`}>Ir a cliente</Link>
+                  ) : (
+                    <button type="button" className="dg-del" onClick={async () => {
+                      if (await confirmDialog("¿Eliminar este registro?") && selDay) deleteCalEntry(calYear, calMonth, selDay, idx);
+                    }}>✕</button>
+                  )}
                 </div>
               );
             })}
@@ -80,6 +87,7 @@ export function CalendarPage() {
     <>
       <Topbar title="Agenda" subtitle="Registro operativo diario" />
       <div className="sales-page">
+        <PageBack />
         <div className="cal-layout">
           <div className="cal-widget">
             <div className="agenda-month-nav">
@@ -94,7 +102,7 @@ export function CalendarPage() {
               {Array.from({ length: first }).map((_, i) => <div key={`e${i}`} className="cal-day other" />)}
               {Array.from({ length: dim }, (_, i) => {
                 const d = i + 1;
-                const es = data.days[d] || [];
+                const es = (data.days[d] || []).filter((entry) => !entry.completed);
                 const isToday = today.getFullYear() === calYear && today.getMonth() === calMonth && today.getDate() === d;
                 const isSel = selDay === d;
                 return (
@@ -106,7 +114,7 @@ export function CalendarPage() {
                   >
                     <div className="cal-dn">{d}</div>
                     <div className="cal-dots">
-                      {es.some((e) => e.t === "venta") && <span className="cal-dot sale" />}
+                      {es.some(isCalendarSaleCountable) && <span className="cal-dot sale" />}
                       {es.some((e) => e.t === "nota") && <span className="cal-dot note" />}
                       {es.some((e) => e.t === "follow") && <span className="cal-dot follow" />}
                       {es.some((e) => e.t === "descanso") && <span className="cal-dot descanso" />}
@@ -129,7 +137,7 @@ export function CalendarPage() {
             {selDay && !entries.length && <div className="dp-empty">Sin registros. Haz clic en + para agregar nota, follow-up o descanso.</div>}
             {selDay && entries.length > 0 && (
               <div>
-                {renderGroup("venta", "Ventas", "sale", entries.filter((e) => e.t === "venta"))}
+                {renderGroup("venta", "Ventas", "sale", entries.filter(isCalendarSaleCountable))}
                 {renderGroup("nota", "Notas", "note", entries.filter((e) => e.t === "nota"))}
                 {renderGroup("follow", "Follow-ups", "follow", entries.filter((e) => e.t === "follow"))}
                 {renderGroup("descanso", "Descanso", "descanso", entries.filter((e) => e.t === "descanso"))}

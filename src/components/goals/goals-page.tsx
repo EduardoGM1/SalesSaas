@@ -1,13 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { BarChart3, Calendar, Target } from "lucide-react";
-import { SalesModal } from "@/components/ui/sales-modal";
 import { Topbar } from "@/components/layout/topbar";
+import { PageBack } from "@/components/layout/page-back";
 import { DashboardChart } from "@/components/goals/dashboard-chart";
 import { MONTHS } from "@/lib/constants";
 import { getDashboardWeeks, normalizeGoal, workingDaysRemaining } from "@/lib/calculations/calendar";
-import { fmt, fmtN, onlyDigits, formatMoneyValue } from "@/lib/format/money";
+import { fmt, fmtN } from "@/lib/format/money";
 import { useAppStore } from "@/stores/app-store";
 import { useDbStore } from "@/stores/db-store";
 
@@ -15,11 +15,10 @@ export function GoalsPage() {
   const hydrated = useAppStore((s) => s.hydrated);
   const calYear = useAppStore((s) => s.calYear);
   const calMonth = useAppStore((s) => s.calMonth);
+  const calPrev = useAppStore((s) => s.calPrev);
+  const calNext = useAppStore((s) => s.calNext);
   const getCalMonth = useDbStore((s) => s.getCalMonth);
   const getGoalMonth = useDbStore((s) => s.getGoalMonth);
-  const saveGoalMonth = useDbStore((s) => s.saveGoalMonth);
-  const [configOpen, setConfigOpen] = useState(false);
-  const [form, setForm] = useState({ vol: "", tours: "", ventas: "", dias: "", desc: "" });
 
   const data = getCalMonth(calYear, calMonth);
   const goal = normalizeGoal(getGoalMonth(calYear, calMonth));
@@ -48,28 +47,25 @@ export function GoalsPage() {
     ["Eficiencia / VPG", fmt(efic), "purple"],
   ];
 
-  if (!hydrated) return <Topbar title="Dashboard" subtitle="Cargando..." showMonthNav />;
+  if (!hydrated) return <Topbar title="Dashboard" subtitle="Cargando..." />;
 
   return (
     <>
-      <Topbar title="Dashboard" subtitle="Seguimiento de metas" showMonthNav />
+      <Topbar title="Dashboard" subtitle="Seguimiento de metas" />
       <div className="sales-page">
+        <PageBack />
         <div className="dash-lean-head">
           <div>
             <div className="dash-title">Dashboard</div>
             <div className="dash-sub">{MONTHS[calMonth]} {calYear}</div>
           </div>
-          <button type="button" className="btn btn-primary" onClick={() => {
-              const g = getGoalMonth(calYear, calMonth);
-              setForm({
-                vol: g.vol ? formatMoneyValue(g.vol) : "",
-                tours: g.tours ? String(g.tours) : "",
-                ventas: g.ventas ? String(g.ventas) : "",
-                dias: g.dias ? String(g.dias) : "",
-                desc: g.desc ? String(g.desc) : "",
-              });
-              setConfigOpen(true);
-            }}>⚙ Configurar meta</button>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", justifyContent: "flex-end" }}>
+            <div className="local-month-nav">
+              <button type="button" className="tb-nav-btn" onClick={calPrev} aria-label="Mes anterior">‹</button>
+              <div className="local-month-label">{MONTHS[calMonth]} {calYear}</div>
+              <button type="button" className="tb-nav-btn" onClick={calNext} aria-label="Mes siguiente">›</button>
+            </div>
+          </div>
         </div>
 
         <div className="dash-top-grid">
@@ -110,52 +106,6 @@ export function GoalsPage() {
           </table>
         </div>
       </div>
-
-      <SalesModal open={configOpen} onOpenChange={setConfigOpen} title="Configurar meta" sub={`${MONTHS[calMonth]} ${calYear}`}>
-        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-          <div>
-            <label className="field-label">Volumen meta ($)</label>
-            <div className="mfield"><span className="mpfx">$</span>
-              <input type="text" inputMode="numeric" placeholder="300,000" value={form.vol}
-                onChange={(e) => setForm({ ...form, vol: e.target.value })}
-                onBlur={(e) => setForm({ ...form, vol: formatMoneyValue(e.target.value) })} />
-            </div>
-          </div>
-          <div className="g2">
-            <div>
-              <label className="field-label">Tours meta</label>
-              <input type="number" placeholder="30" value={form.tours} onChange={(e) => setForm({ ...form, tours: e.target.value })} />
-            </div>
-            <div>
-              <label className="field-label">Ventas meta</label>
-              <input type="number" placeholder="12" value={form.ventas} onChange={(e) => setForm({ ...form, ventas: e.target.value })} />
-            </div>
-          </div>
-          <div className="g2">
-            <div>
-              <label className="field-label">Días trabajados</label>
-              <input type="number" placeholder="27" value={form.dias} onChange={(e) => setForm({ ...form, dias: e.target.value })} />
-            </div>
-            <div>
-              <label className="field-label">Descansos</label>
-              <input type="number" placeholder="3" value={form.desc} onChange={(e) => setForm({ ...form, desc: e.target.value })} />
-            </div>
-          </div>
-        </div>
-        <div className="btn-row">
-          <button type="button" className="btn btn-ghost" onClick={() => setConfigOpen(false)}>Cancelar</button>
-          <button type="button" className="btn btn-primary" onClick={() => {
-            saveGoalMonth(calYear, calMonth, {
-              vol: Number(onlyDigits(form.vol)) || 0,
-              tours: Number(onlyDigits(form.tours)) || 0,
-              ventas: Number(onlyDigits(form.ventas)) || 0,
-              dias: Number(onlyDigits(form.dias)) || 0,
-              desc: Number(onlyDigits(form.desc)) || 0,
-            });
-            setConfigOpen(false);
-          }}>Guardar metas</button>
-        </div>
-      </SalesModal>
     </>
   );
 }

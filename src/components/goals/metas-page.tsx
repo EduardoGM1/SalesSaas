@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Topbar } from "@/components/layout/topbar";
+import { PageBack } from "@/components/layout/page-back";
 import { MONTHS } from "@/lib/constants";
 import { computeMetasKpis } from "@/lib/calculations/calendar";
 import { fmt, fmtN, onlyDigits } from "@/lib/format/money";
@@ -12,6 +13,8 @@ export function MetasPage() {
   const hydrated = useAppStore((s) => s.hydrated);
   const calYear = useAppStore((s) => s.calYear);
   const calMonth = useAppStore((s) => s.calMonth);
+  const calPrev = useAppStore((s) => s.calPrev);
+  const calNext = useAppStore((s) => s.calNext);
   const getCalMonth = useDbStore((s) => s.getCalMonth);
   const getGoalMonth = useDbStore((s) => s.getGoalMonth);
   const saveGoalMonth = useDbStore((s) => s.saveGoalMonth);
@@ -41,18 +44,24 @@ export function MetasPage() {
     setVol(raw ? Number(raw).toLocaleString("en-US", { maximumFractionDigits: 0 }) : "");
   };
 
-  if (!hydrated) return <Topbar title="Metas" subtitle="Cargando..." showMonthNav />;
+  if (!hydrated) return <Topbar title="Metas" subtitle="Cargando..." />;
 
   const diasTrab = Math.max(0, kpis.dim - kpis.descDays);
 
   return (
     <>
-      <Topbar title="Metas" subtitle="Objetivos del mes en curso" showMonthNav />
+      <Topbar title="Metas" subtitle="Objetivos del mes en curso" />
       <div className="sales-page">
+        <PageBack />
         <div className="page-head">
           <div>
             <div className="page-title">Metas</div>
             <div className="page-sub">{MONTHS[calMonth]} {calYear}</div>
+          </div>
+          <div className="local-month-nav">
+            <button type="button" className="tb-nav-btn" onClick={calPrev} aria-label="Mes anterior">‹</button>
+            <div className="local-month-label">{MONTHS[calMonth]} {calYear}</div>
+            <button type="button" className="tb-nav-btn" onClick={calNext} aria-label="Mes siguiente">›</button>
           </div>
         </div>
 
@@ -138,7 +147,7 @@ export function MetasPage() {
                 </div>
                 <div className="vbox green">
                   <div className="vbox-val">{fmt(kpis.efic)}</div>
-                  <div className="vbox-label">Eficiencia</div>
+                  <div className="vbox-label">Eficiencia / VPG</div>
                   <div className="vbox-sub">Volumen ÷ Tours</div>
                 </div>
                 <div className="vbox yellow">

@@ -13,6 +13,7 @@ export function loadDatabase(): AppDatabase {
       cal: parsed.cal ?? {},
       goals: parsed.goals ?? {},
       userActivities: parsed.userActivities ?? [],
+      settings: parsed.settings ?? emptyDatabase().settings,
     };
   } catch {
     return emptyDatabase();
@@ -61,6 +62,7 @@ export function importDatabaseFile(
         cal: incoming.cal ?? {},
         goals: incoming.goals ?? {},
         userActivities: incoming.userActivities ?? [],
+        settings: incoming.settings ?? emptyDatabase().settings,
       });
     } catch {
       onError();

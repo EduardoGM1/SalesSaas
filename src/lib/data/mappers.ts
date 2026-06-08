@@ -43,7 +43,9 @@ export interface SaleRow {
   tours: number;
   contract: string | null;
   status: string | null;
+  processing?: string | null;
   process_date: string | null;
+  add_processing_followup?: boolean | null;
   note: string | null;
   created_at?: string;
 }
@@ -60,6 +62,12 @@ export interface CalRow {
   tours: number | null;
   contract: string | null;
   source: string | null;
+  status?: string | null;
+  processing?: string | null;
+  process_date?: string | null;
+  completed?: boolean | null;
+  kind?: string | null;
+  client_name?: string | null;
   created_at?: string;
 }
 
@@ -296,7 +304,9 @@ export function dbToRows(db: AppDatabase, userId: string): SupabaseRows {
         tours: intOr(sale.tours, 1),
         contract: sale.contract ?? null,
         status: sanitizeStatus(sale.status),
+        processing: sale.processing ?? (sale.status === "no-procesable" ? "pendiente" : "procesable"),
         process_date: toDateOrNull(sale.processDate),
+        add_processing_followup: !!sale.addProcessingFollowup,
         note: sale.note ?? null,
         created_at: tsToISO(sale.ts),
       });
@@ -353,6 +363,12 @@ export function dbToRows(db: AppDatabase, userId: string): SupabaseRows {
           tours: e.tours != null ? intOr(e.tours, 0) : null,
           contract: e.contract ?? null,
           source: e.source ?? null,
+          status: sanitizeStatus(e.status),
+          processing: e.processing ?? null,
+          process_date: toDateOrNull(e.processDate),
+          completed: !!e.completed,
+          kind: e.kind ?? null,
+          client_name: e.clientName ?? null,
           created_at: tsToISO(e.ts),
         });
       }
@@ -433,10 +449,13 @@ export function rowsToDb(rows: SupabaseRows): AppDatabase {
       tours: intOr(s.tours, 1),
       contract: s.contract ?? undefined,
       status: s.status ?? undefined,
+      processing: s.processing ?? (s.status === "no-procesable" ? "pendiente" : "procesable"),
       processDate: s.process_date ?? undefined,
+      addProcessingFollowup: !!s.add_processing_followup,
       note: s.note ?? undefined,
       ts: isoToMs(s.created_at),
       prospectId: s.prospect_id,
+      source: undefined,
     };
     (client.sales ||= []).push(sale);
   }
@@ -486,8 +505,14 @@ export function rowsToDb(rows: SupabaseRows): AppDatabase {
       contract: c.contract ?? undefined,
       clientId: c.prospect_id ?? undefined,
       prospectId: c.prospect_id ?? undefined,
+      clientName: c.client_name ?? undefined,
       saleId: c.sale_id ?? undefined,
       source: c.source ?? undefined,
+      status: c.status ?? undefined,
+      processing: c.processing ?? undefined,
+      processDate: c.process_date ?? undefined,
+      completed: !!c.completed,
+      kind: c.kind ?? undefined,
     };
     (month.days[day] ||= []).push(entry);
   }

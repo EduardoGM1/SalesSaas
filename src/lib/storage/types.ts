@@ -13,6 +13,11 @@ export interface CalEntry {
   clientName?: string;
   saleId?: string;
   source?: string;
+  status?: string;
+  processing?: string;
+  processDate?: string;
+  completed?: boolean;
+  kind?: string;
 }
 
 export interface CalMonth {
@@ -36,10 +41,13 @@ export interface SaleRecord {
   tours: number;
   contract?: string;
   status?: string;
+  processing?: string;
   processDate?: string;
+  addProcessingFollowup?: boolean;
   note?: string;
   ts: number;
   prospectId?: string;
+  source?: string;
 }
 
 export interface ClientActivity {
@@ -80,6 +88,9 @@ export interface ClientRecord {
   date?: string;
   quickExpedient?: boolean;
   completedExpedient?: boolean;
+  hasSales?: boolean;
+  lastSaleDate?: string;
+  lastSaleVolume?: number;
   data?: {
     survey?: Record<string, string | number>;
     vacaciones?: Record<string, string | number>;
@@ -105,6 +116,17 @@ export interface AppDatabase {
   cal: Record<string, CalMonth>;
   goals: Record<string, GoalMonth>;
   userActivities: UserActivity[];
+  settings?: UserSettings;
+}
+
+export interface UserSettings {
+  language?: "es" | "en";
+  currency?: "USD" | "MXN" | "CAD" | "EUR";
+  exchangeRate?: number;
+  exchangeMode?: "manual" | "auto";
+  userName?: string;
+  userInitials?: string;
+  worksheetConfig?: Record<string, string>;
 }
 
 export function emptyDatabase(): AppDatabase {
@@ -114,5 +136,13 @@ export function emptyDatabase(): AppDatabase {
     cal: {},
     goals: {},
     userActivities: [],
+    settings: {
+      language: "es",
+      currency: "USD",
+      exchangeRate: 1,
+      exchangeMode: "manual",
+      userName: "Usuario",
+      userInitials: "U",
+    },
   };
 }

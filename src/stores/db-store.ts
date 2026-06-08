@@ -10,6 +10,7 @@ import {
   ClientActivity,
   ClientRecord,
   GoalMonth,
+  SaleRecord,
   emptyDatabase,
 } from "@/lib/storage/types";
 
@@ -32,13 +33,132 @@ interface DbState {
   addClientActivity: (clientId: string, activity: Omit<ClientActivity, "id" | "ts"> & { ts?: number }) => void;
   addUserActivity: (activity: Omit<ClientActivity, "id" | "ts">) => void;
   registerClientSale: (clientId: string, sale: {
+    saleId?: string;
     date: string; vol: number; tours: number; contract: string;
-    status: string; processDate: string; note: string;
+    status: string; processDate: string; note: string; addProcessingFollowup?: boolean; source?: string;
   }) => string;
+  updateClientSale: (clientId: string, saleId: string, sale: {
+    date: string; vol: number; tours: number; contract: string;
+    status: string; processDate: string; note: string; addProcessingFollowup?: boolean; source?: string;
+  }) => void;
+  completeClientExpedient: (clientId: string) => void;
 }
 
 function cloneDb(db: AppDatabase): AppDatabase {
   return JSON.parse(JSON.stringify(db));
+}
+
+function isProcessableSale(sale: Pick<SaleRecord, "status" | "processing">): boolean {
+  return String(sale.status || "procesable") !== "no-procesable" && String(sale.processing || "procesable") !== "pendiente";
+}
+
+function addCalendarEventByDateToDb(db: AppDatabase, dateStr: string, entry: CalEntry): void {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  if (!y || !m || !d) return;
+  const key = calKey(y, m - 1);
+  if (!db.cal[key]) db.cal[key] = { days: {}, weeks: {} };
+  if (!db.cal[key].days[d]) db.cal[key].days[d] = [];
+  if (!entry.id) entry.id = generateEntryId();
+  db.cal[key].days[d].push(entry);
+}
+
+function removeCalendarEntriesForSale(db: AppDatabase, saleId: string): void {
+  if (!saleId) return;
+  Object.values(db.cal).forEach((month) => {
+    Object.keys(month.days || {}).forEach((day) => {
+      month.days[Number(day)] = (month.days[Number(day)] || []).filter((entry) => entry.saleId !== saleId);
+      if (!month.days[Number(day)]?.length) delete month.days[Number(day)];
+    });
+  });
+}
+
+function removeCalendarEntriesForClient(db: AppDatabase, clientId: string): void {
+  Object.values(db.cal).forEach((month) => {
+    Object.keys(month.days || {}).forEach((day) => {
+      month.days[Number(day)] = (month.days[Number(day)] || []).filter((entry) => entry.clientId !== clientId && entry.prospectId !== clientId);
+      if (!month.days[Number(day)]?.length) delete month.days[Number(day)];
+    });
+  });
+}
+
+function upsertSaleActivity(client: ClientRecord, sale: SaleRecord): void {
+  client.activities = client.activities || [];
+  const title = isProcessableSale(sale) ? `Venta $${sale.vol}` : `Venta pendiente $${sale.vol}`;
+  const payload: Omit<ClientActivity, "id" | "ts"> & { ts: number } = {
+    type: "venta",
+    saleId: sale.saleId,
+    date: sale.date,
+    title,
+    contract: sale.contract,
+    vol: sale.vol,
+    tours: sale.tours,
+    ts: sale.ts || Date.now(),
+    note: [
+      isProcessableSale(sale) ? "Procesable" : "No procesable",
+      sale.tours ? `${sale.tours} tour(s)` : null,
+      sale.contract ? `Contrato ${sale.contract}` : null,
+      sale.note,
+    ].filter(Boolean).join(" · "),
+    source: sale.source || "Venta del expediente",
+  };
+  const idx = client.activities.findIndex((activity) => activity.saleId === sale.saleId);
+  if (idx >= 0) client.activities[idx] = { ...client.activities[idx], ...payload };
+  else client.activities.push({ id: generateActivityId(), ...payload });
+}
+
+function ensureSaleInClientAndAgenda(db: AppDatabase, clientId: string, sale: SaleRecord): void {
+  const client = ensureProspectIdentity(db.clients[clientId]);
+  client.sales = client.sales || [];
+  const idx = client.sales.findIndex((existing) => existing.saleId === sale.saleId);
+  if (idx >= 0) client.sales[idx] = { ...client.sales[idx], ...sale };
+  else client.sales.push(sale);
+
+  removeCalendarEntriesForSale(db, sale.saleId);
+
+  if (isProcessableSale(sale)) {
+    addCalendarEventByDateToDb(db, sale.date, {
+      id: generateEntryId(),
+      t: "venta",
+      saleId: sale.saleId,
+      vol: sale.vol,
+      tours: sale.tours,
+      note: [clientDisplayName(client), sale.contract ? `Contrato ${sale.contract}` : "", sale.note].filter(Boolean).join(" · "),
+      contract: sale.contract,
+      status: sale.status,
+      processing: sale.processing,
+      processDate: sale.processDate,
+      clientId,
+      prospectId: client.prospectId || clientId,
+      clientName: clientDisplayName(client),
+      ts: sale.ts,
+      source: "client",
+    });
+  } else if (sale.addProcessingFollowup && sale.processDate) {
+    const note = `Procesar venta pendiente - Cliente ${clientDisplayName(client)}${sale.contract ? ` - Contrato ${sale.contract}` : ""}`;
+    addCalendarEventByDateToDb(db, sale.processDate, {
+      id: generateEntryId(),
+      t: "follow",
+      saleId: sale.saleId,
+      note,
+      status: sale.status,
+      processing: "pendiente",
+      processDate: sale.processDate,
+      clientId,
+      prospectId: client.prospectId || clientId,
+      clientName: clientDisplayName(client),
+      ts: Date.now(),
+      source: "client-sale-processing",
+      kind: "procesamiento-venta",
+      completed: false,
+    });
+  }
+
+  upsertSaleActivity(client, sale);
+  client.hasSales = client.sales.some(isProcessableSale);
+  const lastProcessable = client.sales.filter(isProcessableSale).sort((a, b) => (b.ts || 0) - (a.ts || 0))[0];
+  client.lastSaleDate = lastProcessable?.date || "";
+  client.lastSaleVolume = lastProcessable?.vol || 0;
+  db.clients[clientId] = client;
 }
 
 export const useDbStore = create<DbState>((set, get) => ({
@@ -123,6 +243,7 @@ export const useDbStore = create<DbState>((set, get) => ({
   deleteClient: (id) => {
     set((s) => {
       const db = cloneDb(s.db);
+      removeCalendarEntriesForClient(db, id);
       delete db.clients[id];
       saveDatabase(db);
       return { db };
@@ -180,58 +301,90 @@ export const useDbStore = create<DbState>((set, get) => ({
   },
 
   registerClientSale: (clientId, sale) => {
-    const saleId = generateSaleId();
-    const dt = new Date(sale.date);
-    const key = calKey(dt.getFullYear(), dt.getMonth());
-    const day = dt.getDate();
-
+    const saleId = sale.saleId || generateSaleId();
     set((s) => {
       const db = cloneDb(s.db);
       const c = ensureProspectIdentity(db.clients[clientId]);
-      if (!db.cal[key]) db.cal[key] = { days: {}, weeks: {} };
-      if (!db.cal[key].days[day]) db.cal[key].days[day] = [];
-
-      const saleNote = [clientDisplayName(c), sale.contract ? `Contrato ${sale.contract}` : "", sale.note]
-        .filter(Boolean).join(" · ");
-
-      const saleRecord = { saleId, ...sale, ts: Date.now(), prospectId: c.prospectId || clientId };
-      const calEvent: CalEntry = {
-        id: generateEntryId(),
-        t: "venta", saleId, vol: sale.vol, tours: sale.tours, note: saleNote,
-        contract: sale.contract, clientId, ts: saleRecord.ts, source: "client",
+      const status = sale.status || "procesable";
+      const saleRecord: SaleRecord = {
+        saleId,
+        date: sale.date,
+        vol: sale.vol,
+        tours: sale.tours || 1,
+        contract: sale.contract,
+        status,
+        processing: status === "no-procesable" ? "pendiente" : "procesable",
+        processDate: status === "no-procesable" ? sale.processDate : "",
+        addProcessingFollowup: status === "no-procesable" && !!sale.addProcessingFollowup,
+        note: sale.note,
+        ts: Date.now(),
         prospectId: c.prospectId || clientId,
+        source: sale.source || "Venta del expediente",
       };
-
-      if (!db.cal[key].days[day].some((e) => e.saleId === saleId)) {
-        db.cal[key].days[day].push(calEvent);
-      }
-
       c.status = sale.status;
       c.contract = sale.contract || c.contract;
-      c.processDate = sale.processDate || c.processDate;
+      c.processDate = saleRecord.processDate || "";
       c.tourDate = c.tourDate || sale.date;
-      c.sales = c.sales || [];
-      if (!c.sales.some((x) => x.saleId === saleId)) c.sales.push(saleRecord);
 
       const noteLine = sale.note ? `Venta ${sale.date}: ${sale.note}` : "";
       if (noteLine) c.note = c.note ? `${c.note}\n${noteLine}` : noteLine;
 
-      c.activities = c.activities || [];
-      if (!c.activities.some((a) => a.saleId === saleId)) {
-        c.activities.push({
-          id: generateActivityId(), ts: Date.now(), type: "venta", saleId,
-          date: sale.date, title: `Venta $${sale.vol}`, contract: sale.contract, vol: sale.vol, tours: sale.tours,
-          note: [sale.tours ? `${sale.tours} tour(s)` : null, sale.contract ? `Contrato ${sale.contract}` : null, sale.note].filter(Boolean).join(" · "),
-          source: "Registrar venta",
-        });
-      }
-
       db.clients[clientId] = c;
+      ensureSaleInClientAndAgenda(db, clientId, saleRecord);
       saveDatabase(db);
       return { db };
     });
 
     return saleId;
+  },
+
+  updateClientSale: (clientId, saleId, sale) => {
+    set((s) => {
+      const db = cloneDb(s.db);
+      const c = ensureProspectIdentity(db.clients[clientId]);
+      const existing = (c.sales || []).find((item) => item.saleId === saleId);
+      const status = sale.status || existing?.status || "procesable";
+      const saleRecord: SaleRecord = {
+        ...existing,
+        saleId,
+        date: sale.date,
+        vol: sale.vol,
+        tours: sale.tours || 1,
+        contract: sale.contract,
+        status,
+        processing: status === "no-procesable" ? "pendiente" : "procesable",
+        processDate: status === "no-procesable" ? sale.processDate : "",
+        addProcessingFollowup: status === "no-procesable" && !!sale.addProcessingFollowup,
+        note: sale.note,
+        ts: Date.now(),
+        prospectId: c.prospectId || clientId,
+        source: sale.source || existing?.source || "Venta del expediente",
+      };
+      c.status = saleRecord.status;
+      c.contract = saleRecord.contract || c.contract;
+      c.processDate = saleRecord.processDate || "";
+      c.tourDate = c.tourDate || saleRecord.date;
+      db.clients[clientId] = c;
+      ensureSaleInClientAndAgenda(db, clientId, saleRecord);
+      saveDatabase(db);
+      return { db };
+    });
+  },
+
+  completeClientExpedient: (clientId) => {
+    set((s) => {
+      const db = cloneDb(s.db);
+      const c = db.clients[clientId];
+      if (!c) return s;
+      c.quickExpedient = false;
+      c.completedExpedient = true;
+      c.data = c.data || {};
+      c.data.survey = c.data.survey || {};
+      c.data.vacaciones = c.data.vacaciones || {};
+      c.data.worksheet = c.data.worksheet || {};
+      saveDatabase(db);
+      return { db };
+    });
   },
 }));
 
@@ -242,6 +395,8 @@ export function createEmptyClient(name1: string, tourDate?: string): ClientRecor
     id, prospectId: id, prospectCode: generateProspectCode(id),
     name: name1, name1, name2: "",
     createdAt: Date.now(), createdYmd: ymd, tourDate: ymd,
+    quickExpedient: false,
+    completedExpedient: true,
     data: { survey: {}, vacaciones: {}, worksheet: {} },
     sales: [], activities: [],
   };

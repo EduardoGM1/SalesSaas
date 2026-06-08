@@ -20,12 +20,10 @@ interface AppState {
   setToolMode: (mode: ToolMode, clientId?: string | null) => void;
 }
 
-const now = new Date();
-
 export const useAppStore = create<AppState>((set) => ({
   hydrated: false,
-  calYear: now.getFullYear(),
-  calMonth: now.getMonth(),
+  calYear: 2000,
+  calMonth: 0,
   selDay: null,
   sidebarOpen: false,
   toolMode: "libre",

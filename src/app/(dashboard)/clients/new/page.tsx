@@ -19,7 +19,7 @@ function NewClientInner() {
       c.completedExpedient = false;
     }
     saveClient(c);
-    router.replace(`/clients/${c.id}`);
+    router.replace(`/clients/${c.id}${params.get("sale") === "1" ? "?openSale=1" : ""}`);
   }, [params, router, saveClient]);
 
   return <div className="p-7 text-muted-foreground">Creando expediente...</div>;
