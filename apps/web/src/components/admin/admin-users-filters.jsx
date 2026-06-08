@@ -58,7 +58,7 @@ export function AdminUsersFilters({
         {qs && <Link to="/admin/users" className="btn btn-ghost">Limpiar</Link>}
       </form>
       {showExport && (
-        <a to={exportHref} className="btn btn-ghost admin-export-btn">Exportar CSV</a>
+        <a href={exportHref} className="btn btn-ghost admin-export-btn">Exportar CSV</a>
       )}
     </div>
   );

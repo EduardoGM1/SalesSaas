@@ -20,21 +20,12 @@ const TABS = [
   { href: "/admin/worksheets", label: "Worksheets", icon: NavIconWorksheets },
 ];
 
-function isTabActive(pathname, href, exact?: boolean): boolean {
+function isTabActive(pathname, href, exact) {
   if (exact) return pathname === href;
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-/** Barra superior del panel admin — 100 % servidor (sin chunks cliente). */
-export function AdminTopbar({
-  permissions,
-  isSuperAdmin,
-  pathname,
-}: {
-  permissions[];
-  isSuperAdmin: boolean;
-  pathname;
-}) {
+export function AdminTopbar({ permissions, isSuperAdmin, pathname }) {
   const allowed = new Set(permissions);
   const visibleTabs = TABS.filter((tab) => {
     const perm = ADMIN_NAV_PERMISSIONS[tab.href];
@@ -55,7 +46,6 @@ export function AdminTopbar({
           <Link
             key={href}
             to={href}
-            prefetch
             className={`admin-tab${isTabActive(pathname, href, exact) ? " active" : ""}`}
           >
             <Icon />

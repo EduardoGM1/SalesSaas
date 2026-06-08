@@ -49,6 +49,7 @@ export function LoginPage() {
         <div className="auth-field">
           <label className="field-label">Contraseña</label>
           <input className="auth-input" type="password" name="password" required autoComplete="current-password" />
+          <div className="auth-field-foot"><Link to="/forgot-password">¿Olvidaste tu contraseña?</Link></div>
         </div>
         <button type="submit" className="btn btn-primary btn-full" disabled={pending}>{pending ? "Entrando…" : "Entrar"}</button>
       </form>

@@ -1,6 +1,5 @@
 import { Router } from "express";
 import { authenticateApi } from "../middleware/auth.js";
-import { requireApiAdmin } from "../middleware/admin-auth.js";
 import { apiError, json, parseBody, parseLimitOffset } from "../lib/http.js";
 import { pullAll, reconcile } from "@salesapp/shared/data/sync.js";
 import { isUuid, normalizeIds } from "@salesapp/shared/data/mappers.js";
@@ -13,6 +12,7 @@ import {
   bodyToActivityInsert,
   bodyToToolUpsert,
 } from "@salesapp/shared/api/validators.js";
+import adminRouter from "./admin.js";
 
 const router = Router();
 
@@ -415,34 +415,6 @@ router.delete("/tool-calculations", async (req, res) => {
   json(res, { ok: true });
 });
 
-const ROLES = new Set(["vendedor", "admin"]);
-
-router.patch("/admin/users/:id/role", async (req, res) => {
-  const base = await authenticateApi(req, res);
-  const a = await requireApiAdmin(base, "users:role");
-  if (!a.ok) return apiError(res, a.message, a.status);
-  const body = parseBody(req.body);
-  if (!body) return apiError(res, "Cuerpo JSON inválido.");
-  const role = typeof body.role === "string" ? body.role : "";
-  if (!req.params.id || !ROLES.has(role)) return apiError(res, "Datos inválidos.");
-  const { error } = await a.supabase.rpc("admin_update_user_role", { p_target_id: req.params.id, p_role: role });
-  if (error) return apiError(res, error.message, 400);
-  const { data } = await a.supabase.from("profiles").select("id, role").eq("id", req.params.id).single();
-  json(res, { data });
-});
-
-router.patch("/admin/users/:id/status", async (req, res) => {
-  const base = await authenticateApi(req, res);
-  const a = await requireApiAdmin(base, "users:deactivate");
-  if (!a.ok) return apiError(res, a.message, a.status);
-  const body = parseBody(req.body);
-  if (!body) return apiError(res, "Cuerpo JSON inválido.");
-  const isActive = body.is_active ?? body.isActive;
-  if (typeof isActive !== "boolean") return apiError(res, "is_active boolean requerido.");
-  const { error } = await a.supabase.rpc("admin_set_user_active", { p_target_id: req.params.id, p_active: isActive });
-  if (error) return apiError(res, error.message, 400);
-  const { data } = await a.supabase.from("profiles").select("id, is_active").eq("id", req.params.id).single();
-  json(res, { data });
-});
+router.use("/admin", adminRouter);
 
 export default router;

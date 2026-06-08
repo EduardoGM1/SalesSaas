@@ -62,7 +62,7 @@ export function AdminFiltersBar({ filters, sellers, showStatus, exportHref }: Ad
         )}
       </form>
       {exportHref && (
-        <a to={exportHref} className="btn btn-ghost admin-export-btn">Exportar CSV</a>
+        <a href={exportHref} className="btn btn-ghost admin-export-btn">Exportar CSV</a>
       )}
     </div>
   );
