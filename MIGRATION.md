@@ -54,9 +54,9 @@ node scripts/port-web.mjs && node scripts/fix-web-imports.mjs
 | 0 | ✅ | Monorepo npm workspaces, `packages/shared` |
 | 1 | ✅ | API Express `/api/v1/*` + `/auth/*` |
 | 2 | ✅ | SPA Vite con React Router, UI portada |
-| 3 | 🟡 | Auth vía Express (login/register/signout); admin CSR pendiente |
+| 3 | ✅ | Auth completa (login/register/forgot/reset) + admin CSR vía `/api/v1/admin/*` |
 | 4 | ✅ | Sync web vía `PUT/GET /api/v1/sync` |
-| 5 | ⏳ | PWA vite-plugin-pwa, retirar Next, admin completo |
+| 5 | 🟡 | PWA vite-plugin-pwa activo; retirar Next.js y purgar alias legacy pendiente |
 
 ## Notas técnicas
 
