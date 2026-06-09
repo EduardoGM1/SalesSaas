@@ -19,6 +19,15 @@ export function notifyAuthChanged() {
   if (typeof window !== "undefined") window.dispatchEvent(new Event("auth:changed"));
 }
 
+export async function signOut() {
+  try {
+    await fetch("/auth/signout", { method: "POST", credentials: "include" });
+  } catch {
+    // Limpiar estado local aunque falle la red.
+  }
+  notifyAuthChanged();
+}
+
 export function watchSession(onSession, { intervalMs = 60000 } = {}) {
   let active = true;
   const load = async () => {

@@ -1,5 +1,6 @@
 
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { useNavigate } from "react-router-dom";
 import { ChevronRight, Code2, Database, DollarSign, Download, Globe2, LogOut, ShieldAlert, Smartphone, Trash2, Upload, User, WalletCards } from "lucide-react";
 import { canOfferPwaInstall, isStandaloneApp, openInstallPrompt } from "@/lib/pwa-install.js";
 import { Topbar } from "@/components/layout/topbar";
@@ -9,7 +10,7 @@ import { hasAnyAdminAccess, type AdminAccessProfile } from "@/lib/auth/permissio
 import { exportDatabase, importDatabaseFile } from "@/lib/storage/local-storage-adapter";
 import { emptyDatabase, UserSettings } from "@/lib/storage/types";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
-import { fetchProfile } from "@/lib/session-api.js";
+import { fetchProfile, signOut } from "@/lib/session-api.js";
 import { t } from "@/lib/i18n.js";
 import { saveProfileRemote } from "@/actions/settings.js";
 import { useAppStore } from "@/stores/app-store";
@@ -37,6 +38,7 @@ const CURRENCY_LABEL: Record<string, string> = {
 };
 
 export function SettingsPage() {
+  const navigate = useNavigate();
   const hydrated = useAppStore((s) => s.hydrated);
   const db = useDbStore((s) => s.db);
   const replaceDb = useDbStore((s) => s.replaceDb);
@@ -51,6 +53,7 @@ export function SettingsPage() {
   const [profileMsg, setProfileMsg] = useState<string | null>(null);
   const [profileErr, setProfileErr] = useState<string | null>(null);
   const [profilePending, setProfilePending] = useState(false);
+  const [signOutPending, setSignOutPending] = useState(false);
   const [fxLoading, setFxLoading] = useState(false);
   const [fxError, setFxError] = useState(null);
   const [fxDate, setFxDate] = useState(null);
@@ -422,9 +425,24 @@ export function SettingsPage() {
                       }
                     }}><Trash2 size={15} /> Borrar datos</button>
                     {isSupabaseConfigured() && (
-                      <form action="/auth/signout" method="POST">
-                        <button type="submit" className="btn btn-ghost"><LogOut size={15} /> Cerrar sesión</button>
-                      </form>
+                      <button
+                        type="button"
+                        className="btn btn-ghost"
+                        disabled={signOutPending}
+                        onClick={async () => {
+                          setSignOutPending(true);
+                          try {
+                            await signOut();
+                            navigate("/login", { replace: true });
+                          } catch {
+                            toast.error("No se pudo cerrar sesión.");
+                          } finally {
+                            setSignOutPending(false);
+                          }
+                        }}
+                      >
+                        <LogOut size={15} /> {signOutPending ? "Cerrando sesión…" : "Cerrar sesión"}
+                      </button>
                     )}
                   </div>
                 </div>
