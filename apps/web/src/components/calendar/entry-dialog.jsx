@@ -2,10 +2,8 @@
 import { useEffect, useMemo, useState } from "react";
 import {  useNavigate  } from "react-router-dom";
 import { SalesModal } from "@/components/ui/sales-modal";
-import { toast } from "@/lib/toast";
 import { MONTHS, DAYS } from "@/lib/constants";
-import { useDbStore } from "@/stores/db-store";
-import { EntryType } from "@/lib/storage/types";
+import { useCalendarActions } from "@/hooks/use-calendar-actions.js";
 
 type EType = "venta" | "follow" | "notaCliente" | "notaUsuario" | "descanso";
 
@@ -27,9 +25,7 @@ const TYPE_TABS: [EType, string][] = [
 
 export function EntryDialog({ open, onOpenChange, year, month, day }: EntryDialogProps) {
   const navigate = useNavigate();
-  const addCalEntry = useDbStore((s) => s.addCalEntry);
-  const addCalEntryByDate = useDbStore((s) => s.addCalEntryByDate);
-  const addUserActivity = useDbStore((s) => s.addUserActivity);
+  const { saveUserNote, saveDayOff } = useCalendarActions();
 
   const [eType, setEType] = useState<EType>("venta");
   const [nota, setNota] = useState("");
@@ -97,30 +93,14 @@ export function EntryDialog({ open, onOpenChange, year, month, day }: EntryDialo
     }
 
     if (eType === "notaUsuario") {
-      const trimmed = nota.trim();
-      if (!trimmed) return toast.error("Escribe algo.");
-      const note = remTime ? `${remTime} · ${trimmed}` : trimmed;
-      const entry: { t: EntryType; ts: number; note } = {
-        t: "nota",
-        ts: Date.now(),
-        note,
-      };
-      addUserActivity({
-        type: "nota",
-        date: dateStr,
-        title: "Nota del usuario",
-        note,
-        source: "Agenda",
-      });
-      if (remDate) addCalEntryByDate(remDate, entry);
-      else addCalEntry(year, month, day, entry);
+      const result = saveUserNote({ dateStr, year, month, day, nota, remDate, remTime });
+      if (!result.ok) return;
       close(false);
       return;
     }
 
     if (eType === "descanso") {
-      const entry = { t: "descanso" as EntryType, ts: Date.now(), note: "Día de descanso" };
-      addCalEntry(year, month, day, entry);
+      saveDayOff({ year, month, day });
       close(false);
     }
   };

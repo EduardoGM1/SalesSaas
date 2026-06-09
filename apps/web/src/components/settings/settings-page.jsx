@@ -10,6 +10,7 @@ import { emptyDatabase, UserSettings } from "@/lib/storage/types";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { fetchProfile } from "@/lib/session-api.js";
 import { t } from "@/lib/i18n.js";
+import { saveProfileRemote } from "@/actions/settings.js";
 import { useAppStore } from "@/stores/app-store";
 import { useDbStore } from "@/stores/db-store";
 import { useSyncStore } from "@/stores/sync-store";
@@ -100,36 +101,14 @@ export function SettingsPage() {
     );
   };
 
-  const buildSettingsPayload = (): UserSettings => ({
-    ...settings,
-    userName: fullName || settings.userName || "Usuario",
-    userInitials: settings.userInitials || (fullName || "Usuario").split(/\s+/).slice(0, 2).map((part) => part[0]).join("").toUpperCase(),
-    exchangeRate: settings.currency === "USD" ? 1 : Number(settings.exchangeRate || 1),
-    exchangeMode: settings.exchangeMode || "manual",
-  });
-
   const saveProfile = async (e?: FormEvent) => {
     e?.preventDefault();
     setProfilePending(true);
     setProfileMsg(null);
     setProfileErr(null);
     try {
-      const nextSettings = buildSettingsPayload();
-      replaceDb({ ...db, settings: nextSettings });
-      if (!isSupabaseConfigured()) {
-        setProfileMsg("Configuración guardada localmente.");
-        toast.success("Configuración guardada.");
-        return;
-      }
-      const res = await fetch("/api/v1/profile", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fullName, phone, avatarUrl: avatarUrl || null, settings: nextSettings }),
-      });
-      const body = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(body.error ?? "No se pudo guardar el perfil.");
-      setProfileMsg("Perfil actualizado.");
-      toast.success("Configuración guardada.");
+      const result = await saveProfileRemote({ fullName, phone, avatarUrl, settings });
+      setProfileMsg(result.localOnly ? "Configuración guardada localmente." : "Perfil actualizado.");
     } catch (err) {
       setProfileErr(err instanceof Error ? err.message : "Error al guardar.");
     } finally {

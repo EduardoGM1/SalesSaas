@@ -2,9 +2,9 @@ import { Router } from "express";
 import { createServerClient } from "@supabase/ssr";
 import { SUPABASE_ANON_KEY, SUPABASE_URL, isSupabaseConfigured } from "@salesapp/shared/supabase/config.js";
 import { apiError, json } from "../lib/http.js";
+import { primaryWebOrigin } from "../lib/origins.js";
 
 const router = Router();
-const WEB_ORIGIN = process.env.WEB_ORIGIN ?? "http://localhost:5173";
 
 function parseCookieHeader(header = "") {
   return header.split(";").map((part) => {
@@ -73,7 +73,7 @@ router.post("/register", async (req, res) => {
     password,
     options: {
       data: { full_name: fullName },
-      emailRedirectTo: `${WEB_ORIGIN}/auth/callback?next=/`,
+      emailRedirectTo: `${primaryWebOrigin()}/auth/callback?next=/`,
     },
   });
   if (error) return apiError(res, traducirError(error.message), 400);
@@ -94,7 +94,7 @@ router.post("/forgot-password", async (req, res) => {
   if (!email) return apiError(res, "Escribe tu correo.");
   const sb = supabaseFromReq(req, res);
   const { error } = await sb.auth.resetPasswordForEmail(email, {
-    redirectTo: `${WEB_ORIGIN}/auth/callback?next=/reset-password`,
+    redirectTo: `${primaryWebOrigin()}/auth/callback?next=/reset-password`,
   });
   if (error) return apiError(res, traducirError(error.message), 400);
   json(res, { message: "Si existe una cuenta con ese correo, recibirás un enlace para restablecer tu contraseña." });
@@ -115,15 +115,16 @@ router.post("/reset-password", async (req, res) => {
 });
 
 router.get("/callback", async (req, res) => {
-  if (!isSupabaseConfigured()) return res.redirect(`${WEB_ORIGIN}/login?error=auth`);
+  const origin = primaryWebOrigin();
+  if (!isSupabaseConfigured()) return res.redirect(`${origin}/login?error=auth`);
   const code = req.query.code;
   const next = req.query.next ?? "/";
   if (code) {
     const sb = supabaseFromReq(req, res);
     const { error } = await sb.auth.exchangeCodeForSession(String(code));
-    if (!error) return res.redirect(`${WEB_ORIGIN}${next}`);
+    if (!error) return res.redirect(`${origin}${next}`);
   }
-  res.redirect(`${WEB_ORIGIN}/login?error=auth`);
+  res.redirect(`${origin}/login?error=auth`);
 });
 
 export default router;

@@ -1,12 +1,11 @@
 import { Router } from "express";
 import { authenticateApi } from "../middleware/auth.js";
 import { requireApiAdmin } from "../middleware/admin-auth.js";
-import { apiError, json, parseBody } from "../lib/http.js";
+import { apiError, json } from "../lib/http.js";
 import {
   effectivePermissions,
   hasAnyAdminAccess,
   isSuperAdmin,
-  sanitizeDelegatedPermissions,
 } from "@salesapp/shared/auth/permissions.js";
 import { parseAdminFilters, parseUserAdminFilters } from "../lib/admin/filters.js";
 import { toCsv } from "../lib/admin/csv.js";
@@ -22,9 +21,10 @@ import {
   getSellerOptions,
   prospectName,
 } from "../lib/admin/data.js";
+import { parseJsonBody, runService } from "./route-utils.js";
+import * as adminUsersService from "../services/admin-users-service.js";
 
 const router = Router();
-const ROLES = new Set(["vendedor", "admin"]);
 
 const STATUS_LABELS = {
   "": "Sin estado",
@@ -202,51 +202,31 @@ router.get("/export/users", async (req, res) => {
 router.patch("/users/:id/role", async (req, res) => {
   const a = await adminAuth(req, res, "users:role");
   if (!a) return;
-  const body = parseBody(req.body);
-  if (!body) return apiError(res, "Cuerpo JSON inválido.");
+  const body = parseJsonBody(req, res);
+  if (!body) return;
   const role = typeof body.role === "string" ? body.role : "";
-  if (!req.params.id || !ROLES.has(role)) return apiError(res, "Datos inválidos.");
-  const { error } = await a.supabase.rpc("admin_update_user_role", { p_target_id: req.params.id, p_role: role });
-  if (error) return apiError(res, error.message, 400);
-  const { data } = await a.supabase.from("profiles").select("id, role").eq("id", req.params.id).single();
-  json(res, { data });
+  await runService(res, () => adminUsersService.updateUserRole(a.supabase, req.params.id, role), { wrap: "data" });
 });
 
 router.patch("/users/:id/status", async (req, res) => {
   const base = await authenticateApi(req, res);
   if (!base.ok) return apiError(res, base.message, base.status);
-  const body = parseBody(req.body);
-  if (!body) return apiError(res, "Cuerpo JSON inválido.");
+  const body = parseJsonBody(req, res);
+  if (!body) return;
   const isActive = body.is_active ?? body.isActive;
-  if (!req.params.id || typeof isActive !== "boolean") return apiError(res, "Datos inválidos.");
   const perm = isActive ? "users:activate" : "users:deactivate";
   const a = await requireApiAdmin(base, perm);
   if (!a.ok) return apiError(res, a.message, a.status);
-  const { error } = await a.supabase.rpc("admin_set_user_active", { p_target_id: req.params.id, p_active: isActive });
-  if (error) return apiError(res, error.message, 400);
-  const { data } = await a.supabase.from("profiles").select("id, is_active").eq("id", req.params.id).single();
-  json(res, { data });
+  await runService(res, () => adminUsersService.updateUserStatus(a.supabase, req.params.id, isActive), { wrap: "data" });
 });
 
 router.patch("/users/:id/permissions", async (req, res) => {
   const a = await adminAuth(req, res, "users:permissions");
   if (!a) return;
-  if (!isSuperAdmin(a.profile)) return apiError(res, "No autorizado.", 403);
-  const body = parseBody(req.body);
-  if (!body) return apiError(res, "Cuerpo JSON inválido.");
-  const raw = Array.isArray(body.permissions) ? body.permissions.map(String) : [];
-  const permissions = sanitizeDelegatedPermissions(raw);
-  const { error } = await a.supabase.rpc("admin_set_user_permissions", {
-    p_target_id: req.params.id,
-    p_permissions: permissions,
-  });
-  if (error) return apiError(res, error.message, 400);
-  const { data } = await a.supabase
-    .from("profiles")
-    .select("id, admin_permissions")
-    .eq("id", req.params.id)
-    .single();
-  json(res, { data });
+  const body = parseJsonBody(req, res);
+  if (!body) return;
+  const raw = Array.isArray(body.permissions) ? body.permissions : [];
+  await runService(res, () => adminUsersService.updateUserPermissions(a.supabase, a.profile, req.params.id, raw), { wrap: "data" });
 });
 
 export default router;

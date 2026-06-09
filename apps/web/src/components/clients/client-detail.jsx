@@ -13,8 +13,9 @@ import { useDbStore } from "@/stores/db-store";
 import { useAppStore } from "@/stores/app-store";
 import { ClientRecord } from "@/lib/storage/types";
 import { SaleRecord } from "@/lib/storage/types";
-import { toast } from "@/lib/toast";
-import { confirmDialog } from "@/lib/confirm";
+import { useClientActions } from "@/hooks/use-client-actions.js";
+import { useSaleActions } from "@/hooks/use-sale-actions.js";
+import { useCalendarActions } from "@/hooks/use-calendar-actions.js";
 
 const TOOLS = [
   { key: "survey", label: "Survey", desc: "Viaje actual, últimas vacaciones y viajes futuros", icon: FileText, href: "survey", tone: "blue" },
@@ -28,13 +29,10 @@ export function ClientDetail({ id }) {
   const hydrated = useAppStore((s) => s.hydrated);
   const setToolMode = useAppStore((s) => s.setToolMode);
   const getClient = useDbStore((s) => s.getClient);
-  const saveClient = useDbStore((s) => s.saveClient);
-  const deleteClient = useDbStore((s) => s.deleteClient);
-  const registerClientSale = useDbStore((s) => s.registerClientSale);
-  const updateClientSale = useDbStore((s) => s.updateClientSale);
   const completeClientExpedient = useDbStore((s) => s.completeClientExpedient);
-  const addCalEntryByDate = useDbStore((s) => s.addCalEntryByDate);
-  const addClientActivity = useDbStore((s) => s.addClientActivity);
+  const { updateClient, removeClient } = useClientActions();
+  const { saveSale: persistSale } = useSaleActions();
+  const { saveNoteForClient } = useCalendarActions();
 
   const [editOpen, setEditOpen] = useState(false);
   const [saleOpen, setSaleOpen] = useState(false);
@@ -82,39 +80,24 @@ export function ClientDetail({ id }) {
 
   const openEdit = () => { setForm({ ...c }); setEditOpen(true); };
   const saveEdit = () => {
-    const updated = ensureProspectIdentity({ ...c, ...form, name: [form.name1, form.name2].filter(Boolean).join(" / ") || form.name1 || c.name });
-    saveClient(updated);
+    updateClient(c, form);
     setEditOpen(false);
   };
 
   const saveSale = () => {
-    const vol = parseMoney(saleForm.vol);
-    if (vol <= 0 || !saleForm.contract) return toast.error("Completa volumen y contrato.");
-    if (saleForm.status === "no-procesable" && !saleForm.processDate) return toast.error("La venta no procesable requiere fecha de procesamiento.");
-    const payload = {
-      date: saleForm.date, vol, tours: parseMoney(saleForm.tours) || 1,
-      contract: saleForm.contract, status: saleForm.status, processDate: saleForm.processDate, note: saleForm.note,
-      addProcessingFollowup: saleForm.addProcessingFollowup,
-    };
-    if (editingSaleId) updateClientSale(id, editingSaleId, payload);
-    else registerClientSale(id, payload);
+    const result = persistSale(id, saleForm, editingSaleId);
+    if (!result.ok) return;
     setSaleOpen(false);
     setEditingSaleId(null);
-    toast.success(saleForm.status === "no-procesable" ? "Venta pendiente guardada. No suma volumen hasta ser procesable." : "Venta registrada en expediente y Agenda.");
   };
 
   const saveNote = () => {
-    if (!noteForm.note.trim()) return toast.error("Escribe la nota.");
-    const date = noteForm.date || ymdToday();
-    const fullNote = noteForm.time ? `${noteForm.time} · ${noteForm.note}` : noteForm.note;
-    const title = noteForm.type === "follow" ? "Follow-up" : noteForm.type === "pendiente" ? "Pendiente" : "Nota";
-    addClientActivity(id, { type: noteForm.type, date, title, note: fullNote, source: "Clientes" });
-    if (noteForm.date) {
-      addCalEntryByDate(date, {
-        t: noteForm.type === "follow" ? "follow" : "nota", note: fullNote,
-        clientId: id, prospectId: c.prospectId, clientName: clientDisplayName(c), ts: Date.now(), source: "client-note",
-      });
-    }
+    const result = saveNoteForClient({
+      clientId: id,
+      client: c,
+      noteForm: { ...noteForm, fallbackDate: ymdToday() },
+    });
+    if (!result.ok) return;
     setNoteOpen(false);
   };
 
@@ -210,7 +193,7 @@ export function ClientDetail({ id }) {
           </div>
           <button type="button" className="btn btn-primary btn-sm" onClick={() => openSaleModal()}>Registrar venta</button>
           <button type="button" className="btn btn-danger btn-sm" onClick={async () => {
-            if (await confirmDialog(`¿Eliminar a ${clientDisplayName(c)}?`)) { deleteClient(id); navigate("/clients"); }
+            if (await removeClient(id, clientDisplayName(c))) navigate("/clients");
           }}>Eliminar</button>
         </div>
 

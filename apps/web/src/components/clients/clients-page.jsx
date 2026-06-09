@@ -5,27 +5,21 @@ import { Eye, Trash2 } from "lucide-react";
 import { SalesModal } from "@/components/ui/sales-modal";
 import { Topbar } from "@/components/layout/topbar";
 import { PageBack } from "@/components/layout/page-back";
-import { clientDisplayName, ensureProspectIdentity } from "@/lib/clients";
-import { MONTHS } from "@/lib/constants";
+import { clientDisplayName } from "@/lib/clients";
 import { longDate } from "@/lib/format/dates";
 import { statusLabel, statusClass } from "@/lib/format/status";
-import { createEmptyClient, useDbStore } from "@/stores/db-store";
+import { useDbStore } from "@/stores/db-store";
 import { useAppStore } from "@/stores/app-store";
-import {  useNavigate  } from "react-router-dom";
-import { toast } from "@/lib/toast";
-import { confirmDialog } from "@/lib/confirm";
+import { useClientActions } from "@/hooks/use-client-actions.js";
 
 export function ClientsPage() {
   const hydrated = useAppStore((s) => s.hydrated);
-  const db = useDbStore((s) => s.db);
-  const saveClient = useDbStore((s) => s.saveClient);
-  const deleteClient = useDbStore((s) => s.deleteClient);
+  const { searchClients, createProspect, removeClient } = useClientActions();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [missingName, setMissingName] = useState(false);
   const [query, setQuery] = useState("");
   const nameRef = useRef<HTMLInputElement>(null);
-  const navigate = useNavigate();
 
   useEffect(() => {
     if (!open) return;
@@ -34,27 +28,7 @@ export function ClientsPage() {
     return () => window.clearTimeout(timer);
   }, [open]);
 
-  const normalizedQuery = query.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
-  const terms = normalizedQuery.split(/\s+/).filter(Boolean);
-  const allClients = Object.values(db.clients).map(ensureProspectIdentity);
-  const filtered = terms.length ? allClients.filter((c) => {
-    const date = c.tourDate || c.createdYmd || "";
-    const dt = date ? new Date(`${date}T00:00:00`) : null;
-    const monthName = dt && !Number.isNaN(dt.getTime()) ? MONTHS[dt.getMonth()] : "";
-    const text = [
-      clientDisplayName(c), c.name, c.name1, c.name2, c.occupation1, c.occupation2,
-      c.contract, c.prospectCode, c.city, c.country, c.status, statusLabel(c.status),
-      date, date ? longDate(date) : "", monthName, dt ? String(dt.getMonth() + 1) : "", dt ? String(dt.getFullYear()) : "",
-    ].filter(Boolean).join(" ").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-    return terms.every((term) => text.includes(term));
-  }) : allClients;
-
-  const sorted = filtered.sort((a, b) => {
-    const da = a.tourDate || a.createdYmd || "";
-    const db2 = b.tourDate || b.createdYmd || "";
-    if (db2 !== da) return db2.localeCompare(da);
-    return (b.createdAt || 0) - (a.createdAt || 0);
-  });
+  const sorted = searchClients(query);
 
   const handleOpenChange = (next: boolean) => {
     setOpen(next);
@@ -65,16 +39,15 @@ export function ClientsPage() {
   };
 
   const handleCreate = () => {
-    if (!name.trim()) {
-      setMissingName(true);
-      toast.error("Falta el campo obligatorio: Nombre completo");
-      nameRef.current?.focus();
+    const result = createProspect(name);
+    if (!result.ok) {
+      if (result.reason === "missing_name") {
+        setMissingName(true);
+        nameRef.current?.focus();
+      }
       return;
     }
-    const c = createEmptyClient(name.trim());
-    saveClient(c);
     handleOpenChange(false);
-    navigate(`/clients/${c.id}`);
   };
 
   if (!hydrated) return <Topbar title="Clientes" subtitle="Cargando..." />;
@@ -145,7 +118,7 @@ export function ClientsPage() {
                       <div className="client-actions">
                         <Link to={`/clients/${c.id}`} className="icon-btn" title="Ver expediente"><Eye size={14} /></Link>
                         <button type="button" className="icon-btn" title="Eliminar" onClick={async () => {
-                          if (await confirmDialog(`¿Eliminar a ${clientDisplayName(c)}?`)) deleteClient(c.id);
+                          await removeClient(c.id, clientDisplayName(c));
                         }}><Trash2 size={14} color="#dc2626" /></button>
                       </div>
                     </td>
