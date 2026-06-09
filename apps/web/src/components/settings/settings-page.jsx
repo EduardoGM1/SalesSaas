@@ -47,6 +47,9 @@ export function SettingsPage() {
   const [profileMsg, setProfileMsg] = useState<string | null>(null);
   const [profileErr, setProfileErr] = useState<string | null>(null);
   const [profilePending, setProfilePending] = useState(false);
+  const [fxLoading, setFxLoading] = useState(false);
+  const [fxError, setFxError] = useState(null);
+  const [fxDate, setFxDate] = useState(null);
   const syncStatus = useSyncStore((s) => s.status);
   const syncError = useSyncStore((s) => s.lastError);
 
@@ -138,6 +141,36 @@ export function SettingsPage() {
   const setSetting = <K extends keyof UserSettings>(key: K, value: UserSettings[K]) => {
     setSettings((current) => ({ ...current, [key]: value }));
   };
+
+  const fetchAutoExchangeRate = async (currency = settings.currency || "USD") => {
+    if (currency === "USD") {
+      setFxError(null);
+      setFxDate(new Date().toISOString().slice(0, 10));
+      setSetting("exchangeRate", 1);
+      return;
+    }
+    setFxLoading(true);
+    setFxError(null);
+    try {
+      const res = await fetch(`/api/v1/exchange-rates?to=${encodeURIComponent(currency)}`);
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error ?? "No se pudo obtener el tipo de cambio.");
+      const rate = Number(body.data?.rate);
+      if (!Number.isFinite(rate) || rate <= 0) throw new Error("Tipo de cambio inválido.");
+      setSetting("exchangeRate", rate);
+      setFxDate(body.data?.date ?? null);
+    } catch (err) {
+      setFxError(err instanceof Error ? err.message : "Error al actualizar.");
+    } finally {
+      setFxLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeSection !== "money" || settings.exchangeMode !== "auto") return;
+    fetchAutoExchangeRate(settings.currency || "USD");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeSection, settings.exchangeMode, settings.currency]);
 
   const setWorksheetSetting = (key, value) => {
     setSettings((current) => ({
@@ -232,17 +265,76 @@ export function SettingsPage() {
                   <div className="card-sub">La base interna recomendada sigue siendo USD; la moneda seleccionada es visual.</div>
                   <div className="settings-row">
                     <div><div className="settings-label">Moneda visual</div><div className="settings-help">Cómo quieres ver montos en la app.</div></div>
-                    <select value={settings.currency || "USD"} onChange={(e) => setSetting("currency", e.target.value as UserSettings["currency"])} style={{ width: "100%" }}>
+                    <select
+                      value={settings.currency || "USD"}
+                      onChange={(e) => {
+                        const currency = e.target.value;
+                        setSetting("currency", currency);
+                        if (currency === "USD") setSetting("exchangeRate", 1);
+                      }}
+                      style={{ width: "100%" }}
+                    >
                       {CURRENCIES.map((currency) => <option key={currency} value={currency}>{CURRENCY_LABEL[currency]}</option>)}
                     </select>
                   </div>
                   <div className="settings-row">
-                    <div><div className="settings-label">Tipo de cambio manual</div><div className="settings-help">Valor de 1 USD en la moneda visual seleccionada.</div></div>
-                    <input type="number" min={0} step={0.0001} value={settings.currency === "USD" ? 1 : settings.exchangeRate || 1} disabled={settings.currency === "USD"} onChange={(e) => setSetting("exchangeRate", Number(e.target.value) || 1)} style={{ width: 160, textAlign: "right" }} />
+                    <div><div className="settings-label">Modo de tipo de cambio</div><div className="settings-help">Manual: tú defines el valor. Automático: se consulta vía API (Frankfurter / ECB).</div></div>
+                    <select
+                      value={settings.exchangeMode || "manual"}
+                      onChange={(e) => setSetting("exchangeMode", e.target.value)}
+                      style={{ width: "100%" }}
+                      disabled={settings.currency === "USD"}
+                    >
+                      <option value="manual">Manual</option>
+                      <option value="auto">Automático</option>
+                    </select>
                   </div>
                   <div className="settings-row">
-                    <div><div className="settings-label">Tipo de cambio automático</div><div className="settings-help">Pendiente para backend/API real.</div></div>
-                    <span className="api-pill">API pendiente</span>
+                    <div><div className="settings-label">Tipo de cambio manual</div><div className="settings-help">Valor de 1 USD en la moneda visual seleccionada.</div></div>
+                    <input
+                      type="number"
+                      min={0}
+                      step={0.0001}
+                      value={settings.currency === "USD" ? 1 : settings.exchangeRate || 1}
+                      disabled={settings.currency === "USD" || settings.exchangeMode === "auto"}
+                      onChange={(e) => setSetting("exchangeRate", Number(e.target.value) || 1)}
+                      style={{ width: 160, textAlign: "right" }}
+                    />
+                  </div>
+                  <div className="settings-row">
+                    <div>
+                      <div className="settings-label">Tipo de cambio automático</div>
+                      <div className="settings-help">
+                        {settings.exchangeMode === "auto"
+                          ? "1 USD en la moneda visual, actualizado desde el backend."
+                          : "Activa el modo automático para consultar la tasa del día."}
+                      </div>
+                    </div>
+                    {settings.exchangeMode === "auto" ? (
+                      <div className="settings-fx-auto">
+                        {fxError ? (
+                          <div className="settings-fx-error">{fxError}</div>
+                        ) : (
+                          <>
+                            <div className="settings-fx-rate">
+                              1 USD = {(settings.exchangeRate || 1).toLocaleString("es-MX", { maximumFractionDigits: 4 })} {settings.currency}
+                            </div>
+                            {fxDate && <div className="settings-fx-meta">Referencia del {fxDate} (Frankfurter)</div>}
+                            <span className="settings-fx-ok">API conectada</span>
+                          </>
+                        )}
+                        <button
+                          type="button"
+                          className="btn btn-ghost btn-sm"
+                          disabled={fxLoading || settings.currency === "USD"}
+                          onClick={() => fetchAutoExchangeRate(settings.currency || "USD")}
+                        >
+                          {fxLoading ? "Actualizando…" : "Actualizar ahora"}
+                        </button>
+                      </div>
+                    ) : (
+                      <span className="api-pill">Modo manual</span>
+                    )}
                   </div>
                 </div>
               </div>
@@ -271,7 +363,7 @@ export function SettingsPage() {
                   <div className="card-heading">APIs / Preparación técnica</div>
                   <div className="card-sub">No se conecta todavía; queda documentado qué debe conectarse después.</div>
                   <div className="api-list">
-                    <ApiItem name="Exchange Rate API" desc="Actualizar tipo de cambio USD -> moneda visual. Recomendado desde backend para evitar permisos/CORS." />
+                    <ApiItem name="Exchange Rate API" desc="GET /api/v1/exchange-rates?to=MXN — Frankfurter (ECB), cache 12h en backend." done />
                     <ApiItem name="Catálogo País / Estado / Ciudad" desc="Mantener países con código ISO, bandera, estados y ciudades normalizadas." />
                     <ApiItem name="User Settings API" desc="Guardar idioma, moneda, avatar, preferencias y configuración por usuario." />
                     <ApiItem name="Reminder / Notification API" desc="Enviar recordatorios de follow-up, procesamiento y pendientes con fecha/hora." />
@@ -366,10 +458,13 @@ function SettingsEntry({
   );
 }
 
-function ApiItem({ name, desc }: { name; desc }) {
+function ApiItem({ name, desc, done }) {
   return (
     <div className="api-item">
-      <div className="api-name">{name}</div>
+      <div className="api-name">
+        {name}
+        {done && <span className="settings-fx-ok" style={{ marginLeft: 8 }}>Activa</span>}
+      </div>
       <div className="api-desc">{desc}</div>
     </div>
   );

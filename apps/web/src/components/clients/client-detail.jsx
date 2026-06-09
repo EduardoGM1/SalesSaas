@@ -24,7 +24,7 @@ const TOOLS = [
 
 export function ClientDetail({ id }) {
   const navigate = useNavigate();
-  const searchParams = useSearchParams();
+  const [searchParams] = useSearchParams();
   const hydrated = useAppStore((s) => s.hydrated);
   const setToolMode = useAppStore((s) => s.setToolMode);
   const getClient = useDbStore((s) => s.getClient);
@@ -70,7 +70,7 @@ export function ClientDetail({ id }) {
     openSaleModal(undefined, searchParams.get("from") === "worksheet");
     navigate(`/clients/${id}`);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hydrated, c?.id, id, searchParams, router]);
+  }, [hydrated, c?.id, id, searchParams, navigate]);
 
   if (!hydrated) return <Topbar title="Expediente" subtitle="Cargando..." />;
   if (!c) return (

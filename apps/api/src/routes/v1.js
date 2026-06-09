@@ -13,6 +13,7 @@ import {
   bodyToToolUpsert,
 } from "@salesapp/shared/api/validators.js";
 import adminRouter from "./admin.js";
+import { getUsdExchangeRate } from "../lib/exchange-rates.js";
 
 const router = Router();
 
@@ -32,6 +33,7 @@ router.get("/", (_req, res) => {
     endpoints: {
       session: { GET: "/api/v1/auth/session" },
       profile: { GET: "/api/v1/profile", PATCH: "/api/v1/profile" },
+      exchangeRates: { GET: "/api/v1/exchange-rates?to=MXN" },
       sync: { GET: "/api/v1/sync", PUT: "/api/v1/sync" },
       prospects: { GET: "/api/v1/prospects", POST: "/api/v1/prospects", GET_ONE: "/api/v1/prospects/:id", PATCH: "/api/v1/prospects/:id", DELETE: "/api/v1/prospects/:id" },
       sales: { GET: "/api/v1/sales", POST: "/api/v1/sales", GET_ONE: "/api/v1/sales/:id", PATCH: "/api/v1/sales/:id", DELETE: "/api/v1/sales/:id" },
@@ -49,6 +51,17 @@ router.get("/auth/session", async (req, res) => {
   const { data: { user } } = await a.supabase.auth.getUser();
   const { data: profile } = await a.supabase.from("profiles").select("id, email, full_name, role, phone, avatar_url").eq("id", a.userId).single();
   json(res, { user: user ? { id: user.id, email: user.email } : null, profile: profile ?? null });
+});
+
+router.get("/exchange-rates", async (req, res) => {
+  const to = String(req.query.to ?? req.query.currency ?? "").toUpperCase();
+  if (!to) return apiError(res, "Parámetro to requerido (USD, MXN, CAD, EUR).");
+  try {
+    const data = await getUsdExchangeRate(to);
+    json(res, { data });
+  } catch (err) {
+    apiError(res, err instanceof Error ? err.message : "Error al obtener tipo de cambio.", 502);
+  }
 });
 
 router.get("/profile", async (req, res) => {

@@ -186,7 +186,7 @@ export function AdminUsersPage() {
         {users.length === 0 ? (
           <div className="admin-empty">Sin usuarios.</div>
         ) : (
-          <table className="client-table">
+          <table className="client-table admin-users-table">
             <thead>
               <tr>
                 <th>Nombre</th>
@@ -197,7 +197,7 @@ export function AdminUsersPage() {
                 <th style={{ textAlign: "right" }}>Ventas</th>
                 <th style={{ textAlign: "right" }}>Volumen</th>
                 <th>Alta</th>
-                {hasActions && <th style={{ width: 110 }}>Acciones</th>}
+                {hasActions && <th className="admin-cell-actions">Acciones</th>}
               </tr>
             </thead>
             <tbody>
@@ -207,9 +207,9 @@ export function AdminUsersPage() {
                 const roleReadOnly = !caps.canRole || u.is_super_admin || isSelf;
                 return (
                   <tr key={u.id} className={!u.is_active ? "admin-user-row-inactive" : undefined}>
-                    <td>{u.name}{u.is_super_admin && <span className="admin-super-badge">Principal</span>}</td>
-                    <td>{u.email ?? "—"}</td>
-                    <td>
+                    <td className="admin-cell-name" title={u.name}>{u.name}{u.is_super_admin && <span className="admin-super-badge">Principal</span>}</td>
+                    <td className="admin-cell-email" title={u.email ?? undefined}>{u.email ?? "—"}</td>
+                    <td className="admin-cell-role">
                       {roleReadOnly ? (
                         <span className="admin-role-readonly">{ROLES.find((r) => r.value === u.role)?.label ?? u.role}</span>
                       ) : (
@@ -218,17 +218,17 @@ export function AdminUsersPage() {
                         </select>
                       )}
                     </td>
-                    <td>
+                    <td className="admin-cell-status">
                       <span className={`admin-status-badge ${u.is_active ? "admin-status-active" : "admin-status-inactive"}`}>
                         {u.is_active ? "Activa" : "Desactivada"}
                       </span>
                     </td>
-                    <td style={{ textAlign: "right" }}>{fmtN(u.prospects)}</td>
-                    <td style={{ textAlign: "right" }}>{fmtN(u.sales)}</td>
-                    <td style={{ textAlign: "right" }}>{fmt(u.volume)}</td>
-                    <td>{u.created_at ? longDate(String(u.created_at).slice(0, 10)) : "—"}</td>
+                    <td className="admin-cell-num" style={{ textAlign: "right" }}>{fmtN(u.prospects)}</td>
+                    <td className="admin-cell-num" style={{ textAlign: "right" }}>{fmtN(u.sales)}</td>
+                    <td className="admin-cell-num" style={{ textAlign: "right" }}>{fmt(u.volume)}</td>
+                    <td className="admin-cell-date">{u.created_at ? longDate(String(u.created_at).slice(0, 10)) : "—"}</td>
                     {hasActions && (
-                      <td>
+                      <td className="admin-cell-actions">
                         <div className="admin-table-actions">
                           {caps.canRole && !roleReadOnly && (
                             <form id={formId} onSubmit={(e) => { e.preventDefault(); const fd = new FormData(e.currentTarget); navigate(userAdminUrl(filters, { confirm: "role", userId: u.id, newRole: fd.get("newRole") })); }}>

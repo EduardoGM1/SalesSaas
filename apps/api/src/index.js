@@ -1,11 +1,4 @@
-import dotenv from "dotenv";
-import path from "path";
-import { fileURLToPath } from "url";
 import express from "express";
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-dotenv.config({ path: path.join(__dirname, "../../../.env.local") });
-dotenv.config({ path: path.join(__dirname, "../../../.env") });
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import v1Router from "./routes/v1.js";

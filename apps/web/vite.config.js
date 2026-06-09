@@ -7,8 +7,16 @@ import { VitePWA } from "vite-plugin-pwa";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
+  envDir: path.resolve(__dirname, "../.."),
+  envPrefix: ["VITE_", "NEXT_PUBLIC_"],
   plugins: [
-    react(),
+    react({
+      babel: {
+        parserOpts: {
+          plugins: ["typescript", "jsx"],
+        },
+      },
+    }),
     VitePWA({
       registerType: "autoUpdate",
       includeAssets: ["icon.svg", "icon-maskable.svg", "favicon.png", "apple-touch-icon.png"],
@@ -47,8 +55,18 @@ export default defineConfig({
   publicDir: path.resolve(__dirname, "../../public"),
   esbuild: {
     loader: "tsx",
-    include: /src\/.*\.[jt]sx?$/,
+    include: /\.[jt]sx?$/,
     exclude: [],
+  },
+  optimizeDeps: {
+    esbuildOptions: {
+      loader: {
+        ".js": "jsx",
+        ".jsx": "tsx",
+        ".ts": "tsx",
+        ".tsx": "tsx",
+      },
+    },
   },
   resolve: {
     alias: [

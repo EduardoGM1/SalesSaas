@@ -1,16 +1,21 @@
-const viteEnv =
+const metaEnv =
   typeof import.meta !== "undefined"
     ? (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env
     : undefined;
 
+const nodeEnv =
+  typeof process !== "undefined" ? process.env : undefined;
+
 export const SUPABASE_URL =
-  viteEnv?.VITE_SUPABASE_URL ??
-  process.env.NEXT_PUBLIC_SUPABASE_URL ??
+  metaEnv?.VITE_SUPABASE_URL ??
+  metaEnv?.NEXT_PUBLIC_SUPABASE_URL ??
+  nodeEnv?.NEXT_PUBLIC_SUPABASE_URL ??
   "";
 
 export const SUPABASE_ANON_KEY =
-  viteEnv?.VITE_SUPABASE_ANON_KEY ??
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ??
+  metaEnv?.VITE_SUPABASE_ANON_KEY ??
+  metaEnv?.NEXT_PUBLIC_SUPABASE_ANON_KEY ??
+  nodeEnv?.NEXT_PUBLIC_SUPABASE_ANON_KEY ??
   "";
 
 /**

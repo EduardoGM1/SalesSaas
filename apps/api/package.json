@@ -4,9 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "node --watch src/index.js",
-    "start": "node src/index.js",
-    "verify": "node scripts/verify-smoke.mjs"
+    "dev": "node --import ./src/load-env.js --watch src/index.js",
+    "start": "node --import ./src/load-env.js src/index.js",
+    "verify": "node --import ./src/load-env.js scripts/verify-smoke.mjs"
   },
   "dependencies": {
     "@salesapp/shared": "*",
