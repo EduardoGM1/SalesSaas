@@ -1,6 +1,7 @@
 
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
-import { ChevronRight, Code2, Database, DollarSign, Download, Globe2, LogOut, ShieldAlert, Trash2, Upload, User, WalletCards } from "lucide-react";
+import { ChevronRight, Code2, Database, DollarSign, Download, Globe2, LogOut, ShieldAlert, Smartphone, Trash2, Upload, User, WalletCards } from "lucide-react";
+import { canOfferPwaInstall, isStandaloneApp, openInstallPrompt } from "@/lib/pwa-install.js";
 import { Topbar } from "@/components/layout/topbar";
 import { PageBack } from "@/components/layout/page-back";
 import { CURRENCIES, WS_DEFAULTS } from "@/lib/constants";
@@ -170,6 +171,9 @@ export function SettingsPage() {
           <SettingsEntry icon={<Code2 size={18} />} tone="green" title="APIs / Preparación técnica" desc="Integraciones futuras documentadas" onClick={() => setActiveSection("apis")} />
         )}
         <SettingsEntry icon={<Database size={18} />} tone="teal" title="Datos y respaldo" desc="Exporta tu información a JSON o restaura desde un respaldo previo" onClick={() => setActiveSection("backup")} />
+        {canOfferPwaInstall() && !isStandaloneApp() && (
+          <SettingsEntry icon={<Smartphone size={18} />} tone="blue" title="Instalar aplicación" desc="Acceso rápido desde tu pantalla de inicio, sin buscar en el navegador" onClick={openInstallPrompt} />
+        )}
         <SettingsEntry icon={<ShieldAlert size={18} />} tone="purple" title="Cuenta y zona de riesgo" desc={isSupabaseConfigured() ? `Sesión ${email ? `iniciada como ${email}` : "activa"}` : "Acciones sobre los datos locales de este dispositivo"} onClick={() => setActiveSection("account")} />
       </div>
     </div>

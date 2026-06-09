@@ -10,7 +10,7 @@
     "dev": "npm run dev:web",
     "dev:api": "npm run dev -w @salesapp/api",
     "dev:web": "npm run dev -w @salesapp/web",
-    "build": "npm run build -w @salesapp/web",
+    "build": "npm run gen:icons && npm run build -w @salesapp/web",
     "build:api": "npm run start -w @salesapp/api",
     "build:web": "npm run build -w @salesapp/web",
     "start": "npm run start -w @salesapp/api",
