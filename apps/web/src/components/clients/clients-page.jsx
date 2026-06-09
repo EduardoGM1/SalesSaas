@@ -28,9 +28,11 @@ export function ClientsPage() {
     return () => window.clearTimeout(timer);
   }, [open]);
 
+  const allClients = searchClients("");
   const sorted = searchClients(query);
+  const hasSearch = query.trim().length > 0;
 
-  const handleOpenChange = (next: boolean) => {
+  const handleOpenChange = (next) => {
     setOpen(next);
     if (!next) {
       setName("");
@@ -78,7 +80,7 @@ export function ClientsPage() {
             </div>
             <button type="button" className="btn btn-ghost btn-sm" onClick={() => setQuery("")}>Limpiar</button>
             <div className="client-search-count">
-              {terms.length ? `${sorted.length} de ${allClients.length} expedientes` : `${allClients.length} expedientes`}
+              {hasSearch ? `${sorted.length} de ${allClients.length} expedientes` : `${allClients.length} expedientes`}
             </div>
           </div>
           <div className="client-search-help">El buscador filtra la base de expedientes sin modificar clientes, ventas ni actividades.</div>
