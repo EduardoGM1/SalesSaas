@@ -10,8 +10,9 @@ import { cn } from "@/lib/utils";
 import { useAppStore } from "@/stores/app-store";
 import { useDbStore } from "@/stores/db-store";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
-import { createClient } from "@/lib/supabase/client";
 import { hasAnyAdminAccess } from "@/lib/auth/permissions";
+import { watchSession } from "@/lib/session-api.js";
+import { navLabel } from "@/lib/i18n.js";
 
 const NAV = [
   { href: "/", label: "Agenda", icon: Calendar },
@@ -21,15 +22,6 @@ const NAV = [
   { href: "/tools", label: "Herramientas", icon: Wrench },
 ];
 
-const LABELS_EN: Record<string, string> = {
-  Agenda: "Agenda",
-  Dashboard: "Dashboard",
-  Metas: "Goals",
-  Clientes: "Clients",
-  Herramientas: "Tools",
-  Admin: "Admin",
-};
-
 export function Sidebar() {
   const { pathname } = useLocation();
   const mounted = useMounted();
@@ -38,29 +30,25 @@ export function Sidebar() {
   const settings = useDbStore((s) => s.db.settings);
   const language = mounted ? settings?.language || "es" : "es";
   const [isAdmin, setIsAdmin] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState(null);
 
   useEffect(() => {
     if (!isSupabaseConfigured()) return;
-    let active = true;
-    const sb = createClient();
-    sb.auth.getUser().then(async ({ data }) => {
-      if (!data.user) return;
-      const { data: profile } = await sb
-        .from("profiles")
-        .select("role, is_super_admin, admin_permissions")
-        .eq("id", data.user.id)
-        .single();
-      if (!active || !profile) return;
+    return watchSession((session) => {
+      const profile = session?.profile;
+      if (!profile) {
+        setIsAdmin(false);
+        setAvatarUrl(null);
+        return;
+      }
+      setAvatarUrl(profile.avatar_url ?? null);
       setIsAdmin(hasAnyAdminAccess({
-        id: data.user.id,
+        id: profile.id,
         role: profile.role ?? "user",
         is_super_admin: profile.is_super_admin === true,
         admin_permissions: Array.isArray(profile.admin_permissions) ? profile.admin_permissions : [],
       }));
     });
-    return () => {
-      active = false;
-    };
   }, []);
 
   const footer = mounted && isAdmin ? [{ href: "/admin", label: "Admin", icon: Shield }] : [];
@@ -74,12 +62,16 @@ export function Sidebar() {
       <aside className={cn("sidebar", sidebarOpen && "open")} id="sidebar">
         <Link to="/" className="sb-logo" title="Usuario" onClick={closeSidebar}>
           <div className="sb-user-avatar" id="sb-user-avatar" suppressHydrationWarning>
-            {avatarLabel.slice(0, 3)}
+            {avatarUrl ? (
+              <img src={avatarUrl} alt="" className="sb-user-avatar-img" />
+            ) : (
+              avatarLabel.slice(0, 3)
+            )}
           </div>
         </Link>
         <nav className="sb-nav">
           {NAV.map(({ href, label, icon: Icon }) => {
-            const visibleLabel = language === "en" ? LABELS_EN[label] || label : label;
+            const visibleLabel = navLabel(label, language);
             const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
             return (
               <Link
@@ -99,7 +91,7 @@ export function Sidebar() {
             <div className="sb-divider" />
             <nav className="sb-nav" style={{ flex: "0 0 auto" }}>
               {footer.map(({ href, label, icon: Icon }) => {
-                const visibleLabel = language === "en" ? LABELS_EN[label] || label : label;
+                const visibleLabel = navLabel(label, language);
                 const active = pathname.startsWith(href);
                 return (
                   <Link

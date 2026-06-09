@@ -16,6 +16,7 @@ export default defineConfig({
           plugins: ["typescript", "jsx"],
         },
       },
+      jsxRuntime: "automatic",
     }),
     VitePWA({
       registerType: "autoUpdate",
@@ -71,8 +72,8 @@ export default defineConfig({
   resolve: {
     alias: [
       { find: "@/lib/sync-api.js", replacement: path.resolve(__dirname, "src/lib/sync-api.js") },
-      { find: "@/stores", replacement: path.resolve(__dirname, "../../src/stores") },
-      { find: "@/lib", replacement: path.resolve(__dirname, "../../src/lib") },
+      { find: "@/stores", replacement: path.resolve(__dirname, "src/stores") },
+      { find: "@/lib", replacement: path.resolve(__dirname, "src/lib") },
       { find: "@", replacement: path.resolve(__dirname, "src") },
     ],
   },

@@ -6,7 +6,7 @@ import fs from "fs";
 import path from "path";
 
 const ROOT = path.resolve(import.meta.dirname, "..");
-const SRC_LIB = path.join(ROOT, "src", "lib");
+const SRC_LIB = path.join(ROOT, "apps", "web", "src", "lib");
 const DEST = path.join(ROOT, "packages", "shared", "src");
 
 const SKIP = new Set(["supabase/middleware.ts", "supabase/server.ts", "supabase/client.ts"]);

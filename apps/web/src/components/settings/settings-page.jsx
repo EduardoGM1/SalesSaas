@@ -8,7 +8,8 @@ import { hasAnyAdminAccess, type AdminAccessProfile } from "@/lib/auth/permissio
 import { exportDatabase, importDatabaseFile } from "@/lib/storage/local-storage-adapter";
 import { emptyDatabase, UserSettings } from "@/lib/storage/types";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
-import { createClient } from "@/lib/supabase/client";
+import { fetchProfile } from "@/lib/session-api.js";
+import { t } from "@/lib/i18n.js";
 import { useAppStore } from "@/stores/app-store";
 import { useDbStore } from "@/stores/db-store";
 import { useSyncStore } from "@/stores/sync-store";
@@ -41,6 +42,7 @@ export function SettingsPage() {
   const [email, setEmail] = useState<string | null>(null);
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
+  const [avatarUrl, setAvatarUrl] = useState("");
   const [settings, setSettings] = useState<UserSettings>(db.settings || {});
   const [activeSection, setActiveSection] = useState<SettingsSection>(null);
   const [canSeeTechnical, setCanSeeTechnical] = useState(false);
@@ -55,27 +57,24 @@ export function SettingsPage() {
 
   useEffect(() => {
     if (!isSupabaseConfigured()) return;
-    const sb = createClient();
-    sb.auth.getUser().then(({ data }) => setEmail(data.user?.email ?? null));
-    sb.from("profiles")
-      .select("id, full_name, phone, settings, role, is_super_admin, admin_permissions")
-      .single()
-      .then(({ data }) => {
-        if (!data) return;
-        setFullName(data.full_name ?? "");
-        setPhone(data.phone ?? "");
-        setCanSeeTechnical(hasAnyAdminAccess({
-          id: data.id,
-          role: data.role ?? "user",
-          is_super_admin: data.is_super_admin === true,
-          admin_permissions: Array.isArray(data.admin_permissions) ? data.admin_permissions : [],
-        } satisfies AdminAccessProfile));
-        if (data.settings && typeof data.settings === "object") {
-          const incoming = data.settings as UserSettings;
-          setSettings({ ...db.settings, ...incoming });
-          replaceDb({ ...db, settings: { ...db.settings, ...incoming } });
-        }
-      });
+    fetchProfile().then((data) => {
+      if (!data) return;
+      setEmail(data.email ?? null);
+      setFullName(data.full_name ?? "");
+      setPhone(data.phone ?? "");
+      setAvatarUrl(data.avatar_url ?? "");
+      setCanSeeTechnical(hasAnyAdminAccess({
+        id: data.id,
+        role: data.role ?? "user",
+        is_super_admin: data.is_super_admin === true,
+        admin_permissions: Array.isArray(data.admin_permissions) ? data.admin_permissions : [],
+      } satisfies AdminAccessProfile));
+      if (data.settings && typeof data.settings === "object") {
+        const incoming = data.settings as UserSettings;
+        setSettings({ ...db.settings, ...incoming });
+        replaceDb({ ...db, settings: { ...db.settings, ...incoming } });
+      }
+    });
     // Carga inicial del perfil remoto; incluir `db` aquí reescribiría el store en bucle.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -125,7 +124,7 @@ export function SettingsPage() {
       const res = await fetch("/api/v1/profile", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fullName, phone, settings: nextSettings }),
+        body: JSON.stringify({ fullName, phone, avatarUrl: avatarUrl || null, settings: nextSettings }),
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body.error ?? "No se pudo guardar el perfil.");
@@ -226,9 +225,31 @@ export function SettingsPage() {
                     <input type="text" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Michell Ruiz" style={{ width: "100%" }} />
                   </div>
                   <div className="settings-row">
-                    <div><div className="settings-label">Iniciales / Avatar</div><div className="settings-help">Por ahora usamos iniciales. La app real podrá subir foto.</div></div>
+                    <div><div className="settings-label">Iniciales</div><div className="settings-help">Texto del avatar cuando no hay foto.</div></div>
                     <input type="text" maxLength={3} value={settings.userInitials || ""} onChange={(e) => setSetting("userInitials", e.target.value.toUpperCase())} placeholder="M" style={{ width: 110, textAlign: "center", fontWeight: 800 }} />
                   </div>
+                  {isSupabaseConfigured() && (
+                    <>
+                      <div className="settings-row">
+                        <div><div className="settings-label">URL de avatar</div><div className="settings-help">Enlace público a tu foto de perfil.</div></div>
+                        <input type="url" value={avatarUrl} onChange={(e) => setAvatarUrl(e.target.value)} placeholder="https://..." style={{ width: "100%" }} />
+                      </div>
+                      <div className="settings-row">
+                        <div><div className="settings-label">Subir imagen</div><div className="settings-help">Se guarda como URL de datos en tu perfil (máx. ~500 KB).</div></div>
+                        <input type="file" accept="image/*" onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          if (file.size > 512000) {
+                            toast.error("La imagen debe pesar menos de 500 KB.");
+                            return;
+                          }
+                          const reader = new FileReader();
+                          reader.onload = () => setAvatarUrl(String(reader.result ?? ""));
+                          reader.readAsDataURL(file);
+                        }} />
+                      </div>
+                    </>
+                  )}
                   {isSupabaseConfigured() && (
                     <form onSubmit={saveProfile} className="settings-row">
                       <div><div className="settings-label">Teléfono</div><div className="settings-help">Dato opcional del perfil de cuenta.</div></div>
@@ -361,12 +382,12 @@ export function SettingsPage() {
               <div className="settings-section">
                 <div className="settings-card">
                   <div className="card-heading">APIs / Preparación técnica</div>
-                  <div className="card-sub">No se conecta todavía; queda documentado qué debe conectarse después.</div>
+                  <div className="card-sub">Endpoints REST disponibles en Express (:4000).</div>
                   <div className="api-list">
                     <ApiItem name="Exchange Rate API" desc="GET /api/v1/exchange-rates?to=MXN — Frankfurter (ECB), cache 12h en backend." done />
-                    <ApiItem name="Catálogo País / Estado / Ciudad" desc="Mantener países con código ISO, bandera, estados y ciudades normalizadas." />
-                    <ApiItem name="User Settings API" desc="Guardar idioma, moneda, avatar, preferencias y configuración por usuario." />
-                    <ApiItem name="Reminder / Notification API" desc="Enviar recordatorios de follow-up, procesamiento y pendientes con fecha/hora." />
+                    <ApiItem name="Catálogo País / Estado / Ciudad" desc="GET /api/v1/geo/countries y /geo/countries/:país/cities con ISO y banderas." done />
+                    <ApiItem name="User Settings API" desc="GET/PATCH /api/v1/profile — idioma, moneda, avatar y preferencias." done />
+                    <ApiItem name="Reminder / Notification API" desc="GET /api/v1/reminders — follow-up y procesamiento desde datos sincronizados." done />
                   </div>
                 </div>
               </div>
@@ -402,7 +423,7 @@ export function SettingsPage() {
                   <div className="card-heading">Cuenta y zona de riesgo</div>
                   <div className="card-sub">{isSupabaseConfigured() ? `Sesión ${email ? `iniciada como ${email}` : "activa"}.` : "Acciones sobre los datos locales de este dispositivo."}</div>
                   <div className="hint" style={{ marginBottom: 12 }}>
-                    Sincronización: {SYNC_LABEL[syncStatus] ?? syncStatus}
+                    Sincronización: {t(`sync.${syncStatus}`, settings.language || "es") || syncStatus}
                     {syncStatus === "error" && syncError ? ` - ${syncError}` : ""}
                   </div>
                   {profileErr && <div className="auth-error" style={{ marginBottom: 12 }}>{profileErr}</div>}

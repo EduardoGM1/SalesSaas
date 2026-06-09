@@ -1,25 +1,26 @@
 /**
- * Verificación rápida de rutas públicas y API (sin auth).
- * Uso: npm run verify  (arranca el servidor en otro terminal o usa BASE_URL)
+ * Verificación rápida de API y SPA (sin auth).
+ * Uso: npm run verify  (API en :4000, web en :5173)
  */
-const BASE = process.env.BASE_URL ?? "http://localhost:3000";
+const API_BASE = process.env.API_BASE ?? "http://localhost:4000";
+const WEB_BASE = process.env.WEB_BASE ?? "http://localhost:5173";
 
 const checks = [
-  { name: "Home redirect/login", path: "/", expect: [200, 307, 308] },
-  { name: "Login page", path: "/login", expect: [200] },
-  { name: "API root", path: "/api/v1", expect: [200] },
-  { name: "Admin role API sin auth", path: "/api/v1/admin/users/00000000-0000-4000-8000-000000000001/role", method: "PATCH", body: { role: "vendedor" }, expect: [401, 403] },
-  { name: "Profile API sin auth", path: "/api/v1/profile", expect: [401] },
-  { name: "Manifest", path: "/manifest.webmanifest", expect: [200] },
+  { base: API_BASE, name: "API health", path: "/health", expect: [200] },
+  { base: API_BASE, name: "API root", path: "/api/v1", expect: [200] },
+  { base: API_BASE, name: "Geo countries", path: "/api/v1/geo/countries", expect: [200] },
+  { base: API_BASE, name: "Profile sin auth", path: "/api/v1/profile", expect: [401, 503] },
+  { base: API_BASE, name: "Reminders sin auth", path: "/api/v1/reminders", expect: [401, 503] },
+  { base: WEB_BASE, name: "SPA index", path: "/", expect: [200] },
 ];
 
 async function run() {
-  console.log(`\n=== Smoke test → ${BASE} ===\n`);
+  console.log(`\n=== Smoke test API=${API_BASE} WEB=${WEB_BASE} ===\n`);
   let failed = 0;
 
   for (const c of checks) {
     try {
-      const res = await fetch(`${BASE}${c.path}`, {
+      const res = await fetch(`${c.base}${c.path}`, {
         method: c.method ?? "GET",
         headers: c.body ? { "Content-Type": "application/json" } : undefined,
         body: c.body ? JSON.stringify(c.body) : undefined,

@@ -3,7 +3,9 @@ const BASE = process.env.API_BASE ?? "http://localhost:4000";
 const checks = [
   { name: "Health", path: "/health", expect: [200] },
   { name: "API root", path: "/api/v1", expect: [200] },
+  { name: "Geo countries", path: "/api/v1/geo/countries", expect: [200] },
   { name: "Profile sin auth", path: "/api/v1/profile", expect: [401, 503] },
+  { name: "Reminders sin auth", path: "/api/v1/reminders", expect: [401, 503] },
   { name: "Admin role sin auth", path: "/api/v1/admin/users/00000000-0000-4000-8000-000000000001/role", method: "PATCH", body: { role: "vendedor" }, expect: [401, 403, 503] },
 ];
 

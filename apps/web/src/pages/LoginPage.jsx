@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Home } from "lucide-react";
+import { notifyAuthChanged } from "@/lib/session-api.js";
 
 const QUERY_MSG = {
   auth: "No se pudo completar la autenticación. Intenta de nuevo.",
@@ -27,6 +28,7 @@ export function LoginPage() {
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body.error ?? "No se pudo iniciar sesión.");
+      notifyAuthChanged();
       navigate("/");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error");

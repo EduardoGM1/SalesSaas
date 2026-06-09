@@ -14,6 +14,8 @@ import {
 } from "@salesapp/shared/api/validators.js";
 import adminRouter from "./admin.js";
 import { getUsdExchangeRate } from "../lib/exchange-rates.js";
+import { listCountries, listCities } from "../lib/geo-catalog.js";
+import { collectReminders } from "../lib/reminders.js";
 
 const router = Router();
 
@@ -34,6 +36,8 @@ router.get("/", (_req, res) => {
       session: { GET: "/api/v1/auth/session" },
       profile: { GET: "/api/v1/profile", PATCH: "/api/v1/profile" },
       exchangeRates: { GET: "/api/v1/exchange-rates?to=MXN" },
+      geo: { GET: "/api/v1/geo/countries", GET_CITIES: "/api/v1/geo/countries/:country/cities" },
+      reminders: { GET: "/api/v1/reminders?from=&to=" },
       sync: { GET: "/api/v1/sync", PUT: "/api/v1/sync" },
       prospects: { GET: "/api/v1/prospects", POST: "/api/v1/prospects", GET_ONE: "/api/v1/prospects/:id", PATCH: "/api/v1/prospects/:id", DELETE: "/api/v1/prospects/:id" },
       sales: { GET: "/api/v1/sales", POST: "/api/v1/sales", GET_ONE: "/api/v1/sales/:id", PATCH: "/api/v1/sales/:id", DELETE: "/api/v1/sales/:id" },
@@ -49,8 +53,35 @@ router.get("/auth/session", async (req, res) => {
   const a = await auth(req, res);
   if (!a) return;
   const { data: { user } } = await a.supabase.auth.getUser();
-  const { data: profile } = await a.supabase.from("profiles").select("id, email, full_name, role, phone, avatar_url").eq("id", a.userId).single();
+  const { data: profile } = await a.supabase
+    .from("profiles")
+    .select("id, email, full_name, role, phone, avatar_url, settings, is_super_admin, admin_permissions")
+    .eq("id", a.userId)
+    .single();
   json(res, { user: user ? { id: user.id, email: user.email } : null, profile: profile ?? null });
+});
+
+router.get("/geo/countries", (_req, res) => {
+  json(res, { data: listCountries() });
+});
+
+router.get("/geo/countries/:country/cities", (req, res) => {
+  const data = listCities(req.params.country);
+  if (!data) return apiError(res, "País no encontrado.", 404);
+  json(res, { data });
+});
+
+router.get("/reminders", async (req, res) => {
+  const a = await auth(req, res);
+  if (!a) return;
+  try {
+    const db = await pullAll(a.supabase, a.userId);
+    const from = req.query.from ? String(req.query.from) : undefined;
+    const to = req.query.to ? String(req.query.to) : undefined;
+    json(res, { data: collectReminders(db, { from, to }), syncedAt: new Date().toISOString() });
+  } catch (err) {
+    apiError(res, err instanceof Error ? err.message : "Error al obtener recordatorios.", 500);
+  }
 });
 
 router.get("/exchange-rates", async (req, res) => {
