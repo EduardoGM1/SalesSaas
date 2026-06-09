@@ -1,9 +1,21 @@
 import { useEffect, useState } from "react";
 
+let cachedAdminSession = null;
+
+export function clearAdminSessionCache() {
+  cachedAdminSession = null;
+}
+
 export function useAdminSession() {
-  const [state, setState] = useState({ loading: true, session: null, error: null });
+  const [state, setState] = useState(() => (
+    cachedAdminSession
+      ? { loading: false, session: cachedAdminSession, error: null }
+      : { loading: true, session: null, error: null }
+  ));
 
   useEffect(() => {
+    if (cachedAdminSession) return;
+
     fetch("/api/v1/admin/me", { credentials: "include" })
       .then(async (r) => {
         if (!r.ok) {
@@ -12,12 +24,21 @@ export function useAdminSession() {
         }
         return r.json();
       })
-      .then((session) => setState({ loading: false, session, error: null }))
+      .then((session) => {
+        cachedAdminSession = session;
+        setState({ loading: false, session, error: null });
+      })
       .catch((err) => setState({
         loading: false,
         session: null,
         error: err instanceof Error ? err.message : "Error",
       }));
+  }, []);
+
+  useEffect(() => {
+    const onAuthChanged = () => clearAdminSessionCache();
+    window.addEventListener("auth:changed", onAuthChanged);
+    return () => window.removeEventListener("auth:changed", onAuthChanged);
   }, []);
 
   return state;

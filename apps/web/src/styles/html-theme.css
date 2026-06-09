@@ -400,7 +400,20 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
 .exp-side-card .prospect-grid{gap:14px 22px;}
 .exp-side-card .prospect-field label{white-space:normal;}
 .exp-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:16px;}
+.exp-page-head{display:grid;grid-template-columns:auto minmax(0,1fr) auto;grid-template-areas:"back meta actions";align-items:start;gap:12px 16px;margin-bottom:20px;}
+.exp-page-back{grid-area:back;align-self:center;white-space:nowrap;}
+.exp-page-meta{grid-area:meta;min-width:0;}
+.exp-page-title{font-size:22px;font-weight:800;letter-spacing:-0.5px;line-height:1.2;color:var(--text);word-break:break-word;}
+.exp-page-sub{font-size:13px;color:var(--muted);margin-top:4px;line-height:1.45;word-break:break-word;}
+.exp-page-actions{grid-area:actions;display:flex;align-items:center;gap:8px;flex-shrink:0;}
 @media(max-width:1000px){.exp-layout{grid-template-columns:1fr;}}
+@media(max-width:720px){
+  .exp-page-head{grid-template-columns:1fr;grid-template-areas:"back" "meta" "actions";gap:10px;}
+  .exp-page-back{justify-self:start;}
+  .exp-page-title{font-size:20px;}
+  .exp-page-actions{width:100%;}
+  .exp-page-actions .btn{flex:1;justify-content:center;}
+}
 .client-status-badge{display:inline-flex;align-items:center;padding:3px 8px;border-radius:999px;background:var(--surface2);border:1px solid var(--border);font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-left:6px;}
 .client-status-badge.venta{background:var(--green-lt);border-color:rgba(5,150,105,.25);color:var(--green);}
 .client-status-badge.bback{background:var(--purple-lt);border-color:rgba(124,58,237,.25);color:var(--purple);}

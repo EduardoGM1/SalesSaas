@@ -17,7 +17,7 @@ import { WorksheetPage } from "@/components/calculators/worksheet-page.jsx";
 import { AnalysisPage } from "@/components/calculators/analysis-page.jsx";
 import { SettingsPage } from "@/components/settings/settings-page.jsx";
 import { ToolsHubPage } from "@/pages/ToolsHubPage.jsx";
-import { AdminLayout } from "@/layouts/AdminLayout.jsx";
+import { AdminSection } from "@/layouts/AdminSection.jsx";
 import { AdminOverviewPage } from "@/pages/admin/AdminOverviewPage.jsx";
 import { AdminUsersPage } from "@/pages/admin/AdminUsersPage.jsx";
 import { AdminSalesPage } from "@/pages/admin/AdminSalesPage.jsx";
@@ -65,16 +65,16 @@ export function AppRoutes() {
         <Route path="tools/vacaciones" element={<VacacionesPage />} />
         <Route path="tools/worksheet" element={<WorksheetPage />} />
         <Route path="settings" element={<SettingsPage />} />
-      </Route>
-      <Route path="/admin" element={<ProtectedRoute><AdminLayout /></ProtectedRoute>}>
-        <Route index element={<AdminOverviewPage />} />
-        <Route path="users" element={<AdminUsersPage />} />
-        <Route path="sales" element={<AdminSalesPage />} />
-        <Route path="agenda" element={<AdminAgendaPage />} />
-        <Route path="goals" element={<AdminGoalsPage />} />
-        <Route path="activity" element={<AdminActivityPage />} />
-        <Route path="worksheets" element={<AdminWorksheetsPage />} />
-        <Route path="worksheets/:id" element={<AdminWorksheetDetailPage />} />
+        <Route path="admin" element={<AdminSection />}>
+          <Route index element={<AdminOverviewPage />} />
+          <Route path="users" element={<AdminUsersPage />} />
+          <Route path="sales" element={<AdminSalesPage />} />
+          <Route path="agenda" element={<AdminAgendaPage />} />
+          <Route path="goals" element={<AdminGoalsPage />} />
+          <Route path="activity" element={<AdminActivityPage />} />
+          <Route path="worksheets" element={<AdminWorksheetsPage />} />
+          <Route path="worksheets/:id" element={<AdminWorksheetDetailPage />} />
+        </Route>
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

@@ -16,6 +16,7 @@ import { SaleRecord } from "@/lib/storage/types";
 import { useClientActions } from "@/hooks/use-client-actions.js";
 import { useSaleActions } from "@/hooks/use-sale-actions.js";
 import { useCalendarActions } from "@/hooks/use-calendar-actions.js";
+import { toast } from "@/lib/toast";
 
 const TOOLS = [
   { key: "survey", label: "Survey", desc: "Viaje actual, últimas vacaciones y viajes futuros", icon: FileText, href: "survey", tone: "blue" },
@@ -185,17 +186,19 @@ export function ClientDetail({ id }) {
     <>
       <Topbar title="Expediente" subtitle="Información del expediente" />
       <div className="sales-page">
-        <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 20 }}>
-          <Link to="/clients" className="btn btn-ghost btn-sm">← Volver</Link>
-          <div style={{ flex: 1 }}>
-            <div id="exp-title" style={{ fontSize: 22, fontWeight: 800, letterSpacing: "-0.5px" }}>{clientDisplayName(c)}</div>
-            <div id="exp-since" style={{ fontSize: 13, color: "var(--muted)", marginTop: 2 }}>{since}</div>
+        <header className="exp-page-head">
+          <Link to="/clients" className="btn btn-ghost btn-sm exp-page-back">← Volver</Link>
+          <div className="exp-page-meta">
+            <h1 className="exp-page-title" id="exp-title">{clientDisplayName(c)}</h1>
+            <p className="exp-page-sub" id="exp-since">{since}</p>
           </div>
-          <button type="button" className="btn btn-primary btn-sm" onClick={() => openSaleModal()}>Registrar venta</button>
-          <button type="button" className="btn btn-danger btn-sm" onClick={async () => {
-            if (await removeClient(id, clientDisplayName(c))) navigate("/clients");
-          }}>Eliminar</button>
-        </div>
+          <div className="exp-page-actions">
+            <button type="button" className="btn btn-primary btn-sm" onClick={() => openSaleModal()}>Registrar venta</button>
+            <button type="button" className="btn btn-danger btn-sm" onClick={async () => {
+              if (await removeClient(id, clientDisplayName(c))) navigate("/clients");
+            }}>Eliminar</button>
+          </div>
+        </header>
 
         <div className="ethic-box" style={{ marginBottom: 16 }}>
           <strong>Código ético:</strong> este expediente es temporal. Al procesar o cerrar una operación, la app debe conservar solo información comercial/estadística y limpiar datos personales innecesarios.
