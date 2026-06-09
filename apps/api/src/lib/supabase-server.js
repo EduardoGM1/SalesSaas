@@ -1,11 +1,15 @@
 import dns from "node:dns";
-import { createServerClient } from "@supabase/ssr";
+import { createServerClient, parseCookieHeader, serializeCookieHeader } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
 import { getSupabaseAnonKey, getSupabaseUrl } from "@salesapp/shared/supabase/config.js";
 
 dns.setDefaultResultOrder("ipv4first");
 
 const FETCH_TIMEOUT_MS = 15_000;
+
+function isProductionRuntime() {
+  return process.env.NODE_ENV === "production" || Boolean(process.env.VERCEL);
+}
 
 export function fetchWithTimeout(url, options = {}) {
   const { signal: _ignored, ...rest } = options;
@@ -16,25 +20,20 @@ export function fetchWithTimeout(url, options = {}) {
   });
 }
 
-function parseCookieHeader(header = "") {
-  return header.split(";").map((part) => {
-    const [name, ...rest] = part.trim().split("=");
-    return { name, value: rest.join("=") };
-  }).filter((c) => c.name);
-}
-
-function applySetCookies(res, cookiesToSet) {
-  for (const { name, value, ...options } of cookiesToSet) {
-    const parts = [`${name}=${value}`];
-    if (options.maxAge != null) parts.push(`Max-Age=${options.maxAge}`);
-    if (options.path) parts.push(`Path=${options.path}`);
-    if (options.domain) parts.push(`Domain=${options.domain}`);
-    if (options.expires) parts.push(`Expires=${options.expires.toUTCString()}`);
-    if (options.httpOnly) parts.push("HttpOnly");
-    if (options.secure) parts.push("Secure");
-    if (options.sameSite) parts.push(`SameSite=${options.sameSite}`);
-    res.append("Set-Cookie", parts.join("; "));
-  }
+function createCookieHandlers(req, res) {
+  return {
+    getAll() {
+      return parseCookieHeader(req.headers.cookie ?? "");
+    },
+    setAll(cookiesToSet, headers = {}) {
+      for (const { name, value, options } of cookiesToSet) {
+        res.append("Set-Cookie", serializeCookieHeader(name, value, options));
+      }
+      for (const [key, value] of Object.entries(headers)) {
+        res.setHeader(key, value);
+      }
+    },
+  };
 }
 
 export function createCookieSupabaseClient(req, res) {
@@ -45,10 +44,12 @@ export function createCookieSupabaseClient(req, res) {
   }
   return createServerClient(url, key, {
     global: { fetch: fetchWithTimeout },
-    cookies: {
-      getAll: () => parseCookieHeader(req.headers.cookie),
-      setAll: (cookiesToSet) => applySetCookies(res, cookiesToSet),
+    cookieOptions: {
+      path: "/",
+      sameSite: "lax",
+      secure: isProductionRuntime(),
     },
+    cookies: createCookieHandlers(req, res),
   });
 }
 

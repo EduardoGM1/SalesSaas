@@ -11,9 +11,24 @@ export function ProtectedRoute({ children }) {
       setState({ loading: false, ok: true });
       return;
     }
-    fetch("/api/v1/auth/session", { credentials: "include" })
-      .then((r) => setState({ loading: false, ok: r.ok }))
-      .catch(() => setState({ loading: false, ok: false }));
+    let active = true;
+    const checkSession = () => {
+      setState((prev) => ({ ...prev, loading: true }));
+      fetch("/api/v1/auth/session", { credentials: "include" })
+        .then((r) => {
+          if (active) setState({ loading: false, ok: r.ok });
+        })
+        .catch(() => {
+          if (active) setState({ loading: false, ok: false });
+        });
+    };
+    checkSession();
+    const onAuthChanged = () => checkSession();
+    window.addEventListener("auth:changed", onAuthChanged);
+    return () => {
+      active = false;
+      window.removeEventListener("auth:changed", onAuthChanged);
+    };
   }, []);
 
   if (state.loading) return <div className="sales-page">Cargando sesión…</div>;

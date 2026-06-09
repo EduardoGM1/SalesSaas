@@ -1,7 +1,7 @@
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 
 export async function fetchSession() {
-  if (!isSupabaseConfigured()) return { user, profile: null };
+  if (!isSupabaseConfigured()) return null;
   const res = await fetch("/api/v1/auth/session", { credentials: "include" });
   if (!res.ok) return null;
   return res.json();
