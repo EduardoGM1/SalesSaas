@@ -8,11 +8,16 @@
   "functions": {
     "api/index.mjs": {
       "maxDuration": 30,
-      "memory": 1024
+      "memory": 1024,
+      "includeFiles": "apps/api/**,packages/shared/**"
     }
+  },
+  "env": {
+    "NODE_OPTIONS": "--dns-result-order=ipv4first"
   },
   "rewrites": [
     { "source": "/health", "destination": "/api" },
+    { "source": "/health/:path*", "destination": "/api" },
     { "source": "/api/:path*", "destination": "/api" },
     { "source": "/auth/:path*", "destination": "/api" },
     { "source": "/((?!assets/|icon|favicon|manifest|sw|workbox|registerSW).*)", "destination": "/index.html" }

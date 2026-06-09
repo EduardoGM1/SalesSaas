@@ -4,10 +4,14 @@ import cookieParser from "cookie-parser";
 import v1Router from "./routes/v1.js";
 import authRouter from "./routes/auth.js";
 import { webOrigins } from "./lib/origins.js";
+import { isSupabaseConfigured } from "@salesapp/shared/supabase/config.js";
+import { probeSupabaseAuth } from "./lib/supabase-server.js";
 
 export function createApp() {
   const app = express();
   const origins = webOrigins();
+
+  app.set("trust proxy", 1);
 
   app.use(cors({
     origin: origins.length ? origins : true,
@@ -18,6 +22,15 @@ export function createApp() {
 
   app.get("/health", (_req, res) => {
     res.json({ ok: true, service: "@salesapp/api" });
+  });
+
+  app.get("/health/supabase", async (_req, res) => {
+    const probe = await probeSupabaseAuth();
+    res.json({
+      ok: probe.ok,
+      configured: isSupabaseConfigured(),
+      probe,
+    });
   });
 
   app.use("/api/v1", v1Router);

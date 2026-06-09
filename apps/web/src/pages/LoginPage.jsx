@@ -20,18 +20,26 @@ export function LoginPage() {
     setError(null);
     const fd = new FormData(e.currentTarget);
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 25_000);
       const res = await fetch("/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
+        signal: controller.signal,
         body: JSON.stringify({ email: fd.get("email"), password: fd.get("password") }),
       });
+      clearTimeout(timeoutId);
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body.error ?? "No se pudo iniciar sesión.");
       notifyAuthChanged();
       navigate("/");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error");
+      if (err instanceof Error && err.name === "AbortError") {
+        setError("El servidor tardó demasiado. Revisa la conexión e intenta de nuevo.");
+      } else {
+        setError(err instanceof Error ? err.message : "Error");
+      }
     } finally {
       setPending(false);
     }
