@@ -89,16 +89,6 @@
   width: 100%;
   margin: 0 auto;
 }
-.admin-topbar { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; gap: 20px; background: var(--navy, #0f172a); color: #fff; padding: 0 20px; height: 58px; box-shadow: 0 1px 0 rgba(255,255,255,0.06); }
-.admin-brand { display: flex; align-items: center; gap: 10px; }
-.admin-brand-badge { background: linear-gradient(135deg, #3b82f6, #2563eb); color: #fff; font-size: 11px; font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase; padding: 4px 9px; border-radius: 7px; }
-.admin-brand-title { font-size: 14px; font-weight: 700; color: rgba(255,255,255,0.9); }
-.admin-tabs { display: flex; align-items: center; gap: 4px; flex: 1; }
-.admin-tab { display: inline-flex; align-items: center; gap: 7px; padding: 8px 12px; border-radius: 9px; font-size: 13px; font-weight: 600; color: rgba(255,255,255,0.55); text-decoration: none; transition: all 0.15s; }
-.admin-tab:hover { background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.9); }
-.admin-tab.active { background: rgba(59,130,246,0.22); color: #93c5fd; }
-.admin-back { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 600; color: rgba(255,255,255,0.55); text-decoration: none; }
-.admin-back:hover { color: #fff; }
 .admin-main { padding: 26px; max-width: 1280px; margin: 0 auto; }
 .admin-page-head { margin-bottom: 20px; }
 .admin-h1 { font-size: 24px; font-weight: 800; letter-spacing: -0.5px; color: var(--text); }
@@ -284,7 +274,6 @@ button.tool-card {
 .admin-perms-modal .admin-perms-grid { padding: 0 20px 4px; }
 .admin-perms-modal .btn-row { padding: 16px 20px 20px; }
 .admin-back-icon { font-size: 15px; line-height: 1; }
-@media (max-width: 1100px) { .admin-tabs { overflow-x: auto; flex-wrap: nowrap; } }
 .admin-loading .admin-skeleton { background: linear-gradient(90deg, var(--border) 25%, #f1f5f9 50%, var(--border) 75%); background-size: 200% 100%; animation: admin-shimmer 1.2s ease-in-out infinite; border-radius: 8px; }
 .admin-skeleton-title { height: 28px; width: 220px; margin-bottom: 8px; }
 .admin-skeleton-sub { height: 14px; width: 320px; }
@@ -351,21 +340,22 @@ body,
   height: auto;
 }
 
-.admin-topbar {
+.topbar--admin {
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.topbar--admin .topbar-primary {
   padding-top: var(--safe-top);
-  padding-left: max(12px, var(--safe-left));
-  padding-right: max(12px, var(--safe-right));
-  min-height: calc(58px + var(--safe-top));
-  height: auto;
-  flex-wrap: nowrap;
+  padding-left: max(14px, var(--safe-left));
+  padding-right: max(14px, var(--safe-right));
+  min-height: calc(var(--topbar-h) + var(--safe-top));
 }
 
-.admin-brand-title {
-  display: none;
-}
-
-.admin-back span:not(.admin-back-icon) {
-  display: none;
+.topbar--admin .topbar-admin-tabs {
+  padding-left: max(14px, var(--safe-left));
+  padding-right: max(14px, var(--safe-right));
+  padding-bottom: calc(10px + var(--safe-bottom) * 0.25);
 }
 
 .admin-main {
@@ -404,11 +394,6 @@ body,
   padding-right: max(12px, var(--safe-right));
 }
 
-@media (min-width: 901px) {
-  .admin-brand-title { display: inline; }
-  .admin-back span:not(.admin-back-icon) { display: inline; }
-}
-
 @media (max-width: 700px) {
   html { font-size: 14px; }
 
@@ -418,10 +403,28 @@ body,
     padding-right: max(12px, var(--safe-right));
   }
 
-  .topbar {
+  .topbar:not(.topbar--admin) {
     padding-left: max(10px, var(--safe-left));
     padding-right: max(10px, var(--safe-right));
     gap: 8px;
+  }
+
+  .topbar--admin .topbar-primary {
+    padding-left: max(10px, var(--safe-left));
+    padding-right: max(10px, var(--safe-right));
+  }
+
+  .topbar--admin .topbar-admin-tabs {
+    padding-left: max(10px, var(--safe-left));
+    padding-right: max(10px, var(--safe-right));
+  }
+
+  .tb-back-app span {
+    display: none;
+  }
+
+  .tb-page-title--admin span:not(.tb-admin-badge) {
+    font-size: 15px;
   }
 
   .tb-left {
@@ -493,7 +496,9 @@ body,
 
 @media (max-width: 390px) {
   .tb-page-sub { display: none; }
-  .admin-brand-badge { font-size: 10px; padding: 3px 7px; }
+  .tb-admin-badge { font-size: 9px; padding: 2px 6px; }
+  .topbar-admin-tab span { display: none; }
+  .topbar-admin-tab { padding: 7px 10px; }
 }
 
 /* ===== PWA INSTALL PROMPT ===== */

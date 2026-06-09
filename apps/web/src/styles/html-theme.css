@@ -39,7 +39,17 @@ body{font-family:var(--font-sans,'Inter',sans-serif);background:var(--bg);color:
 .main{margin-left:var(--sidebar-w);flex:1;display:flex;flex-direction:column;min-height:100vh;}
 
 /* TOPBAR */
-.topbar{height:var(--topbar-h);background:var(--white);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 28px;position:sticky;top:0;z-index:100;box-shadow:0 1px 0 var(--border);}
+.topbar{min-height:var(--topbar-h);background:var(--white);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 28px;position:sticky;top:0;z-index:100;box-shadow:0 1px 0 var(--border);}
+.topbar--admin{flex-direction:column;align-items:stretch;justify-content:flex-start;padding:0;gap:0;}
+.topbar-primary{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:var(--topbar-h);padding:0 28px;width:100%;}
+.topbar-admin-tabs{display:flex;align-items:center;gap:4px;flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;padding:0 28px 10px;border-top:1px solid var(--border);background:var(--surface2);scrollbar-width:none;}
+.topbar-admin-tabs::-webkit-scrollbar{display:none;}
+.topbar-admin-tab{display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border-radius:9px;font-size:12px;font-weight:600;color:var(--muted);text-decoration:none;white-space:nowrap;transition:all 0.15s;border:1px solid transparent;}
+.topbar-admin-tab:hover{background:var(--white);color:var(--text2);border-color:var(--border);}
+.topbar-admin-tab.active{background:var(--white);color:var(--blue);border-color:var(--blue-xlt);box-shadow:0 1px 3px rgba(37,99,235,0.12);}
+.tb-page-title--admin{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.tb-admin-badge{display:inline-flex;align-items:center;background:linear-gradient(135deg,var(--blue-lt),var(--blue));color:#fff;font-size:10px;font-weight:800;letter-spacing:0.4px;text-transform:uppercase;padding:3px 8px;border-radius:6px;line-height:1.2;}
+.tb-back-app{display:inline-flex;align-items:center;gap:6px;white-space:nowrap;}
 .tb-left{display:flex;align-items:center;gap:16px;}
 .tb-back-btn{display:none!important;}
 .page-back-row{display:flex;align-items:center;margin-bottom:16px;}
