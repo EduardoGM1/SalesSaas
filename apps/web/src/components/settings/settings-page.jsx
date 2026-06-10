@@ -285,7 +285,7 @@ export function SettingsPage() {
                     </select>
                   </div>
                   <div className="settings-row">
-                    <div><div className="settings-label">Modo de tipo de cambio</div><div className="settings-help">Manual: tú defines el valor. Automático: se consulta vía API (Frankfurter / ECB).</div></div>
+                    <div><div className="settings-label">Modo de tipo de cambio</div><div className="settings-help">Manual: tú defines el valor.</div></div>
                     <select
                       value={settings.exchangeMode || "manual"}
                       onChange={(e) => setSetting("exchangeMode", e.target.value)}
@@ -313,7 +313,7 @@ export function SettingsPage() {
                       <div className="settings-label">Tipo de cambio automático</div>
                       <div className="settings-help">
                         {settings.exchangeMode === "auto"
-                          ? "1 USD en la moneda visual, actualizado desde el backend."
+                          ? "1 USD en la moneda visual."
                           : "Activa el modo automático para consultar la tasa del día."}
                       </div>
                     </div>
@@ -326,8 +326,6 @@ export function SettingsPage() {
                             <div className="settings-fx-rate">
                               1 USD = {(settings.exchangeRate || 1).toLocaleString("es-MX", { maximumFractionDigits: 4 })} {settings.currency}
                             </div>
-                            {fxDate && <div className="settings-fx-meta">Referencia del {fxDate} (Frankfurter)</div>}
-                            <span className="settings-fx-ok">API conectada</span>
                           </>
                         )}
                         <button
