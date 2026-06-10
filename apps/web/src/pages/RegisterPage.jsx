@@ -27,7 +27,7 @@ export function RegisterPage() {
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body.error ?? "No se pudo crear la cuenta.");
       if (body.redirect) {
-        navigate(body.redirect);
+        navigate(body.redirect, { replace: true });
         return;
       }
       setMessage(body.message ?? "Cuenta creada. Revisa tu correo para confirmar.");

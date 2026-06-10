@@ -24,7 +24,7 @@ export function ResetPasswordPage() {
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body.error ?? "No se pudo actualizar la contraseña.");
-      navigate(body.redirect ?? "/settings");
+      navigate(body.redirect ?? "/settings", { replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error");
     } finally {

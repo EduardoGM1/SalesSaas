@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Home } from "lucide-react";
+import { isSupabaseConfigured } from "@/lib/supabase/config.js";
 import { notifyAuthChanged } from "@/lib/session-api.js";
 
 const QUERY_MSG = {
@@ -13,6 +14,15 @@ export function LoginPage() {
   const [searchParams] = useSearchParams();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState(searchParams.get("error") ? QUERY_MSG[searchParams.get("error")] ?? "Error de autenticación." : null);
+
+  useEffect(() => {
+    if (!isSupabaseConfigured()) return;
+    fetch("/api/v1/auth/session", { credentials: "include" })
+      .then((r) => {
+        if (r.ok) navigate("/", { replace: true });
+      })
+      .catch(() => {});
+  }, [navigate]);
 
   const onSubmit = async (e) => {
     e.preventDefault();
@@ -33,7 +43,7 @@ export function LoginPage() {
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body.error ?? "No se pudo iniciar sesión.");
       notifyAuthChanged();
-      navigate("/");
+      navigate("/", { replace: true });
     } catch (err) {
       if (err instanceof Error && err.name === "AbortError") {
         setError("El servidor tardó demasiado. Revisa la conexión e intenta de nuevo.");

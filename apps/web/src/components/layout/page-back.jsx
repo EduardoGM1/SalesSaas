@@ -2,14 +2,16 @@ import { useNavigate } from "react-router-dom";
 
 export function PageBack({
   label = "← Volver",
-  href,
+  href = "/",
   onClick,
 }) {
   const navigate = useNavigate();
   const handleClick = () => {
-    if (onClick) onClick();
-    else if (href) navigate(href);
-    else navigate(-1);
+    if (onClick) {
+      onClick();
+      return;
+    }
+    navigate(href);
   };
   return (
     <div className="page-back-row">

@@ -2,7 +2,6 @@
 import { Link } from "react-router-dom";
 import { useState } from "react";
 import { Topbar } from "@/components/layout/topbar";
-import { PageBack } from "@/components/layout/page-back";
 import { toast } from "@/lib/toast";
 import { confirmDialog } from "@/lib/confirm";
 import { MONTHS, DAYS } from "@/lib/constants";
@@ -86,7 +85,6 @@ export function CalendarPage() {
     <>
       <Topbar title="Agenda" subtitle="Registro operativo diario" />
       <div className="sales-page">
-        <PageBack />
         <div className="cal-layout">
           <div className="cal-widget">
             <div className="agenda-month-nav">

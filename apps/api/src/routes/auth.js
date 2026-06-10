@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { isSupabaseConfigured } from "@salesapp/shared/supabase/config.js";
 import { apiError, json } from "../lib/http.js";
-import { primaryWebOrigin } from "../lib/origins.js";
+import { resolveWebOrigin } from "../lib/origins.js";
 import { createCookieSupabaseClient } from "../lib/supabase-server.js";
 
 const router = Router();
@@ -56,7 +56,7 @@ router.post("/register", async (req, res) => {
       password,
       options: {
         data: { full_name: fullName },
-        emailRedirectTo: `${primaryWebOrigin()}/auth/callback?next=/`,
+        emailRedirectTo: `${resolveWebOrigin(req)}/auth/callback?next=/`,
       },
     });
     if (error) return apiError(res, traducirError(error.message), 400);
@@ -87,7 +87,7 @@ router.post("/forgot-password", async (req, res) => {
   try {
     const sb = createCookieSupabaseClient(req, res);
     const { error } = await sb.auth.resetPasswordForEmail(email, {
-      redirectTo: `${primaryWebOrigin()}/auth/callback?next=/reset-password`,
+      redirectTo: `${resolveWebOrigin(req)}/auth/callback?next=/reset-password`,
     });
     if (error) return apiError(res, traducirError(error.message), 400);
     json(res, { message: "Si existe una cuenta con ese correo, recibirás un enlace para restablecer tu contraseña." });
@@ -117,7 +117,7 @@ router.post("/reset-password", async (req, res) => {
 });
 
 router.get("/callback", async (req, res) => {
-  const origin = primaryWebOrigin();
+  const origin = resolveWebOrigin(req);
   if (!isSupabaseConfigured()) return res.redirect(`${origin}/login?error=auth`);
   const code = req.query.code;
   const next = req.query.next ?? "/";
