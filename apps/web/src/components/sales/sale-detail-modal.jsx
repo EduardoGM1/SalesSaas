@@ -20,19 +20,18 @@ const SURVEY_ROW_KEYS = [
 function DetailRow({ label, value }) {
   if (value == null || value === "") return null;
   return (
-    <div className="ps-row">
-      <div className="ps-label">{label}</div>
-      <div className="ps-value">{value}</div>
+    <div className="sale-detail-row">
+      <div className="sale-detail-label">{label}</div>
+      <div className="sale-detail-value">{value}</div>
     </div>
   );
 }
 
-function ToolSection({ title, sub, children, empty }) {
+function ToolSection({ title, children, empty }) {
   const { t } = useI18n();
   return (
     <div className="sale-detail-section">
-      <div className="card-heading">{title}</div>
-      {sub && <div className="card-sub">{sub}</div>}
+      <div className="sale-detail-heading">{title}</div>
       {empty ? <div className="activity-empty">{t("saleDetail.noData")}</div> : children}
     </div>
   );
@@ -78,7 +77,8 @@ export function SaleDetailModal({ open, onOpenChange, saleId, showTools = true }
       maxWidth={820}
     >
       <div className="sale-detail-body">
-        <ToolSection title={t("saleDetail.saleInfo")} sub={t("saleDetail.readOnly")}>
+        <ToolSection title={t("saleDetail.saleInfo")}>
+          <p className="sale-detail-hint">{t("saleDetail.readOnly")}</p>
           <div className="prospect-summary-list">
             <DetailRow label={t("admin.table.date")} value={sale.date ? longDate(sale.date, lang) : "—"} />
             <DetailRow label={t("admin.table.file")} value={fileLabel} />
@@ -87,14 +87,14 @@ export function SaleDetailModal({ open, onOpenChange, saleId, showTools = true }
             <DetailRow label={t("salesHistory.filters.processing")} value={pending ? t("exp.sales.pending") : t("salesHistory.filters.processable")} />
             <DetailRow label={t("admin.table.tours")} value={fmtN(sale.tours || 0)} />
             <DetailRow label={t("admin.table.volume")} value={fmt(sale.vol || 0)} />
-            {sale.processDate && <DetailRow label={t("exp.sales.processes", { date: longDate(sale.processDate, lang) })} value="✓" />}
+            {sale.processDate && <DetailRow label={t("saleDetail.processDate")} value={longDate(sale.processDate, lang)} />}
             {sale.note && <DetailRow label={t("exp.sale.notes")} value={sale.note} />}
           </div>
         </ToolSection>
 
         {showTools && (
           <>
-            <ToolSection title={t("exp.prospect.title")} sub={t("saleDetail.prospectSnapshot")} empty={!summary.name1 && !summary.city && !summary.phone}>
+            <ToolSection title={t("saleDetail.prospectTitle")} empty={!summary.name1 && !summary.city && !summary.phone}>
               <div className="prospect-summary-list">
                 <DetailRow label={t("exp.prospect.name")} value={displayName} />
                 <DetailRow label={t("exp.prospect.id")} value={summary.prospectCode || sale.prospectCode} />
@@ -105,7 +105,7 @@ export function SaleDetailModal({ open, onOpenChange, saleId, showTools = true }
               </div>
             </ToolSection>
 
-            <ToolSection title={t("tools.survey")} sub={t("saleDetail.surveyProjection")} empty={!surveyRows.length}>
+            <ToolSection title={t("saleDetail.surveyTitle")} empty={!surveyRows.length}>
               <table className="dtbl pattern-table">
                 <thead>
                   <tr>
@@ -130,7 +130,7 @@ export function SaleDetailModal({ open, onOpenChange, saleId, showTools = true }
               </table>
             </ToolSection>
 
-            <ToolSection title={t("tools.vacaciones")} sub={t("saleDetail.vacationProjection")} empty={!vacResult.viajes && !vacResult.costo}>
+            <ToolSection title={t("saleDetail.vacationTitle")} empty={!vacResult.viajes && !vacResult.costo}>
               <div className="prospect-summary-list">
                 <DetailRow label={t("saleDetail.vac.trips")} value={fmtN(vacResult.viajes)} />
                 <DetailRow label={t("saleDetail.vac.cost")} value={fmt(vacResult.costo)} />
@@ -143,7 +143,7 @@ export function SaleDetailModal({ open, onOpenChange, saleId, showTools = true }
               </div>
             </ToolSection>
 
-            <ToolSection title={t("tools.worksheet")} sub={t("saleDetail.worksheetData")} empty={!worksheetRows.length}>
+            <ToolSection title={t("saleDetail.worksheetTitle")} empty={!worksheetRows.length}>
               <div className="prospect-summary-list">
                 {worksheetRows.map((row) => (
                   <DetailRow key={row.key} label={row.label} value={row.value} />

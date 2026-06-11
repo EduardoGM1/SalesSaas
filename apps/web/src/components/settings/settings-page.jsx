@@ -17,6 +17,7 @@ import { saveProfileRemote } from "@/actions/settings.js";
 import { selectOnFocus } from "@/lib/focus-select.js";
 import { fetchExchangeRate } from "@/lib/exchange-rate-sync.js";
 import { useAppStore } from "@/stores/app-store";
+import { collectAllSales } from "@/lib/sales/collect";
 import { useDbStore } from "@/stores/db-store";
 import { useSyncStore } from "@/stores/sync-store";
 import { toast } from "@/lib/toast";
@@ -86,12 +87,9 @@ export function SettingsPage() {
   }, [db.settings]);
 
   const clientCount = Object.keys(db.clients).length;
-  const salesCount = (() => {
-    let n = Object.values(db.sales ?? {}).length;
-    for (const c of Object.values(db.clients)) n += (c.sales || []).length;
-    return n;
-  })();
-  const salesVol = sales.reduce((a, s) => a + (s.vol || 0), 0);
+  const allSales = collectAllSales(db);
+  const salesCount = allSales.length;
+  const salesVol = allSales.reduce((a, s) => a + (s.vol || 0), 0);
   const entriesCount = Object.values(db.cal).reduce(
     (a, m) => a + Object.values(m.days || {}).reduce((b, arr) => b + arr.length, 0),
     0
