@@ -4,6 +4,11 @@
 .page-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; gap: 14px; flex-wrap: wrap; }
 .page-title { font-size: 22px; font-weight: 800; letter-spacing: -0.5px; color: var(--text); }
 .page-sub { font-size: 13px; color: var(--muted); margin-top: 2px; }
+.tool-page-head-main { display: flex; align-items: center; gap: 14px; min-width: 0; flex: 1; }
+.tool-page-head-titles { min-width: 0; }
+.dash-chart-toggles { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; }
+.dash-chart-toggle { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; color: var(--text2); font-weight: 600; cursor: pointer; user-select: none; }
+.dash-chart-toggle input { accent-color: var(--blue); }
 
 /* ===== AUTH ===== */
 .auth-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; background: var(--bg); }
@@ -471,6 +476,16 @@ body,
     flex-direction: column;
     align-items: stretch;
     gap: 12px;
+  }
+
+  .tool-page-head-main {
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+
+  .tool-page-head-titles .page-title {
+    font-size: 18px;
+    line-height: 1.2;
   }
 
   .page-head .btn {

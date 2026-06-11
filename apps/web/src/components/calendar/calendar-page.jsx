@@ -8,6 +8,7 @@ import { translate } from "@/lib/i18n.js";
 import { isCalendarSaleCountable } from "@/lib/calculations/calendar";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { useMoney } from "@/hooks/use-money.js";
+import { calKey } from "@/lib/format/dates";
 import { useAppStore } from "@/stores/app-store";
 import { useDbStore } from "@/stores/db-store";
 import { EntryDialog } from "./entry-dialog";
@@ -23,14 +24,12 @@ export function CalendarPage() {
   const setSelDay = useAppStore((s) => s.setSelDay);
   const calPrev = useAppStore((s) => s.calPrev);
   const calNext = useAppStore((s) => s.calNext);
-  const getCalMonth = useDbStore((s) => s.getCalMonth);
   const deleteCalEntry = useDbStore((s) => s.deleteCalEntry);
+  const data = useDbStore((s) => s.db.cal[calKey(calYear, calMonth)] ?? { days: {}, weeks: {} });
   const [dialogOpen, setDialogOpen] = useState(false);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({ venta: true });
 
   if (!hydrated) return <Topbar title={t("page.agenda.title")} subtitle={t("common.loading")} />;
-
-  const data = getCalMonth(calYear, calMonth);
   const first = new Date(calYear, calMonth, 1).getDay();
   const dim = new Date(calYear, calMonth + 1, 0).getDate();
   const today = new Date();
@@ -53,13 +52,18 @@ export function CalendarPage() {
             <span className="dg-name">{label}</span>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            {type === "venta" && <span className="dg-sum">{fmt(totalVol)}</span>}
+            {type === "venta" && (
+              <>
+                {items.length > 1 && <span className="dg-count">{items.length}</span>}
+                <span className="dg-sum">{fmt(totalVol)}</span>
+              </>
+            )}
             {type !== "venta" && <span className="dg-count">{items.length}{type === "nota" ? ` nota${items.length > 1 ? "s" : ""}` : type === "descanso" ? ` día${items.length > 1 ? "s" : ""}` : ""}</span>}
             <span className="dg-count">{open ? "▾" : "▸"}</span>
           </div>
         </button>
         {open && (
-          <div className="dg-body">
+          <div className="dg-body open">
             {items.map((e, i) => {
               const idx = selDay ? (data.days[selDay] || []).indexOf(e) : -1;
               return (

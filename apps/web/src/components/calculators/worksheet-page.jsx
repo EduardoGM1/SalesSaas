@@ -7,26 +7,30 @@ import { SaveToolModal } from "@/components/calculators/save-tool-modal";
 import { Topbar } from "@/components/layout/topbar";
 import { WS_CONFIG_IDS, WS_DEFAULTS } from "@/lib/constants";
 import { computeWorksheet, ensureWSConfig } from "@/lib/calculations/worksheet";
+import { resolveToolBackHref } from "@/lib/calculator-nav.js";
+import { selectOnFocus } from "@/lib/focus-select.js";
 import { formatMoneyValue } from "@/lib/format/money";
+import { useI18n } from "@/hooks/use-i18n.js";
 import { useMoney } from "@/hooks/use-money.js";
 import { useToolBucketReady } from "@/hooks/use-tool-bucket-ready";
 import { useDbStore } from "@/stores/db-store";
 
-const FIELD_DEFAULTS = { wv: "20000", we: "30", wcc: "0", wob: "0" };
+const EMPTY_FIELDS = { wv: "", we: "", wcc: "", wob: "" };
 
 interface WorksheetPageProps {
   clientId?;
-  backHref;
 }
 
-export function WorksheetPage({ clientId, backHref }: WorksheetPageProps) {
+export function WorksheetPage({ clientId }: WorksheetPageProps) {
+  const { t } = useI18n();
+  const backHref = resolveToolBackHref(clientId);
   const { fmt } = useMoney();
   const moneySettings = useDbStore((s) => s.db.settings);
   const { ready, mode } = useToolBucketReady(clientId);
   const db = useDbStore((s) => s.db);
   const getToolBucket = useDbStore((s) => s.getToolBucket);
   const saveToolBucket = useDbStore((s) => s.saveToolBucket);
-  const [fields, setFields] = useState({ ...FIELD_DEFAULTS });
+  const [fields, setFields] = useState({ ...EMPTY_FIELDS });
   const [configOpen, setConfigOpen] = useState(false);
   const [config, setConfig] = useState<Record<string, string>>({ ...WS_DEFAULTS });
   const [saved, setSaved] = useState(false);
@@ -39,10 +43,15 @@ export function WorksheetPage({ clientId, backHref }: WorksheetPageProps) {
     const cfg = ensureWSConfig({ ...globalCfg, ...b });
     setConfig(Object.fromEntries(WS_CONFIG_IDS.map((k) => [k, String(cfg[k] ?? WS_DEFAULTS[k])])));
     setFields({
-      wv: String(b.wv ?? "20000"), we: String(b.we ?? "30"),
-      wcc: String(b.wcc ?? "0"), wob: String(b.wob ?? "0"),
+      wv: String(b.wv ?? ""), we: String(b.we ?? ""),
+      wcc: String(b.wcc ?? ""), wob: String(b.wob ?? ""),
     });
   }, [ready, clientId, getToolBucket, mode, db.settings?.worksheetConfig]);
+
+  const handleClear = () => {
+    setFields({ ...EMPTY_FIELDS });
+    if (ready) saveToolBucket("worksheet", mode, { ...EMPTY_FIELDS, ...config }, clientId);
+  };
 
   const result = useMemo(
     () => computeWorksheet(fields, config),
@@ -64,7 +73,7 @@ export function WorksheetPage({ clientId, backHref }: WorksheetPageProps) {
 
   const moneyField = (key: keyof typeof fields) => (
     <div className="mfield"><span className="mpfx">$</span>
-      <input type="text" value={fields[key]} onChange={(e) => setFields({ ...fields, [key]: e.target.value })} onBlur={(e) => setFields({ ...fields, [key]: formatMoneyValue(e.target.value) })} />
+      <input type="text" value={fields[key]} onFocus={selectOnFocus} onChange={(e) => setFields({ ...fields, [key]: e.target.value })} onBlur={(e) => setFields({ ...fields, [key]: formatMoneyValue(e.target.value) })} />
     </div>
   );
 
@@ -72,15 +81,15 @@ export function WorksheetPage({ clientId, backHref }: WorksheetPageProps) {
     <>
       <Topbar title="Worksheet" subtitle={clientId ? "Financiamiento" : "Calculadora libre"} />
       <div className="sales-page">
-        <div className="page-head">
-          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-            <Link to={backHref} className="btn btn-ghost btn-sm">← Volver</Link>
-            <div>
+        <div className="page-head tool-page-head">
+          <div className="tool-page-head-main">
+            <Link to={backHref} className="btn btn-ghost btn-sm">← {t("common.back")}</Link>
+            <div className="tool-page-head-titles">
               <div className="page-title">Worksheet</div>
               <div className="page-sub">{clientId ? "Expediente" : "Calculadora libre"}</div>
             </div>
           </div>
-          <button type="button" className="btn btn-ghost btn-sm" onClick={() => setFields({ ...FIELD_DEFAULTS })}>Limpiar</button>
+          <button type="button" className="btn btn-ghost btn-sm" onClick={handleClear}>{t("common.clear")}</button>
         </div>
 
         <div className="g2">
@@ -89,7 +98,7 @@ export function WorksheetPage({ clientId, backHref }: WorksheetPageProps) {
             <div className="frow"><div className="flabel">Monto de venta</div>{moneyField("wv")}</div>
             <div className="frow"><div className="flabel">% Enganche</div>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <input type="number" min={0} max={100} style={{ width: 65, padding: "7px 8px", border: "1px solid var(--border2)", borderRadius: 8, background: "var(--surface2)" }} value={fields.we} onChange={(e) => setFields({ ...fields, we: e.target.value })} />
+                <input type="number" min={0} max={100} style={{ width: 65, padding: "7px 8px", border: "1px solid var(--border2)", borderRadius: 8, background: "var(--surface2)" }} value={fields.we} onFocus={selectOnFocus} onChange={(e) => setFields({ ...fields, we: e.target.value })} />
                 <span style={{ color: "var(--muted)", fontSize: 13 }}>%</span>
               </div>
             </div>
@@ -146,10 +155,10 @@ export function WorksheetPage({ clientId, backHref }: WorksheetPageProps) {
               </div>
               <div className="opt-body">
                 <div className="opt-field"><label>Meses</label>
-                  <input type="number" min={1} value={config[`wo${n}m`]} onChange={(e) => setConfig({ ...config, [`wo${n}m`]: e.target.value })} />
+                  <input type="number" min={1} value={config[`wo${n}m`]} onFocus={selectOnFocus} onChange={(e) => setConfig({ ...config, [`wo${n}m`]: e.target.value })} />
                 </div>
                 <div className="opt-field"><label>Interés anual %</label>
-                  <input type="number" min={0} step={0.01} value={config[`wo${n}r`]} onChange={(e) => setConfig({ ...config, [`wo${n}r`]: e.target.value })} />
+                  <input type="number" min={0} step={0.01} value={config[`wo${n}r`]} onFocus={selectOnFocus} onChange={(e) => setConfig({ ...config, [`wo${n}r`]: e.target.value })} />
                 </div>
               </div>
             </div>

@@ -4,6 +4,7 @@ import {  useNavigate  } from "react-router-dom";
 import { SalesModal } from "@/components/ui/sales-modal";
 import { MONTHS, DAYS } from "@/lib/constants";
 import { useCalendarActions } from "@/hooks/use-calendar-actions.js";
+import { selectOnFocus } from "@/lib/focus-select.js";
 
 type EType = "venta" | "follow" | "notaCliente" | "notaUsuario" | "descanso";
 
@@ -174,11 +175,11 @@ export function EntryDialog({ open, onOpenChange, year, month, day }: EntryDialo
           <div className="prospect-grid">
             <div className="prospect-field">
               <label>Fecha</label>
-              <input type="date" id="e-rem-date" value={remDate} onChange={(e) => setRemDate(e.target.value)} />
+              <input type="date" id="e-rem-date" value={remDate} onFocus={selectOnFocus} onChange={(e) => setRemDate(e.target.value)} />
             </div>
             <div className="prospect-field">
               <label>Hora opcional</label>
-              <input type="time" id="e-rem-time" value={remTime} onChange={(e) => setRemTime(e.target.value)} />
+              <input type="time" id="e-rem-time" value={remTime} onFocus={selectOnFocus} onChange={(e) => setRemTime(e.target.value)} />
             </div>
           </div>
           <div className="route-note" style={{ marginTop: 10 }}>
@@ -197,6 +198,7 @@ export function EntryDialog({ open, onOpenChange, year, month, day }: EntryDialo
             rows={4}
             style={{ width: "100%" }}
             value={nota}
+            onFocus={selectOnFocus}
             onChange={(e) => setNota(e.target.value)}
             placeholder="Escribe una nota personal u operativa..."
           />

@@ -3,10 +3,36 @@ import { useMoney } from "@/hooks/use-money.js";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { DashboardWeek } from "@/lib/calculations/calendar";
 
-export function DashboardChart({ weeks }: { weeks: DashboardWeek[] }) {
+export function DashboardChart({
+  weeks,
+  showTarget = true,
+  showReal = true,
+}: {
+  weeks: DashboardWeek[];
+  showTarget?: boolean;
+  showReal?: boolean;
+}) {
   const { fmtN } = useMoney();
   const { t } = useI18n();
-  const values = weeks.flatMap((w) => [w.obj || 0, w.real || 0]);
+
+  if (!showTarget && !showReal) {
+    return (
+      <div className="dash-chart-empty">
+        <div>
+          <strong>{t("goals.chartSelectSeries")}</strong>
+          <br />
+          {t("goals.chartSelectSeriesHint")}
+        </div>
+      </div>
+    );
+  }
+
+  const values = weeks.flatMap((w) => {
+    const v: number[] = [];
+    if (showTarget) v.push(w.obj || 0);
+    if (showReal) v.push(w.real || 0);
+    return v;
+  });
   const maxVal = Math.max(0, ...values);
 
   if (maxVal <= 0) {
@@ -31,7 +57,9 @@ export function DashboardChart({ weeks }: { weeks: DashboardWeek[] }) {
   const x = (i: number) => m.l + (n === 1 ? iw / 2 : (iw * i) / (n - 1));
   const y = (v: number) => m.t + ih - (Math.max(0, Math.min(yMax, v)) / yMax) * ih;
 
-  const targetPts = weeks.map((w, i) => [x(i), y(w.obj || 0)] as [number, number]);
+  const targetPts = showTarget
+    ? weeks.map((w, i) => [x(i), y(w.obj || 0)] as [number, number])
+    : [];
   const areaPath = targetPts.length
     ? `M ${targetPts[0][0]} ${m.t + ih} L ${targetPts.map((p) => p.join(" ")).join(" L ")} L ${targetPts[targetPts.length - 1][0]} ${m.t + ih} Z`
     : "";
@@ -48,9 +76,9 @@ export function DashboardChart({ weeks }: { weeks: DashboardWeek[] }) {
             <text x={m.l - 8} y={y(tick) + 4} textAnchor="end" className="dash-axis-label">{fmtN(tick)}</text>
           </g>
         ))}
-        {areaPath && <path d={areaPath} className="dash-area-fill" />}
-        {linePath && <path d={linePath} className="dash-target-line" fill="none" />}
-        {weeks.map((w, i) => (
+        {showTarget && areaPath && <path d={areaPath} className="dash-area-fill" />}
+        {showTarget && linePath && <path d={linePath} className="dash-target-line" fill="none" />}
+        {showReal && weeks.map((w, i) => (
           <rect
             key={w.weekNo}
             x={x(i) - barW / 2}

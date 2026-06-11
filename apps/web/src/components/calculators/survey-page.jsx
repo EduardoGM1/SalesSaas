@@ -5,8 +5,11 @@ import { Topbar } from "@/components/layout/topbar";
 import { SaveToolModal } from "@/components/calculators/save-tool-modal";
 import { clientDisplayName, ensureProspectIdentity } from "@/lib/clients";
 import { computeSurvey } from "@/lib/calculations/survey";
+import { resolveToolBackHref } from "@/lib/calculator-nav.js";
 import { COUNTRY_CITY, COUNTRY_FLAGS } from "@/lib/constants";
+import { selectOnFocus } from "@/lib/focus-select.js";
 import { formatMoneyValue } from "@/lib/format/money";
+import { useI18n } from "@/hooks/use-i18n.js";
 import { useMoney } from "@/hooks/use-money.js";
 import { useToolBucketReady } from "@/hooks/use-tool-bucket-ready";
 import { useDbStore } from "@/stores/db-store";
@@ -14,22 +17,24 @@ import { useDbStore } from "@/stores/db-store";
 const HIST = ["sh1", "sh2", "sh3"];
 const FUT = ["sf1", "sf2", "sf3"];
 
-const DEFAULT_DATA: Record<string, string> = {
-  nights: "4", total: "6000", hpct: "70",
-  sh1c: "Cancún", sh1y: "2023", sh1n: "4", sh1a: "5000",
-  sh2c: "Los Cabos", sh2y: "2022", sh2n: "4", sh2a: "6500",
-  sh3c: "Vallarta", sh3y: "2022", sh3n: "5", sh3a: "4200",
-  sf1c: "Miami", sf1y: "2026", sf1n: "4", sf1a: "",
-  sf2c: "Las Vegas", sf2y: "2027", sf2n: "3", sf2a: "",
-  sf3c: "Nueva York", sf3y: "2027", sf3n: "5", sf3a: "",
+const EMPTY_DATA: Record<string, string> = {
+  nights: "", total: "", hpct: "",
+  sh1c: "", sh1y: "", sh1n: "", sh1a: "",
+  sh2c: "", sh2y: "", sh2n: "", sh2a: "",
+  sh3c: "", sh3y: "", sh3n: "", sh3a: "",
+  sf1c: "", sf1y: "", sf1n: "", sf1a: "",
+  sf2c: "", sf2y: "", sf2n: "", sf2a: "",
+  sf3c: "", sf3y: "", sf3n: "", sf3a: "",
+  svp_name1: "", svp_name2: "", svp_country: "", svp_occ1: "", svp_occ2: "", svp_city: "",
 };
 
 interface SurveyPageProps {
   clientId?;
-  backHref;
 }
 
-export function SurveyPage({ clientId, backHref }: SurveyPageProps) {
+export function SurveyPage({ clientId }: SurveyPageProps) {
+  const { t } = useI18n();
+  const backHref = resolveToolBackHref(clientId);
   const { ready, mode } = useToolBucketReady(clientId);
   const getToolBucket = useDbStore((s) => s.getToolBucket);
   const saveToolBucket = useDbStore((s) => s.saveToolBucket);
@@ -38,7 +43,7 @@ export function SurveyPage({ clientId, backHref }: SurveyPageProps) {
   const moneySettings = useDbStore((s) => s.db.settings);
   const { fmt, fmtD } = useMoney();
 
-  const [data, setData] = useState<Record<string, string>>({ ...DEFAULT_DATA });
+  const [data, setData] = useState<Record<string, string>>({ ...EMPTY_DATA });
   const [sType, setSType] = useState("hotel");
   const [futureType, setFutureType] = useState<"real" | "dream">("real");
   const [saved, setSaved] = useState(false);
@@ -47,7 +52,7 @@ export function SurveyPage({ clientId, backHref }: SurveyPageProps) {
   useEffect(() => {
     if (!ready) return;
     const bucket = getToolBucket("survey", mode, clientId);
-    const loaded: Record<string, string> = { ...DEFAULT_DATA };
+    const loaded: Record<string, string> = { ...EMPTY_DATA };
     if (Object.keys(bucket).length) {
       Object.entries(bucket).forEach(([k, v]) => { loaded[k] = String(v); });
       if (bucket.stype) setSType(String(bucket.stype));
@@ -113,24 +118,28 @@ export function SurveyPage({ clientId, backHref }: SurveyPageProps) {
   };
 
   const handleClear = () => {
-    setData({ ...DEFAULT_DATA });
+    const cleared = { ...EMPTY_DATA };
+    setData(cleared);
     setSType("hotel");
     setFutureType("real");
+    if (ready) {
+      saveToolBucket("survey", mode, { ...cleared, stype: "hotel", futureType: "real" }, clientId);
+    }
   };
 
   return (
     <>
       <Topbar title="Survey" subtitle={clientId ? "Calculadora de viaje" : "Calculadora libre"} />
       <div className="sales-page">
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-            <Link to={backHref} className="btn btn-ghost btn-sm">← Volver</Link>
-            <div>
+        <div className="page-head tool-page-head">
+          <div className="tool-page-head-main">
+            <Link to={backHref} className="btn btn-ghost btn-sm">← {t("common.back")}</Link>
+            <div className="tool-page-head-titles">
               <div className="page-title">Survey</div>
               <div className="page-sub">{pageCtx}</div>
             </div>
           </div>
-          <button type="button" className="btn btn-ghost btn-sm" onClick={handleClear}>Limpiar</button>
+          <button type="button" className="btn btn-ghost btn-sm" onClick={handleClear}>{t("common.clear")}</button>
         </div>
 
         <div className={`card client-survey-prospect${clientId ? " show" : ""}`}>
@@ -139,11 +148,11 @@ export function SurveyPage({ clientId, backHref }: SurveyPageProps) {
           <div className="client-survey-grid">
             <div className="client-survey-field left">
               <label>Nombre</label>
-              <input type="text" id="svp-name1" placeholder="Nombre cliente" value={data.svp_name1 || ""} onChange={(e) => update("svp_name1", e.target.value)} />
+              <input type="text" id="svp-name1" placeholder="Nombre cliente" value={data.svp_name1 || ""} onFocus={selectOnFocus} onChange={(e) => update("svp_name1", e.target.value)} />
             </div>
             <div className="client-survey-field center">
               <label>País</label>
-              <select id="svp-country" value={data.svp_country || ""} onChange={(e) => update("svp_country", e.target.value)}>
+              <select id="svp-country" value={data.svp_country || ""} onFocus={selectOnFocus} onChange={(e) => update("svp_country", e.target.value)}>
                 <option value="">Selecciona país</option>
                 {countries.map((country) => (
                   <option key={country} value={country}>{COUNTRY_FLAGS[country] || "🌐"} {country}</option>
@@ -155,15 +164,15 @@ export function SurveyPage({ clientId, backHref }: SurveyPageProps) {
             </div>
             <div className="client-survey-field right">
               <label>Nombre</label>
-              <input type="text" id="svp-name2" placeholder="Acompañante / copropietario" value={data.svp_name2 || ""} onChange={(e) => update("svp_name2", e.target.value)} />
+              <input type="text" id="svp-name2" placeholder="Acompañante / copropietario" value={data.svp_name2 || ""} onFocus={selectOnFocus} onChange={(e) => update("svp_name2", e.target.value)} />
             </div>
             <div className="client-survey-field left">
               <label>Ocupación</label>
-              <input type="text" id="svp-occ1" placeholder="Ocupación cliente" value={data.svp_occ1 || ""} onChange={(e) => update("svp_occ1", e.target.value)} />
+              <input type="text" id="svp-occ1" placeholder="Ocupación cliente" value={data.svp_occ1 || ""} onFocus={selectOnFocus} onChange={(e) => update("svp_occ1", e.target.value)} />
             </div>
             <div className="client-survey-field center">
               <label>Ciudad</label>
-              <select id="svp-city" value={data.svp_city || ""} onChange={(e) => update("svp_city", e.target.value)}>
+              <select id="svp-city" value={data.svp_city || ""} onFocus={selectOnFocus} onChange={(e) => update("svp_city", e.target.value)}>
                 <option value="">Selecciona ciudad</option>
                 {cities.map((city) => (
                   <option key={city} value={city}>{city}</option>
@@ -175,7 +184,7 @@ export function SurveyPage({ clientId, backHref }: SurveyPageProps) {
             </div>
             <div className="client-survey-field right">
               <label>Ocupación</label>
-              <input type="text" id="svp-occ2" placeholder="Ocupación acompañante" value={data.svp_occ2 || ""} onChange={(e) => update("svp_occ2", e.target.value)} />
+              <input type="text" id="svp-occ2" placeholder="Ocupación acompañante" value={data.svp_occ2 || ""} onFocus={selectOnFocus} onChange={(e) => update("svp_occ2", e.target.value)} />
             </div>
           </div>
         </div>
@@ -187,7 +196,7 @@ export function SurveyPage({ clientId, backHref }: SurveyPageProps) {
             <div>
               <div className="frow" style={{ paddingTop: 0, borderTop: "none" }}>
                 <div className="flabel">Noches totales</div>
-                <input type="number" id="sv-nights" min={1} style={{ width: 80 }} value={data.nights} onChange={(e) => update("nights", e.target.value)} />
+                <input type="number" id="sv-nights" min={1} style={{ width: 80 }} value={data.nights} onFocus={selectOnFocus} onChange={(e) => update("nights", e.target.value)} />
               </div>
               <div className="frow">
                 <div className="flabel">Tipo de gasto</div>
@@ -200,14 +209,14 @@ export function SurveyPage({ clientId, backHref }: SurveyPageProps) {
                 <div className="flabel">Total pagado</div>
                 <div className="mfield">
                   <span className="mpfx">$</span>
-                  <input type="text" id="sv-total" value={data.total} onChange={(e) => update("total", e.target.value)} onBlur={(e) => update("total", formatMoneyValue(e.target.value))} />
+                  <input type="text" id="sv-total" value={data.total} onFocus={selectOnFocus} onChange={(e) => update("total", e.target.value)} onBlur={(e) => update("total", formatMoneyValue(e.target.value))} />
                 </div>
               </div>
               <div id="sv-split" style={{ display: sType === "paquete" ? "block" : "none" }}>
                 <div className="frow">
                   <div className="flabel">% Hotel</div>
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <input type="number" id="sv-hpct" min={1} max={99} style={{ width: 65 }} value={data.hpct} onChange={(e) => update("hpct", e.target.value)} />
+                    <input type="number" id="sv-hpct" min={1} max={99} style={{ width: 65 }} value={data.hpct} onFocus={selectOnFocus} onChange={(e) => update("hpct", e.target.value)} />
                     <span style={{ color: "var(--muted)", fontSize: 13 }}>%</span>
                   </div>
                 </div>
@@ -241,12 +250,12 @@ export function SurveyPage({ clientId, backHref }: SurveyPageProps) {
               <tbody>
                 {HIST.map((p) => (
                   <tr key={p}>
-                    <td><input type="text" value={data[`${p}c`]} onChange={(e) => update(`${p}c`, e.target.value)} /></td>
-                    <td className="nc"><input type="number" value={data[`${p}y`]} onChange={(e) => update(`${p}y`, e.target.value)} /></td>
-                    <td className="nc"><input type="number" value={data[`${p}n`]} onChange={(e) => update(`${p}n`, e.target.value)} /></td>
+                    <td><input type="text" value={data[`${p}c`]} onFocus={selectOnFocus} onChange={(e) => update(`${p}c`, e.target.value)} /></td>
+                    <td className="nc"><input type="number" value={data[`${p}y`]} onFocus={selectOnFocus} onChange={(e) => update(`${p}y`, e.target.value)} /></td>
+                    <td className="nc"><input type="number" value={data[`${p}n`]} onFocus={selectOnFocus} onChange={(e) => update(`${p}n`, e.target.value)} /></td>
                     <td className="mc">
                       <div className="mfield"><span className="mpfx">$</span>
-                        <input type="text" value={data[`${p}a`]} onChange={(e) => update(`${p}a`, e.target.value)} onBlur={(e) => update(`${p}a`, formatMoneyValue(e.target.value))} />
+                        <input type="text" value={data[`${p}a`]} onFocus={selectOnFocus} onChange={(e) => update(`${p}a`, e.target.value)} onBlur={(e) => update(`${p}a`, formatMoneyValue(e.target.value))} />
                       </div>
                     </td>
                   </tr>
@@ -292,12 +301,12 @@ export function SurveyPage({ clientId, backHref }: SurveyPageProps) {
               <tbody>
                 {FUT.map((p) => (
                   <tr key={p}>
-                    <td><input type="text" value={data[`${p}c`]} onChange={(e) => update(`${p}c`, e.target.value)} /></td>
-                    <td className="nc"><input type="number" value={data[`${p}y`]} onChange={(e) => update(`${p}y`, e.target.value)} /></td>
-                    <td className="nc"><input type="number" value={data[`${p}n`]} onChange={(e) => update(`${p}n`, e.target.value)} /></td>
+                    <td><input type="text" value={data[`${p}c`]} onFocus={selectOnFocus} onChange={(e) => update(`${p}c`, e.target.value)} /></td>
+                    <td className="nc"><input type="number" value={data[`${p}y`]} onFocus={selectOnFocus} onChange={(e) => update(`${p}y`, e.target.value)} /></td>
+                    <td className="nc"><input type="number" value={data[`${p}n`]} onFocus={selectOnFocus} onChange={(e) => update(`${p}n`, e.target.value)} /></td>
                     <td className="mc">
                       <div className="mfield"><span className="mpfx">$</span>
-                        <input type="text" placeholder="0" value={data[`${p}a`]} onChange={(e) => update(`${p}a`, e.target.value)} onBlur={(e) => update(`${p}a`, formatMoneyValue(e.target.value))} />
+                        <input type="text" placeholder="0" value={data[`${p}a`]} onFocus={selectOnFocus} onChange={(e) => update(`${p}a`, e.target.value)} onBlur={(e) => update(`${p}a`, formatMoneyValue(e.target.value))} />
                       </div>
                     </td>
                   </tr>

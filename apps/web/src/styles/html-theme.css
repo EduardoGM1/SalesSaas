@@ -356,6 +356,9 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
 .dash-axis-line{stroke:#9aa8bd;stroke-width:1;}
 .dash-area-fill{fill:rgba(37,99,235,.16);}
 .dash-area-stroke{fill:none;stroke:var(--blue);stroke-width:2.4;stroke-linejoin:round;stroke-linecap:round;}
+.dash-target-line{stroke:var(--blue);stroke-width:2.4;stroke-linejoin:round;stroke-linecap:round;}
+.dash-axis-label{font-family:var(--mono);font-size:10px;fill:var(--muted2);}
+.dash-week-label{font-family:'Inter',sans-serif;font-size:11px;font-weight:700;fill:var(--muted);}
 .dash-point{fill:var(--white);stroke:var(--blue);stroke-width:2.5;}
 .dash-real-bar{fill:rgba(5,150,105,.78);stroke:rgba(5,150,105,.95);stroke-width:1;rx:6;}
 .dash-week-prod-table{width:100%;border-collapse:separate;border-spacing:0;overflow:hidden;border:1px solid var(--border);border-radius:var(--r);table-layout:fixed;}
@@ -533,6 +536,12 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
 .client-survey-field.left input{text-align:left;}
 .analysis-empty{background:var(--surface2);border:1px dashed var(--border2);border-radius:var(--r);padding:16px;color:var(--muted);font-size:13px;line-height:1.5;margin-bottom:14px;}
 @media(max-width:900px){.client-survey-grid{grid-template-columns:1fr;}}
+@media(max-width:640px){
+  .client-survey-grid{gap:10px 12px;}
+  .client-survey-field label{font-size:9px;}
+  .mtbl{font-size:12px;}
+  .mtbl input,.mtbl .mfield input{font-size:13px;padding:6px 8px;}
+}
 
 /* Worksheet money format: centavos pequeños tipo exponente */
 .money-display{white-space:nowrap;}

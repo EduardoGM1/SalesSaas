@@ -1,5 +1,5 @@
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { BarChart3, Calendar, Target } from "lucide-react";
 import { Topbar } from "@/components/layout/topbar";
 import { PageBack } from "@/components/layout/page-back";
@@ -7,6 +7,7 @@ import { DashboardChart } from "@/components/goals/dashboard-chart";
 import { getDashboardWeeks, normalizeGoal, workingDaysRemaining } from "@/lib/calculations/calendar";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { useMoney } from "@/hooks/use-money.js";
+import { calKey } from "@/lib/format/dates";
 import { useAppStore } from "@/stores/app-store";
 import { useDbStore } from "@/stores/db-store";
 
@@ -18,12 +19,16 @@ export function GoalsPage() {
   const calMonth = useAppStore((s) => s.calMonth);
   const calPrev = useAppStore((s) => s.calPrev);
   const calNext = useAppStore((s) => s.calNext);
-  const getCalMonth = useDbStore((s) => s.getCalMonth);
-  const getGoalMonth = useDbStore((s) => s.getGoalMonth);
-
-  const data = getCalMonth(calYear, calMonth);
-  const goal = normalizeGoal(getGoalMonth(calYear, calMonth));
-  const weeks = useMemo(() => getDashboardWeeks(calYear, calMonth, data, goal), [calYear, calMonth, data, goal]);
+  const [showTarget, setShowTarget] = useState(true);
+  const [showReal, setShowReal] = useState(true);
+  const monthKey = calKey(calYear, calMonth);
+  const data = useDbStore((s) => s.db.cal[monthKey] ?? { days: {}, weeks: {} });
+  const goalRaw = useDbStore((s) => s.db.goals[monthKey] ?? {});
+  const goal = normalizeGoal(goalRaw);
+  const weeks = useMemo(
+    () => getDashboardWeeks(calYear, calMonth, data, goal),
+    [calYear, calMonth, data, goal, goalRaw],
+  );
 
   const totals = weeks.reduce((a, w) => ({
     obj: a.obj + (w.obj || 0), real: a.real + (w.real || 0),
@@ -84,14 +89,20 @@ export function GoalsPage() {
           </div>
 
           <div className="dash-graph-card">
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 14 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 14, gap: 12, flexWrap: "wrap" }}>
               <div className="dash-card-title" style={{ marginBottom: 0 }}><Target size={18} color="#2563eb" /> {t("goals.targetVsReal")}</div>
-              <div className="dash-legend">
-                <span className="dash-legend-item"><span className="legend-line" /> {t("goals.target")}</span>
-                <span className="dash-legend-item"><span className="legend-box" /> {t("goals.real")}</span>
+              <div className="dash-chart-toggles">
+                <label className="dash-chart-toggle">
+                  <input type="checkbox" checked={showTarget} onChange={(e) => setShowTarget(e.target.checked)} />
+                  <span className="legend-line" /> {t("goals.showTarget")}
+                </label>
+                <label className="dash-chart-toggle">
+                  <input type="checkbox" checked={showReal} onChange={(e) => setShowReal(e.target.checked)} />
+                  <span className="legend-box" /> {t("goals.showReal")}
+                </label>
               </div>
             </div>
-            <DashboardChart weeks={weeks} />
+            <DashboardChart weeks={weeks} showTarget={showTarget} showReal={showReal} />
           </div>
         </div>
 
