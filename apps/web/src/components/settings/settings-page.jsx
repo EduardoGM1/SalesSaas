@@ -337,7 +337,6 @@ export function SettingsPage() {
                       <option value="en">English</option>
                     </select>
                   </div>
-                  <div className="hint" style={{ marginTop: 14 }}><strong>Preparado para i18n:</strong> todo texto nuevo debe agregarse al catálogo ES/EN, no escribirse suelto en el código.</div>
                 </div>
               </div>
             )}
