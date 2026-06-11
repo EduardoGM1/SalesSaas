@@ -395,12 +395,7 @@ export function SettingsPage() {
                     <strong>Código ético:</strong> la información personal de los expedientes es temporal. Exporta un respaldo antes de borrar.
                   </div>
                   <div className="btn-row" style={{ marginTop: 0 }}>
-                    <button type="button" className="btn btn-danger" onClick={async () => {
-                      if (await confirmDialog(ti("settings.account.deleteConfirm"))) {
-                        replaceDb(emptyDatabase());
-                        toast.success(ti("toast.settings.deleted"));
-                      }
-                    }}><Trash2 size={15} /> Borrar datos</button>
+                    
                     {isSupabaseConfigured() && (
                       <button
                         type="button"
