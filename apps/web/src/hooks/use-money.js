@@ -4,9 +4,13 @@ import { fmt, fmtD, fmtN, fmtN2 } from "@/lib/format/money";
 
 function buildMoneySettings(settings) {
   const currency = settings?.currency ?? "USD";
+  const exchangeRate = currency === "USD"
+    ? 1
+    : Number(settings?.exchangeRate || 1);
   return {
     currency,
-    exchangeRate: currency === "USD" ? 1 : Number(settings?.exchangeRate || 1),
+    exchangeRate,
+    exchangeMode: settings?.exchangeMode ?? "auto",
     language: settings?.language ?? "es",
   };
 }
@@ -16,6 +20,7 @@ export function useMoney() {
   const cfg = useMemo(() => buildMoneySettings(settings), [
     settings?.currency,
     settings?.exchangeRate,
+    settings?.exchangeMode,
     settings?.language,
   ]);
 

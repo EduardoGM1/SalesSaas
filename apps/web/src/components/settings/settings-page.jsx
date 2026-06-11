@@ -14,6 +14,7 @@ import { fetchProfile, signOut } from "@/lib/session-api.js";
 import { t } from "@/lib/i18n.js";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { saveProfileRemote } from "@/actions/settings.js";
+import { fetchExchangeRate } from "@/lib/exchange-rate-sync.js";
 import { useAppStore } from "@/stores/app-store";
 import { useDbStore } from "@/stores/db-store";
 import { useSyncStore } from "@/stores/sync-store";
@@ -127,22 +128,12 @@ export function SettingsPage() {
   };
 
   const fetchAutoExchangeRate = async (currency = settings.currency || "USD") => {
-    if (currency === "USD") {
-      setFxError(null);
-      setFxDate(new Date().toISOString().slice(0, 10));
-      setSetting("exchangeRate", 1);
-      return;
-    }
     setFxLoading(true);
     setFxError(null);
     try {
-      const res = await fetch(`/api/v1/exchange-rates?to=${encodeURIComponent(currency)}`);
-      const body = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(body.error ?? "No se pudo obtener el tipo de cambio.");
-      const rate = Number(body.data?.rate);
-      if (!Number.isFinite(rate) || rate <= 0) throw new Error("Tipo de cambio inválido.");
+      const { rate, date } = await fetchExchangeRate(currency);
       setSetting("exchangeRate", rate);
-      setFxDate(body.data?.date ?? null);
+      setFxDate(date ?? new Date().toISOString().slice(0, 10));
     } catch (err) {
       setFxError(err instanceof Error ? err.message : "Error al actualizar.");
     } finally {
@@ -188,7 +179,7 @@ export function SettingsPage() {
     <>
       <Topbar title={ti("settings.title")} subtitle={ti("settings.subtitle")} />
       <div className="sales-page">
-        <PageBack />
+        {!activeSection && <PageBack />}
         <div className="page-head">
           <div>
             <div className="page-title">{ti("settings.title")}</div>
@@ -210,33 +201,17 @@ export function SettingsPage() {
                   <div className="card-sub">{ti("settings.user.sub")}</div>
                   <div className="settings-row">
                     <div><div className="settings-label">{ti("settings.user.name")}</div><div className="settings-help">{ti("settings.user.nameHelp")}</div></div>
-                    <input type="text" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Michell Ruiz" style={{ width: "100%" }} />
+                    <input type="text" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder={ti("settings.user.namePlaceholder")} style={{ width: "100%" }} />
                   </div>
                   <div className="settings-row">
                     <div><div className="settings-label">{ti("settings.user.initials")}</div><div className="settings-help">{ti("settings.user.initialsHelp")}</div></div>
                     <input type="text" maxLength={3} value={settings.userInitials || ""} onChange={(e) => setSetting("userInitials", e.target.value.toUpperCase())} placeholder="M" style={{ width: 110, textAlign: "center", fontWeight: 800 }} />
                   </div>
                   {isSupabaseConfigured() && (
-                    <>
-                      <div className="settings-row">
-                        <div><div className="settings-label">URL de avatar</div><div className="settings-help">Enlace público a tu foto de perfil.</div></div>
-                        <input type="url" value={avatarUrl} onChange={(e) => setAvatarUrl(e.target.value)} placeholder="https://..." style={{ width: "100%" }} />
-                      </div>
-                      <div className="settings-row">
-                        <div><div className="settings-label">Subir imagen</div><div className="settings-help">Se guarda como URL de datos en tu perfil (máx. ~500 KB).</div></div>
-                        <input type="file" accept="image/*" onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (!file) return;
-                          if (file.size > 512000) {
-                            toast.error(ti("toast.settings.imageSize"));
-                            return;
-                          }
-                          const reader = new FileReader();
-                          reader.onload = () => setAvatarUrl(String(reader.result ?? ""));
-                          reader.readAsDataURL(file);
-                        }} />
-                      </div>
-                    </>
+                    <div className="settings-row">
+                      <div><div className="settings-label">{ti("settings.user.avatarUrl")}</div><div className="settings-help">{ti("settings.user.avatarUrlHelp")}</div></div>
+                      <input type="url" value={avatarUrl} onChange={(e) => setAvatarUrl(e.target.value)} placeholder="https://..." style={{ width: "100%" }} />
+                    </div>
                   )}
                   {isSupabaseConfigured() && (
                     <form onSubmit={saveProfile} className="settings-row">
@@ -289,7 +264,7 @@ export function SettingsPage() {
                   <div className="settings-row">
                     <div><div className="settings-label">{ti("settings.money.mode")}</div><div className="settings-help">{ti("settings.money.modeHelp")}</div></div>
                     <select
-                      value={settings.exchangeMode || "manual"}
+                      value={settings.exchangeMode || "auto"}
                       onChange={(e) => setSetting("exchangeMode", e.target.value)}
                       style={{ width: "100%" }}
                       disabled={settings.currency === "USD"}

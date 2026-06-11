@@ -9,7 +9,7 @@ export function buildSettingsPayload(settings, fullName) {
     userName: fullName || settings.userName || "Usuario",
     userInitials: settings.userInitials || (fullName || "Usuario").split(/\s+/).slice(0, 2).map((part) => part[0]).join("").toUpperCase(),
     exchangeRate: settings.currency === "USD" ? 1 : Number(settings.exchangeRate || 1),
-    exchangeMode: settings.exchangeMode || "manual",
+    exchangeMode: settings.exchangeMode || "auto",
   };
 }
 

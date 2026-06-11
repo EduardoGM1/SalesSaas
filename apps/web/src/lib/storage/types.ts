@@ -140,7 +140,7 @@ export function emptyDatabase(): AppDatabase {
       language: "es",
       currency: "USD",
       exchangeRate: 1,
-      exchangeMode: "manual",
+      exchangeMode: "auto",
       userName: "Usuario",
       userInitials: "U",
     },
