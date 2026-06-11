@@ -35,6 +35,17 @@ export function workingDaysRemaining(year: number, month: number, data: CalMonth
   return count;
 }
 
+export interface DashboardSaleItem {
+  saleId?: string;
+  vol: number;
+  tours: number;
+  contract?: string;
+  clientName?: string;
+  note?: string;
+  day: number;
+  date: string;
+}
+
 export interface DashboardWeek {
   weekNo: number;
   days: number[];
@@ -44,6 +55,7 @@ export interface DashboardWeek {
   tours: number;
   sales: number;
   range: string;
+  saleItems: DashboardSaleItem[];
 }
 
 export function getDashboardWeeks(
@@ -82,13 +94,25 @@ export function getDashboardWeeks(
       tours: 0,
       sales: 0,
       range: `${g.days[0]}–${g.days[g.days.length - 1]} ${MONTHS[month]}`,
+      saleItems: [],
     };
     g.days.forEach((d) => {
+      const ymd = `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
       ((data.days || {})[d] || []).forEach((e) => {
         if (isCalendarSaleCountable(e)) {
           week.real += e.vol || 0;
           week.tours += e.tours || 0;
           week.sales++;
+          week.saleItems.push({
+            saleId: e.saleId,
+            vol: e.vol || 0,
+            tours: e.tours || 1,
+            contract: e.contract,
+            clientName: e.clientName,
+            note: e.note,
+            day: d,
+            date: ymd,
+          });
         }
       });
     });
