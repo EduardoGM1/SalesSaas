@@ -8,11 +8,13 @@ import { PageBack } from "@/components/layout/page-back";
 import { clientDisplayName } from "@/lib/clients";
 import { longDate } from "@/lib/format/dates";
 import { statusLabel, statusClass } from "@/lib/format/status";
+import { useI18n } from "@/hooks/use-i18n.js";
 import { useDbStore } from "@/stores/db-store";
 import { useAppStore } from "@/stores/app-store";
 import { useClientActions } from "@/hooks/use-client-actions.js";
 
 export function ClientsPage() {
+  const { t, lang } = useI18n();
   const hydrated = useAppStore((s) => s.hydrated);
   const { searchClients, createProspect, removeClient } = useClientActions();
   const [open, setOpen] = useState(false);
@@ -52,19 +54,19 @@ export function ClientsPage() {
     handleOpenChange(false);
   };
 
-  if (!hydrated) return <Topbar title="Clientes" subtitle="Cargando..." />;
+  if (!hydrated) return <Topbar title={t("page.clients.title")} subtitle={t("common.loading")} />;
 
   return (
     <>
-      <Topbar title="Clientes" subtitle="Gestión de expedientes" />
+      <Topbar title={t("page.clients.title")} subtitle={t("page.clients.subtitle")} />
       <div className="sales-page">
         <PageBack />
         <div className="page-head">
           <div>
-            <div className="page-title">Clientes</div>
-            <div className="page-sub">Gestión de expedientes</div>
+            <div className="page-title">{t("page.clients.title")}</div>
+            <div className="page-sub">{t("page.clients.subtitle")}</div>
           </div>
-          <button type="button" className="btn btn-primary" onClick={() => handleOpenChange(true)}>+ Nuevo cliente</button>
+          <button type="button" className="btn btn-primary" onClick={() => handleOpenChange(true)}>{t("clients.new")}</button>
         </div>
 
         <div className="client-search-card">
@@ -73,33 +75,35 @@ export function ClientsPage() {
               <input
                 type="search"
                 className="client-search-input"
-                placeholder="Buscar por nombre, acompañante, contrato, fecha, mes, año, ciudad, país o estado..."
+                placeholder={t("clients.searchPlaceholder")}
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
               />
             </div>
-            <button type="button" className="btn btn-ghost btn-sm" onClick={() => setQuery("")}>Limpiar</button>
+            <button type="button" className="btn btn-ghost btn-sm" onClick={() => setQuery("")}>{t("common.clear")}</button>
             <div className="client-search-count">
-              {hasSearch ? `${sorted.length} de ${allClients.length} expedientes` : `${allClients.length} expedientes`}
+              {hasSearch
+                ? t("clients.filesCount", { shown: sorted.length, total: allClients.length })
+                : t("clients.filesTotal", { total: allClients.length })}
             </div>
           </div>
-          <div className="client-search-help">El buscador filtra la base de expedientes sin modificar clientes, ventas ni actividades.</div>
+          <div className="client-search-help">{t("clients.searchHelp")}</div>
         </div>
 
         {!allClients.length ? (
-          <div className="client-empty">Sin clientes aún. Haz clic en <strong>Nuevo cliente</strong> para comenzar.</div>
+          <div className="client-empty">{t("clients.emptyCreate")}</div>
         ) : !sorted.length ? (
-          <div className="client-search-empty">No encontré expedientes con <strong>{query}</strong>.</div>
+          <div className="client-search-empty">{t("clients.noResults", { query })}</div>
         ) : (
           <div className="client-table-card">
             <table className="client-table">
               <thead>
                 <tr>
-                  <th>Nombre</th>
-                  <th>Fecha de tour</th>
-                  <th>Ciudad / País</th>
-                  <th>Estado</th>
-                  <th style={{ textAlign: "center" }}>Acciones</th>
+                  <th>{t("clients.colName")}</th>
+                  <th>{t("clients.colTourDate")}</th>
+                  <th>{t("clients.colLocation")}</th>
+                  <th>{t("clients.colStatus")}</th>
+                  <th style={{ textAlign: "center" }}>{t("clients.colActions")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -111,15 +115,15 @@ export function ClientsPage() {
                         <span className="client-code">{c.prospectCode}</span>
                       </Link>
                     </td>
-                    <td>{c.tourDate ? longDate(c.tourDate) : c.createdYmd ? longDate(c.createdYmd) : "—"}</td>
+                    <td>{c.tourDate ? longDate(c.tourDate, lang) : c.createdYmd ? longDate(c.createdYmd, lang) : "—"}</td>
                     <td>{[c.city, c.country].filter(Boolean).join(" / ") || "—"}</td>
                     <td>
-                      <span className={`client-status-badge ${statusClass(c.status)}`}>{statusLabel(c.status)}</span>
+                      <span className={`client-status-badge ${statusClass(c.status)}`}>{statusLabel(c.status, lang)}</span>
                     </td>
                     <td>
                       <div className="client-actions">
-                        <Link to={`/clients/${c.id}`} className="icon-btn" title="Ver expediente"><Eye size={14} /></Link>
-                        <button type="button" className="icon-btn" title="Eliminar" onClick={async () => {
+                        <Link to={`/clients/${c.id}`} className="icon-btn" title={t("clients.viewFile")}><Eye size={14} /></Link>
+                        <button type="button" className="icon-btn" title={t("clients.delete")} onClick={async () => {
                           await removeClient(c.id, clientDisplayName(c));
                         }}><Trash2 size={14} color="#dc2626" /></button>
                       </div>
@@ -135,13 +139,13 @@ export function ClientsPage() {
       <SalesModal
         open={open}
         onOpenChange={handleOpenChange}
-        title="Nuevo cliente"
-        sub="Crea el expediente con el nombre inicial. Los demás datos se completan dentro del expediente."
+        title={t("clients.modalTitle")}
+        sub={t("clients.createModalSub")}
       >
         <div className={`newclient-field required-field${missingName ? " field-missing" : ""}`}>
           <label className="required-label">
-            Nombre completo{" "}
-            <em style={{ fontStyle: "italic", textTransform: "none", letterSpacing: ".2px" }}>(cliente 1)</em>
+            {t("clients.namePlaceholder")}{" "}
+            <em style={{ fontStyle: "italic", textTransform: "none", letterSpacing: ".2px" }}>{t("clients.client1")}</em>
             <span className="req-star">*</span>
           </label>
           <input
@@ -149,7 +153,7 @@ export function ClientsPage() {
             id="nc-name"
             type="text"
             value={name}
-            placeholder="Nombre completo"
+            placeholder={t("clients.namePlaceholder")}
             onChange={(e) => {
               setName(e.target.value);
               if (e.target.value.trim()) setMissingName(false);
@@ -158,8 +162,8 @@ export function ClientsPage() {
           />
         </div>
         <div className="btn-row" style={{ marginTop: 20 }}>
-          <button type="button" className="btn btn-ghost" onClick={() => handleOpenChange(false)}>Cancelar</button>
-          <button type="button" className="btn btn-primary" onClick={handleCreate}>Crear expediente</button>
+          <button type="button" className="btn btn-ghost" onClick={() => handleOpenChange(false)}>{t("common.cancel")}</button>
+          <button type="button" className="btn btn-primary" onClick={handleCreate}>{t("clients.createExpediente")}</button>
         </div>
       </SalesModal>
     </>

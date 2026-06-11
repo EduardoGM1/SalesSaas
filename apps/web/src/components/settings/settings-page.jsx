@@ -12,6 +12,7 @@ import { emptyDatabase, UserSettings } from "@/lib/storage/types";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { fetchProfile, signOut } from "@/lib/session-api.js";
 import { t } from "@/lib/i18n.js";
+import { useI18n } from "@/hooks/use-i18n.js";
 import { saveProfileRemote } from "@/actions/settings.js";
 import { useAppStore } from "@/stores/app-store";
 import { useDbStore } from "@/stores/db-store";
@@ -19,14 +20,7 @@ import { useSyncStore } from "@/stores/sync-store";
 import { toast } from "@/lib/toast";
 import { confirmDialog } from "@/lib/confirm";
 
-const SYNC_LABEL: Record<string, string> = {
-  disabled: "Solo local",
-  loading: "Cargando...",
-  syncing: "Guardando...",
-  saved: "Sincronizado",
-  offline: "Sin conexión (se guardará al reconectar)",
-  error: "Error de sincronización",
-};
+const LIVE_PREVIEW_KEYS = new Set(["language", "currency", "exchangeRate", "exchangeMode"]);
 
 type SettingsSection = "user" | "worksheet" | "money" | "language" | "apis" | "backup" | "account" | null;
 
@@ -38,6 +32,7 @@ const CURRENCY_LABEL: Record<string, string> = {
 };
 
 export function SettingsPage() {
+  const { t: ti } = useI18n();
   const navigate = useNavigate();
   const hydrated = useAppStore((s) => s.hydrated);
   const db = useDbStore((s) => s.db);
@@ -121,7 +116,14 @@ export function SettingsPage() {
   };
 
   const setSetting = <K extends keyof UserSettings>(key: K, value: UserSettings[K]) => {
-    setSettings((current) => ({ ...current, [key]: value }));
+    setSettings((current) => {
+      const next = { ...current, [key]: value };
+      if (LIVE_PREVIEW_KEYS.has(key)) {
+        const currentDb = useDbStore.getState().db;
+        replaceDb({ ...currentDb, settings: { ...currentDb.settings, ...next } });
+      }
+      return next;
+    });
   };
 
   const fetchAutoExchangeRate = async (currency = settings.currency || "USD") => {
@@ -161,7 +163,7 @@ export function SettingsPage() {
     }));
   };
 
-  if (!hydrated) return <Topbar title="Configuración" subtitle="Cargando..." />;
+  if (!hydrated) return <Topbar title={ti("settings.title")} subtitle={ti("common.loading")} />;
 
   const renderHub = () => (
     <div className="settings-hub">
@@ -184,7 +186,7 @@ export function SettingsPage() {
 
   return (
     <>
-      <Topbar title="Configuración" subtitle="Preferencias generales" />
+      <Topbar title={ti("settings.title")} subtitle={ti("settings.subtitle")} />
       <div className="sales-page">
         <PageBack />
         <div className="page-head">

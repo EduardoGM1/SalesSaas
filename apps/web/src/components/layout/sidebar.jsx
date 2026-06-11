@@ -12,6 +12,7 @@ import { useDbStore } from "@/stores/db-store";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { hasAnyAdminAccess } from "@/lib/auth/permissions";
 import { watchSession } from "@/lib/session-api.js";
+import { useI18n } from "@/hooks/use-i18n.js";
 import { navLabel } from "@/lib/i18n.js";
 
 const NAV = [
@@ -28,7 +29,7 @@ export function Sidebar() {
   const sidebarOpen = useAppStore((s) => s.sidebarOpen);
   const closeSidebar = useAppStore((s) => s.closeSidebar);
   const settings = useDbStore((s) => s.db.settings);
-  const language = mounted ? settings?.language || "es" : "es";
+  const { lang: language } = useI18n();
   const [isAdmin, setIsAdmin] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState(null);
 

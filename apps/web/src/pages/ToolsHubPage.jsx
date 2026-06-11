@@ -3,29 +3,32 @@ import { DollarSign, FileText, Palmtree } from "lucide-react";
 import { Topbar } from "@/components/layout/topbar.jsx";
 import { PageBack } from "@/components/layout/page-back.jsx";
 import { useAppStore } from "@/stores/app-store.js";
-
-const TOOLS = [
-  { href: "/tools/survey", label: "Survey", desc: "Viaje actual, últimas vacaciones y viajes futuros", icon: FileText, tone: "blue" },
-  { href: "/tools/vacaciones", label: "Proyección de Vacaciones", desc: "Costo futuro con inflación", icon: Palmtree, tone: "green" },
-  { href: "/tools/worksheet", label: "Worksheet", desc: "Enganche y financiamiento", icon: DollarSign, tone: "purple" },
-];
+import { useI18n } from "@/hooks/use-i18n.js";
 
 export function ToolsHubPage() {
   const setToolMode = useAppStore((s) => s.setToolMode);
+  const { t } = useI18n();
+
+  const TOOLS = [
+    { href: "/tools/survey", labelKey: "tools.survey", descKey: "tools.surveyDesc", icon: FileText, tone: "blue" },
+    { href: "/tools/vacaciones", labelKey: "tools.vacation", descKey: "tools.vacationDesc", icon: Palmtree, tone: "green" },
+    { href: "/tools/worksheet", labelKey: "tools.worksheet", descKey: "tools.worksheetDesc", icon: DollarSign, tone: "purple" },
+  ];
+
   return (
     <>
-      <Topbar title="Herramientas" subtitle="Calculadoras libres" />
+      <Topbar title={t("page.tools.title")} subtitle={t("page.tools.subtitle")} />
       <div className="sales-page">
-        <PageBack href="/" label="Volver" />
+        <PageBack href="/" />
         <div className="exp-tool-list" style={{ marginTop: 16 }}>
-          {TOOLS.map((t) => {
-            const Icon = t.icon;
+          {TOOLS.map((tool) => {
+            const Icon = tool.icon;
             return (
-              <Link key={t.href} to={t.href} className="tool-card" onClick={() => setToolMode("libre", null)}>
-                <div className={`tool-icon ${t.tone}`}><Icon size={20} /></div>
+              <Link key={tool.href} to={tool.href} className="tool-card" onClick={() => setToolMode("libre", null)}>
+                <div className={`tool-icon ${tool.tone}`}><Icon size={20} /></div>
                 <div>
-                  <div className="tool-name">{t.label}</div>
-                  <div className="tool-desc">{t.desc}</div>
+                  <div className="tool-name">{t(tool.labelKey)}</div>
+                  <div className="tool-desc">{t(tool.descKey)}</div>
                 </div>
                 <div style={{ color: "var(--muted2)", marginLeft: "auto", fontSize: 18 }}>›</div>
               </Link>

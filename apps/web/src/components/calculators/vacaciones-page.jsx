@@ -4,7 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import { Topbar } from "@/components/layout/topbar";
 import { SaveToolModal } from "@/components/calculators/save-tool-modal";
 import { computeVacaciones } from "@/lib/calculations/vacaciones";
-import { fmt, fmtN, formatMoneyValue } from "@/lib/format/money";
+import { formatMoneyValue } from "@/lib/format/money";
+import { useMoney } from "@/hooks/use-money.js";
 import { useToolBucketReady } from "@/hooks/use-tool-bucket-ready";
 import { useDbStore } from "@/stores/db-store";
 
@@ -16,6 +17,8 @@ interface VacacionesPageProps {
 }
 
 export function VacacionesPage({ clientId, backHref }: VacacionesPageProps) {
+  const { fmt, fmtN } = useMoney();
+  const moneySettings = useDbStore((s) => s.db.settings);
   const { ready, mode } = useToolBucketReady(clientId);
   const getToolBucket = useDbStore((s) => s.getToolBucket);
   const saveToolBucket = useDbStore((s) => s.saveToolBucket);
@@ -31,7 +34,10 @@ export function VacacionesPage({ clientId, backHref }: VacacionesPageProps) {
     });
   }, [ready, clientId, getToolBucket, mode]);
 
-  const r = useMemo(() => computeVacaciones(fields), [fields]);
+  const r = useMemo(
+    () => computeVacaciones(fields),
+    [fields, moneySettings?.currency, moneySettings?.exchangeRate, moneySettings?.language],
+  );
 
   const handleSave = () => {
     saveToolBucket("vacaciones", mode, fields, clientId);

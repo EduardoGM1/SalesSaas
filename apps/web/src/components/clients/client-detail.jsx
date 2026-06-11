@@ -7,8 +7,10 @@ import { SalesModal } from "@/components/ui/sales-modal";
 import { Topbar } from "@/components/layout/topbar";
 import { clientDisplayName, ensureProspectIdentity } from "@/lib/clients";
 import { longDate, ymdToday } from "@/lib/format/dates";
-import { fmt, parseMoney } from "@/lib/format/money";
+import { parseMoney } from "@/lib/format/money";
 import { statusLabel } from "@/lib/format/status";
+import { useMoney } from "@/hooks/use-money.js";
+import { useI18n } from "@/hooks/use-i18n.js";
 import { useDbStore } from "@/stores/db-store";
 import { useAppStore } from "@/stores/app-store";
 import { ClientRecord } from "@/lib/storage/types";
@@ -34,6 +36,8 @@ export function ClientDetail({ id }) {
   const { updateClient, removeClient } = useClientActions();
   const { saveSale: persistSale } = useSaleActions();
   const { saveNoteForClient } = useCalendarActions();
+  const { fmt } = useMoney();
+  const { lang } = useI18n();
 
   const [editOpen, setEditOpen] = useState(false);
   const [saleOpen, setSaleOpen] = useState(false);
@@ -138,8 +142,8 @@ export function ClientDetail({ id }) {
   })();
   const cityCountry = [c.city, c.country].filter(Boolean).join(" / ");
   const loc = [c.city, c.country].filter(Boolean).join(", ");
-  const fecha = c.tourDate ? `Fecha de tour: ${longDate(c.tourDate)}` : `Fecha de registro: ${c.createdYmd ? longDate(c.createdYmd) : "—"}`;
-  const since = fecha + (c.status ? ` · ${statusLabel(c.status)}` : "") + (loc ? ` · ${loc}` : "");
+  const fecha = c.tourDate ? `Fecha de tour: ${longDate(c.tourDate, lang)}` : `Fecha de registro: ${c.createdYmd ? longDate(c.createdYmd, lang) : "—"}`;
+  const since = fecha + (c.status ? ` · ${statusLabel(c.status, lang)}` : "") + (loc ? ` · ${loc}` : "");
 
   const psValue = (v, pill = false) => {
     const val = String(v || "").trim();
@@ -155,7 +159,7 @@ export function ClientDetail({ id }) {
     ["☎", "Teléfono", psValue(c.phone)],
     ["✉", "Email", psValue(c.email)],
     ["▣", "Contrato", psValue(c.contract)],
-    ["◉", "Estado", <span key="st" className="ps-pill">{statusLabel(c.status || "")}</span>],
+    ["◉", "Estado", <span key="st" className="ps-pill">{statusLabel(c.status || "", lang)}</span>],
   ];
   const saleCard = { label: "Venta", desc: "Registrar o revisar venta del expediente", icon: DollarSign, tone: "green", onClick: () => openSaleModal() };
   const notesCard = { label: "Notas", desc: "Notas, follow-ups y recordatorios", icon: MessageSquare, tone: "blue", onClick: () => setNoteOpen(true) };
@@ -273,12 +277,12 @@ export function ClientDetail({ id }) {
                         {pending && <span className="sale-pending-pill">Pendiente</span>}
                       </div>
                       <div className="activity-sub">
-                        {[sale.contract ? `Contrato ${sale.contract}` : null, statusLabel(sale.status || ""), sale.processDate ? `Procesa: ${longDate(sale.processDate)}` : null].filter(Boolean).join(" · ")}
+                        {[sale.contract ? `Contrato ${sale.contract}` : null, statusLabel(sale.status || "", lang), sale.processDate ? `Procesa: ${longDate(sale.processDate, lang)}` : null].filter(Boolean).join(" · ")}
                       </div>
                       {sale.note && <div className="activity-sub">{sale.note}</div>}
                     </div>
                     <div className="activity-date">
-                      {longDate(sale.date)}
+                      {longDate(sale.date, lang)}
                       <br />
                       <button type="button" className="dg-link" onClick={() => openSaleModal(sale)}>Abrir venta</button>
                     </div>
@@ -301,7 +305,7 @@ export function ClientDetail({ id }) {
                     <div className="activity-main">{a.title}</div>
                     {a.note && <div className="activity-sub">{a.note}</div>}
                   </div>
-                  <div className="activity-date">{a.date ? longDate(a.date) : ""}</div>
+                  <div className="activity-date">{a.date ? longDate(a.date, lang) : ""}</div>
                 </div>
               ))
             )}

@@ -7,7 +7,8 @@ import { SaveToolModal } from "@/components/calculators/save-tool-modal";
 import { Topbar } from "@/components/layout/topbar";
 import { WS_CONFIG_IDS, WS_DEFAULTS } from "@/lib/constants";
 import { computeWorksheet, ensureWSConfig } from "@/lib/calculations/worksheet";
-import { fmt, formatMoneyValue } from "@/lib/format/money";
+import { formatMoneyValue } from "@/lib/format/money";
+import { useMoney } from "@/hooks/use-money.js";
 import { useToolBucketReady } from "@/hooks/use-tool-bucket-ready";
 import { useDbStore } from "@/stores/db-store";
 
@@ -19,6 +20,8 @@ interface WorksheetPageProps {
 }
 
 export function WorksheetPage({ clientId, backHref }: WorksheetPageProps) {
+  const { fmt } = useMoney();
+  const moneySettings = useDbStore((s) => s.db.settings);
   const { ready, mode } = useToolBucketReady(clientId);
   const db = useDbStore((s) => s.db);
   const getToolBucket = useDbStore((s) => s.getToolBucket);
@@ -41,7 +44,10 @@ export function WorksheetPage({ clientId, backHref }: WorksheetPageProps) {
     });
   }, [ready, clientId, getToolBucket, mode, db.settings?.worksheetConfig]);
 
-  const result = useMemo(() => computeWorksheet(fields, config), [fields, config]);
+  const result = useMemo(
+    () => computeWorksheet(fields, config),
+    [fields, config, moneySettings?.currency, moneySettings?.exchangeRate, moneySettings?.language],
+  );
 
   const saveAll = () => {
     saveToolBucket("worksheet", mode, { ...fields, ...config }, clientId);

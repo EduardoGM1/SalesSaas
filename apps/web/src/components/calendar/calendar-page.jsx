@@ -4,15 +4,17 @@ import { useState } from "react";
 import { Topbar } from "@/components/layout/topbar";
 import { toast } from "@/lib/toast";
 import { confirmDialog } from "@/lib/confirm";
-import { MONTHS, DAYS } from "@/lib/constants";
 import { isCalendarSaleCountable } from "@/lib/calculations/calendar";
-import { fmt } from "@/lib/format/money";
+import { useI18n } from "@/hooks/use-i18n.js";
+import { useMoney } from "@/hooks/use-money.js";
 import { useAppStore } from "@/stores/app-store";
 import { useDbStore } from "@/stores/db-store";
 import { EntryDialog } from "./entry-dialog";
 import { CalEntry } from "@/lib/storage/types";
 
 export function CalendarPage() {
+  const { t, months, weekdays, weekdaysShort } = useI18n();
+  const { fmt } = useMoney();
   const hydrated = useAppStore((s) => s.hydrated);
   const calYear = useAppStore((s) => s.calYear);
   const calMonth = useAppStore((s) => s.calMonth);
@@ -25,7 +27,7 @@ export function CalendarPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({ venta: true });
 
-  if (!hydrated) return <Topbar title="Agenda" subtitle="Cargando..." />;
+  if (!hydrated) return <Topbar title={t("page.agenda.title")} subtitle={t("common.loading")} />;
 
   const data = getCalMonth(calYear, calMonth);
   const first = new Date(calYear, calMonth, 1).getDay();
@@ -34,7 +36,7 @@ export function CalendarPage() {
   const entries: CalEntry[] = selDay ? (data.days[selDay] || []).filter((entry) => !entry.completed) : [];
 
   const openAdd = () => {
-    if (!selDay) return toast.info("Selecciona un día primero.");
+    if (!selDay) return toast.info(t("cal.selectDayFirst"));
     setDialogOpen(true);
   };
 
@@ -62,11 +64,11 @@ export function CalendarPage() {
               return (
                 <div key={i} className="dg-entry">
                   <div style={{ flex: 1 }}>
-                    {e.t === "venta" && <div className="dg-name">{fmt(e.vol || 0)} — {e.tours || 0} tour(s)</div>}
+                    {e.t === "venta" && <div className="dg-name">{fmt(e.vol || 0)} — {e.tours || 0} {t("cal.tours")}</div>}
                     {e.note && <div className="dp-date" style={{ color: e.t === "venta" ? undefined : "var(--text)" }}>{e.note}</div>}
                   </div>
                   {e.clientId ? (
-                    <Link className="dg-link" to={`/clients/${e.clientId}`}>Ir a cliente</Link>
+                    <Link className="dg-link" to={`/clients/${e.clientId}`}>{t("common.goToClient")}</Link>
                   ) : (
                     <button type="button" className="dg-del" onClick={async () => {
                       if (await confirmDialog("¿Eliminar este registro?") && selDay) deleteCalEntry(calYear, calMonth, selDay, idx);
@@ -83,17 +85,17 @@ export function CalendarPage() {
 
   return (
     <>
-      <Topbar title="Agenda" subtitle="Registro operativo diario" />
+      <Topbar title={t("page.agenda.title")} subtitle={t("page.agenda.subtitle")} />
       <div className="sales-page">
         <div className="cal-layout">
           <div className="cal-widget">
             <div className="agenda-month-nav">
               <button type="button" className="tb-nav-btn" onClick={calPrev}>‹</button>
-              <div className="agenda-month-label">{MONTHS[calMonth]} {calYear}</div>
+              <div className="agenda-month-label">{months[calMonth]} {calYear}</div>
               <button type="button" className="tb-nav-btn" onClick={calNext}>›</button>
             </div>
             <div className="cal-weekdays">
-              {["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"].map((d) => <div key={d} className="cal-wd">{d}</div>)}
+              {weekdaysShort.map((d) => <div key={d} className="cal-wd">{d}</div>)}
             </div>
             <div className="cal-grid">
               {Array.from({ length: first }).map((_, i) => <div key={`e${i}`} className="cal-day other" />)}
@@ -125,19 +127,19 @@ export function CalendarPage() {
           <div className="day-panel">
             <div className="dp-head">
               <div>
-                <div className="dp-title">{selDay ? `${DAYS[new Date(calYear, calMonth, selDay).getDay()]} ${selDay}` : "Detalle del día"}</div>
-                <div className="dp-date">{selDay ? `${MONTHS[calMonth]} ${calYear}` : "Selecciona un día del calendario"}</div>
+                <div className="dp-title">{selDay ? `${weekdays[new Date(calYear, calMonth, selDay).getDay()]} ${selDay}` : t("cal.dayDetail")}</div>
+                <div className="dp-date">{selDay ? `${months[calMonth]} ${calYear}` : t("cal.selectDay")}</div>
               </div>
               <button type="button" className="add-fab" onClick={openAdd}>+</button>
             </div>
-            {!selDay && <div className="dp-empty">Selecciona un día para ver sus registros.</div>}
-            {selDay && !entries.length && <div className="dp-empty">Sin registros. Haz clic en + para agregar nota, follow-up o descanso.</div>}
+            {!selDay && <div className="dp-empty">{t("cal.selectDayHint")}</div>}
+            {selDay && !entries.length && <div className="dp-empty">{t("cal.emptyDay")}</div>}
             {selDay && entries.length > 0 && (
               <div>
-                {renderGroup("venta", "Ventas", "sale", entries.filter(isCalendarSaleCountable))}
-                {renderGroup("nota", "Notas", "note", entries.filter((e) => e.t === "nota"))}
-                {renderGroup("follow", "Follow-ups", "follow", entries.filter((e) => e.t === "follow"))}
-                {renderGroup("descanso", "Descanso", "descanso", entries.filter((e) => e.t === "descanso"))}
+                {renderGroup("venta", t("cal.sales"), "sale", entries.filter(isCalendarSaleCountable))}
+                {renderGroup("nota", t("cal.notes"), "note", entries.filter((e) => e.t === "nota"))}
+                {renderGroup("follow", t("cal.followups"), "follow", entries.filter((e) => e.t === "follow"))}
+                {renderGroup("descanso", t("cal.rest"), "descanso", entries.filter((e) => e.t === "descanso"))}
               </div>
             )}
           </div>

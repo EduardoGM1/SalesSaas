@@ -3,17 +3,23 @@ import { Link } from "react-router-dom";
 import { useMemo } from "react";
 import { Topbar } from "@/components/layout/topbar";
 import { clientDisplayName } from "@/lib/clients";
-import { computeSurvey, fmt, fmtD, surveyHasData } from "@/lib/calculations/survey";
+import { computeSurvey, surveyHasData } from "@/lib/calculations/survey";
+import { useMoney } from "@/hooks/use-money.js";
 import { useDbStore } from "@/stores/db-store";
 
 export function AnalysisPage({ clientId }: { clientId }) {
+  const { fmt, fmtD } = useMoney();
+  const moneySettings = useDbStore((s) => s.db.settings);
   const getClient = useDbStore((s) => s.getClient);
   const c = getClient(clientId);
   const survey = useMemo(
     () => (c?.data?.survey || {}) as Record<string, string>,
     [c?.data?.survey]
   );
-  const result = useMemo(() => computeSurvey(survey, String(survey.stype || "hotel")), [survey]);
+  const result = useMemo(
+    () => computeSurvey(survey, String(survey.stype || "hotel")),
+    [survey, moneySettings?.currency, moneySettings?.exchangeRate, moneySettings?.language],
+  );
   const hasData = surveyHasData(survey);
 
   const rows: { label; vac; night; dp; mi }[] = [

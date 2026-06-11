@@ -1,4 +1,4 @@
-import { MONTHS } from "@/lib/constants";
+import { getMonths } from "@/lib/i18n.js";
 
 export function ymdToday(): string {
   const d = new Date();
@@ -10,10 +10,14 @@ export function parseYMD(s: string): Date | null {
   return y && m && d ? new Date(y, m - 1, d) : null;
 }
 
-export function longDate(s: string): string {
+export function longDate(s: string, lang: "es" | "en" = "es"): string {
   const d = parseYMD(s);
   if (!d) return s || "—";
-  return `${d.getDate()} de ${MONTHS[d.getMonth()]} de ${d.getFullYear()}`;
+  const months = getMonths(lang);
+  if (lang === "en") {
+    return `${months[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
+  }
+  return `${d.getDate()} de ${months[d.getMonth()]} de ${d.getFullYear()}`;
 }
 
 export function calKey(year: number, month: number): string {

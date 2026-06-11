@@ -28,8 +28,12 @@ export function SyncProvider({ children }) {
     }
 
     const applyRemote = (db) => {
+      const localSettings = useDbStore.getState().db.settings;
       suspendRef.current = true;
-      useDbStore.getState().replaceDb(db);
+      useDbStore.getState().replaceDb({
+        ...db,
+        settings: { ...db.settings, ...localSettings },
+      });
       suspendRef.current = false;
     };
 

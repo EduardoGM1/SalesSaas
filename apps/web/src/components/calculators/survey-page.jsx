@@ -4,9 +4,10 @@ import { useEffect, useMemo, useState } from "react";
 import { Topbar } from "@/components/layout/topbar";
 import { SaveToolModal } from "@/components/calculators/save-tool-modal";
 import { clientDisplayName, ensureProspectIdentity } from "@/lib/clients";
-import { computeSurvey, fmt, fmtD } from "@/lib/calculations/survey";
+import { computeSurvey } from "@/lib/calculations/survey";
 import { COUNTRY_CITY, COUNTRY_FLAGS } from "@/lib/constants";
 import { formatMoneyValue } from "@/lib/format/money";
+import { useMoney } from "@/hooks/use-money.js";
 import { useToolBucketReady } from "@/hooks/use-tool-bucket-ready";
 import { useDbStore } from "@/stores/db-store";
 
@@ -34,6 +35,8 @@ export function SurveyPage({ clientId, backHref }: SurveyPageProps) {
   const saveToolBucket = useDbStore((s) => s.saveToolBucket);
   const saveClient = useDbStore((s) => s.saveClient);
   const getClient = useDbStore((s) => s.getClient);
+  const moneySettings = useDbStore((s) => s.db.settings);
+  const { fmt, fmtD } = useMoney();
 
   const [data, setData] = useState<Record<string, string>>({ ...DEFAULT_DATA });
   const [sType, setSType] = useState("hotel");
@@ -69,7 +72,10 @@ export function SurveyPage({ clientId, backHref }: SurveyPageProps) {
   const countries = Object.keys(COUNTRY_CITY);
   const cities = COUNTRY_CITY[data.svp_country || ""] || ["Otro"];
 
-  const result = useMemo(() => computeSurvey(data, sType), [data, sType]);
+  const result = useMemo(
+    () => computeSurvey(data, sType),
+    [data, sType, moneySettings?.currency, moneySettings?.exchangeRate, moneySettings?.language],
+  );
 
   const syncProspectToClient = (next: Record<string, string>) => {
     if (!clientId) return;

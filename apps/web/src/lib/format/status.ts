@@ -1,16 +1,9 @@
-const LABELS: Record<string, string> = {
-  "": "Sin estado",
-  venta: "Venta",
-  bback: "B-back",
-  procesable: "Procesable",
-  "no-procesable": "No procesable",
-  perdido: "Perdido / cerrado",
-  cerrado: "Cerrado",
-  procesado: "Procesado",
-};
+import { statusLabelKey, t } from "@/lib/i18n.js";
 
-export function statusLabel(s: string | undefined): string {
-  return LABELS[s || ""] || s || "Sin estado";
+export function statusLabel(s: string | undefined, lang: "es" | "en" = "es"): string {
+  const key = statusLabelKey(s || "");
+  if (key) return t(key, lang);
+  return s || t("status.empty", lang);
 }
 
 export function statusClass(s: string | undefined): string {
