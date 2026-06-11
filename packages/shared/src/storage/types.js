@@ -1,6 +1,7 @@
 function emptyDatabase() {
   return {
     clients: {},
+    sales: {},
     libre: {},
     cal: {},
     goals: {},

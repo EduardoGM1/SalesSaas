@@ -2,7 +2,6 @@ import { clientDisplayName, ensureProspectIdentity } from "@/lib/clients";
 import { getLang, getMonths, translate } from "@/lib/i18n.js";
 import { longDate } from "@/lib/format/dates";
 import { statusLabel } from "@/lib/format/status";
-import { useDbStore } from "@/stores/db-store";
 import { createEmptyClient, useDbStore } from "@/stores/db-store";
 import { toast } from "@/lib/toast";
 import { confirmDialog } from "@/lib/confirm";

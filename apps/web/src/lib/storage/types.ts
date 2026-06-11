@@ -48,6 +48,11 @@ export interface SaleRecord {
   ts: number;
   prospectId?: string;
   source?: string;
+  /** Snapshot al archivar venta tras eliminar expediente */
+  clientName?: string;
+  prospectCode?: string;
+  formerClientId?: string;
+  orphaned?: boolean;
 }
 
 export interface ClientActivity {
@@ -112,6 +117,8 @@ export interface UserActivity {
 
 export interface AppDatabase {
   clients: Record<string, ClientRecord>;
+  /** Ventas archivadas cuando el expediente ya no existe (clave = saleId) */
+  sales?: Record<string, SaleRecord>;
   libre: Record<string, Record<string, string | number>>;
   cal: Record<string, CalMonth>;
   goals: Record<string, GoalMonth>;
@@ -132,6 +139,7 @@ export interface UserSettings {
 export function emptyDatabase(): AppDatabase {
   return {
     clients: {},
+    sales: {},
     libre: {},
     cal: {},
     goals: {},

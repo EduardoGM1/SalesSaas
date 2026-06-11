@@ -37,7 +37,8 @@ export interface ProspectRow {
 export interface SaleRow {
   id: string;
   user_id: string;
-  prospect_id: string;
+  prospect_id: string | null;
+  prospect_name?: string | null;
   sale_date: string;
   vol: number;
   tours: number;
@@ -217,6 +218,21 @@ export function normalizeIds(db: AppDatabase): { db: AppDatabase; changed: boole
     }
   }
 
+  // 2b) Ventas archivadas (sin expediente)
+  if (!next.sales) next.sales = {};
+  const newSales: Record<string, SaleRecord> = {};
+  for (const [oldSaleId, sale] of Object.entries(next.sales)) {
+    const newSaleId = isUuid(oldSaleId) ? oldSaleId : generateSaleId();
+    if (newSaleId !== oldSaleId) changed = true;
+    if (oldSaleId) saleIdMap.set(oldSaleId, newSaleId);
+    sale.saleId = newSaleId;
+    if (sale.formerClientId && clientIdMap.has(sale.formerClientId)) {
+      sale.formerClientId = clientIdMap.get(sale.formerClientId)!;
+    }
+    newSales[newSaleId] = sale;
+  }
+  next.sales = newSales;
+
   // 3) Entradas de calendario
   for (const month of Object.values(next.cal)) {
     for (const entries of Object.values(month.days)) {
@@ -265,6 +281,9 @@ export function dbToRows(db: AppDatabase, userId: string): SupabaseRows {
     for (const sale of client.sales ?? []) {
       if (isUuid(sale.saleId)) validSaleIds.add(sale.saleId);
     }
+  }
+  for (const sale of Object.values(db.sales ?? {})) {
+    if (isUuid(sale.saleId)) validSaleIds.add(sale.saleId);
   }
 
   for (const client of Object.values(db.clients)) {
@@ -336,6 +355,27 @@ export function dbToRows(db: AppDatabase, userId: string): SupabaseRows {
       const data = nonEmptyData(client.data?.[tool]);
       if (data) tool_calculations.push({ user_id: userId, prospect_id: client.id, tool, data });
     }
+  }
+
+  for (const sale of Object.values(db.sales ?? {})) {
+    if (!isUuid(sale.saleId)) continue;
+    const formerId = sale.formerClientId && validProspectIds.has(sale.formerClientId) ? sale.formerClientId : null;
+    sales.push({
+      id: sale.saleId,
+      user_id: userId,
+      prospect_id: formerId,
+      prospect_name: sale.clientName ?? null,
+      sale_date: toDateOrNull(sale.date) ?? new Date().toISOString().slice(0, 10),
+      vol: num(sale.vol),
+      tours: intOr(sale.tours, 1),
+      contract: sale.contract ?? null,
+      status: sanitizeStatus(sale.status),
+      processing: sale.processing ?? (sale.status === "no-procesable" ? "pendiente" : "procesable"),
+      process_date: toDateOrNull(sale.processDate),
+      add_processing_followup: !!sale.addProcessingFollowup,
+      note: sale.note ?? null,
+      created_at: tsToISO(sale.ts),
+    });
   }
 
   // Entradas de calendario
@@ -439,9 +479,8 @@ export function rowsToDb(rows: SupabaseRows): AppDatabase {
     db.clients[p.id] = client;
   }
 
+  if (!db.sales) db.sales = {};
   for (const s of rows.sales) {
-    const client = db.clients[s.prospect_id];
-    if (!client) continue;
     const sale: SaleRecord = {
       saleId: s.id,
       date: s.sale_date,
@@ -454,10 +493,19 @@ export function rowsToDb(rows: SupabaseRows): AppDatabase {
       addProcessingFollowup: !!s.add_processing_followup,
       note: s.note ?? undefined,
       ts: isoToMs(s.created_at),
-      prospectId: s.prospect_id,
+      prospectId: s.prospect_id ?? undefined,
       source: undefined,
     };
-    (client.sales ||= []).push(sale);
+    const client = s.prospect_id ? db.clients[s.prospect_id] : undefined;
+    if (client) {
+      (client.sales ||= []).push(sale);
+    } else {
+      db.sales[s.id] = {
+        ...sale,
+        clientName: s.prospect_name ?? undefined,
+        orphaned: true,
+      };
+    }
   }
 
   for (const a of rows.activities) {
@@ -543,6 +591,7 @@ export function rowsToDb(rows: SupabaseRows): AppDatabase {
 export function isEmptyDb(db: AppDatabase): boolean {
   return (
     Object.keys(db.clients).length === 0 &&
+    Object.keys(db.sales ?? {}).length === 0 &&
     Object.keys(db.cal).length === 0 &&
     Object.keys(db.goals).length === 0 &&
     Object.keys(db.libre).length === 0 &&

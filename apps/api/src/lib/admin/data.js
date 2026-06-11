@@ -36,6 +36,10 @@ async function loadSellers(sb) {
 }
 
 function mapSaleRow(s, sellers) {
+  const embedded = asProspect(s.prospects);
+  const prospect = embedded ?? (s.prospect_name
+    ? { name: s.prospect_name, name1: s.prospect_name, prospect_code: null }
+    : null);
   return {
     id: s.id,
     user_id: s.user_id,
@@ -44,7 +48,7 @@ function mapSaleRow(s, sellers) {
     tours: num(s.tours),
     contract: s.contract ?? null,
     status: s.status ?? null,
-    prospect: asProspect(s.prospects),
+    prospect,
     seller: sellers.get(s.user_id)?.name ?? "—",
   };
 }
@@ -72,7 +76,7 @@ export async function getSales(sb, filters = {}) {
   const sellers = await loadSellers(sb);
   let q = sb
     .from("sales")
-    .select("id, user_id, sale_date, vol, tours, contract, status, prospects(name, name1, prospect_code)")
+    .select("id, user_id, sale_date, vol, tours, contract, status, prospect_name, prospects(name, name1, prospect_code)")
     .order("sale_date", { ascending: false });
   if (filters.userId) q = q.eq("user_id", filters.userId);
   if (filters.status) q = q.eq("status", filters.status);
@@ -97,7 +101,7 @@ export async function getOverview(sb) {
     sb.from("sales").select("user_id, sale_date, vol"),
     sb
       .from("sales")
-      .select("id, user_id, sale_date, vol, tours, contract, status, prospects(name, name1, prospect_code)")
+      .select("id, user_id, sale_date, vol, tours, contract, status, prospect_name, prospects(name, name1, prospect_code)")
       .order("sale_date", { ascending: false })
       .limit(8),
   ]);

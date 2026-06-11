@@ -5,7 +5,7 @@ import { ServiceError, assertFound } from "../lib/service-error.js";
 export async function listSales(supabase, userId, { limit, offset, prospect_id, from, to }) {
   let q = supabase
     .from("sales")
-    .select("*, prospects(name, name1, prospect_code)", { count: "exact" })
+    .select("*, prospect_name, prospects(name, name1, prospect_code)", { count: "exact" })
     .eq("user_id", userId)
     .order("sale_date", { ascending: false })
     .range(offset, offset + limit - 1);

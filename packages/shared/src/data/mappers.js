@@ -88,6 +88,19 @@ function normalizeIds(db) {
       if (act.saleId && saleIdMap.has(act.saleId)) act.saleId = saleIdMap.get(act.saleId);
     }
   }
+  if (!next.sales) next.sales = {};
+  const newSales = {};
+  for (const [oldSaleId, sale] of Object.entries(next.sales)) {
+    const newSaleId = isUuid(oldSaleId) ? oldSaleId : generateSaleId();
+    if (newSaleId !== oldSaleId) changed = true;
+    if (oldSaleId) saleIdMap.set(oldSaleId, newSaleId);
+    sale.saleId = newSaleId;
+    if (sale.formerClientId && clientIdMap.has(sale.formerClientId)) {
+      sale.formerClientId = clientIdMap.get(sale.formerClientId);
+    }
+    newSales[newSaleId] = sale;
+  }
+  next.sales = newSales;
   for (const month of Object.values(next.cal)) {
     for (const entries of Object.values(month.days)) {
       for (const e of entries) {
@@ -126,6 +139,9 @@ function dbToRows(db, userId) {
     for (const sale of client.sales ?? []) {
       if (isUuid(sale.saleId)) validSaleIds.add(sale.saleId);
     }
+  }
+  for (const sale of Object.values(db.sales ?? {})) {
+    if (isUuid(sale.saleId)) validSaleIds.add(sale.saleId);
   }
   for (const client of Object.values(db.clients)) {
     if (!isUuid(client.id)) continue;
@@ -192,6 +208,26 @@ function dbToRows(db, userId) {
       const data = nonEmptyData(client.data?.[tool]);
       if (data) tool_calculations.push({ user_id: userId, prospect_id: client.id, tool, data });
     }
+  }
+  for (const sale of Object.values(db.sales ?? {})) {
+    if (!isUuid(sale.saleId)) continue;
+    const formerId = sale.formerClientId && validProspectIds.has(sale.formerClientId) ? sale.formerClientId : null;
+    sales.push({
+      id: sale.saleId,
+      user_id: userId,
+      prospect_id: formerId,
+      prospect_name: sale.clientName ?? null,
+      sale_date: toDateOrNull(sale.date) ?? (/* @__PURE__ */ new Date()).toISOString().slice(0, 10),
+      vol: num(sale.vol),
+      tours: intOr(sale.tours, 1),
+      contract: sale.contract ?? null,
+      status: sanitizeStatus(sale.status),
+      processing: sale.processing ?? (sale.status === "no-procesable" ? "pendiente" : "procesable"),
+      process_date: toDateOrNull(sale.processDate),
+      add_processing_followup: !!sale.addProcessingFollowup,
+      note: sale.note ?? null,
+      created_at: tsToISO(sale.ts)
+    });
   }
   for (const [key, month] of Object.entries(db.cal)) {
     for (const [dayStr, entries] of Object.entries(month.days)) {
@@ -278,9 +314,8 @@ function rowsToDb(rows) {
     };
     db.clients[p.id] = client;
   }
+  if (!db.sales) db.sales = {};
   for (const s of rows.sales) {
-    const client = db.clients[s.prospect_id];
-    if (!client) continue;
     const sale = {
       saleId: s.id,
       date: s.sale_date,
@@ -293,10 +328,19 @@ function rowsToDb(rows) {
       addProcessingFollowup: !!s.add_processing_followup,
       note: s.note ?? void 0,
       ts: isoToMs(s.created_at),
-      prospectId: s.prospect_id,
+      prospectId: s.prospect_id ?? void 0,
       source: void 0
     };
-    (client.sales ||= []).push(sale);
+    const client = s.prospect_id ? db.clients[s.prospect_id] : void 0;
+    if (client) {
+      (client.sales ||= []).push(sale);
+    } else {
+      db.sales[s.id] = {
+        ...sale,
+        clientName: s.prospect_name ?? void 0,
+        orphaned: true
+      };
+    }
   }
   for (const a of rows.activities) {
     const activity = {

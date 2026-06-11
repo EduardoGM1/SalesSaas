@@ -4,7 +4,7 @@ import { useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { useMounted } from "@/hooks/use-mounted";
 import {
-  BarChart3, Calendar, Target, Users, Wrench, Shield,
+  BarChart3, Calendar, Target, Users, Wrench, Shield, Receipt,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/stores/app-store";
@@ -20,6 +20,7 @@ const NAV = [
   { href: "/goals", label: "Dashboard", icon: BarChart3 },
   { href: "/metas", label: "Metas", icon: Target },
   { href: "/clients", label: "Clientes", icon: Users },
+  { href: "/sales", label: "Ventas", icon: Receipt },
   { href: "/tools", label: "Herramientas", icon: Wrench },
 ];
 

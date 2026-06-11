@@ -86,7 +86,11 @@ export function SettingsPage() {
   }, [db.settings]);
 
   const clientCount = Object.keys(db.clients).length;
-  const sales = Object.values(db.clients).flatMap((c) => c.sales || []);
+  const salesCount = (() => {
+    let n = Object.values(db.sales ?? {}).length;
+    for (const c of Object.values(db.clients)) n += (c.sales || []).length;
+    return n;
+  })();
   const salesVol = sales.reduce((a, s) => a + (s.vol || 0), 0);
   const entriesCount = Object.values(db.cal).reduce(
     (a, m) => a + Object.values(m.days || {}).reduce((b, arr) => b + arr.length, 0),
@@ -362,7 +366,7 @@ export function SettingsPage() {
                   <div className="card-sub">Exporta tu información a JSON o restaura desde un respaldo previo.</div>
                   <div className="g2" style={{ marginBottom: 16 }}>
                     <div className="vbox blue"><div className="vbox-val">{clientCount}</div><div className="vbox-label">Expedientes</div></div>
-                    <div className="vbox green"><div className="vbox-val">{sales.length}</div><div className="vbox-label">Ventas registradas</div></div>
+                    <div className="vbox green"><div className="vbox-val">{salesCount}</div><div className="vbox-label">Ventas registradas</div></div>
                     <div className="vbox yellow"><div className="vbox-val">{entriesCount}</div><div className="vbox-label">Registros de agenda</div></div>
                     <div className="vbox blue"><div className="vbox-val" style={{ fontSize: 16 }}>${salesVol.toLocaleString("en-US")}</div><div className="vbox-label">Volumen acumulado</div></div>
                   </div>

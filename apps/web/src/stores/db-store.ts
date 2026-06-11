@@ -72,10 +72,37 @@ function removeCalendarEntriesForSale(db: AppDatabase, saleId: string): void {
   });
 }
 
-function removeCalendarEntriesForClient(db: AppDatabase, clientId: string): void {
+function archiveClientSales(db: AppDatabase, client: ClientRecord): void {
+  const sales = client.sales ?? [];
+  if (!sales.length) return;
+  if (!db.sales) db.sales = {};
+  const clientName = clientDisplayName(client);
+  for (const sale of sales) {
+    db.sales[sale.saleId] = {
+      ...sale,
+      clientName,
+      prospectCode: client.prospectCode,
+      formerClientId: client.id,
+      orphaned: true,
+    };
+  }
+}
+
+/** Conserva ventas en Agenda; elimina notas/follow-ups ligados solo al expediente. */
+function preserveSalesOnClientDelete(db: AppDatabase, clientId: string, clientName: string): void {
   Object.values(db.cal).forEach((month) => {
     Object.keys(month.days || {}).forEach((day) => {
-      month.days[Number(day)] = (month.days[Number(day)] || []).filter((entry) => entry.clientId !== clientId && entry.prospectId !== clientId);
+      month.days[Number(day)] = (month.days[Number(day)] || []).filter((entry) => {
+        const linked = entry.clientId === clientId || entry.prospectId === clientId;
+        if (!linked) return true;
+        if (entry.t === "venta" || (entry.t === "follow" && entry.saleId)) {
+          entry.clientId = undefined;
+          entry.prospectId = undefined;
+          if (!entry.clientName) entry.clientName = clientName;
+          return true;
+        }
+        return false;
+      });
       if (!month.days[Number(day)]?.length) delete month.days[Number(day)];
     });
   });
@@ -243,7 +270,11 @@ export const useDbStore = create<DbState>((set, get) => ({
   deleteClient: (id) => {
     set((s) => {
       const db = cloneDb(s.db);
-      removeCalendarEntriesForClient(db, id);
+      const client = db.clients[id];
+      if (client) {
+        archiveClientSales(db, client);
+        preserveSalesOnClientDelete(db, id, clientDisplayName(client));
+      }
       delete db.clients[id];
       saveDatabase(db);
       return { db };
