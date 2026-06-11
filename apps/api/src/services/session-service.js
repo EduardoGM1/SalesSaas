@@ -2,7 +2,7 @@ export async function getSession(supabase, userId) {
   const { data: { user } } = await supabase.auth.getUser();
   const { data: profile } = await supabase
     .from("profiles")
-    .select("id, email, full_name, role, phone, avatar_url, settings, is_super_admin, admin_permissions")
+    .select("id, email, full_name, role, phone, avatar_url, settings, is_super_admin, admin_permissions, user_permissions")
     .eq("id", userId)
     .single();
   return {

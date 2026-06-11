@@ -233,7 +233,7 @@ export async function getUsers(filters: UserAdminFilters = {}): Promise<UserStat
   const sb = await createClient();
   let profilesQuery = sb
     .from("profiles")
-    .select("id, full_name, email, role, created_at, is_active, is_super_admin, admin_permissions")
+    .select("id, full_name, email, role, created_at, is_active, is_super_admin, admin_permissions, user_permissions")
     .order("created_at", { ascending: true });
 
   if (filters.role) profilesQuery = profilesQuery.eq("role", filters.role);
@@ -270,6 +270,7 @@ export async function getUsers(filters: UserAdminFilters = {}): Promise<UserStat
     is_active: p.is_active ?? true,
     is_super_admin: p.is_super_admin ?? false,
     admin_permissions: p.admin_permissions ?? [],
+    user_permissions: (p as { user_permissions?: string[] }).user_permissions ?? [],
     prospects: prospectsByUser.get(p.id) ?? 0,
     sales: salesByUser.get(p.id)?.count ?? 0,
     volume: salesByUser.get(p.id)?.vol ?? 0,

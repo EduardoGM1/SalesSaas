@@ -7,6 +7,7 @@ import {
   ClientRecord,
   emptyDatabase,
   SaleRecord,
+  SaleSnapshot,
 } from "@/lib/storage/types";
 
 // ---------- Tipos de fila (snake_case = columnas de Supabase) ----------
@@ -48,6 +49,7 @@ export interface SaleRow {
   process_date: string | null;
   add_processing_followup?: boolean | null;
   note: string | null;
+  snapshot?: SaleSnapshot | null;
   created_at?: string;
 }
 
@@ -327,6 +329,7 @@ export function dbToRows(db: AppDatabase, userId: string): SupabaseRows {
         process_date: toDateOrNull(sale.processDate),
         add_processing_followup: !!sale.addProcessingFollowup,
         note: sale.note ?? null,
+        snapshot: sale.snapshot ?? null,
         created_at: tsToISO(sale.ts),
       });
     }
@@ -374,6 +377,7 @@ export function dbToRows(db: AppDatabase, userId: string): SupabaseRows {
       process_date: toDateOrNull(sale.processDate),
       add_processing_followup: !!sale.addProcessingFollowup,
       note: sale.note ?? null,
+      snapshot: sale.snapshot ?? null,
       created_at: tsToISO(sale.ts),
     });
   }
@@ -495,6 +499,7 @@ export function rowsToDb(rows: SupabaseRows): AppDatabase {
       ts: isoToMs(s.created_at),
       prospectId: s.prospect_id ?? undefined,
       source: undefined,
+      snapshot: (s.snapshot as SaleSnapshot | null) ?? undefined,
     };
     const client = s.prospect_id ? db.clients[s.prospect_id] : undefined;
     if (client) {

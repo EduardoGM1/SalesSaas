@@ -1,5 +1,6 @@
 import { clientDisplayName } from "@/lib/clients";
-import { AppDatabase, SaleRecord } from "@/lib/storage/types";
+import { buildSaleSnapshot } from "@/lib/sales/snapshot";
+import { AppDatabase, ClientRecord, SaleRecord } from "@/lib/storage/types";
 
 export interface SaleListItem extends SaleRecord {
   clientName?: string;
@@ -55,4 +56,28 @@ export function countAllSales(db: AppDatabase): number {
     n += (client.sales ?? []).length;
   }
   return n;
+}
+
+function enrichSale(sale: SaleRecord, client?: ClientRecord): SaleListItem {
+  const item: SaleListItem = {
+    ...sale,
+    clientName: sale.clientName || (client ? clientDisplayName(client) : undefined),
+    prospectCode: sale.prospectCode || client?.prospectCode,
+    clientId: client && "id" in client ? client.id : sale.formerClientId,
+  };
+  if (client && !sale.snapshot?.tools?.survey && !sale.snapshot?.tools?.worksheet) {
+    item.snapshot = sale.snapshot || buildSaleSnapshot(client);
+  }
+  return item;
+}
+
+export function findSaleById(db: AppDatabase, saleId: string): SaleListItem | undefined {
+  if (!saleId) return undefined;
+  for (const client of Object.values(db.clients)) {
+    const sale = (client.sales ?? []).find((s) => s.saleId === saleId);
+    if (sale) return enrichSale(sale, client);
+  }
+  const archived = db.sales?.[saleId];
+  if (archived) return enrichSale(archived);
+  return undefined;
 }

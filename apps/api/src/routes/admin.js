@@ -229,4 +229,13 @@ router.patch("/users/:id/permissions", async (req, res) => {
   await runService(res, () => adminUsersService.updateUserPermissions(a.supabase, a.profile, req.params.id, raw), { wrap: "data" });
 });
 
+router.patch("/users/:id/features", async (req, res) => {
+  const a = await adminAuth(req, res, "users:permissions");
+  if (!a) return;
+  const body = parseJsonBody(req, res);
+  if (!body) return;
+  const raw = Array.isArray(body.features) ? body.features : Array.isArray(body.permissions) ? body.permissions : [];
+  await runService(res, () => adminUsersService.updateUserFeatures(a.supabase, a.profile, req.params.id, raw), { wrap: "data" });
+});
+
 export default router;

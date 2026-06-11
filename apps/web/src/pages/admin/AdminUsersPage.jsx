@@ -6,6 +6,7 @@ import { useAdminFetch } from "@/hooks/use-admin-session.js";
 import { hasPermission } from "@/lib/auth/permissions";
 import { parseUserAdminFilters, userAdminUrl, userFiltersToSearchParams } from "@/lib/admin/filters";
 import { DELEGATABLE_ADMIN_PERMISSIONS } from "@/lib/auth/permissions";
+import { VENDOR_FEATURE_PERMISSIONS } from "@/lib/auth/user-features";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { useMoney } from "@/hooks/use-money.js";
 import { longDate } from "@/lib/format/dates";
@@ -77,6 +78,56 @@ function ConfirmModal({ kind, user, newRole, onClose, onDone }) {
             </button>
           )}
         </div>
+      </div>
+    </>
+  );
+}
+
+function VendorFeaturesModal({ user, onClose, onDone }) {
+  const { t } = useI18n();
+  const [pending, setPending] = useState(false);
+  const current = new Set(user.user_permissions || []);
+
+  const submit = async (e) => {
+    e.preventDefault();
+    setPending(true);
+    const fd = new FormData(e.currentTarget);
+    const features = fd.getAll("features").map(String);
+    if (!features.length) return;
+    const payload = features.length === VENDOR_FEATURE_PERMISSIONS.length ? [] : features;
+    try {
+      await patchAdmin(`users/${user.id}/features`, { features: payload });
+      onDone();
+    } catch {
+      onDone("permissions");
+    } finally {
+      setPending(false);
+    }
+  };
+
+  return (
+    <>
+      <button type="button" className="modal-backdrop" aria-label={t("common.cancel")} onClick={onClose} />
+      <div className="admin-confirm-panel admin-perms-modal" role="dialog" aria-modal="true">
+        <div className="admin-confirm-head">
+          <span className="admin-confirm-title">{t("admin.users.features.title")}</span>
+          <span className="admin-confirm-sub">{user.name}</span>
+        </div>
+        <p className="admin-confirm-body">{t("admin.users.features.hint")}</p>
+        <form onSubmit={submit}>
+          <div className="admin-perms-grid">
+            {VENDOR_FEATURE_PERMISSIONS.map((p) => (
+              <label key={p.key} className="admin-perm-item">
+                <input type="checkbox" name="features" value={p.key} defaultChecked={current.size === 0 || current.has(p.key)} />
+                <span>{t(p.labelKey)}</span>
+              </label>
+            ))}
+          </div>
+          <div className="btn-row">
+            <button type="button" className="btn btn-ghost" onClick={onClose}>{t("common.cancel")}</button>
+            <button type="submit" className="btn btn-primary" disabled={pending}>{pending ? t("admin.users.confirm.saving") : t("admin.users.features.save")}</button>
+          </div>
+        </form>
       </div>
     </>
   );
@@ -158,6 +209,7 @@ export function AdminUsersPage() {
   const confirmUserId = searchParams.get("userId");
   const newRole = searchParams.get("newRole");
   const editPermsId = searchParams.get("editPerms");
+  const editFeaturesId = searchParams.get("editFeatures");
   const errorCode = searchParams.get("error");
   const returnTo = `/admin/users${userFiltersToSearchParams(filters)}`;
   const exportHref = `/api/v1/admin/export/users${userFiltersToSearchParams(filters)}`;
@@ -165,6 +217,7 @@ export function AdminUsersPage() {
   const users = data ?? [];
   const confirmUser = confirmUserId ? users.find((u) => u.id === confirmUserId) : undefined;
   const permsUser = editPermsId ? users.find((u) => u.id === editPermsId) : undefined;
+  const featuresUser = editFeaturesId ? users.find((u) => u.id === editFeaturesId) : undefined;
 
   const refresh = (err) => {
     const url = err ? `${returnTo}${returnTo.includes("?") ? "&" : "?"}error=${err}` : returnTo;
@@ -247,6 +300,9 @@ export function AdminUsersPage() {
                           {caps.canPermissions && u.role === "admin" && !u.is_super_admin && (
                             <Link to={userAdminUrl(filters, { editPerms: u.id })} className="btn btn-sm btn-ghost">{t("admin.users.action.permissions")}</Link>
                           )}
+                          {caps.canPermissions && u.role !== "admin" && !u.is_super_admin && (
+                            <Link to={userAdminUrl(filters, { editFeatures: u.id })} className="btn btn-sm btn-ghost">{t("admin.users.action.features")}</Link>
+                          )}
                         </div>
                       </td>
                     )}
@@ -269,6 +325,13 @@ export function AdminUsersPage() {
       {permsUser && caps.canPermissions && permsUser.role === "admin" && !permsUser.is_super_admin && (
         <PermissionsModal
           user={permsUser}
+          onClose={() => navigate(returnTo, { replace: true })}
+          onDone={(err) => refresh(err)}
+        />
+      )}
+      {featuresUser && caps.canPermissions && featuresUser.role !== "admin" && !featuresUser.is_super_admin && (
+        <VendorFeaturesModal
+          user={featuresUser}
           onClose={() => navigate(returnTo, { replace: true })}
           onDone={(err) => refresh(err)}
         />

@@ -34,6 +34,30 @@ export interface GoalMonth {
   updatedAt?: number;
 }
 
+export interface SaleSnapshot {
+  prospectSummary?: {
+    name?: string;
+    name1?: string;
+    name2?: string;
+    occupation1?: string;
+    occupation2?: string;
+    city?: string;
+    country?: string;
+    phone?: string;
+    email?: string;
+    contract?: string;
+    tourDate?: string;
+    processDate?: string;
+    note?: string;
+    prospectCode?: string;
+  };
+  tools?: {
+    survey?: Record<string, string | number>;
+    vacaciones?: Record<string, string | number>;
+    worksheet?: Record<string, string | number>;
+  };
+}
+
 export interface SaleRecord {
   saleId: string;
   date: string;
@@ -48,6 +72,7 @@ export interface SaleRecord {
   ts: number;
   prospectId?: string;
   source?: string;
+  snapshot?: SaleSnapshot;
   /** Snapshot al archivar venta tras eliminar expediente */
   clientName?: string;
   prospectCode?: string;

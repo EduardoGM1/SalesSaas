@@ -11,6 +11,7 @@ import { useAppStore } from "@/stores/app-store";
 import { useDbStore } from "@/stores/db-store";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { hasAnyAdminAccess } from "@/lib/auth/permissions";
+import { hasUserFeature } from "@/lib/auth/user-features";
 import { watchSession } from "@/lib/session-api.js";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { navLabel } from "@/lib/i18n.js";
@@ -20,8 +21,8 @@ const NAV = [
   { href: "/goals", label: "Dashboard", icon: BarChart3 },
   { href: "/metas", label: "Metas", icon: Target },
   { href: "/clients", label: "Clientes", icon: Users },
-  { href: "/sales", label: "Ventas", icon: Receipt },
   { href: "/tools", label: "Herramientas", icon: Wrench },
+  { href: "/sales", label: "Ventas", icon: Receipt, feature: "sales:history" },
 ];
 
 export function Sidebar() {
@@ -33,6 +34,7 @@ export function Sidebar() {
   const { lang: language } = useI18n();
   const [isAdmin, setIsAdmin] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState(null);
+  const [userProfile, setUserProfile] = useState(null);
 
   useEffect(() => {
     if (!isSupabaseConfigured()) return;
@@ -41,8 +43,10 @@ export function Sidebar() {
       if (!profile) {
         setIsAdmin(false);
         setAvatarUrl(null);
+        setUserProfile(null);
         return;
       }
+      setUserProfile(profile);
       setAvatarUrl(profile.avatar_url ?? null);
       setIsAdmin(hasAnyAdminAccess({
         id: profile.id,
@@ -72,7 +76,7 @@ export function Sidebar() {
           </div>
         </Link>
         <nav className="sb-nav">
-          {NAV.map(({ href, label, icon: Icon }) => {
+          {NAV.filter((item) => !item.feature || hasUserFeature(userProfile, item.feature)).map(({ href, label, icon: Icon }) => {
             const visibleLabel = navLabel(label, language);
             const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
             return (

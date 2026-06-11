@@ -1,5 +1,7 @@
-import { useMemo } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { useMemo, useState } from "react";
+import { Link, Navigate, useSearchParams } from "react-router-dom";
+import { SaleDetailModal } from "@/components/sales/sale-detail-modal.jsx";
+import { useUserFeatures } from "@/hooks/use-user-features.js";
 import { Topbar } from "@/components/layout/topbar";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { useMoney } from "@/hooks/use-money.js";
@@ -30,6 +32,8 @@ export function SalesHistoryPage() {
   const { fmt, fmtN } = useMoney();
   const db = useDbStore((s) => s.db);
   const [searchParams] = useSearchParams();
+  const [viewSaleId, setViewSaleId] = useState(null);
+  const { canAccessSalesHistory, canViewSaleModal, canViewSaleDetail } = useUserFeatures();
 
   const filters = useMemo(() => ({
     status: searchParams.get("status") || undefined,
@@ -41,6 +45,8 @@ export function SalesHistoryPage() {
   const sales = useMemo(() => filterSales(collectAllSales(db), filters), [db, filters]);
   const total = sales.reduce((acc, s) => acc + (s.vol || 0), 0);
   const qs = searchParams.toString();
+
+  if (!canAccessSalesHistory) return <Navigate to="/" replace />;
 
   return (
     <>
@@ -93,6 +99,7 @@ export function SalesHistoryPage() {
                   <th>{t("salesHistory.filters.processing")}</th>
                   <th style={{ textAlign: "right" }}>{t("admin.table.tours")}</th>
                   <th style={{ textAlign: "right" }}>{t("admin.table.volume")}</th>
+                  {canViewSaleModal && <th>{t("admin.users.col.actions")}</th>}
                 </tr>
               </thead>
               <tbody>
@@ -116,6 +123,11 @@ export function SalesHistoryPage() {
                       </td>
                       <td style={{ textAlign: "right" }}>{fmtN(s.tours || 0)}</td>
                       <td style={{ textAlign: "right" }}>{fmt(s.vol || 0)}</td>
+                      {canViewSaleModal && (
+                        <td>
+                          <button type="button" className="dg-link" onClick={() => setViewSaleId(s.saleId)}>{t("common.viewSale")}</button>
+                        </td>
+                      )}
                     </tr>
                   );
                 })}
@@ -124,6 +136,12 @@ export function SalesHistoryPage() {
           )}
         </div>
       </div>
+      <SaleDetailModal
+        open={!!viewSaleId}
+        onOpenChange={(open) => { if (!open) setViewSaleId(null); }}
+        saleId={viewSaleId}
+        showTools={canViewSaleDetail}
+      />
     </>
   );
 }

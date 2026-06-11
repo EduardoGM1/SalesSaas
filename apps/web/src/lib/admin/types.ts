@@ -17,6 +17,7 @@ export interface UserStat extends SellerInfo {
   is_active: boolean;
   is_super_admin: boolean;
   admin_permissions: string[];
+  user_permissions: string[];
   prospects: number;
   sales: number;
   volume: number;
@@ -36,6 +37,7 @@ export type UsersTableRow = {
   is_active: boolean;
   is_super_admin: boolean;
   admin_permissions: string[];
+  user_permissions: string[];
   created_at: string | null;
   prospects: number;
   sales: number;

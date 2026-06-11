@@ -1,5 +1,4 @@
 
-import { Link } from "react-router-dom";
 import { useState } from "react";
 import { Topbar } from "@/components/layout/topbar";
 import { toast } from "@/lib/toast";
@@ -13,6 +12,8 @@ import { EMPTY_CAL_MONTH } from "@/lib/store-empty.js";
 import { useAppStore } from "@/stores/app-store";
 import { useDbStore } from "@/stores/db-store";
 import { EntryDialog } from "./entry-dialog";
+import { SaleDetailModal } from "@/components/sales/sale-detail-modal.jsx";
+import { useUserFeatures } from "@/hooks/use-user-features.js";
 import { CalEntry } from "@/lib/storage/types";
 
 export function CalendarPage() {
@@ -29,6 +30,8 @@ export function CalendarPage() {
   const data = useDbStore((s) => s.db.cal[calKey(calYear, calMonth)] ?? EMPTY_CAL_MONTH);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({ venta: true });
+  const [viewSaleId, setViewSaleId] = useState<string | null>(null);
+  const { canViewSaleModal, canViewSaleDetail } = useUserFeatures();
 
   if (!hydrated) return <Topbar title={t("page.agenda.title")} subtitle={t("common.loading")} />;
   const first = new Date(calYear, calMonth, 1).getDay();
@@ -73,13 +76,13 @@ export function CalendarPage() {
                     {e.t === "venta" && <div className="dg-name">{fmt(e.vol || 0)} — {e.tours || 0} {t("cal.tours")}</div>}
                     {e.note && <div className="dp-date" style={{ color: e.t === "venta" ? undefined : "var(--text)" }}>{e.note}</div>}
                   </div>
-                  {e.clientId ? (
-                    <Link className="dg-link" to={`/clients/${e.clientId}`}>{t("common.goToClient")}</Link>
-                  ) : (
+                  {type === "venta" && e.saleId && canViewSaleModal ? (
+                    <button type="button" className="dg-link" onClick={() => setViewSaleId(e.saleId || null)}>{t("common.viewSale")}</button>
+                  ) : e.t !== "venta" && !e.clientId ? (
                     <button type="button" className="dg-del" onClick={async () => {
                       if (await confirmDialog(translate("toast.cal.deleteEntry")) && selDay) deleteCalEntry(calYear, calMonth, selDay, idx);
                     }}>✕</button>
-                  )}
+                  ) : null}
                 </div>
               );
             })}
@@ -152,6 +155,12 @@ export function CalendarPage() {
         </div>
       </div>
       {selDay && <EntryDialog open={dialogOpen} onOpenChange={setDialogOpen} year={calYear} month={calMonth} day={selDay} />}
+      <SaleDetailModal
+        open={!!viewSaleId}
+        onOpenChange={(open) => { if (!open) setViewSaleId(null); }}
+        saleId={viewSaleId}
+        showTools={canViewSaleDetail}
+      />
     </>
   );
 }

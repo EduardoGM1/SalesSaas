@@ -9,6 +9,7 @@
     "./data/mappers.js": "./src/data/mappers.js",
     "./api/validators.js": "./src/api/validators.js",
     "./auth/permissions.js": "./src/auth/permissions.js",
+    "./auth/user-features.js": "./src/auth/user-features.js",
     "./storage/types.js": "./src/storage/types.js",
     "./ids.js": "./src/ids.js",
     "./constants.js": "./src/constants.js",

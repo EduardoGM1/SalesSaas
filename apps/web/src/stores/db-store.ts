@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { clientDisplayName, ensureProspectIdentity } from "@/lib/clients";
 import { calKey } from "@/lib/format/dates";
 import { generateActivityId, generateClientId, generateEntryId, generateProspectCode, generateSaleId } from "@/lib/ids";
+import { withSaleSnapshot } from "@/lib/sales/snapshot";
 import { loadDatabase, saveDatabase } from "@/lib/storage/local-storage-adapter";
 import {
   AppDatabase,
@@ -78,13 +79,12 @@ function archiveClientSales(db: AppDatabase, client: ClientRecord): void {
   if (!db.sales) db.sales = {};
   const clientName = clientDisplayName(client);
   for (const sale of sales) {
-    db.sales[sale.saleId] = {
+    db.sales[sale.saleId] = withSaleSnapshot(client, {
       ...sale,
-      clientName,
       prospectCode: client.prospectCode,
       formerClientId: client.id,
       orphaned: true,
-    };
+    });
   }
 }
 
@@ -361,7 +361,7 @@ export const useDbStore = create<DbState>((set, get) => ({
       if (noteLine) c.note = c.note ? `${c.note}\n${noteLine}` : noteLine;
 
       db.clients[clientId] = c;
-      ensureSaleInClientAndAgenda(db, clientId, saleRecord);
+      ensureSaleInClientAndAgenda(db, clientId, withSaleSnapshot(c, saleRecord));
       saveDatabase(db);
       return { db };
     });
@@ -396,7 +396,7 @@ export const useDbStore = create<DbState>((set, get) => ({
       c.processDate = saleRecord.processDate || "";
       c.tourDate = c.tourDate || saleRecord.date;
       db.clients[clientId] = c;
-      ensureSaleInClientAndAgenda(db, clientId, saleRecord);
+      ensureSaleInClientAndAgenda(db, clientId, withSaleSnapshot(c, saleRecord));
       saveDatabase(db);
       return { db };
     });
