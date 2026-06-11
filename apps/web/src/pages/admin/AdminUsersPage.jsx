@@ -10,18 +10,12 @@ import { useI18n } from "@/hooks/use-i18n.js";
 import { useMoney } from "@/hooks/use-money.js";
 import { longDate } from "@/lib/format/dates";
 
-const ROLES = [
-  { value: "vendedor", label: "Vendedor" },
-  { value: "admin", label: "Admin" },
-];
-
-const ROLE_LABELS = { vendedor: "Vendedor", gerente: "Gerente", admin: "Admin" };
-
-const ERRORS = {
-  invalid: "Datos inválidos.",
-  role: "No se pudo actualizar el rol.",
-  status: "No se pudo actualizar el estado.",
-  permissions: "No se pudieron guardar los permisos.",
+const ROLE_KEYS = { vendedor: "admin.users.role.seller", gerente: "admin.users.role.manager", admin: "admin.users.role.admin" };
+const ERROR_KEYS = {
+  invalid: "admin.users.error.invalid",
+  role: "admin.users.error.role",
+  status: "admin.users.error.status",
+  permissions: "admin.users.error.permissions",
 };
 
 async function patchAdmin(path, body) {
@@ -36,8 +30,10 @@ async function patchAdmin(path, body) {
 }
 
 function ConfirmModal({ kind, user, newRole, onClose, onDone }) {
+  const { t } = useI18n();
   const [pending, setPending] = useState(false);
   const roleUnchanged = kind === "role" && user.role === newRole;
+  const roleLabel = (r) => t(ROLE_KEYS[r] ?? r);
 
   const submit = async () => {
     setPending(true);
@@ -57,29 +53,27 @@ function ConfirmModal({ kind, user, newRole, onClose, onDone }) {
 
   return (
     <>
-      <button type="button" className="modal-backdrop" aria-label="Cancelar" onClick={onClose} />
+      <button type="button" className="modal-backdrop" aria-label={t("common.cancel")} onClick={onClose} />
       <div className="admin-confirm-panel" role="alertdialog" aria-modal="true">
         <div className="admin-confirm-head">
           <span className="admin-confirm-title">
-            {kind === "role" && (roleUnchanged ? "Sin cambios de rol" : "¿Guardar cambios de rol?")}
-            {kind === "deactivate" && "¿Desactivar esta cuenta?"}
-            {kind === "activate" && "¿Activar esta cuenta?"}
+            {kind === "role" && (roleUnchanged ? t("admin.users.confirm.roleSame") : t("admin.users.confirm.roleTitle"))}
+            {kind === "deactivate" && t("admin.users.confirm.deactivate")}
+            {kind === "activate" && t("admin.users.confirm.activate")}
           </span>
           <span className="admin-confirm-sub">{user.name}</span>
         </div>
         <p className="admin-confirm-body">
-          {kind === "role" && roleUnchanged && <>El rol seleccionado es el mismo que el actual.</>}
-          {kind === "role" && !roleUnchanged && (
-            <>Rol actual: <strong>{ROLE_LABELS[user.role] ?? user.role}</strong> → Nuevo: <strong>{ROLE_LABELS[newRole] ?? newRole}</strong></>
-          )}
-          {kind === "deactivate" && <><strong>{user.name}</strong> no podrá iniciar sesión.</>}
-          {kind === "activate" && <><strong>{user.name}</strong> podrá volver a iniciar sesión.</>}
+          {kind === "role" && roleUnchanged && t("admin.users.confirm.roleSameBody")}
+          {kind === "role" && !roleUnchanged && t("admin.users.confirm.roleChange", { current: roleLabel(user.role), next: roleLabel(newRole) })}
+          {kind === "deactivate" && t("admin.users.confirm.deactivateBody", { name: user.name })}
+          {kind === "activate" && t("admin.users.confirm.activateBody", { name: user.name })}
         </p>
         <div className="btn-row">
-          <button type="button" className="btn btn-ghost" onClick={onClose}>{roleUnchanged ? "Cerrar" : "Cancelar"}</button>
+          <button type="button" className="btn btn-ghost" onClick={onClose}>{roleUnchanged ? t("admin.users.confirm.close") : t("common.cancel")}</button>
           {!roleUnchanged && (
             <button type="button" className={`btn ${kind === "deactivate" ? "btn-danger" : "btn-primary"}`} disabled={pending} onClick={submit}>
-              {pending ? "Guardando…" : kind === "role" ? "Guardar" : kind === "deactivate" ? "Desactivar" : "Activar"}
+              {pending ? t("admin.users.confirm.saving") : kind === "role" ? t("common.save") : kind === "deactivate" ? t("admin.users.confirm.deactivateBtn") : t("admin.users.confirm.activateBtn")}
             </button>
           )}
         </div>
@@ -89,6 +83,7 @@ function ConfirmModal({ kind, user, newRole, onClose, onDone }) {
 }
 
 function PermissionsModal({ user, onClose, onDone }) {
+  const { t } = useI18n();
   const [pending, setPending] = useState(false);
   const current = new Set(user.admin_permissions);
 
@@ -109,10 +104,10 @@ function PermissionsModal({ user, onClose, onDone }) {
 
   return (
     <>
-      <button type="button" className="modal-backdrop" aria-label="Cerrar" onClick={onClose} />
+      <button type="button" className="modal-backdrop" aria-label={t("common.cancel")} onClick={onClose} />
       <div className="admin-confirm-panel admin-perms-modal" role="dialog" aria-modal="true">
         <div className="admin-confirm-head">
-          <span className="admin-confirm-title">Permisos de administrador</span>
+          <span className="admin-confirm-title">{t("admin.users.perms.title")}</span>
           <span className="admin-confirm-sub">{user.name}</span>
         </div>
         <form onSubmit={submit}>
@@ -125,8 +120,8 @@ function PermissionsModal({ user, onClose, onDone }) {
             ))}
           </div>
           <div className="btn-row">
-            <button type="button" className="btn btn-ghost" onClick={onClose}>Cancelar</button>
-            <button type="submit" className="btn btn-primary" disabled={pending}>{pending ? "Guardando…" : "Guardar permisos"}</button>
+            <button type="button" className="btn btn-ghost" onClick={onClose}>{t("common.cancel")}</button>
+            <button type="submit" className="btn btn-primary" disabled={pending}>{pending ? t("admin.users.confirm.saving") : t("admin.users.perms.save")}</button>
           </div>
         </form>
       </div>
@@ -136,7 +131,12 @@ function PermissionsModal({ user, onClose, onDone }) {
 
 export function AdminUsersPage() {
   const { t } = useI18n();
-  const { fmtN } = useMoney();
+  const { fmt, fmtN } = useMoney();
+  const roles = [
+    { value: "vendedor", label: t("admin.users.role.seller") },
+    { value: "admin", label: t("admin.users.role.admin") },
+  ];
+  const roleLabel = (r) => t(ROLE_KEYS[r] ?? r);
   const session = useOutletContext();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -183,24 +183,24 @@ export function AdminUsersPage() {
         <h1 className="admin-h1">{t("admin.users.title")}</h1>
         <p className="admin-sub">{t("admin.users.sub", { count: fmtN(users.length) })}</p>
       </div>
-      {errorCode && <div className="auth-error" style={{ marginBottom: 16 }}>{ERRORS[errorCode] ?? "Ocurrió un error."}</div>}
+      {errorCode && <div className="auth-error" style={{ marginBottom: 16 }}>{t(ERROR_KEYS[errorCode] ?? "admin.users.error.generic")}</div>}
       <AdminUsersFilters filters={filters} exportHref={exportHref} showExport={hasPermission(profile, "users:export")} />
       <div className="client-table-card">
         {users.length === 0 ? (
-          <div className="admin-empty">Sin usuarios.</div>
+          <div className="admin-empty">{t("admin.users.empty")}</div>
         ) : (
           <table className="client-table admin-users-table">
             <thead>
               <tr>
-                <th>Nombre</th>
-                <th>Correo</th>
-                <th>Rol</th>
-                <th>Estado</th>
-                <th style={{ textAlign: "right" }}>Expedientes</th>
-                <th style={{ textAlign: "right" }}>Ventas</th>
-                <th style={{ textAlign: "right" }}>Volumen</th>
-                <th>Alta</th>
-                {hasActions && <th className="admin-cell-actions">Acciones</th>}
+                <th>{t("admin.users.col.name")}</th>
+                <th>{t("admin.users.col.email")}</th>
+                <th>{t("admin.users.col.role")}</th>
+                <th>{t("admin.users.col.status")}</th>
+                <th style={{ textAlign: "right" }}>{t("admin.users.col.files")}</th>
+                <th style={{ textAlign: "right" }}>{t("admin.users.col.sales")}</th>
+                <th style={{ textAlign: "right" }}>{t("admin.users.col.volume")}</th>
+                <th>{t("admin.users.col.created")}</th>
+                {hasActions && <th className="admin-cell-actions">{t("admin.users.col.actions")}</th>}
               </tr>
             </thead>
             <tbody>
@@ -210,20 +210,20 @@ export function AdminUsersPage() {
                 const roleReadOnly = !caps.canRole || u.is_super_admin || isSelf;
                 return (
                   <tr key={u.id} className={!u.is_active ? "admin-user-row-inactive" : undefined}>
-                    <td className="admin-cell-name" title={u.name}>{u.name}{u.is_super_admin && <span className="admin-super-badge">Principal</span>}</td>
+                    <td className="admin-cell-name" title={u.name}>{u.name}{u.is_super_admin && <span className="admin-super-badge">{t("admin.users.badge.super")}</span>}</td>
                     <td className="admin-cell-email" title={u.email ?? undefined}>{u.email ?? "—"}</td>
                     <td className="admin-cell-role">
                       {roleReadOnly ? (
-                        <span className="admin-role-readonly">{ROLES.find((r) => r.value === u.role)?.label ?? u.role}</span>
+                        <span className="admin-role-readonly">{roleLabel(u.role)}</span>
                       ) : (
                         <select form={formId} name="newRole" defaultValue={u.role} className="admin-role-select" disabled={!u.is_active}>
-                          {ROLES.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
+                          {roles.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
                         </select>
                       )}
                     </td>
                     <td className="admin-cell-status">
                       <span className={`admin-status-badge ${u.is_active ? "admin-status-active" : "admin-status-inactive"}`}>
-                        {u.is_active ? "Activa" : "Desactivada"}
+                        {u.is_active ? t("admin.users.status.active") : t("admin.users.status.inactive")}
                       </span>
                     </td>
                     <td className="admin-cell-num" style={{ textAlign: "right" }}>{fmtN(u.prospects)}</td>
@@ -235,17 +235,17 @@ export function AdminUsersPage() {
                         <div className="admin-table-actions">
                           {caps.canRole && !roleReadOnly && (
                             <form id={formId} onSubmit={(e) => { e.preventDefault(); const fd = new FormData(e.currentTarget); navigate(userAdminUrl(filters, { confirm: "role", userId: u.id, newRole: fd.get("newRole") })); }}>
-                              <button type="submit" className="icon-btn" title="Guardar rol" disabled={!u.is_active}><IconSave /></button>
+                              <button type="submit" className="icon-btn" title={t("admin.users.action.saveRole")} disabled={!u.is_active}><IconSave /></button>
                             </form>
                           )}
                           {!isSelf && !u.is_super_admin && caps.canDeactivate && u.is_active && (
-                            <Link to={userAdminUrl(filters, { confirm: "deactivate", userId: u.id })} className="icon-btn admin-icon-btn-danger" title="Desactivar cuenta"><IconUserX /></Link>
+                            <Link to={userAdminUrl(filters, { confirm: "deactivate", userId: u.id })} className="icon-btn admin-icon-btn-danger" title={t("admin.users.action.deactivate")}><IconUserX /></Link>
                           )}
                           {!isSelf && !u.is_super_admin && caps.canActivate && !u.is_active && (
-                            <Link to={userAdminUrl(filters, { confirm: "activate", userId: u.id })} className="icon-btn" title="Activar cuenta"><IconUserCheck /></Link>
+                            <Link to={userAdminUrl(filters, { confirm: "activate", userId: u.id })} className="icon-btn" title={t("admin.users.action.activate")}><IconUserCheck /></Link>
                           )}
                           {caps.canPermissions && u.role === "admin" && !u.is_super_admin && (
-                            <Link to={userAdminUrl(filters, { editPerms: u.id })} className="btn btn-sm btn-ghost">Permisos</Link>
+                            <Link to={userAdminUrl(filters, { editPerms: u.id })} className="btn btn-sm btn-ghost">{t("admin.users.action.permissions")}</Link>
                           )}
                         </div>
                       </td>

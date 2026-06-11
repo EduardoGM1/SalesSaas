@@ -47,7 +47,7 @@ export function AdminAgendaPage() {
       <AdminFiltersBar filters={filters} sellers={sellers} />
       <div className="client-table-card">
         {entries.length === 0 ? (
-          <div className="admin-empty">Sin entradas con estos filtros.</div>
+          <div className="admin-empty">{t("admin.agenda.empty")}</div>
         ) : (
           <table className="client-table">
             <thead>

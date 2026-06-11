@@ -40,7 +40,7 @@ export function AdminWorksheetsPage() {
       <div className="client-table-card">
         {sheets.length === 0 ? (
           <div className="admin-empty">
-            {hasFilters ? "Sin worksheets que coincidan con los filtros." : "Sin worksheets guardadas."}
+            {hasFilters ? t("admin.worksheets.emptyFiltered") : t("admin.worksheets.emptyAll")}
           </div>
         ) : (
           <table className="client-table">

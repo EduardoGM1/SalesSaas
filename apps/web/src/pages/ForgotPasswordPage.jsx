@@ -43,7 +43,7 @@ export function ForgotPasswordPage() {
         <form onSubmit={onSubmit}>
           <div className="auth-field">
             <label className="field-label">{t("auth.login.email")}</label>
-            <input className="auth-input" type="email" name="email" placeholder="tu@correo.com" required autoComplete="email" onFocus={selectOnFocus} />
+            <input className="auth-input" type="email" name="email" placeholder={t("auth.common.emailPlaceholder")} required autoComplete="email" onFocus={selectOnFocus} />
           </div>
           <button type="submit" className="btn btn-primary btn-full" disabled={pending}>
             {pending ? t("auth.forgot.pending") : t("auth.forgot.submit")}

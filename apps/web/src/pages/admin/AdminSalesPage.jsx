@@ -51,7 +51,7 @@ export function AdminSalesPage() {
                 <th>{t("admin.table.file")}</th>
                 <th>{t("admin.table.contract")}</th>
                 <th>{t("admin.table.status")}</th>
-                <th style={{ textAlign: "right" }}>Tours</th>
+                <th style={{ textAlign: "right" }}>{t("admin.table.tours")}</th>
                 <th style={{ textAlign: "right" }}>{t("admin.table.volume")}</th>
               </tr>
             </thead>

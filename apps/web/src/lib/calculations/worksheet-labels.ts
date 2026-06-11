@@ -1,4 +1,5 @@
 import { fmt, parseMoney } from "@/lib/format/money";
+import { translate } from "@/lib/i18n.js";
 
 /** Claves legacy del HTML original → clave canónica actual. */
 const LEGACY_ALIASES: Record<string, string> = {
@@ -10,17 +11,17 @@ const LEGACY_ALIASES: Record<string, string> = {
 
 type FieldKind = "money" | "percent" | "months";
 
-const FIELD_META: Record<string, { label: string; kind: FieldKind }> = {
-  wv: { label: "Monto de venta", kind: "money" },
-  we: { label: "% Enganche", kind: "percent" },
-  wcc: { label: "Costo de contrato", kind: "money" },
-  wob: { label: "Balance anterior", kind: "money" },
-  wo1m: { label: "Opción 1 — Meses", kind: "months" },
-  wo1r: { label: "Opción 1 — Interés anual", kind: "percent" },
-  wo2m: { label: "Opción 2 — Meses", kind: "months" },
-  wo2r: { label: "Opción 2 — Interés anual", kind: "percent" },
-  wo3m: { label: "Opción 3 — Meses", kind: "months" },
-  wo3r: { label: "Opción 3 — Interés anual", kind: "percent" },
+const FIELD_META: Record<string, { labelKey: string; kind: FieldKind }> = {
+  wv: { labelKey: "admin.worksheet.field.wv", kind: "money" },
+  we: { labelKey: "admin.worksheet.field.we", kind: "percent" },
+  wcc: { labelKey: "admin.worksheet.field.wcc", kind: "money" },
+  wob: { labelKey: "admin.worksheet.field.wob", kind: "money" },
+  wo1m: { labelKey: "admin.worksheet.field.wo1m", kind: "months" },
+  wo1r: { labelKey: "admin.worksheet.field.wo1r", kind: "percent" },
+  wo2m: { labelKey: "admin.worksheet.field.wo2m", kind: "months" },
+  wo2r: { labelKey: "admin.worksheet.field.wo2r", kind: "percent" },
+  wo3m: { labelKey: "admin.worksheet.field.wo3m", kind: "months" },
+  wo3r: { labelKey: "admin.worksheet.field.wo3r", kind: "percent" },
 };
 
 const FIELD_ORDER = [
@@ -30,7 +31,8 @@ const FIELD_ORDER = [
 
 export function worksheetFieldLabel(key: string): string {
   const canonical = LEGACY_ALIASES[key] ?? key;
-  return FIELD_META[canonical]?.label ?? key;
+  const meta = FIELD_META[canonical];
+  return meta ? translate(meta.labelKey) : key;
 }
 
 export function formatWorksheetValue(key: string, value: unknown): string {
@@ -40,7 +42,7 @@ export function formatWorksheetValue(key: string, value: unknown): string {
   const raw = String(value).trim();
 
   if (!meta) {
-    if (typeof value === "boolean") return value ? "Sí" : "No";
+    if (typeof value === "boolean") return value ? translate("admin.worksheet.yes") : translate("admin.worksheet.no");
     if (typeof value === "object") return JSON.stringify(value);
     return raw;
   }
@@ -53,7 +55,7 @@ export function formatWorksheetValue(key: string, value: unknown): string {
       return `${raw.replace(/,/g, "")}%`;
     case "months": {
       const m = Math.round(num);
-      return m === 1 ? "1 mes" : `${m} meses`;
+      return m === 1 ? translate("admin.worksheet.monthOne") : translate("admin.worksheet.months", { n: m });
     }
   }
 }

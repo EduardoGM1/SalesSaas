@@ -32,7 +32,7 @@ export function AdminGoalsPage() {
       <AdminFiltersBar filters={filters} sellers={sellers} />
       <div className="client-table-card">
         {goals.length === 0 ? (
-          <div className="admin-empty">Sin metas registradas.</div>
+          <div className="admin-empty">{t("admin.goals.empty")}</div>
         ) : (
           <table className="client-table">
             <thead>
@@ -40,7 +40,7 @@ export function AdminGoalsPage() {
                 <th>Vendedor</th>
                 <th>Periodo</th>
                 <th style={{ textAlign: "right" }}>Volumen</th>
-                <th style={{ textAlign: "right" }}>Tours</th>
+                <th style={{ textAlign: "right" }}>{t("admin.table.tours")}</th>
                 <th style={{ textAlign: "right" }}>Ventas</th>
                 <th style={{ textAlign: "right" }}>Días</th>
                 <th style={{ textAlign: "right" }}>Descansos</th>

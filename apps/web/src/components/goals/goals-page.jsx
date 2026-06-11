@@ -8,6 +8,7 @@ import { getDashboardWeeks, normalizeGoal, workingDaysRemaining } from "@/lib/ca
 import { useI18n } from "@/hooks/use-i18n.js";
 import { useMoney } from "@/hooks/use-money.js";
 import { calKey } from "@/lib/format/dates";
+import { EMPTY_CAL_MONTH } from "@/lib/store-empty.js";
 import { useAppStore } from "@/stores/app-store";
 import { useDbStore } from "@/stores/db-store";
 
@@ -22,12 +23,17 @@ export function GoalsPage() {
   const [showTarget, setShowTarget] = useState(true);
   const [showReal, setShowReal] = useState(true);
   const monthKey = calKey(calYear, calMonth);
-  const data = useDbStore((s) => s.db.cal[monthKey] ?? { days: {}, weeks: {} });
-  const goalRaw = useDbStore((s) => s.db.goals[monthKey] ?? {});
-  const goal = normalizeGoal(goalRaw);
+  const data = useDbStore((s) => s.db.cal[monthKey] ?? EMPTY_CAL_MONTH);
+  const goalVol = useDbStore((s) => s.db.goals[monthKey]?.vol ?? 0);
+  const goalTours = useDbStore((s) => s.db.goals[monthKey]?.tours ?? 0);
+  const goalVentas = useDbStore((s) => s.db.goals[monthKey]?.ventas ?? 0);
+  const goal = useMemo(
+    () => normalizeGoal({ vol: goalVol, tours: goalTours, ventas: goalVentas }),
+    [goalVol, goalTours, goalVentas],
+  );
   const weeks = useMemo(
     () => getDashboardWeeks(calYear, calMonth, data, goal),
-    [calYear, calMonth, data, goal, goalRaw],
+    [calYear, calMonth, data, goal],
   );
 
   const totals = weeks.reduce((a, w) => ({

@@ -32,7 +32,7 @@ export function AdminWorksheetDetailPage() {
       </div>
       <div className="client-table-card">
         {entries.length === 0 ? (
-          <div className="admin-empty">Sin campos guardados.</div>
+          <div className="admin-empty">{t("admin.worksheet.noFields")}</div>
         ) : (
           <table className="client-table admin-detail-table">
             <thead>

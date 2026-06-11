@@ -1,5 +1,6 @@
 import { ES_EXT, EN_EXT } from "./i18n-catalog.js";
 import { ES_PHASE2, EN_PHASE2 } from "./i18n-phase2-catalog.js";
+import { ES_PHASE3, EN_PHASE3 } from "./i18n-phase3-catalog.js";
 import { useDbStore } from "@/stores/db-store";
 
 const ES = {
@@ -143,6 +144,7 @@ const ES = {
   "status.processed": "Procesado",
   ...ES_EXT,
   ...ES_PHASE2,
+  ...ES_PHASE3,
 };
 
 const EN = {
@@ -286,6 +288,7 @@ const EN = {
   "status.processed": "Processed",
   ...EN_EXT,
   ...EN_PHASE2,
+  ...EN_PHASE3,
 };
 
 const MONTHS_ES = [

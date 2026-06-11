@@ -56,7 +56,7 @@ export function RegisterPage() {
           </div>
           <div className="auth-field">
             <label className="field-label">{t("auth.register.email")}</label>
-            <input className="auth-input" type="email" name="email" placeholder="tu@correo.com" required autoComplete="email" onFocus={selectOnFocus} />
+            <input className="auth-input" type="email" name="email" placeholder={t("auth.common.emailPlaceholder")} required autoComplete="email" onFocus={selectOnFocus} />
           </div>
           <div className="auth-field">
             <label className="field-label">{t("auth.register.password")}</label>

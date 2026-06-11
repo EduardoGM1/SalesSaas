@@ -493,6 +493,27 @@ body,
     justify-content: center;
   }
 
+  .card .mtbl,
+  .pattern-table {
+    display: block;
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .pattern-table {
+    min-width: 520px;
+  }
+
+  .prospect-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .client-table-card {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
   .modal,
   .sales-modal-viewport .modal {
     width: calc(100vw - 24px - var(--safe-left) - var(--safe-right));

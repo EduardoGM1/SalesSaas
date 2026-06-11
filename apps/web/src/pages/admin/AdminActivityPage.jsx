@@ -34,7 +34,7 @@ export function AdminActivityPage() {
       <AdminFiltersBar filters={filters} sellers={sellers} />
       <div className="client-table-card">
         {activities.length === 0 ? (
-          <div className="admin-empty">Sin actividad con estos filtros.</div>
+          <div className="admin-empty">{t("admin.activity.empty")}</div>
         ) : (
           <table className="client-table">
             <thead>
