@@ -3,7 +3,8 @@ import { useSearchParams } from "react-router-dom";
 import { AdminFiltersBar } from "@/components/admin/admin-filters-bar.jsx";
 import { useAdminFetch } from "@/hooks/use-admin-session.js";
 import { parseAdminFilters } from "@/lib/admin/filters";
-import { fmt } from "@/lib/format/money";
+import { useI18n } from "@/hooks/use-i18n.js";
+import { useMoney } from "@/hooks/use-money.js";
 import { longDate } from "@/lib/format/dates";
 
 const TYPE_LABEL = {
@@ -21,13 +22,15 @@ function prospectName(p) {
 }
 
 export function AdminAgendaPage() {
+  const { t } = useI18n();
+  const { fmt } = useMoney();
   const [searchParams] = useSearchParams();
   const filters = useMemo(() => parseAdminFilters(Object.fromEntries(searchParams.entries())), [searchParams]);
   const search = searchParams.toString() ? `?${searchParams.toString()}` : "";
   const entriesState = useAdminFetch("calendar", search);
   const sellersState = useAdminFetch("sellers");
 
-  if (entriesState.loading || sellersState.loading) return <div className="admin-page">Cargando agenda…</div>;
+  if (entriesState.loading || sellersState.loading) return <div className="admin-page">{t("admin.loading.agenda")}</div>;
   if (entriesState.error) return <div className="admin-page admin-empty">{entriesState.error}</div>;
 
   const entries = entriesState.data ?? [];
@@ -36,8 +39,8 @@ export function AdminAgendaPage() {
   return (
     <div className="admin-page">
       <div className="admin-page-head">
-        <h1 className="admin-h1">Agenda global</h1>
-        <p className="admin-sub">Calendario de todos los vendedores (últimas 500 entradas).</p>
+        <h1 className="admin-h1">{t("admin.agenda.title")}</h1>
+        <p className="admin-sub">{t("admin.agenda.sub")}</p>
       </div>
       <AdminFiltersBar filters={filters} sellers={sellers} />
       <div className="client-table-card">

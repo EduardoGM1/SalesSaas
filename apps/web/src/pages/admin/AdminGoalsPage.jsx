@@ -3,18 +3,21 @@ import { useSearchParams } from "react-router-dom";
 import { AdminFiltersBar } from "@/components/admin/admin-filters-bar.jsx";
 import { useAdminFetch } from "@/hooks/use-admin-session.js";
 import { parseAdminFilters } from "@/lib/admin/filters";
-import { fmt, fmtN } from "@/lib/format/money";
+import { useI18n } from "@/hooks/use-i18n.js";
+import { useMoney } from "@/hooks/use-money.js";
 
 const MONTHS = ["", "Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
 
 export function AdminGoalsPage() {
+  const { t } = useI18n();
+  const { fmt, fmtN } = useMoney();
   const [searchParams] = useSearchParams();
   const filters = useMemo(() => parseAdminFilters(Object.fromEntries(searchParams.entries())), [searchParams]);
   const search = searchParams.toString() ? `?${searchParams.toString()}` : "";
   const goalsState = useAdminFetch("goals", search);
   const sellersState = useAdminFetch("sellers");
 
-  if (goalsState.loading || sellersState.loading) return <div className="admin-page">Cargando metas…</div>;
+  if (goalsState.loading || sellersState.loading) return <div className="admin-page">{t("admin.loading.goals")}</div>;
   if (goalsState.error) return <div className="admin-page admin-empty">{goalsState.error}</div>;
 
   const goals = goalsState.data ?? [];
@@ -23,8 +26,8 @@ export function AdminGoalsPage() {
   return (
     <div className="admin-page">
       <div className="admin-page-head">
-        <h1 className="admin-h1">Metas globales</h1>
-        <p className="admin-sub">Metas mensuales de todos los vendedores.</p>
+        <h1 className="admin-h1">{t("admin.goals.title")}</h1>
+        <p className="admin-sub">{t("admin.goals.sub")}</p>
       </div>
       <AdminFiltersBar filters={filters} sellers={sellers} />
       <div className="client-table-card">

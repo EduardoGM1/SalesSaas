@@ -3,6 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { AdminFiltersBar } from "@/components/admin/admin-filters-bar.jsx";
 import { useAdminFetch } from "@/hooks/use-admin-session.js";
 import { parseAdminFilters } from "@/lib/admin/filters";
+import { useI18n } from "@/hooks/use-i18n.js";
 import { longDate } from "@/lib/format/dates";
 
 function prospectName(p) {
@@ -11,13 +12,14 @@ function prospectName(p) {
 }
 
 export function AdminActivityPage() {
+  const { t } = useI18n();
   const [searchParams] = useSearchParams();
   const filters = useMemo(() => parseAdminFilters(Object.fromEntries(searchParams.entries())), [searchParams]);
   const search = searchParams.toString() ? `?${searchParams.toString()}` : "";
   const activitiesState = useAdminFetch("activities", search);
   const sellersState = useAdminFetch("sellers");
 
-  if (activitiesState.loading || sellersState.loading) return <div className="admin-page">Cargando actividad…</div>;
+  if (activitiesState.loading || sellersState.loading) return <div className="admin-page">{t("admin.loading.activity")}</div>;
   if (activitiesState.error) return <div className="admin-page admin-empty">{activitiesState.error}</div>;
 
   const activities = activitiesState.data ?? [];
@@ -26,8 +28,8 @@ export function AdminActivityPage() {
   return (
     <div className="admin-page">
       <div className="admin-page-head">
-        <h1 className="admin-h1">Actividad global</h1>
-        <p className="admin-sub">Historial de actividad de todos los vendedores (últimas 500).</p>
+        <h1 className="admin-h1">{t("admin.activity.title")}</h1>
+        <p className="admin-sub">{t("admin.activity.sub")}</p>
       </div>
       <AdminFiltersBar filters={filters} sellers={sellers} />
       <div className="client-table-card">

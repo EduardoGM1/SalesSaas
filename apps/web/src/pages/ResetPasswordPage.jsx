@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Home } from "lucide-react";
+import { useI18n } from "@/hooks/use-i18n.js";
 
 export function ResetPasswordPage() {
+  const { t } = useI18n();
   const navigate = useNavigate();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState(null);
@@ -23,10 +25,10 @@ export function ResetPasswordPage() {
         }),
       });
       const body = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(body.error ?? "No se pudo actualizar la contraseña.");
+      if (!res.ok) throw new Error(body.error ?? t("auth.reset.submit"));
       navigate(body.redirect ?? "/settings", { replace: true });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error");
+      setError(err instanceof Error ? err.message : t("auth.login.errorGeneric"));
     } finally {
       setPending(false);
     }
@@ -35,20 +37,20 @@ export function ResetPasswordPage() {
   return (
     <div className="auth-card">
       <div className="auth-logo"><Home size={22} /></div>
-      <div className="auth-title">Nueva contraseña</div>
-      <div className="auth-sub">Elige una contraseña segura de al menos 6 caracteres.</div>
+      <div className="auth-title">{t("auth.reset.title")}</div>
+      <div className="auth-sub">{t("auth.reset.sub")}</div>
       {error && <div className="auth-error">{error}</div>}
       <form onSubmit={onSubmit}>
         <div className="auth-field">
-          <label className="field-label">Nueva contraseña</label>
-          <input className="auth-input" type="password" name="password" placeholder="Mínimo 6 caracteres" required autoComplete="new-password" minLength={6} />
+          <label className="field-label">{t("auth.reset.new")}</label>
+          <input className="auth-input" type="password" name="password" placeholder={t("auth.register.passwordPlaceholder")} required autoComplete="new-password" minLength={6} />
         </div>
         <div className="auth-field">
-          <label className="field-label">Confirmar contraseña</label>
-          <input className="auth-input" type="password" name="confirm" placeholder="Repite la contraseña" required autoComplete="new-password" minLength={6} />
+          <label className="field-label">{t("auth.reset.confirm")}</label>
+          <input className="auth-input" type="password" name="confirm" placeholder={t("auth.reset.confirmPlaceholder")} required autoComplete="new-password" minLength={6} />
         </div>
         <button type="submit" className="btn btn-primary btn-full" disabled={pending}>
-          {pending ? "Guardando…" : "Actualizar contraseña"}
+          {pending ? t("auth.reset.pending") : t("auth.reset.submit")}
         </button>
       </form>
     </div>

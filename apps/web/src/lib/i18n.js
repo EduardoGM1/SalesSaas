@@ -1,3 +1,6 @@
+import { ES_EXT, EN_EXT } from "./i18n-catalog.js";
+import { useDbStore } from "@/stores/db-store";
+
 const ES = {
   "nav.agenda": "Agenda",
   "nav.dashboard": "Dashboard",
@@ -133,6 +136,7 @@ const ES = {
   "status.lost": "Perdido / cerrado",
   "status.closed": "Cerrado",
   "status.processed": "Procesado",
+  ...ES_EXT,
 };
 
 const EN = {
@@ -270,6 +274,7 @@ const EN = {
   "status.lost": "Lost / closed",
   "status.closed": "Closed",
   "status.processed": "Processed",
+  ...EN_EXT,
 };
 
 const MONTHS_ES = [
@@ -342,4 +347,10 @@ export function navLabel(label, lang = "es") {
   };
   const k = map[label];
   return k ? t(k, lang) : label;
+}
+
+/** Traducción desde settings del store (acciones, utilidades fuera de React). */
+export function translate(key, vars) {
+  const lang = getLang(useDbStore.getState().db.settings);
+  return t(key, lang, vars);
 }

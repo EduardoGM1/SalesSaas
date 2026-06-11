@@ -1,10 +1,11 @@
 import { clientDisplayName } from "@/lib/clients";
+import { translate } from "@/lib/i18n.js";
 import { useDbStore } from "@/stores/db-store";
 import { toast } from "@/lib/toast";
 
 export function saveClientNote({ clientId, client, noteForm }) {
   if (!noteForm.note.trim()) {
-    toast.error("Escribe la nota.");
+    toast.error(translate("toast.note.empty"));
     return { ok: false };
   }
   const date = noteForm.date || noteForm.fallbackDate;
@@ -35,7 +36,7 @@ export function saveClientNote({ clientId, client, noteForm }) {
 export function saveAgendaUserNote({ dateStr, year, month, day, nota, remDate, remTime }) {
   const trimmed = nota.trim();
   if (!trimmed) {
-    toast.error("Escribe algo.");
+    toast.error(translate("toast.agenda.empty"));
     return { ok: false };
   }
   const note = remTime ? `${remTime} · ${trimmed}` : trimmed;

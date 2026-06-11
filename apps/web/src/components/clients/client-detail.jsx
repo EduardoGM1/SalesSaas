@@ -20,10 +20,10 @@ import { useSaleActions } from "@/hooks/use-sale-actions.js";
 import { useCalendarActions } from "@/hooks/use-calendar-actions.js";
 import { toast } from "@/lib/toast";
 
-const TOOLS = [
-  { key: "survey", label: "Survey", desc: "Viaje actual, últimas vacaciones y viajes futuros", icon: FileText, href: "survey", tone: "blue" },
-  { key: "vacaciones", label: "Proyección de Vacaciones", desc: "Costo futuro con inflación", icon: Palmtree, href: "vacaciones", tone: "green" },
-  { key: "worksheet", label: "Worksheet", desc: "Enganche y financiamiento", icon: DollarSign, href: "worksheet", tone: "purple" },
+const TOOL_DEFS = [
+  { key: "survey", labelKey: "exp.tool.survey", descKey: "exp.tool.surveyDesc", icon: FileText, href: "survey", tone: "blue" },
+  { key: "vacaciones", labelKey: "exp.tool.vacation", descKey: "exp.tool.vacationDesc", icon: Palmtree, href: "vacaciones", tone: "green" },
+  { key: "worksheet", labelKey: "exp.tool.worksheet", descKey: "exp.tool.worksheetDesc", icon: DollarSign, href: "worksheet", tone: "purple" },
 ];
 
 export function ClientDetail({ id }) {
@@ -37,7 +37,7 @@ export function ClientDetail({ id }) {
   const { saveSale: persistSale } = useSaleActions();
   const { saveNoteForClient } = useCalendarActions();
   const { fmt } = useMoney();
-  const { lang } = useI18n();
+  const { t, lang } = useI18n();
 
   const [editOpen, setEditOpen] = useState(false);
   const [saleOpen, setSaleOpen] = useState(false);
@@ -75,11 +75,11 @@ export function ClientDetail({ id }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hydrated, c?.id, id, searchParams, navigate]);
 
-  if (!hydrated) return <Topbar title="Expediente" subtitle="Cargando..." />;
+  if (!hydrated) return <Topbar title={t("exp.title")} subtitle={t("exp.loading")} />;
   if (!c) return (
     <>
-      <Topbar title="Expediente" subtitle="No encontrado" />
-      <div className="sales-page"><Link to="/clients" className="btn btn-ghost btn-sm">← Volver</Link></div>
+      <Topbar title={t("exp.title")} subtitle={t("exp.notFound")} />
+      <div className="sales-page"><Link to="/clients" className="btn btn-ghost btn-sm">{t("exp.back")}</Link></div>
     </>
   );
 
@@ -167,14 +167,14 @@ export function ClientDetail({ id }) {
   const toolCards = isQuick
     ? [saleCard, notesCard]
     : [
-        ...TOOLS.map((t) => ({
-          label: t.label,
-          desc: t.desc,
-          icon: t.icon,
-          tone: t.tone,
+        ...TOOL_DEFS.map((tool) => ({
+          label: t(tool.labelKey),
+          desc: t(tool.descKey),
+          icon: tool.icon,
+          tone: tool.tone,
           onClick: () => {
             setToolMode("client", id);
-            navigate(`/clients/${id}/${t.href}`);
+            navigate(`/clients/${id}/${tool.href}`);
           },
         })),
         saleCard,
@@ -188,10 +188,10 @@ export function ClientDetail({ id }) {
 
   return (
     <>
-      <Topbar title="Expediente" subtitle="Información del expediente" />
+      <Topbar title={t("exp.title")} subtitle={t("exp.subtitle")} />
       <div className="sales-page">
         <header className="exp-page-head">
-          <Link to="/clients" className="btn btn-ghost btn-sm exp-page-back">← Volver</Link>
+          <Link to="/clients" className="btn btn-ghost btn-sm exp-page-back">{t("exp.back")}</Link>
           <div className="exp-page-meta">
             <h1 className="exp-page-title" id="exp-title">{clientDisplayName(c)}</h1>
             <p className="exp-page-sub" id="exp-since">{since}</p>

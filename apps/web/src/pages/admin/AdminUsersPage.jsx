@@ -6,7 +6,8 @@ import { useAdminFetch } from "@/hooks/use-admin-session.js";
 import { hasPermission } from "@/lib/auth/permissions";
 import { parseUserAdminFilters, userAdminUrl, userFiltersToSearchParams } from "@/lib/admin/filters";
 import { DELEGATABLE_ADMIN_PERMISSIONS } from "@/lib/auth/permissions";
-import { fmt, fmtN } from "@/lib/format/money";
+import { useI18n } from "@/hooks/use-i18n.js";
+import { useMoney } from "@/hooks/use-money.js";
 import { longDate } from "@/lib/format/dates";
 
 const ROLES = [
@@ -134,6 +135,8 @@ function PermissionsModal({ user, onClose, onDone }) {
 }
 
 export function AdminUsersPage() {
+  const { t } = useI18n();
+  const { fmtN } = useMoney();
   const session = useOutletContext();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -169,7 +172,7 @@ export function AdminUsersPage() {
     setReloadKey((k) => k + 1);
   };
 
-  if (loading) return <div className="admin-page">Cargando usuarios…</div>;
+  if (loading) return <div className="admin-page">{t("admin.loading.users")}</div>;
   if (error) return <div className="admin-page admin-empty">{error}</div>;
 
   const hasActions = caps.canRole || caps.canDeactivate || caps.canActivate || caps.canPermissions;
@@ -177,8 +180,8 @@ export function AdminUsersPage() {
   return (
     <div className="admin-page">
       <div className="admin-page-head">
-        <h1 className="admin-h1">Usuarios</h1>
-        <p className="admin-sub">{fmtN(users.length)} cuenta(s) registradas.</p>
+        <h1 className="admin-h1">{t("admin.users.title")}</h1>
+        <p className="admin-sub">{t("admin.users.sub", { count: fmtN(users.length) })}</p>
       </div>
       {errorCode && <div className="auth-error" style={{ marginBottom: 16 }}>{ERRORS[errorCode] ?? "Ocurrió un error."}</div>}
       <AdminUsersFilters filters={filters} exportHref={exportHref} showExport={hasPermission(profile, "users:export")} />

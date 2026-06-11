@@ -1,4 +1,5 @@
 import { isSupabaseConfigured } from "@/lib/supabase/config";
+import { translate } from "@/lib/i18n.js";
 import { useDbStore } from "@/stores/db-store";
 import { toast } from "@/lib/toast";
 
@@ -18,7 +19,7 @@ export async function saveProfileRemote({ fullName, phone, avatarUrl, settings }
   useDbStore.getState().replaceDb({ ...db, settings: nextSettings });
 
   if (!isSupabaseConfigured()) {
-    toast.success("Configuración guardada localmente.");
+    toast.success(translate("toast.settings.savedLocal"));
     return { ok: true, localOnly: true, settings: nextSettings };
   }
 
@@ -30,6 +31,6 @@ export async function saveProfileRemote({ fullName, phone, avatarUrl, settings }
   });
   const body = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(body.error ?? "No se pudo guardar el perfil.");
-  toast.success("Configuración guardada.");
+  toast.success(translate("toast.settings.saved"));
   return { ok: true, settings: nextSettings };
 }

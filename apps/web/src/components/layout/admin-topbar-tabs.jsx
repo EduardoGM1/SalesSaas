@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { ADMIN_NAV_PERMISSIONS } from "@/lib/auth/permissions";
+import { useI18n } from "@/hooks/use-i18n.js";
 import {
   NavIconActivity,
   NavIconCalendar,
@@ -11,13 +12,13 @@ import {
 } from "@/components/admin/admin-nav-icons";
 
 export const ADMIN_TABS = [
-  { href: "/admin", label: "Resumen", icon: NavIconDashboard, exact: true },
-  { href: "/admin/users", label: "Usuarios", icon: NavIconUsers },
-  { href: "/admin/sales", label: "Ventas", icon: NavIconSales },
-  { href: "/admin/agenda", label: "Agenda", icon: NavIconCalendar },
-  { href: "/admin/goals", label: "Metas", icon: NavIconGoals },
-  { href: "/admin/activity", label: "Actividad", icon: NavIconActivity },
-  { href: "/admin/worksheets", label: "Worksheets", icon: NavIconWorksheets },
+  { href: "/admin", labelKey: "admin.tab.overview", icon: NavIconDashboard, exact: true },
+  { href: "/admin/users", labelKey: "admin.tab.users", icon: NavIconUsers },
+  { href: "/admin/sales", labelKey: "admin.tab.sales", icon: NavIconSales },
+  { href: "/admin/agenda", labelKey: "admin.tab.agenda", icon: NavIconCalendar },
+  { href: "/admin/goals", labelKey: "admin.tab.goals", icon: NavIconGoals },
+  { href: "/admin/activity", labelKey: "admin.tab.activity", icon: NavIconActivity },
+  { href: "/admin/worksheets", labelKey: "admin.tab.worksheets", icon: NavIconWorksheets },
 ];
 
 function isTabActive(pathname, href, exact) {
@@ -26,6 +27,7 @@ function isTabActive(pathname, href, exact) {
 }
 
 export function AdminTopbarTabs({ permissions, pathname }) {
+  const { t } = useI18n();
   const allowed = new Set(permissions);
   const visibleTabs = ADMIN_TABS.filter((tab) => {
     const perm = ADMIN_NAV_PERMISSIONS[tab.href];
@@ -33,9 +35,9 @@ export function AdminTopbarTabs({ permissions, pathname }) {
   });
 
   return (
-    <nav className="topbar-admin-tabs" aria-label="Secciones de administración">
+    <nav className="topbar-admin-tabs" aria-label={t("admin.tabs.label")}>
       {visibleTabs.map((tab) => {
-        const { href, label, icon: Icon } = tab;
+        const { href, labelKey, icon: Icon } = tab;
         const exact = "exact" in tab && tab.exact;
         return (
           <Link
@@ -44,7 +46,7 @@ export function AdminTopbarTabs({ permissions, pathname }) {
             className={`topbar-admin-tab${isTabActive(pathname, href, exact) ? " active" : ""}`}
           >
             <Icon />
-            <span>{label}</span>
+            <span>{t(labelKey)}</span>
           </Link>
         );
       })}

@@ -3,7 +3,8 @@ import { Link, useSearchParams } from "react-router-dom";
 import { AdminWorksheetsFilters } from "@/components/admin/admin-worksheets-filters.jsx";
 import { useAdminFetch } from "@/hooks/use-admin-session.js";
 import { parseAdminFilters } from "@/lib/admin/filters";
-import { fmtN } from "@/lib/format/money";
+import { useI18n } from "@/hooks/use-i18n.js";
+import { useMoney } from "@/hooks/use-money.js";
 import { longDate } from "@/lib/format/dates";
 
 function prospectName(p) {
@@ -12,13 +13,15 @@ function prospectName(p) {
 }
 
 export function AdminWorksheetsPage() {
+  const { t } = useI18n();
+  const { fmtN } = useMoney();
   const [searchParams] = useSearchParams();
   const filters = useMemo(() => parseAdminFilters(Object.fromEntries(searchParams.entries())), [searchParams]);
   const search = searchParams.toString() ? `?${searchParams.toString()}` : "";
   const sheetsState = useAdminFetch("worksheets", search);
   const sellersState = useAdminFetch("sellers");
 
-  if (sheetsState.loading || sellersState.loading) return <div className="admin-page">Cargando worksheets…</div>;
+  if (sheetsState.loading || sellersState.loading) return <div className="admin-page">{t("admin.loading.worksheets")}</div>;
   if (sheetsState.error) return <div className="admin-page admin-empty">{sheetsState.error}</div>;
 
   const sheets = sheetsState.data ?? [];
@@ -28,7 +31,7 @@ export function AdminWorksheetsPage() {
   return (
     <div className="admin-page">
       <div className="admin-page-head">
-        <h1 className="admin-h1">Worksheets</h1>
+        <h1 className="admin-h1">{t("admin.worksheets.title")}</h1>
         <p className="admin-sub">
           {fmtN(sheets.length)} hoja(s){hasFilters ? " con estos filtros" : " de financiamiento"}.
         </p>

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Topbar } from "@/components/layout/topbar";
 import { toast } from "@/lib/toast";
 import { confirmDialog } from "@/lib/confirm";
+import { translate } from "@/lib/i18n.js";
 import { isCalendarSaleCountable } from "@/lib/calculations/calendar";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { useMoney } from "@/hooks/use-money.js";
@@ -71,7 +72,7 @@ export function CalendarPage() {
                     <Link className="dg-link" to={`/clients/${e.clientId}`}>{t("common.goToClient")}</Link>
                   ) : (
                     <button type="button" className="dg-del" onClick={async () => {
-                      if (await confirmDialog("¿Eliminar este registro?") && selDay) deleteCalEntry(calYear, calMonth, selDay, idx);
+                      if (await confirmDialog(translate("toast.cal.deleteEntry")) && selDay) deleteCalEntry(calYear, calMonth, selDay, idx);
                     }}>✕</button>
                   )}
                 </div>

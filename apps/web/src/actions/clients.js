@@ -1,7 +1,8 @@
 import { clientDisplayName, ensureProspectIdentity } from "@/lib/clients";
-import { MONTHS } from "@/lib/constants";
+import { getLang, getMonths, translate } from "@/lib/i18n.js";
 import { longDate } from "@/lib/format/dates";
 import { statusLabel } from "@/lib/format/status";
+import { useDbStore } from "@/stores/db-store";
 import { createEmptyClient, useDbStore } from "@/stores/db-store";
 import { toast } from "@/lib/toast";
 import { confirmDialog } from "@/lib/confirm";
@@ -11,6 +12,7 @@ function normalizeSearch(text) {
 }
 
 export function filterAndSortClients(clients, query) {
+  const lang = getLang(useDbStore.getState().db.settings);
   const normalizedQuery = normalizeSearch(query).trim();
   const terms = normalizedQuery.split(/\s+/).filter(Boolean);
   const allClients = Object.values(clients).map(ensureProspectIdentity);
@@ -18,11 +20,11 @@ export function filterAndSortClients(clients, query) {
     ? allClients.filter((c) => {
         const date = c.tourDate || c.createdYmd || "";
         const dt = date ? new Date(`${date}T00:00:00`) : null;
-        const monthName = dt && !Number.isNaN(dt.getTime()) ? MONTHS[dt.getMonth()] : "";
+        const monthName = dt && !Number.isNaN(dt.getTime()) ? getMonths(lang)[dt.getMonth()] : "";
         const text = [
           clientDisplayName(c), c.name, c.name1, c.name2, c.occupation1, c.occupation2,
-          c.contract, c.prospectCode, c.city, c.country, c.status, statusLabel(c.status),
-          date, date ? longDate(date) : "", monthName, dt ? String(dt.getMonth() + 1) : "", dt ? String(dt.getFullYear()) : "",
+          c.contract, c.prospectCode, c.city, c.country, c.status, statusLabel(c.status, lang),
+          date, date ? longDate(date, lang) : "", monthName, dt ? String(dt.getMonth() + 1) : "", dt ? String(dt.getFullYear()) : "",
         ].filter(Boolean).join(" ");
         const haystack = normalizeSearch(text);
         return terms.every((term) => haystack.includes(term));
@@ -40,7 +42,7 @@ export function filterAndSortClients(clients, query) {
 export function createProspectFromName(name) {
   const trimmed = String(name ?? "").trim();
   if (!trimmed) {
-    toast.error("Falta el campo obligatorio: Nombre completo");
+    toast.error(translate("toast.client.missingName"));
     return { ok: false, reason: "missing_name" };
   }
   const client = createEmptyClient(trimmed);
@@ -59,9 +61,9 @@ export function saveClientEdit(client, form) {
 }
 
 export async function deleteClientWithConfirm(clientId, displayName) {
-  const ok = await confirmDialog(`¿Eliminar el expediente de ${displayName}? Esta acción no se puede deshacer.`);
+  const ok = await confirmDialog(translate("toast.client.deleteConfirm", { name: displayName }));
   if (!ok) return false;
   useDbStore.getState().deleteClient(clientId);
-  toast.success("Expediente eliminado.");
+  toast.success(translate("toast.client.deleted"));
   return true;
 }

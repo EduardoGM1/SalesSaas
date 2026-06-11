@@ -92,11 +92,11 @@ export function SettingsPage() {
   );
 
   const onImport = async (file: File) => {
-    if (!await confirmDialog("Esto reemplazará TODOS los datos actuales por los del respaldo. ¿Continuar?")) return;
+    if (!await confirmDialog(ti("settings.account.importConfirm"))) return;
     importDatabaseFile(
       file,
-      (incoming) => { replaceDb(incoming); toast.success("Respaldo importado correctamente."); },
-      () => toast.error("No se pudo importar el respaldo. Verifica el archivo.")
+      (incoming) => { replaceDb(incoming); toast.success(ti("toast.settings.importOk")); },
+      () => toast.error(ti("toast.settings.importFail"))
     );
   };
 
@@ -107,9 +107,9 @@ export function SettingsPage() {
     setProfileErr(null);
     try {
       const result = await saveProfileRemote({ fullName, phone, avatarUrl, settings });
-      setProfileMsg(result.localOnly ? "Configuración guardada localmente." : "Perfil actualizado.");
+      setProfileMsg(result.localOnly ? ti("settings.savedLocal") : ti("settings.savedRemote"));
     } catch (err) {
-      setProfileErr(err instanceof Error ? err.message : "Error al guardar.");
+      setProfileErr(err instanceof Error ? err.message : ti("settings.saveError"));
     } finally {
       setProfilePending(false);
     }
@@ -168,18 +168,18 @@ export function SettingsPage() {
   const renderHub = () => (
     <div className="settings-hub">
       <div className="exp-tool-list">
-        <SettingsEntry icon={<User size={18} />} tone="blue" title="Usuario" desc="Nombre, iniciales y avatar del perfil" onClick={() => setActiveSection("user")} />
-        <SettingsEntry icon={<WalletCards size={18} />} tone="purple" title="Worksheet" desc="Meses, intereses y opciones de financiamiento" onClick={() => setActiveSection("worksheet")} />
-        <SettingsEntry icon={<DollarSign size={18} />} tone="green" title="Moneda y tipo de cambio" desc="Moneda visual y tipo de cambio manual" onClick={() => setActiveSection("money")} />
-        <SettingsEntry icon={<Globe2 size={18} />} tone="blue" title="Idioma" desc="Español / English" onClick={() => setActiveSection("language")} />
+        <SettingsEntry icon={<User size={18} />} tone="blue" title={ti("settings.hub.user")} desc={ti("settings.hub.userDesc")} onClick={() => setActiveSection("user")} />
+        <SettingsEntry icon={<WalletCards size={18} />} tone="purple" title={ti("settings.hub.worksheet")} desc={ti("settings.hub.worksheetDesc")} onClick={() => setActiveSection("worksheet")} />
+        <SettingsEntry icon={<DollarSign size={18} />} tone="green" title={ti("settings.hub.money")} desc={ti("settings.hub.moneyDesc")} onClick={() => setActiveSection("money")} />
+        <SettingsEntry icon={<Globe2 size={18} />} tone="blue" title={ti("settings.hub.language")} desc={ti("settings.hub.languageDesc")} onClick={() => setActiveSection("language")} />
         {canSeeTechnical && (
-          <SettingsEntry icon={<Code2 size={18} />} tone="green" title="APIs / Preparación técnica" desc="Integraciones futuras documentadas" onClick={() => setActiveSection("apis")} />
+          <SettingsEntry icon={<Code2 size={18} />} tone="green" title={ti("settings.hub.apis")} desc={ti("settings.hub.apisDesc")} onClick={() => setActiveSection("apis")} />
         )}
-        <SettingsEntry icon={<Database size={18} />} tone="teal" title="Datos y respaldo" desc="Exporta tu información a JSON o restaura desde un respaldo previo" onClick={() => setActiveSection("backup")} />
+        <SettingsEntry icon={<Database size={18} />} tone="teal" title={ti("settings.hub.backup")} desc={ti("settings.hub.backupDesc")} onClick={() => setActiveSection("backup")} />
         {canOfferPwaInstall() && !isStandaloneApp() && (
-          <SettingsEntry icon={<Smartphone size={18} />} tone="blue" title="Instalar aplicación" desc="Acceso rápido desde tu pantalla de inicio, sin buscar en el navegador" onClick={openInstallPrompt} />
+          <SettingsEntry icon={<Smartphone size={18} />} tone="blue" title={ti("settings.hub.pwa")} desc={ti("settings.hub.pwaDesc")} onClick={openInstallPrompt} />
         )}
-        <SettingsEntry icon={<ShieldAlert size={18} />} tone="purple" title="Cuenta y zona de riesgo" desc={isSupabaseConfigured() ? `Sesión ${email ? `iniciada como ${email}` : "activa"}` : "Acciones sobre los datos locales de este dispositivo"} onClick={() => setActiveSection("account")} />
+        <SettingsEntry icon={<ShieldAlert size={18} />} tone="purple" title={ti("settings.hub.account")} desc={isSupabaseConfigured() ? (email ? ti("settings.hub.accountSession", { email }) : ti("settings.hub.accountActive")) : ti("settings.hub.accountLocal")} onClick={() => setActiveSection("account")} />
       </div>
     </div>
   );
@@ -191,11 +191,11 @@ export function SettingsPage() {
         <PageBack />
         <div className="page-head">
           <div>
-            <div className="page-title">Configuración</div>
-            <div className="page-sub">Panel de control de ajustes disponibles</div>
+            <div className="page-title">{ti("settings.title")}</div>
+            <div className="page-sub">{ti("settings.hubTitle")}</div>
           </div>
           <button type="button" className="btn btn-primary" disabled={profilePending} onClick={() => saveProfile()}>
-            {profilePending ? "Guardando..." : "Guardar configuración"}
+            {profilePending ? ti("settings.saving") : ti("settings.save")}
           </button>
         </div>
 
@@ -206,14 +206,14 @@ export function SettingsPage() {
             {activeSection === "user" && (
               <div className="settings-section">
                 <div className="settings-card">
-                  <div className="card-heading">Usuario</div>
-                  <div className="card-sub">Datos visuales del perfil dentro de la app.</div>
+                  <div className="card-heading">{ti("settings.user.title")}</div>
+                  <div className="card-sub">{ti("settings.user.sub")}</div>
                   <div className="settings-row">
-                    <div><div className="settings-label">Nombre del usuario</div><div className="settings-help">Se usa para el avatar del menú lateral.</div></div>
+                    <div><div className="settings-label">{ti("settings.user.name")}</div><div className="settings-help">{ti("settings.user.nameHelp")}</div></div>
                     <input type="text" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Michell Ruiz" style={{ width: "100%" }} />
                   </div>
                   <div className="settings-row">
-                    <div><div className="settings-label">Iniciales</div><div className="settings-help">Texto del avatar cuando no hay foto.</div></div>
+                    <div><div className="settings-label">{ti("settings.user.initials")}</div><div className="settings-help">{ti("settings.user.initialsHelp")}</div></div>
                     <input type="text" maxLength={3} value={settings.userInitials || ""} onChange={(e) => setSetting("userInitials", e.target.value.toUpperCase())} placeholder="M" style={{ width: 110, textAlign: "center", fontWeight: 800 }} />
                   </div>
                   {isSupabaseConfigured() && (
@@ -228,7 +228,7 @@ export function SettingsPage() {
                           const file = e.target.files?.[0];
                           if (!file) return;
                           if (file.size > 512000) {
-                            toast.error("La imagen debe pesar menos de 500 KB.");
+                            toast.error(ti("toast.settings.imageSize"));
                             return;
                           }
                           const reader = new FileReader();
@@ -270,10 +270,10 @@ export function SettingsPage() {
             {activeSection === "money" && (
               <div className="settings-section">
                 <div className="settings-card">
-                  <div className="card-heading">Moneda y tipo de cambio</div>
-                  <div className="card-sub">La base interna recomendada sigue siendo USD; la moneda seleccionada es visual.</div>
+                  <div className="card-heading">{ti("settings.money.title")}</div>
+                  <div className="card-sub">{ti("settings.money.sub")}</div>
                   <div className="settings-row">
-                    <div><div className="settings-label">Moneda visual</div><div className="settings-help">Cómo quieres ver montos en la app.</div></div>
+                    <div><div className="settings-label">{ti("settings.money.visual")}</div><div className="settings-help">{ti("settings.money.visualHelp")}</div></div>
                     <select
                       value={settings.currency || "USD"}
                       onChange={(e) => {
@@ -287,15 +287,15 @@ export function SettingsPage() {
                     </select>
                   </div>
                   <div className="settings-row">
-                    <div><div className="settings-label">Modo de tipo de cambio</div><div className="settings-help">Manual: tú defines el valor.</div></div>
+                    <div><div className="settings-label">{ti("settings.money.mode")}</div><div className="settings-help">{ti("settings.money.modeHelp")}</div></div>
                     <select
                       value={settings.exchangeMode || "manual"}
                       onChange={(e) => setSetting("exchangeMode", e.target.value)}
                       style={{ width: "100%" }}
                       disabled={settings.currency === "USD"}
                     >
-                      <option value="manual">Manual</option>
-                      <option value="auto">Automático</option>
+                      <option value="manual">{ti("settings.money.manual")}</option>
+                      <option value="auto">{ti("settings.money.auto")}</option>
                     </select>
                   </div>
                   <div className="settings-row">
@@ -350,10 +350,10 @@ export function SettingsPage() {
             {activeSection === "language" && (
               <div className="settings-section">
                 <div className="settings-card">
-                  <div className="card-heading">Idioma</div>
-                  <div className="card-sub">Preparación para leer la app en español o inglés.</div>
+                  <div className="card-heading">{ti("settings.language.title")}</div>
+                  <div className="card-sub">{ti("settings.language.sub")}</div>
                   <div className="settings-row">
-                    <div><div className="settings-label">Idioma visual</div><div className="settings-help">Cambia los textos principales conectados al catálogo i18n.</div></div>
+                    <div><div className="settings-label">{ti("settings.language.visual")}</div><div className="settings-help">{ti("settings.language.visualHelp")}</div></div>
                     <select value={settings.language || "es"} onChange={(e) => setSetting("language", e.target.value as "es" | "en")} style={{ width: "100%" }}>
                       <option value="es">Español</option>
                       <option value="en">English</option>
@@ -370,10 +370,10 @@ export function SettingsPage() {
                   <div className="card-heading">APIs / Preparación técnica</div>
                   <div className="card-sub">Endpoints REST disponibles en Express (:4000).</div>
                   <div className="api-list">
-                    <ApiItem name="Exchange Rate API" desc="GET /api/v1/exchange-rates?to=MXN — Frankfurter (ECB), cache 12h en backend." done />
-                    <ApiItem name="Catálogo País / Estado / Ciudad" desc="GET /api/v1/geo/countries y /geo/countries/:país/cities con ISO y banderas." done />
-                    <ApiItem name="User Settings API" desc="GET/PATCH /api/v1/profile — idioma, moneda, avatar y preferencias." done />
-                    <ApiItem name="Reminder / Notification API" desc="GET /api/v1/reminders — follow-up y procesamiento desde datos sincronizados." done />
+                    <ApiItem name="Exchange Rate API" desc="GET /api/v1/exchange-rates?to=MXN — Frankfurter (ECB), cache 12h en backend." done activeLabel={ti("settings.apis.active")} />
+                    <ApiItem name="Catálogo País / Estado / Ciudad" desc="GET /api/v1/geo/countries y /geo/countries/:país/cities con ISO y banderas." done activeLabel={ti("settings.apis.active")} />
+                    <ApiItem name="User Settings API" desc="GET/PATCH /api/v1/profile — idioma, moneda, avatar y preferencias." done activeLabel={ti("settings.apis.active")} />
+                    <ApiItem name="Reminder / Notification API" desc="GET /api/v1/reminders — follow-up y procesamiento desde datos sincronizados." done activeLabel={ti("settings.apis.active")} />
                   </div>
                 </div>
               </div>
@@ -406,10 +406,10 @@ export function SettingsPage() {
             {activeSection === "account" && (
               <div className="settings-section">
                 <div className="settings-card">
-                  <div className="card-heading">Cuenta y zona de riesgo</div>
-                  <div className="card-sub">{isSupabaseConfigured() ? `Sesión ${email ? `iniciada como ${email}` : "activa"}.` : "Acciones sobre los datos locales de este dispositivo."}</div>
+                  <div className="card-heading">{ti("settings.account.title")}</div>
+                  <div className="card-sub">{isSupabaseConfigured() ? (email ? ti("settings.account.subSession", { email }) : ti("settings.account.subActive")) : ti("settings.account.subLocal")}</div>
                   <div className="hint" style={{ marginBottom: 12 }}>
-                    Sincronización: {t(`sync.${syncStatus}`, settings.language || "es") || syncStatus}
+                    {ti("settings.account.sync")} {t(`sync.${syncStatus}`, settings.language || "es") || syncStatus}
                     {syncStatus === "error" && syncError ? ` - ${syncError}` : ""}
                   </div>
                   {profileErr && <div className="auth-error" style={{ marginBottom: 12 }}>{profileErr}</div>}
@@ -419,9 +419,9 @@ export function SettingsPage() {
                   </div>
                   <div className="btn-row" style={{ marginTop: 0 }}>
                     <button type="button" className="btn btn-danger" onClick={async () => {
-                      if (await confirmDialog("Esto eliminará TODOS los datos locales (expedientes, ventas, agenda y metas). Esta acción no se puede deshacer. ¿Continuar?")) {
+                      if (await confirmDialog(ti("settings.account.deleteConfirm"))) {
                         replaceDb(emptyDatabase());
-                        toast.success("Todos los datos locales fueron eliminados.");
+                        toast.success(ti("toast.settings.deleted"));
                       }
                     }}><Trash2 size={15} /> Borrar datos</button>
                     {isSupabaseConfigured() && (
@@ -435,13 +435,13 @@ export function SettingsPage() {
                             await signOut();
                             navigate("/login", { replace: true });
                           } catch {
-                            toast.error("No se pudo cerrar sesión.");
+                            toast.error(ti("toast.settings.signOutFail"));
                           } finally {
                             setSignOutPending(false);
                           }
                         }}
                       >
-                        <LogOut size={15} /> {signOutPending ? "Cerrando sesión…" : "Cerrar sesión"}
+                        <LogOut size={15} /> {signOutPending ? ti("settings.account.signingOut") : ti("settings.account.signOut")}
                       </button>
                     )}
                   </div>
@@ -480,12 +480,12 @@ function SettingsEntry({
   );
 }
 
-function ApiItem({ name, desc, done }) {
+function ApiItem({ name, desc, done, activeLabel = "Activa" }) {
   return (
     <div className="api-item">
       <div className="api-name">
         {name}
-        {done && <span className="settings-fx-ok" style={{ marginLeft: 8 }}>Activa</span>}
+        {done && <span className="settings-fx-ok" style={{ marginLeft: 8 }}>{activeLabel}</span>}
       </div>
       <div className="api-desc">{desc}</div>
     </div>

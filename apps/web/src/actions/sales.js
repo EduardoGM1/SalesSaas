@@ -1,15 +1,16 @@
 import { parseMoney } from "@/lib/format/money";
+import { translate } from "@/lib/i18n.js";
 import { useDbStore } from "@/stores/db-store";
 import { toast } from "@/lib/toast";
 
 export function validateSaleForm(saleForm) {
   const vol = parseMoney(saleForm.vol);
   if (vol <= 0 || !saleForm.contract) {
-    toast.error("Completa volumen y contrato.");
+    toast.error(translate("toast.sale.incomplete"));
     return null;
   }
   if (saleForm.status === "no-procesable" && !saleForm.processDate) {
-    toast.error("La venta no procesable requiere fecha de procesamiento.");
+    toast.error(translate("toast.sale.needProcessDate"));
     return null;
   }
   return {
@@ -31,8 +32,8 @@ export function saveClientSale(clientId, saleForm, editingSaleId) {
   if (editingSaleId) store.updateClientSale(clientId, editingSaleId, payload);
   else store.registerClientSale(clientId, payload);
   const message = saleForm.status === "no-procesable"
-    ? "Venta pendiente guardada. No suma volumen hasta ser procesable."
-    : "Venta registrada en expediente y Agenda.";
+    ? translate("toast.sale.pendingSaved")
+    : translate("toast.sale.saved");
   toast.success(message);
   return { ok: true, message };
 }

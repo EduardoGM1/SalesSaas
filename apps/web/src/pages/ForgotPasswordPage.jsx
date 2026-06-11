@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Home } from "lucide-react";
+import { useI18n } from "@/hooks/use-i18n.js";
 
 export function ForgotPasswordPage() {
+  const { t } = useI18n();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState(null);
   const [message, setMessage] = useState(null);
@@ -20,10 +22,10 @@ export function ForgotPasswordPage() {
         body: JSON.stringify({ email: fd.get("email") }),
       });
       const body = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(body.error ?? "No se pudo enviar el enlace.");
-      setMessage(body.message ?? "Si existe una cuenta con ese correo, recibirás un enlace.");
+      if (!res.ok) throw new Error(body.error ?? t("auth.forgot.submit"));
+      setMessage(body.message ?? t("auth.forgot.success"));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error");
+      setError(err instanceof Error ? err.message : t("auth.login.errorGeneric"));
     } finally {
       setPending(false);
     }
@@ -32,22 +34,22 @@ export function ForgotPasswordPage() {
   return (
     <div className="auth-card">
       <div className="auth-logo"><Home size={22} /></div>
-      <div className="auth-title">Recuperar contraseña</div>
-      <div className="auth-sub">Te enviaremos un enlace para restablecer tu contraseña.</div>
+      <div className="auth-title">{t("auth.forgot.title")}</div>
+      <div className="auth-sub">{t("auth.forgot.sub")}</div>
       {error && <div className="auth-error">{error}</div>}
       {message && <div className="auth-ok">{message}</div>}
       {!message && (
         <form onSubmit={onSubmit}>
           <div className="auth-field">
-            <label className="field-label">Correo</label>
+            <label className="field-label">{t("auth.login.email")}</label>
             <input className="auth-input" type="email" name="email" placeholder="tu@correo.com" required autoComplete="email" />
           </div>
           <button type="submit" className="btn btn-primary btn-full" disabled={pending}>
-            {pending ? "Enviando…" : "Enviar enlace"}
+            {pending ? t("auth.forgot.pending") : t("auth.forgot.submit")}
           </button>
         </form>
       )}
-      <div className="auth-foot"><Link to="/login">Volver al inicio de sesión</Link></div>
+      <div className="auth-foot"><Link to="/login">{t("auth.forgot.back")}</Link></div>
     </div>
   );
 }
