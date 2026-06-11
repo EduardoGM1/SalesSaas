@@ -115,7 +115,7 @@ function PermissionsModal({ user, onClose, onDone }) {
             {DELEGATABLE_ADMIN_PERMISSIONS.map((p) => (
               <label key={p.key} className="admin-perm-item">
                 <input type="checkbox" name="permissions" value={p.key} defaultChecked={current.has(p.key)} />
-                <span>{p.label}</span>
+                <span>{t(p.labelKey)}</span>
               </label>
             ))}
           </div>

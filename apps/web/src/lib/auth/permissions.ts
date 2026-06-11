@@ -1,16 +1,18 @@
+import { translate } from "@/lib/i18n.js";
+
 /** Permisos delegables a admins (no incluye users:role ni users:permissions). */
 export const DELEGATABLE_ADMIN_PERMISSIONS = [
-  { key: "dashboard:read", label: "Ver resumen del panel" },
-  { key: "users:read", label: "Ver lista de usuarios" },
-  { key: "users:deactivate", label: "Desactivar cuentas" },
-  { key: "users:activate", label: "Activar cuentas" },
-  { key: "users:export", label: "Exportar usuarios (CSV)" },
-  { key: "sales:read", label: "Ver ventas globales" },
-  { key: "sales:export", label: "Exportar ventas (CSV)" },
-  { key: "agenda:read", label: "Ver agenda global" },
-  { key: "goals:read", label: "Ver metas globales" },
-  { key: "activity:read", label: "Ver actividad global" },
-  { key: "worksheets:read", label: "Ver worksheets" },
+  { key: "dashboard:read", labelKey: "admin.perm.dashboardRead" },
+  { key: "users:read", labelKey: "admin.perm.usersRead" },
+  { key: "users:deactivate", labelKey: "admin.perm.usersDeactivate" },
+  { key: "users:activate", labelKey: "admin.perm.usersActivate" },
+  { key: "users:export", labelKey: "admin.perm.usersExport" },
+  { key: "sales:read", labelKey: "admin.perm.salesRead" },
+  { key: "sales:export", labelKey: "admin.perm.salesExport" },
+  { key: "agenda:read", labelKey: "admin.perm.agendaRead" },
+  { key: "goals:read", labelKey: "admin.perm.goalsRead" },
+  { key: "activity:read", labelKey: "admin.perm.activityRead" },
+  { key: "worksheets:read", labelKey: "admin.perm.worksheetsRead" },
 ] as const;
 
 export type DelegatablePermission = (typeof DELEGATABLE_ADMIN_PERMISSIONS)[number]["key"];
@@ -60,7 +62,8 @@ export function effectivePermissions(profile: AdminAccessProfile): string[] {
 }
 
 export function permissionLabel(key: string): string {
-  return DELEGATABLE_ADMIN_PERMISSIONS.find((p) => p.key === key)?.label ?? key;
+  const perm = DELEGATABLE_ADMIN_PERMISSIONS.find((p) => p.key === key);
+  return perm ? translate(perm.labelKey) : key;
 }
 
 /** Pestañas del panel → permiso requerido */

@@ -1,7 +1,9 @@
+import { Suspense } from "react";
 import { Routes, Route, Navigate, useParams } from "react-router-dom";
 import { DashboardLayout } from "@/layouts/DashboardLayout.jsx";
 import { AuthLayout } from "@/layouts/AuthLayout.jsx";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute.jsx";
+import { RouteFallback } from "@/components/layout/route-fallback.jsx";
 import { LoginPage } from "@/pages/LoginPage.jsx";
 import { RegisterPage } from "@/pages/RegisterPage.jsx";
 import { ForgotPasswordPage } from "@/pages/ForgotPasswordPage.jsx";
@@ -11,21 +13,27 @@ import { GoalsPage } from "@/components/goals/goals-page.jsx";
 import { MetasPage } from "@/components/goals/metas-page.jsx";
 import { ClientsPage } from "@/components/clients/clients-page.jsx";
 import { ClientDetail } from "@/components/clients/client-detail.jsx";
-import { SurveyPage } from "@/components/calculators/survey-page.jsx";
-import { VacacionesPage } from "@/components/calculators/vacaciones-page.jsx";
-import { WorksheetPage } from "@/components/calculators/worksheet-page.jsx";
-import { AnalysisPage } from "@/components/calculators/analysis-page.jsx";
 import { SettingsPage } from "@/components/settings/settings-page.jsx";
 import { ToolsHubPage } from "@/pages/ToolsHubPage.jsx";
 import { AdminSection } from "@/layouts/AdminSection.jsx";
-import { AdminOverviewPage } from "@/pages/admin/AdminOverviewPage.jsx";
-import { AdminUsersPage } from "@/pages/admin/AdminUsersPage.jsx";
-import { AdminSalesPage } from "@/pages/admin/AdminSalesPage.jsx";
-import { AdminAgendaPage } from "@/pages/admin/AdminAgendaPage.jsx";
-import { AdminGoalsPage } from "@/pages/admin/AdminGoalsPage.jsx";
-import { AdminActivityPage } from "@/pages/admin/AdminActivityPage.jsx";
-import { AdminWorksheetsPage } from "@/pages/admin/AdminWorksheetsPage.jsx";
-import { AdminWorksheetDetailPage } from "@/pages/admin/AdminWorksheetDetailPage.jsx";
+import {
+  SurveyPage,
+  VacacionesPage,
+  WorksheetPage,
+  AnalysisPage,
+  AdminOverviewPage,
+  AdminUsersPage,
+  AdminSalesPage,
+  AdminAgendaPage,
+  AdminGoalsPage,
+  AdminActivityPage,
+  AdminWorksheetsPage,
+  AdminWorksheetDetailPage,
+} from "@/routes/lazy-pages.js";
+
+function Lazy({ children }) {
+  return <Suspense fallback={<RouteFallback />}>{children}</Suspense>;
+}
 
 function ClientDetailRoute() {
   const { id } = useParams();
@@ -34,10 +42,10 @@ function ClientDetailRoute() {
 
 function ClientToolRoute({ tool }) {
   const { id } = useParams();
-  if (tool === "survey") return <SurveyPage clientId={id} />;
-  if (tool === "vacaciones") return <VacacionesPage clientId={id} />;
-  if (tool === "worksheet") return <WorksheetPage clientId={id} />;
-  if (tool === "analysis") return <AnalysisPage clientId={id} />;
+  if (tool === "survey") return <Lazy><SurveyPage clientId={id} /></Lazy>;
+  if (tool === "vacaciones") return <Lazy><VacacionesPage clientId={id} /></Lazy>;
+  if (tool === "worksheet") return <Lazy><WorksheetPage clientId={id} /></Lazy>;
+  if (tool === "analysis") return <Lazy><AnalysisPage clientId={id} /></Lazy>;
   return null;
 }
 
@@ -61,19 +69,19 @@ export function AppRoutes() {
         <Route path="clients/:id/worksheet" element={<ClientToolRoute tool="worksheet" />} />
         <Route path="clients/:id/analysis" element={<ClientToolRoute tool="analysis" />} />
         <Route path="tools" element={<ToolsHubPage />} />
-        <Route path="tools/survey" element={<SurveyPage />} />
-        <Route path="tools/vacaciones" element={<VacacionesPage />} />
-        <Route path="tools/worksheet" element={<WorksheetPage />} />
+        <Route path="tools/survey" element={<Lazy><SurveyPage /></Lazy>} />
+        <Route path="tools/vacaciones" element={<Lazy><VacacionesPage /></Lazy>} />
+        <Route path="tools/worksheet" element={<Lazy><WorksheetPage /></Lazy>} />
         <Route path="settings" element={<SettingsPage />} />
         <Route path="admin" element={<AdminSection />}>
-          <Route index element={<AdminOverviewPage />} />
-          <Route path="users" element={<AdminUsersPage />} />
-          <Route path="sales" element={<AdminSalesPage />} />
-          <Route path="agenda" element={<AdminAgendaPage />} />
-          <Route path="goals" element={<AdminGoalsPage />} />
-          <Route path="activity" element={<AdminActivityPage />} />
-          <Route path="worksheets" element={<AdminWorksheetsPage />} />
-          <Route path="worksheets/:id" element={<AdminWorksheetDetailPage />} />
+          <Route index element={<Lazy><AdminOverviewPage /></Lazy>} />
+          <Route path="users" element={<Lazy><AdminUsersPage /></Lazy>} />
+          <Route path="sales" element={<Lazy><AdminSalesPage /></Lazy>} />
+          <Route path="agenda" element={<Lazy><AdminAgendaPage /></Lazy>} />
+          <Route path="goals" element={<Lazy><AdminGoalsPage /></Lazy>} />
+          <Route path="activity" element={<Lazy><AdminActivityPage /></Lazy>} />
+          <Route path="worksheets" element={<Lazy><AdminWorksheetsPage /></Lazy>} />
+          <Route path="worksheets/:id" element={<Lazy><AdminWorksheetDetailPage /></Lazy>} />
         </Route>
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

@@ -70,6 +70,7 @@ export default defineConfig({
     },
   },
   resolve: {
+    dedupe: ["react", "react-dom", "react-router", "react-router-dom"],
     alias: [
       { find: "@/lib/sync-api.js", replacement: path.resolve(__dirname, "src/lib/sync-api.js") },
       { find: "@/stores", replacement: path.resolve(__dirname, "src/stores") },
@@ -92,16 +93,5 @@ export default defineConfig({
   },
   build: {
     outDir: "dist",
-    rollupOptions: {
-      output: {
-        manualChunks(id) {
-          if (!id.includes("node_modules")) return undefined;
-          if (id.includes("react-router")) return "router";
-          if (id.includes("react-dom") || /node_modules\/react\//.test(id)) return "react-vendor";
-          if (id.includes("lucide-react")) return "icons";
-          return "vendor";
-        },
-      },
-    },
   },
 });
