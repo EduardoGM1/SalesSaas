@@ -46,8 +46,8 @@ export function AdminWorksheetsPage() {
           <table className="client-table">
             <thead>
               <tr>
-                <th>Vendedor</th>
-                <th>Expediente</th>
+                <th>{t("admin.table.seller")}</th>
+                <th>{t("admin.table.file")}</th>
                 <th style={{ textAlign: "right" }}>Campos</th>
                 <th>Actualizada</th>
                 <th></th>
@@ -61,7 +61,7 @@ export function AdminWorksheetsPage() {
                   <td style={{ textAlign: "right" }}>{fmtN(w.fields)}</td>
                   <td>{w.updated_at ? longDate(String(w.updated_at).slice(0, 10)) : "—"}</td>
                   <td>
-                    <Link to={`/admin/worksheets/${w.id}`} className="admin-row-link">Ver detalle</Link>
+                    <Link to={`/admin/worksheets/${w.id}`} className="admin-row-link">{t("admin.table.detail")}</Link>
                   </td>
                 </tr>
               ))}

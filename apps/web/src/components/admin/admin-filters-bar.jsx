@@ -1,18 +1,19 @@
 
 import { Link } from "react-router-dom";
 import { useLocation } from "react-router-dom";
+import { useI18n } from "@/hooks/use-i18n.js";
 import type { SellerInfo } from "@/lib/admin/data";
 import { filtersToSearchParams, type AdminFilters } from "@/lib/admin/filters";
 
-const STATUSES = [
-  { value: "", label: "Todos los estados" },
-  { value: "venta", label: "Venta" },
-  { value: "bback", label: "B-back" },
-  { value: "procesable", label: "Procesable" },
-  { value: "no-procesable", label: "No procesable" },
-  { value: "perdido", label: "Perdido" },
-  { value: "cerrado", label: "Cerrado" },
-  { value: "procesado", label: "Procesado" },
+const STATUS_OPTIONS = [
+  { value: "", key: "admin.filters.allStatuses" },
+  { value: "venta", key: "status.sale" },
+  { value: "bback", key: "status.bback" },
+  { value: "procesable", key: "status.processable" },
+  { value: "no-procesable", key: "status.notProcessable" },
+  { value: "perdido", key: "status.lost" },
+  { value: "cerrado", key: "status.closed" },
+  { value: "procesado", key: "status.processed" },
 ];
 
 interface AdminFiltersBarProps {
@@ -23,6 +24,7 @@ interface AdminFiltersBarProps {
 }
 
 export function AdminFiltersBar({ filters, sellers, showStatus, exportHref }: AdminFiltersBarProps) {
+  const { t } = useI18n();
   const { pathname } = useLocation();
   const qs = filtersToSearchParams(filters);
 
@@ -30,17 +32,17 @@ export function AdminFiltersBar({ filters, sellers, showStatus, exportHref }: Ad
     <div className="admin-filters">
       <form method="GET" action={pathname} className="admin-filters-form">
         <div className="admin-filter-field">
-          <label>Desde</label>
+          <label>{t("admin.filters.from")}</label>
           <input type="date" name="from" defaultValue={filters.from ?? ""} className="auth-input" />
         </div>
         <div className="admin-filter-field">
-          <label>Hasta</label>
+          <label>{t("admin.filters.to")}</label>
           <input type="date" name="to" defaultValue={filters.to ?? ""} className="auth-input" />
         </div>
         <div className="admin-filter-field">
-          <label>Vendedor</label>
+          <label>{t("admin.filters.seller")}</label>
           <select name="user" defaultValue={filters.userId ?? ""} className="auth-input">
-            <option value="">Todos</option>
+            <option value="">{t("admin.filters.all")}</option>
             {sellers.map((s) => (
               <option key={s.id} value={s.id}>{s.name}</option>
             ))}
@@ -48,21 +50,21 @@ export function AdminFiltersBar({ filters, sellers, showStatus, exportHref }: Ad
         </div>
         {showStatus && (
           <div className="admin-filter-field">
-            <label>Estado</label>
+            <label>{t("admin.filters.status")}</label>
             <select name="status" defaultValue={filters.status ?? ""} className="auth-input">
-              {STATUSES.map((s) => (
-                <option key={s.value || "all"} value={s.value}>{s.label}</option>
+              {STATUS_OPTIONS.map((s) => (
+                <option key={s.value || "all"} value={s.value}>{t(s.key)}</option>
               ))}
             </select>
           </div>
         )}
-        <button type="submit" className="btn btn-primary">Filtrar</button>
+        <button type="submit" className="btn btn-primary">{t("admin.filters.apply")}</button>
         {qs && (
-          <Link to={pathname} className="btn btn-ghost">Limpiar</Link>
+          <Link to={pathname} className="btn btn-ghost">{t("common.clear")}</Link>
         )}
       </form>
       {exportHref && (
-        <a href={exportHref} className="btn btn-ghost admin-export-btn">Exportar CSV</a>
+        <a href={exportHref} className="btn btn-ghost admin-export-btn">{t("admin.filters.exportCsv")}</a>
       )}
     </div>
   );

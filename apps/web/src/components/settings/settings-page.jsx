@@ -14,6 +14,7 @@ import { fetchProfile, signOut } from "@/lib/session-api.js";
 import { t } from "@/lib/i18n.js";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { saveProfileRemote } from "@/actions/settings.js";
+import { selectOnFocus } from "@/lib/focus-select.js";
 import { fetchExchangeRate } from "@/lib/exchange-rate-sync.js";
 import { useAppStore } from "@/stores/app-store";
 import { useDbStore } from "@/stores/db-store";
@@ -201,22 +202,22 @@ export function SettingsPage() {
                   <div className="card-sub">{ti("settings.user.sub")}</div>
                   <div className="settings-row">
                     <div><div className="settings-label">{ti("settings.user.name")}</div><div className="settings-help">{ti("settings.user.nameHelp")}</div></div>
-                    <input type="text" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder={ti("settings.user.namePlaceholder")} style={{ width: "100%" }} />
+                    <input type="text" value={fullName} onFocus={selectOnFocus} onChange={(e) => setFullName(e.target.value)} placeholder={ti("settings.user.namePlaceholder")} style={{ width: "100%" }} />
                   </div>
                   <div className="settings-row">
                     <div><div className="settings-label">{ti("settings.user.initials")}</div><div className="settings-help">{ti("settings.user.initialsHelp")}</div></div>
-                    <input type="text" maxLength={3} value={settings.userInitials || ""} onChange={(e) => setSetting("userInitials", e.target.value.toUpperCase())} placeholder="M" style={{ width: 110, textAlign: "center", fontWeight: 800 }} />
+                    <input type="text" maxLength={3} value={settings.userInitials || ""} onFocus={selectOnFocus} onChange={(e) => setSetting("userInitials", e.target.value.toUpperCase())} placeholder="M" style={{ width: 110, textAlign: "center", fontWeight: 800 }} />
                   </div>
                   {isSupabaseConfigured() && (
                     <div className="settings-row">
                       <div><div className="settings-label">{ti("settings.user.avatarUrl")}</div><div className="settings-help">{ti("settings.user.avatarUrlHelp")}</div></div>
-                      <input type="url" value={avatarUrl} onChange={(e) => setAvatarUrl(e.target.value)} placeholder="https://..." style={{ width: "100%" }} />
+                      <input type="url" value={avatarUrl} onFocus={selectOnFocus} onChange={(e) => setAvatarUrl(e.target.value)} placeholder="https://..." style={{ width: "100%" }} />
                     </div>
                   )}
                   {isSupabaseConfigured() && (
                     <form onSubmit={saveProfile} className="settings-row">
                       <div><div className="settings-label">Teléfono</div><div className="settings-help">Dato opcional del perfil de cuenta.</div></div>
-                      <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+52 ..." autoComplete="tel" />
+                      <input type="tel" value={phone} onFocus={selectOnFocus} onChange={(e) => setPhone(e.target.value)} placeholder="+52 ..." autoComplete="tel" />
                     </form>
                   )}
                 </div>

@@ -46,13 +46,13 @@ export function AdminSalesPage() {
           <table className="client-table">
             <thead>
               <tr>
-                <th>Fecha</th>
-                <th>Vendedor</th>
-                <th>Expediente</th>
-                <th>Contrato</th>
-                <th>Estado</th>
+                <th>{t("admin.table.date")}</th>
+                <th>{t("admin.table.seller")}</th>
+                <th>{t("admin.table.file")}</th>
+                <th>{t("admin.table.contract")}</th>
+                <th>{t("admin.table.status")}</th>
                 <th style={{ textAlign: "right" }}>Tours</th>
-                <th style={{ textAlign: "right" }}>Volumen</th>
+                <th style={{ textAlign: "right" }}>{t("admin.table.volume")}</th>
               </tr>
             </thead>
             <tbody>

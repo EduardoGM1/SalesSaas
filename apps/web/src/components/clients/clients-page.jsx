@@ -9,6 +9,7 @@ import { clientDisplayName } from "@/lib/clients";
 import { longDate } from "@/lib/format/dates";
 import { statusLabel, statusClass } from "@/lib/format/status";
 import { useI18n } from "@/hooks/use-i18n.js";
+import { selectOnFocus } from "@/lib/focus-select.js";
 import { useDbStore } from "@/stores/db-store";
 import { useAppStore } from "@/stores/app-store";
 import { useClientActions } from "@/hooks/use-client-actions.js";
@@ -77,6 +78,7 @@ export function ClientsPage() {
                 className="client-search-input"
                 placeholder={t("clients.searchPlaceholder")}
                 value={query}
+                onFocus={selectOnFocus}
                 onChange={(e) => setQuery(e.target.value)}
               />
             </div>
@@ -154,6 +156,7 @@ export function ClientsPage() {
             type="text"
             value={name}
             placeholder={t("clients.namePlaceholder")}
+            onFocus={selectOnFocus}
             onChange={(e) => {
               setName(e.target.value);
               if (e.target.value.trim()) setMissingName(false);

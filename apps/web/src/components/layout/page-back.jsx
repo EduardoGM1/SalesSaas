@@ -5,6 +5,7 @@ export function PageBack({
   href = "/",
   onClick,
   label,
+  inline = false,
 }) {
   const { t } = useI18n();
   const navigate = useNavigate();
@@ -15,11 +16,11 @@ export function PageBack({
     }
     navigate(href);
   };
-  return (
-    <div className="page-back-row">
-      <button type="button" className="btn btn-ghost btn-sm" onClick={handleClick}>
-        {label ?? t("common.back")}
-      </button>
-    </div>
+  const btn = (
+    <button type="button" className="btn btn-ghost btn-sm" onClick={handleClick}>
+      {label ?? t("common.back")}
+    </button>
   );
+  if (inline) return btn;
+  return <div className="page-back-row">{btn}</div>;
 }

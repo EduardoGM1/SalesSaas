@@ -16,7 +16,7 @@ export function AdminWorksheetDetailPage() {
 
   if (loading) return <div className="admin-page">{t("admin.loading.worksheet")}</div>;
   if (error) return <div className="admin-page admin-empty">{error}</div>;
-  if (!data) return <div className="admin-page admin-empty">Worksheet no encontrado.</div>;
+  if (!data) return <div className="admin-page admin-empty">{t("admin.worksheet.notFound")}</div>;
 
   const entries = worksheetDisplayEntries(data.data);
 
@@ -37,8 +37,8 @@ export function AdminWorksheetDetailPage() {
           <table className="client-table admin-detail-table">
             <thead>
               <tr>
-                <th>Campo</th>
-                <th>Valor</th>
+                <th>{t("admin.table.field")}</th>
+                <th>{t("admin.table.value")}</th>
               </tr>
             </thead>
             <tbody>

@@ -2,8 +2,8 @@
 import { useEffect, useMemo, useState } from "react";
 import {  useNavigate  } from "react-router-dom";
 import { SalesModal } from "@/components/ui/sales-modal";
-import { MONTHS, DAYS } from "@/lib/constants";
 import { useCalendarActions } from "@/hooks/use-calendar-actions.js";
+import { useI18n } from "@/hooks/use-i18n.js";
 import { selectOnFocus } from "@/lib/focus-select.js";
 
 type EType = "venta" | "follow" | "notaCliente" | "notaUsuario" | "descanso";
@@ -16,16 +16,17 @@ interface EntryDialogProps {
   day: number;
 }
 
-const TYPE_TABS: [EType, string][] = [
-  ["venta", "Venta"],
-  ["follow", "Follow-up"],
-  ["notaCliente", "Notas para el cliente"],
-  ["notaUsuario", "Notas del usuario"],
-  ["descanso", "Descanso"],
+const TYPE_TAB_KEYS: [EType, string][] = [
+  ["venta", "entry.tab.sale"],
+  ["follow", "entry.tab.follow"],
+  ["notaCliente", "entry.tab.clientNote"],
+  ["notaUsuario", "entry.tab.userNote"],
+  ["descanso", "entry.tab.dayOff"],
 ];
 
 export function EntryDialog({ open, onOpenChange, year, month, day }: EntryDialogProps) {
   const navigate = useNavigate();
+  const { t, months, weekdays } = useI18n();
   const { saveUserNote, saveDayOff } = useCalendarActions();
 
   const [eType, setEType] = useState<EType>("venta");
@@ -35,36 +36,24 @@ export function EntryDialog({ open, onOpenChange, year, month, day }: EntryDialo
 
   const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
   const dow = new Date(year, month, day).getDay();
-  const title = `${DAYS[dow]} ${day} de ${MONTHS[month]}`;
-  const subtitle = `${MONTHS[month]} ${year}`;
+  const title = `${weekdays[dow]} ${day} ${t("entry.titleSuffix")} ${months[month]}`;
+  const subtitle = `${months[month]} ${year}`;
 
   const clientAction = eType === "venta" || eType === "follow" || eType === "notaCliente";
 
   const routeCopy = useMemo(() => {
-    if (eType === "venta") {
-      return <>Para evitar duplicados, las ventas se registran desde <strong>Clientes</strong>. Agenda solo funciona como punto de entrada.</>;
-    }
-    if (eType === "follow") {
-      return <>Los follow-ups relacionados con clientes deben vivir dentro del <strong>expediente del cliente</strong>.</>;
-    }
-    if (eType === "notaCliente") {
-      return <>Las notas para cliente deben guardarse dentro del <strong>expediente</strong>, no como nota suelta de Agenda.</>;
-    }
-    return <>Todo lo relacionado con un cliente se trabaja desde <strong>Clientes</strong>. Agenda solo funciona como punto de entrada y calendario operativo.</>;
-  }, [eType]);
+    if (eType === "venta") return t("entry.route.sale.copy");
+    if (eType === "follow") return t("entry.route.follow.copy");
+    if (eType === "notaCliente") return t("entry.route.clientNote.copy");
+    return t("entry.route.default.copy");
+  }, [eType, t]);
 
   const routeNote = useMemo(() => {
-    if (eType === "venta") {
-      return <><strong>Ruta:</strong> Agenda → Clientes → Expediente → Registro de venta.</>;
-    }
-    if (eType === "follow") {
-      return <><strong>Ruta:</strong> Agenda → Clientes → Expediente → Notas / Follow-up.</>;
-    }
-    if (eType === "notaCliente") {
-      return <><strong>Ruta:</strong> Agenda → Clientes → Expediente → Notas para el cliente.</>;
-    }
-    return <><strong>Regla operativa:</strong> si la acción pertenece a un cliente, primero abre o crea su expediente en <strong>Clientes</strong>.</>;
-  }, [eType]);
+    if (eType === "venta") return t("entry.route.sale.path");
+    if (eType === "follow") return t("entry.route.follow.path");
+    if (eType === "notaCliente") return t("entry.route.clientNote.path");
+    return t("entry.route.default.path");
+  }, [eType, t]);
 
   const reset = () => {
     setEType("venta");
@@ -115,16 +104,16 @@ export function EntryDialog({ open, onOpenChange, year, month, day }: EntryDialo
       sub={subtitle}
     >
       <div style={{ marginBottom: 16 }}>
-        <div className="entry-type-label">¿Qué te gustaría agregar?</div>
+        <div className="entry-type-label">{t("entry.prompt")}</div>
         <div className="seg entry-type-seg">
-          {TYPE_TABS.map(([t, label]) => (
+          {TYPE_TAB_KEYS.map(([typeKey, labelKey]) => (
             <button
-              key={t}
+              key={typeKey}
               type="button"
-              className={`seg-btn${eType === t ? " on" : ""}`}
-              onClick={() => setEType(t)}
+              className={`seg-btn${eType === typeKey ? " on" : ""}`}
+              onClick={() => setEType(typeKey)}
             >
-              {label}
+              {t(labelKey)}
             </button>
           ))}
         </div>
@@ -132,9 +121,7 @@ export function EntryDialog({ open, onOpenChange, year, month, day }: EntryDialo
 
       {eType === "descanso" && (
         <div id="ef-descanso">
-          <div className="hint">
-            Este día se marcará como <strong>día de descanso</strong>. Se descontará automáticamente de tus días trabajados del mes.
-          </div>
+          <div className="hint">{t("entry.dayOff.hint")}</div>
         </div>
       )}
 
@@ -148,19 +135,15 @@ export function EntryDialog({ open, onOpenChange, year, month, day }: EntryDialo
               <button type="button" className="route-card primary-route" onClick={goClientsFromAgenda}>
                 <div className="route-card-icon">＋</div>
                 <div>
-                  <div className="route-card-title">Crear nuevo cliente</div>
-                  <div className="route-card-sub">
-                    Te manda a Clientes para crear primero el expediente. Después podrás registrar la acción correspondiente.
-                  </div>
+                  <div className="route-card-title">{t("entry.route.createNew.title")}</div>
+                  <div className="route-card-sub">{t("entry.route.createNew.sub")}</div>
                 </div>
               </button>
               <button type="button" className="route-card green" onClick={goClientsFromAgenda}>
                 <div className="route-card-icon">↗</div>
                 <div>
-                  <div className="route-card-title">Cliente que ya existe</div>
-                  <div className="route-card-sub">
-                    Busca su expediente en Clientes y registra o revisa la acción desde ahí.
-                  </div>
+                  <div className="route-card-title">{t("entry.route.existing.title")}</div>
+                  <div className="route-card-sub">{t("entry.route.existing.sub")}</div>
                 </div>
               </button>
             </div>
@@ -171,19 +154,19 @@ export function EntryDialog({ open, onOpenChange, year, month, day }: EntryDialo
 
       {eType === "notaUsuario" && (
         <div id="entry-reminder-wrap" className="link-box" style={{ margin: "12px 0" }}>
-          <div className="link-title">Recordatorio</div>
+          <div className="link-title">{t("entry.reminder.title")}</div>
           <div className="prospect-grid">
             <div className="prospect-field">
-              <label>Fecha</label>
+              <label>{t("entry.reminder.date")}</label>
               <input type="date" id="e-rem-date" value={remDate} onFocus={selectOnFocus} onChange={(e) => setRemDate(e.target.value)} />
             </div>
             <div className="prospect-field">
-              <label>Hora opcional</label>
+              <label>{t("entry.reminder.timeOptional")}</label>
               <input type="time" id="e-rem-time" value={remTime} onFocus={selectOnFocus} onChange={(e) => setRemTime(e.target.value)} />
             </div>
           </div>
           <div className="route-note" style={{ marginTop: 10 }}>
-            Si eliges fecha, esta nota del usuario aparecerá en Agenda en esa fecha. La hora es opcional.
+            {t("entry.reminder.hint")}
           </div>
         </div>
       )}
@@ -191,7 +174,7 @@ export function EntryDialog({ open, onOpenChange, year, month, day }: EntryDialo
       {eType === "notaUsuario" && (
         <div id="ef-nota">
           <label style={{ fontSize: 11, color: "var(--muted)", fontWeight: 700, letterSpacing: ".5px", textTransform: "uppercase", display: "block", marginBottom: 6 }}>
-            Notas del usuario
+            {t("entry.userNote.label")}
           </label>
           <textarea
             id="e-nota-t"
@@ -200,16 +183,16 @@ export function EntryDialog({ open, onOpenChange, year, month, day }: EntryDialo
             value={nota}
             onFocus={selectOnFocus}
             onChange={(e) => setNota(e.target.value)}
-            placeholder="Escribe una nota personal u operativa..."
+            placeholder={t("entry.userNote.placeholder")}
           />
         </div>
       )}
 
       <div className="btn-row" style={{ marginTop: 20 }}>
-        <button type="button" className="btn btn-ghost" onClick={() => close(false)}>Cancelar</button>
+        <button type="button" className="btn btn-ghost" onClick={() => close(false)}>{t("common.cancel")}</button>
         {!clientAction && (
           <button type="button" className="btn btn-primary" id="entry-save-btn" onClick={handleSave}>
-            Guardar
+            {t("common.save")}
           </button>
         )}
       </div>

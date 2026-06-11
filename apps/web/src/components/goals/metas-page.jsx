@@ -6,6 +6,8 @@ import { computeMetasKpis } from "@/lib/calculations/calendar";
 import { onlyDigits } from "@/lib/format/money";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { useMoney } from "@/hooks/use-money.js";
+import { calKey } from "@/lib/format/dates";
+import { selectOnFocus } from "@/lib/focus-select.js";
 import { useAppStore } from "@/stores/app-store";
 import { useDbStore } from "@/stores/db-store";
 
@@ -17,23 +19,24 @@ export function MetasPage() {
   const calMonth = useAppStore((s) => s.calMonth);
   const calPrev = useAppStore((s) => s.calPrev);
   const calNext = useAppStore((s) => s.calNext);
-  const getCalMonth = useDbStore((s) => s.getCalMonth);
-  const getGoalMonth = useDbStore((s) => s.getGoalMonth);
   const saveGoalMonth = useDbStore((s) => s.saveGoalMonth);
+  const monthKey = calKey(calYear, calMonth);
 
   const [vol, setVol] = useState("");
   const [tours, setTours] = useState("");
   const [ventas, setVentas] = useState("");
   const [saved, setSaved] = useState(false);
 
+  const goalData = useDbStore((s) => s.db.goals[monthKey] ?? {});
+
   useEffect(() => {
-    const g = getGoalMonth(calYear, calMonth);
+    const g = goalData;
     setVol(g.vol ? fmtN(g.vol) : "");
     setTours(g.tours ? String(g.tours) : "");
     setVentas(g.ventas ? String(g.ventas) : "");
-  }, [calYear, calMonth, getGoalMonth, fmtN]);
+  }, [monthKey, goalData, fmtN]);
 
-  const data = getCalMonth(calYear, calMonth);
+  const data = useDbStore((s) => s.db.cal[monthKey] ?? { days: {}, weeks: {} });
   const kpis = useMemo(() => computeMetasKpis(
     calYear, calMonth, data,
     Number(onlyDigits(vol)) || 0,
@@ -89,21 +92,21 @@ export function MetasPage() {
                 <strong>{t("metas.volume")}</strong>
                 <span style={{ display: "block", fontSize: 11, fontWeight: 400, color: "var(--muted)" }}>{t("metas.volumeHelp")}</span>
               </div>
-              <input type="text" className="goal-plain-input" placeholder="200,000" inputMode="numeric" value={vol} onChange={(e) => setVol(e.target.value)} onBlur={formatVol} />
+              <input type="text" className="goal-plain-input" placeholder="200,000" inputMode="numeric" value={vol} onFocus={selectOnFocus} onChange={(e) => setVol(e.target.value)} onBlur={formatVol} />
             </div>
             <div className="frow">
               <div className="flabel">
                 <strong>{t("metas.tours")}</strong>
                 <span style={{ display: "block", fontSize: 11, fontWeight: 400, color: "var(--muted)" }}>{t("metas.toursHelp")}</span>
               </div>
-              <input type="text" className="goal-plain-input small" placeholder="20" inputMode="numeric" value={tours} onChange={(e) => setTours(e.target.value)} />
+              <input type="text" className="goal-plain-input small" placeholder="20" inputMode="numeric" value={tours} onFocus={selectOnFocus} onChange={(e) => setTours(e.target.value)} />
             </div>
             <div className="frow">
               <div className="flabel">
                 <strong>{t("metas.sales")}</strong>
                 <span style={{ display: "block", fontSize: 11, fontWeight: 400, color: "var(--muted)" }}>{t("metas.salesHelp")}</span>
               </div>
-              <input type="text" className="goal-plain-input small" placeholder="5" inputMode="numeric" value={ventas} onChange={(e) => setVentas(e.target.value)} />
+              <input type="text" className="goal-plain-input small" placeholder="5" inputMode="numeric" value={ventas} onFocus={selectOnFocus} onChange={(e) => setVentas(e.target.value)} />
             </div>
 
             <hr style={{ margin: "14px 0 10px" }} />

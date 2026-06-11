@@ -1,4 +1,5 @@
 import { ES_EXT, EN_EXT } from "./i18n-catalog.js";
+import { ES_PHASE2, EN_PHASE2 } from "./i18n-phase2-catalog.js";
 import { useDbStore } from "@/stores/db-store";
 
 const ES = {
@@ -141,6 +142,7 @@ const ES = {
   "status.closed": "Cerrado",
   "status.processed": "Procesado",
   ...ES_EXT,
+  ...ES_PHASE2,
 };
 
 const EN = {
@@ -283,6 +285,7 @@ const EN = {
   "status.closed": "Closed",
   "status.processed": "Processed",
   ...EN_EXT,
+  ...EN_PHASE2,
 };
 
 const MONTHS_ES = [

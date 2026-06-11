@@ -9,11 +9,14 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { useI18n } from "@/hooks/use-i18n.js";
 import type { MonthlyTrendPoint } from "@/lib/admin/types";
 
 export function AdminTrendChart({ data }: { data: MonthlyTrendPoint[] }) {
+  const { t } = useI18n();
+
   if (!data.length || data.every((d) => d.sales === 0)) {
-    return <div className="admin-empty">Sin datos de ventas en los últimos meses.</div>;
+    return <div className="admin-empty">{t("admin.chart.empty")}</div>;
   }
 
   return (
@@ -26,10 +29,12 @@ export function AdminTrendChart({ data }: { data: MonthlyTrendPoint[] }) {
           <YAxis yAxisId="cnt" orientation="right" tick={{ fontSize: 11 }} allowDecimals={false} />
           <Tooltip
             formatter={(value, name) =>
-              name === "volume" ? [`$${Number(value).toLocaleString("en-US")}`, "Volumen"] : [value, "Ventas"]
+              name === "volume"
+                ? [`$${Number(value).toLocaleString("en-US")}`, t("admin.chart.volume")]
+                : [value, t("admin.chart.salesCount")]
             }
           />
-          <Legend formatter={(v) => (v === "volume" ? "Volumen ($)" : "Nº ventas")} />
+          <Legend formatter={(v) => (v === "volume" ? t("admin.chart.volume") : t("admin.chart.salesCount"))} />
           <Bar yAxisId="vol" dataKey="volume" fill="#2563eb" radius={[4, 4, 0, 0]} name="volume" />
           <Bar yAxisId="cnt" dataKey="sales" fill="#94a3b8" radius={[4, 4, 0, 0]} name="sales" />
         </BarChart>

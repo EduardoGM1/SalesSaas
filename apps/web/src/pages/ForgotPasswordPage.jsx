@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Home } from "lucide-react";
 import { useI18n } from "@/hooks/use-i18n.js";
+import { selectOnFocus } from "@/lib/focus-select.js";
 
 export function ForgotPasswordPage() {
   const { t } = useI18n();
@@ -42,7 +43,7 @@ export function ForgotPasswordPage() {
         <form onSubmit={onSubmit}>
           <div className="auth-field">
             <label className="field-label">{t("auth.login.email")}</label>
-            <input className="auth-input" type="email" name="email" placeholder="tu@correo.com" required autoComplete="email" />
+            <input className="auth-input" type="email" name="email" placeholder="tu@correo.com" required autoComplete="email" onFocus={selectOnFocus} />
           </div>
           <button type="submit" className="btn btn-primary btn-full" disabled={pending}>
             {pending ? t("auth.forgot.pending") : t("auth.forgot.submit")}

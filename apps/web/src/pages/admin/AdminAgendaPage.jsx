@@ -7,17 +7,19 @@ import { useI18n } from "@/hooks/use-i18n.js";
 import { useMoney } from "@/hooks/use-money.js";
 import { longDate } from "@/lib/format/dates";
 
-const TYPE_LABEL = {
-  tour: "Tour",
-  venta: "Venta",
-  bback: "B-back",
-  descanso: "Descanso",
-  libre: "Libre",
-  otro: "Otro",
+const TYPE_KEYS = {
+  venta: "admin.agenda.type.sale",
+  nota: "admin.agenda.type.note",
+  descanso: "admin.agenda.type.rest",
 };
 
-function prospectName(p) {
-  if (!p) return "Libre";
+function typeLabel(type, t) {
+  const key = TYPE_KEYS[type];
+  return key ? t(key) : type;
+}
+
+function prospectName(p, t) {
+  if (!p) return t("admin.prospect.free");
   return p.name || p.name1 || p.prospect_code || "—";
 }
 
@@ -50,12 +52,12 @@ export function AdminAgendaPage() {
           <table className="client-table">
             <thead>
               <tr>
-                <th>Fecha</th>
-                <th>Vendedor</th>
+                <th>{t("admin.table.date")}</th>
+                <th>{t("admin.table.seller")}</th>
                 <th>Tipo</th>
-                <th>Expediente</th>
+                <th>{t("admin.table.file")}</th>
                 <th>Nota</th>
-                <th style={{ textAlign: "right" }}>Volumen</th>
+                <th style={{ textAlign: "right" }}>{t("admin.table.volume")}</th>
               </tr>
             </thead>
             <tbody>
@@ -63,8 +65,8 @@ export function AdminAgendaPage() {
                 <tr key={e.id}>
                   <td>{e.entry_date ? longDate(e.entry_date) : "—"}</td>
                   <td>{e.seller}</td>
-                  <td>{TYPE_LABEL[e.type] ?? e.type}</td>
-                  <td>{prospectName(e.prospect)}</td>
+                  <td>{typeLabel(e.type, t)}</td>
+                  <td>{prospectName(e.prospect, t)}</td>
                   <td>{e.note || "—"}</td>
                   <td style={{ textAlign: "right" }}>{e.vol != null ? fmt(e.vol) : "—"}</td>
                 </tr>

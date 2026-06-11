@@ -19,6 +19,28 @@ import { useClientActions } from "@/hooks/use-client-actions.js";
 import { useSaleActions } from "@/hooks/use-sale-actions.js";
 import { useCalendarActions } from "@/hooks/use-calendar-actions.js";
 import { toast } from "@/lib/toast";
+import { selectOnFocus } from "@/lib/focus-select.js";
+
+const STATUS_OPTIONS = [
+  { value: "", key: "status.empty" },
+  { value: "venta", key: "status.sale" },
+  { value: "bback", key: "status.bback" },
+  { value: "procesable", key: "status.processable" },
+  { value: "no-procesable", key: "status.notProcessable" },
+  { value: "perdido", key: "status.lost" },
+];
+
+const SALE_STATUS_OPTIONS = [
+  { value: "procesable", key: "exp.sale.statusProcessable" },
+  { value: "no-procesable", key: "exp.sale.statusNotProcessable" },
+  { value: "venta", key: "exp.sale.statusProcessed" },
+];
+
+const NOTE_TYPE_OPTIONS = [
+  ["nota", "exp.note.typeNote"],
+  ["follow", "exp.note.typeFollow"],
+  ["pendiente", "exp.note.typePending"],
+];
 
 const TOOL_DEFS = [
   { key: "survey", labelKey: "exp.tool.survey", descKey: "exp.tool.surveyDesc", icon: FileText, href: "survey", tone: "blue" },
@@ -132,8 +154,12 @@ export function ClientDetail({ id }) {
         id: sig,
         type: "venta",
         date: s.date,
-        title: `Venta ${fmt(s.vol || 0)}`,
-        note: [s.tours ? `${s.tours} tour(s)` : null, s.contract ? `Contrato ${s.contract}` : null, s.note].filter(Boolean).join(" · "),
+        title: t("exp.sales.activityTitle", { amount: fmt(s.vol || 0) }),
+        note: [
+          s.tours ? t("exp.sales.tours", { n: s.tours }) : null,
+          s.contract ? t("exp.sales.contract", { contract: s.contract }) : null,
+          s.note,
+        ].filter(Boolean).join(" · "),
         ts: s.ts || 0,
         saleId: s.saleId,
       });
@@ -142,7 +168,9 @@ export function ClientDetail({ id }) {
   })();
   const cityCountry = [c.city, c.country].filter(Boolean).join(" / ");
   const loc = [c.city, c.country].filter(Boolean).join(", ");
-  const fecha = c.tourDate ? `Fecha de tour: ${longDate(c.tourDate, lang)}` : `Fecha de registro: ${c.createdYmd ? longDate(c.createdYmd, lang) : "—"}`;
+  const fecha = c.tourDate
+    ? t("exp.tourDate", { date: longDate(c.tourDate, lang) })
+    : t("exp.createdDate", { date: c.createdYmd ? longDate(c.createdYmd, lang) : "—" });
   const since = fecha + (c.status ? ` · ${statusLabel(c.status, lang)}` : "") + (loc ? ` · ${loc}` : "");
 
   const psValue = (v, pill = false) => {
@@ -152,17 +180,17 @@ export function ClientDetail({ id }) {
   };
 
   const rows: [string, string, React.ReactNode][] = [
-    ["#", "ID expediente", psValue(c.prospectCode, true)],
-    ["👤", "Nombre", psValue(c.name1 || c.name, true)],
-    ["👥", "Acompañante", psValue(c.name2)],
-    ["📍", "Ciudad / País", psValue(cityCountry)],
-    ["☎", "Teléfono", psValue(c.phone)],
-    ["✉", "Email", psValue(c.email)],
-    ["▣", "Contrato", psValue(c.contract)],
-    ["◉", "Estado", <span key="st" className="ps-pill">{statusLabel(c.status || "", lang)}</span>],
+    ["#", t("exp.prospect.id"), psValue(c.prospectCode, true)],
+    ["👤", t("exp.prospect.name"), psValue(c.name1 || c.name, true)],
+    ["👥", t("exp.prospect.companion"), psValue(c.name2)],
+    ["📍", t("exp.prospect.location"), psValue(cityCountry)],
+    ["☎", t("exp.prospect.phone"), psValue(c.phone)],
+    ["✉", t("exp.prospect.email"), psValue(c.email)],
+    ["▣", t("exp.prospect.contract"), psValue(c.contract)],
+    ["◉", t("exp.prospect.status"), <span key="st" className="ps-pill">{statusLabel(c.status || "", lang)}</span>],
   ];
-  const saleCard = { label: "Venta", desc: "Registrar o revisar venta del expediente", icon: DollarSign, tone: "green", onClick: () => openSaleModal() };
-  const notesCard = { label: "Notas", desc: "Notas, follow-ups y recordatorios", icon: MessageSquare, tone: "blue", onClick: () => setNoteOpen(true) };
+  const saleCard = { label: t("exp.card.sale"), desc: t("exp.card.saleDesc"), icon: DollarSign, tone: "green", onClick: () => openSaleModal() };
+  const notesCard = { label: t("exp.card.notes"), desc: t("exp.card.notesDesc"), icon: MessageSquare, tone: "blue", onClick: () => setNoteOpen(true) };
   const isQuick = !!c.quickExpedient && !c.completedExpedient;
   const toolCards = isQuick
     ? [saleCard, notesCard]
@@ -181,10 +209,10 @@ export function ClientDetail({ id }) {
         notesCard,
       ];
   const sales = [...(c.sales || [])].sort((a, b) => (b.ts || 0) - (a.ts || 0));
-  const saleModalTitle = "Venta del expediente / Nueva venta";
+  const saleModalTitle = t("exp.sale.modalTitle");
   const saleModalSub = editingSaleId
-    ? `Editando venta existente: ${clientDisplayName(c)}`
-    : `Venta desde expediente: ${clientDisplayName(c)}`;
+    ? t("exp.sale.modalEditSub", { name: clientDisplayName(c) })
+    : t("exp.sale.modalNewSub", { name: clientDisplayName(c) });
 
   return (
     <>
@@ -197,29 +225,29 @@ export function ClientDetail({ id }) {
             <p className="exp-page-sub" id="exp-since">{since}</p>
           </div>
           <div className="exp-page-actions">
-            <button type="button" className="btn btn-primary btn-sm" onClick={() => openSaleModal()}>Registrar venta</button>
+            <button type="button" className="btn btn-primary btn-sm" onClick={() => openSaleModal()}>{t("exp.registerSale")}</button>
             <button type="button" className="btn btn-danger btn-sm" onClick={async () => {
               if (await removeClient(id, clientDisplayName(c))) navigate("/clients");
-            }}>Eliminar</button>
+            }}>{t("exp.delete")}</button>
           </div>
         </header>
 
         <div className="ethic-box" style={{ marginBottom: 16 }}>
-          <strong>Código ético:</strong> este expediente es temporal. Al procesar o cerrar una operación, la app debe conservar solo información comercial/estadística y limpiar datos personales innecesarios.
+          {t("exp.ethics.main")}
         </div>
 
         <div className="exp-layout">
           <div>
-            <div className="section-label" id="exp-tool-section-label">Información del expediente</div>
+            <div className="section-label" id="exp-tool-section-label">{t("exp.section.info")}</div>
             <div className="exp-tool-list" id="exp-tool-list">
-              {toolCards.map((t) => {
-                const Icon = t.icon;
+              {toolCards.map((card) => {
+                const Icon = card.icon;
                 return (
-                  <button key={t.label} type="button" className="tool-card" onClick={t.onClick}>
-                    <div className={`tool-icon ${t.tone}`}><Icon size={20} /></div>
+                  <button key={card.label} type="button" className="tool-card" onClick={card.onClick}>
+                    <div className={`tool-icon ${card.tone}`}><Icon size={20} /></div>
                     <div>
-                      <div className="tool-name">{t.label}</div>
-                      <div className="tool-desc">{t.desc}</div>
+                      <div className="tool-name">{card.label}</div>
+                      <div className="tool-desc">{card.desc}</div>
                     </div>
                     <div style={{ color: "var(--muted2)", marginLeft: "auto", fontSize: 18 }}>›</div>
                   </button>
@@ -228,12 +256,12 @@ export function ClientDetail({ id }) {
               {isQuick && (
                 <button type="button" className="tool-card" onClick={() => {
                   completeClientExpedient(id);
-                  toast.success("Expediente completo activado. Ya puedes llenar Survey, Proyección y Worksheet.");
+                  toast.success(t("exp.complete.toast"));
                 }}>
                   <div className="tool-icon blue"><FileText size={20} /></div>
                   <div>
-                    <div className="tool-name">Completar expediente</div>
-                    <div className="tool-desc">Agregar Survey, Proyección y Worksheet cuando se necesite</div>
+                    <div className="tool-name">{t("exp.complete.title")}</div>
+                    <div className="tool-desc">{t("exp.complete.desc")}</div>
                   </div>
                   <div style={{ color: "var(--muted2)", marginLeft: "auto", fontSize: 18 }}>＋</div>
                 </button>
@@ -244,10 +272,10 @@ export function ClientDetail({ id }) {
           <div className="card exp-side-card prospect-summary-card">
             <div className="prospect-summary-head">
               <div>
-                <div className="prospect-summary-title">Datos del prospecto</div>
-                <div className="prospect-summary-sub">Vista rápida del expediente. El formulario completo se abre solo para editar.</div>
+                <div className="prospect-summary-title">{t("exp.prospect.title")}</div>
+                <div className="prospect-summary-sub">{t("exp.prospect.sub")}</div>
               </div>
-              <button type="button" className="btn btn-ghost btn-sm" onClick={openEdit}>✎ Editar datos</button>
+              <button type="button" className="btn btn-ghost btn-sm" onClick={openEdit}>{t("exp.prospect.edit")}</button>
             </div>
             <div className="prospect-summary-list" id="prospect-summary-list">
               {rows.map((r, i) => (
@@ -262,10 +290,10 @@ export function ClientDetail({ id }) {
         </div>
 
         <div className="card activity-card" id="client-sales-card">
-          <div className="card-heading">Ventas del expediente</div>
-          <div className="card-sub">Todas las ventas registradas para este cliente, sin importar si nacieron desde Agenda, Clientes o Worksheet.</div>
+          <div className="card-heading">{t("exp.sales.title")}</div>
+          <div className="card-sub">{t("exp.sales.sub")}</div>
           <div className="activity-list" id="client-sales-list">
-            {!sales.length ? <div className="activity-empty">Sin ventas registradas todavía.</div> : (
+            {!sales.length ? <div className="activity-empty">{t("exp.sales.empty")}</div> : (
               sales.map((sale) => {
                 const pending = sale.status === "no-procesable" || sale.processing === "pendiente";
                 return (
@@ -273,18 +301,18 @@ export function ClientDetail({ id }) {
                     <span className="activity-dot venta" />
                     <div>
                       <div className="activity-main">
-                        {`${fmt(sale.vol || 0)} · ${sale.tours || 1} tour(s)`}
-                        {pending && <span className="sale-pending-pill">Pendiente</span>}
+                        {`${fmt(sale.vol || 0)} · ${t("exp.sales.tours", { n: sale.tours || 1 })}`}
+                        {pending && <span className="sale-pending-pill" title={t("exp.sales.pendingHint")}>{t("exp.sales.pending")}</span>}
                       </div>
                       <div className="activity-sub">
-                        {[sale.contract ? `Contrato ${sale.contract}` : null, statusLabel(sale.status || "", lang), sale.processDate ? `Procesa: ${longDate(sale.processDate, lang)}` : null].filter(Boolean).join(" · ")}
+                        {[sale.contract ? t("exp.sales.contract", { contract: sale.contract }) : null, statusLabel(sale.status || "", lang), sale.processDate ? t("exp.sales.processes", { date: longDate(sale.processDate, lang) }) : null].filter(Boolean).join(" · ")}
                       </div>
                       {sale.note && <div className="activity-sub">{sale.note}</div>}
                     </div>
                     <div className="activity-date">
                       {longDate(sale.date, lang)}
                       <br />
-                      <button type="button" className="dg-link" onClick={() => openSaleModal(sale)}>Abrir venta</button>
+                      <button type="button" className="dg-link" onClick={() => openSaleModal(sale)}>{t("exp.sales.open")}</button>
                     </div>
                   </div>
                 );
@@ -294,10 +322,10 @@ export function ClientDetail({ id }) {
         </div>
 
         <div className="card activity-card">
-          <div className="card-heading">Actividad del expediente</div>
-          <div className="card-sub">Notas y follow-ups vinculados a este cliente.</div>
+          <div className="card-heading">{t("exp.activity.title")}</div>
+          <div className="card-sub">{t("exp.activity.sub")}</div>
           <div className="activity-list" id="client-activity-list">
-            {!activityItems.length ? <div className="activity-empty">Sin actividad vinculada todavía.</div> : (
+            {!activityItems.length ? <div className="activity-empty">{t("exp.activity.empty")}</div> : (
               activityItems.map((a) => (
                 <div key={a.id} className="activity-item">
                   <span className={`activity-dot ${a.type || ""}`} />
@@ -313,99 +341,96 @@ export function ClientDetail({ id }) {
         </div>
       </div>
 
-      <SalesModal open={editOpen} onOpenChange={setEditOpen} title="Editar datos del prospecto" sub="Completa solo la información que realmente necesites para trabajar el expediente." maxWidth={760}>
+      <SalesModal open={editOpen} onOpenChange={setEditOpen} title={t("exp.edit.title")} sub={t("exp.edit.sub")} maxWidth={760}>
         <div className="prospect-grid">
-          <div className="prospect-field"><label>Nombre completo del cliente</label><input type="text" placeholder="Cliente" value={form.name1 || ""} onChange={(e) => setForm({ ...form, name1: e.target.value })} /></div>
-          <div className="prospect-field"><label>Ocupación cliente</label><input type="text" placeholder="Ocupación" value={form.occupation1 || ""} onChange={(e) => setForm({ ...form, occupation1: e.target.value })} /></div>
-          <div className="prospect-field"><label>Acompañante / Copropietario</label><input type="text" placeholder="Acompañante" value={form.name2 || ""} onChange={(e) => setForm({ ...form, name2: e.target.value })} /></div>
-          <div className="prospect-field"><label>Ocupación acompañante</label><input type="text" placeholder="Ocupación" value={form.occupation2 || ""} onChange={(e) => setForm({ ...form, occupation2: e.target.value })} /></div>
-          <div className="prospect-field"><label>Ciudad</label><input type="text" placeholder="Ciudad" value={form.city || ""} onChange={(e) => setForm({ ...form, city: e.target.value })} /></div>
-          <div className="prospect-field"><label>País</label><input type="text" placeholder="País" value={form.country || ""} onChange={(e) => setForm({ ...form, country: e.target.value })} /></div>
-          <div className="prospect-field"><label>Teléfono</label><input type="text" placeholder="Teléfono" value={form.phone || ""} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></div>
-          <div className="prospect-field"><label>Email</label><input type="text" placeholder="Email" value={form.email || ""} onChange={(e) => setForm({ ...form, email: e.target.value })} /></div>
-          <div className="prospect-field"><label>Contrato / Referencia</label><input type="text" placeholder="Contrato" value={form.contract || ""} onChange={(e) => setForm({ ...form, contract: e.target.value })} /></div>
-          <div className="prospect-field"><label>Fecha de tour</label><input type="date" value={form.tourDate || ""} onChange={(e) => setForm({ ...form, tourDate: e.target.value })} /></div>
-          <div className="prospect-field"><label>Estado</label>
+          <div className="prospect-field"><label>{t("exp.edit.name")}</label><input type="text" placeholder={t("tools.survey.namePlaceholder")} value={form.name1 || ""} onFocus={selectOnFocus} onChange={(e) => setForm({ ...form, name1: e.target.value })} /></div>
+          <div className="prospect-field"><label>{t("exp.edit.occ1")}</label><input type="text" placeholder={t("tools.survey.occPlaceholder")} value={form.occupation1 || ""} onFocus={selectOnFocus} onChange={(e) => setForm({ ...form, occupation1: e.target.value })} /></div>
+          <div className="prospect-field"><label>{t("exp.edit.companion")}</label><input type="text" placeholder={t("tools.survey.companionPlaceholder")} value={form.name2 || ""} onFocus={selectOnFocus} onChange={(e) => setForm({ ...form, name2: e.target.value })} /></div>
+          <div className="prospect-field"><label>{t("exp.edit.occ2")}</label><input type="text" placeholder={t("tools.survey.occ2Placeholder")} value={form.occupation2 || ""} onFocus={selectOnFocus} onChange={(e) => setForm({ ...form, occupation2: e.target.value })} /></div>
+          <div className="prospect-field"><label>{t("exp.edit.city")}</label><input type="text" placeholder={t("tools.survey.city")} value={form.city || ""} onFocus={selectOnFocus} onChange={(e) => setForm({ ...form, city: e.target.value })} /></div>
+          <div className="prospect-field"><label>{t("exp.edit.country")}</label><input type="text" placeholder={t("tools.survey.country")} value={form.country || ""} onFocus={selectOnFocus} onChange={(e) => setForm({ ...form, country: e.target.value })} /></div>
+          <div className="prospect-field"><label>{t("exp.edit.phone")}</label><input type="text" placeholder={t("exp.edit.phone")} value={form.phone || ""} onFocus={selectOnFocus} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></div>
+          <div className="prospect-field"><label>{t("exp.edit.email")}</label><input type="text" placeholder={t("exp.edit.email")} value={form.email || ""} onFocus={selectOnFocus} onChange={(e) => setForm({ ...form, email: e.target.value })} /></div>
+          <div className="prospect-field"><label>{t("exp.edit.contract")}</label><input type="text" placeholder={t("exp.sale.contractPlaceholder")} value={form.contract || ""} onFocus={selectOnFocus} onChange={(e) => setForm({ ...form, contract: e.target.value })} /></div>
+          <div className="prospect-field"><label>{t("exp.edit.tourDate")}</label><input type="date" value={form.tourDate || ""} onFocus={selectOnFocus} onChange={(e) => setForm({ ...form, tourDate: e.target.value })} /></div>
+          <div className="prospect-field"><label>{t("exp.edit.status")}</label>
             <select value={form.status || ""} onChange={(e) => setForm({ ...form, status: e.target.value })}>
-              <option value="">Sin estado</option>
-              <option value="venta">Venta</option>
-              <option value="bback">B-back</option>
-              <option value="procesable">Procesable</option>
-              <option value="no-procesable">No procesable</option>
-              <option value="perdido">Perdido / cerrado</option>
+              {STATUS_OPTIONS.map(({ value, key }) => (
+                <option key={value || "empty"} value={value}>{t(key)}</option>
+              ))}
             </select>
           </div>
-          <div className="prospect-field"><label>Fecha de procesamiento</label><input type="date" value={form.processDate || ""} onChange={(e) => setForm({ ...form, processDate: e.target.value })} /></div>
-          <div className="prospect-field full"><label>Nota / motivo</label><textarea rows={3} placeholder="Contexto, seguimiento o motivo..." value={form.note || ""} onChange={(e) => setForm({ ...form, note: e.target.value })} /></div>
+          <div className="prospect-field"><label>{t("exp.edit.processDate")}</label><input type="date" value={form.processDate || ""} onFocus={selectOnFocus} onChange={(e) => setForm({ ...form, processDate: e.target.value })} /></div>
+          <div className="prospect-field full"><label>{t("exp.edit.note")}</label><textarea rows={3} placeholder={t("exp.edit.notePlaceholder")} value={form.note || ""} onFocus={selectOnFocus} onChange={(e) => setForm({ ...form, note: e.target.value })} /></div>
         </div>
-        <div className="ethic-box" style={{ marginTop: 16 }}>La información personal es temporal. Al cerrar o procesar la operación, debe conservarse solo lo comercial/estadístico.</div>
+        <div className="ethic-box" style={{ marginTop: 16 }}>{t("exp.ethics.edit")}</div>
         <div className="btn-row">
-          <button type="button" className="btn btn-ghost" onClick={() => setEditOpen(false)}>Cancelar</button>
-          <button type="button" className="btn btn-primary" onClick={saveEdit}>Guardar datos</button>
+          <button type="button" className="btn btn-ghost" onClick={() => setEditOpen(false)}>{t("common.cancel")}</button>
+          <button type="button" className="btn btn-primary" onClick={saveEdit}>{t("exp.edit.save")}</button>
         </div>
       </SalesModal>
 
       <SalesModal open={saleOpen} onOpenChange={handleSaleOpenChange} title={saleModalTitle} sub={saleModalSub}>
         <div className="prospect-grid">
-          <div className="prospect-field"><label>Fecha de venta</label><input type="date" value={saleForm.date} onChange={(e) => setSaleForm({ ...saleForm, date: e.target.value })} /></div>
-          <div className="prospect-field"><label>Volumen</label><div className="mfield"><span className="mpfx">$</span><input type="text" placeholder="0" value={saleForm.vol} onChange={(e) => setSaleForm({ ...saleForm, vol: e.target.value })} /></div></div>
-          <div className="prospect-field"><label>Tours</label><input type="number" min={0} value={saleForm.tours} onChange={(e) => setSaleForm({ ...saleForm, tours: e.target.value })} /></div>
-          <div className="prospect-field"><label>Número de contrato</label><input type="text" placeholder="Contrato / referencia" value={saleForm.contract} onChange={(e) => setSaleForm({ ...saleForm, contract: e.target.value })} /></div>
-          <div className="prospect-field"><label>Estado</label>
+          <div className="prospect-field"><label>{t("exp.sale.date")}</label><input type="date" value={saleForm.date} onFocus={selectOnFocus} onChange={(e) => setSaleForm({ ...saleForm, date: e.target.value })} /></div>
+          <div className="prospect-field"><label>{t("exp.sale.volume")}</label><div className="mfield"><span className="mpfx">$</span><input type="text" placeholder="0" value={saleForm.vol} onFocus={selectOnFocus} onChange={(e) => setSaleForm({ ...saleForm, vol: e.target.value })} /></div></div>
+          <div className="prospect-field"><label>{t("exp.sale.tours")}</label><input type="number" min={0} value={saleForm.tours} onFocus={selectOnFocus} onChange={(e) => setSaleForm({ ...saleForm, tours: e.target.value })} /></div>
+          <div className="prospect-field"><label>{t("exp.sale.contract")}</label><input type="text" placeholder={t("exp.sale.contractPlaceholder")} value={saleForm.contract} onFocus={selectOnFocus} onChange={(e) => setSaleForm({ ...saleForm, contract: e.target.value })} /></div>
+          <div className="prospect-field"><label>{t("exp.sale.status")}</label>
             <select value={saleForm.status} onChange={(e) => setSaleForm({
               ...saleForm,
               status: e.target.value,
               processDate: e.target.value === "no-procesable" ? saleForm.processDate : "",
               addProcessingFollowup: e.target.value === "no-procesable" ? saleForm.addProcessingFollowup : false,
             })}>
-              <option value="procesable">Procesable</option>
-              <option value="no-procesable">No procesable</option>
-              <option value="venta">Venta procesada</option>
+              {SALE_STATUS_OPTIONS.map(({ value, key }) => (
+                <option key={value} value={value}>{t(key)}</option>
+              ))}
             </select>
           </div>
           {saleForm.status === "no-procesable" && (
             <>
-              <div className="prospect-field"><label>Fecha de procesamiento</label><input type="date" value={saleForm.processDate} onChange={(e) => setSaleForm({ ...saleForm, processDate: e.target.value })} /></div>
+              <div className="prospect-field"><label>{t("exp.sale.processDate")}</label><input type="date" value={saleForm.processDate} onFocus={selectOnFocus} onChange={(e) => setSaleForm({ ...saleForm, processDate: e.target.value })} /></div>
               <div className="prospect-field">
-                <label>Agregar al calendario como follow-up</label>
+                <label>{t("exp.sale.followupLabel")}</label>
                 <label className="choice-pill on" style={{ justifyContent: "flex-start" }}>
                   <input type="checkbox" checked={saleForm.addProcessingFollowup} onChange={(e) => setSaleForm({ ...saleForm, addProcessingFollowup: e.target.checked })} />
-                  Crear recordatorio de procesamiento
+                  {t("exp.sale.followupCheck")}
                 </label>
               </div>
             </>
           )}
-          <div className="prospect-field full"><label>Notas</label><textarea rows={3} placeholder="Notas de venta, pago pendiente, detalle de procesamiento..." value={saleForm.note} onChange={(e) => setSaleForm({ ...saleForm, note: e.target.value })} /></div>
+          <div className="prospect-field full"><label>{t("exp.sale.notes")}</label><textarea rows={3} placeholder={t("exp.sale.notesPlaceholder")} value={saleForm.note} onFocus={selectOnFocus} onChange={(e) => setSaleForm({ ...saleForm, note: e.target.value })} /></div>
         </div>
-        <div className="ethic-box" style={{ marginTop: 16 }}>Si la venta queda procesada, por ética de datos se debe conservar solo información comercial: fecha, volumen, contrato/referencia y métricas.</div>
+        <div className="ethic-box" style={{ marginTop: 16 }}>{t("exp.ethics.sale")}</div>
         <div className="btn-row">
-          <button type="button" className="btn btn-ghost" onClick={() => setSaleOpen(false)}>Cancelar</button>
-          <button type="button" className="btn btn-primary" onClick={saveSale}>{editingSaleId ? "Guardar cambios" : "Guardar venta"}</button>
+          <button type="button" className="btn btn-ghost" onClick={() => setSaleOpen(false)}>{t("common.cancel")}</button>
+          <button type="button" className="btn btn-primary" onClick={saveSale}>{editingSaleId ? t("exp.sale.saveChanges") : t("exp.sale.save")}</button>
         </div>
       </SalesModal>
 
-      <SalesModal open={noteOpen} onOpenChange={setNoteOpen} title="Notas del expediente" sub="Nota, follow-up, pendiente o recordatorio del cliente.">
+      <SalesModal open={noteOpen} onOpenChange={setNoteOpen} title={t("exp.note.title")} sub={t("exp.note.sub")}>
         <div style={{ marginBottom: 16 }}>
-          <div className="field-label" style={{ marginBottom: 8 }}>Tipo</div>
+          <div className="field-label" style={{ marginBottom: 8 }}>{t("exp.note.type")}</div>
           <div className="seg">
-            {[["nota", "Nota"], ["follow", "Follow-up"], ["pendiente", "Pendiente"]].map(([t, l]) => (
-              <button key={t} type="button" className={`seg-btn${noteForm.type === t ? " on" : ""}`} onClick={() => setNoteForm({ ...noteForm, type: t })}>{l}</button>
+            {NOTE_TYPE_OPTIONS.map(([type, labelKey]) => (
+              <button key={type} type="button" className={`seg-btn${noteForm.type === type ? " on" : ""}`} onClick={() => setNoteForm({ ...noteForm, type })}>{t(labelKey)}</button>
             ))}
           </div>
         </div>
         <div className="link-box" style={{ margin: "12px 0" }}>
-          <div className="link-title">Recordatorio</div>
+          <div className="link-title">{t("exp.note.reminder")}</div>
           <div className="prospect-grid">
-            <div className="prospect-field"><label>Fecha</label><input type="date" value={noteForm.date} onChange={(e) => setNoteForm({ ...noteForm, date: e.target.value })} /></div>
-            <div className="prospect-field"><label>Hora opcional</label><input type="time" value={noteForm.time} onChange={(e) => setNoteForm({ ...noteForm, time: e.target.value })} /></div>
+            <div className="prospect-field"><label>{t("entry.reminder.date")}</label><input type="date" value={noteForm.date} onFocus={selectOnFocus} onChange={(e) => setNoteForm({ ...noteForm, date: e.target.value })} /></div>
+            <div className="prospect-field"><label>{t("entry.reminder.timeOptional")}</label><input type="time" value={noteForm.time} onFocus={selectOnFocus} onChange={(e) => setNoteForm({ ...noteForm, time: e.target.value })} /></div>
           </div>
-          <div className="route-note" style={{ marginTop: 10 }}>Si eliges fecha, también se reflejará en Agenda.</div>
+          <div className="route-note" style={{ marginTop: 10 }}>{t("exp.note.reminderHint")}</div>
         </div>
-        <label className="field-label">Contenido</label>
-        <textarea rows={4} placeholder="Escribe la nota o pendiente..." value={noteForm.note} onChange={(e) => setNoteForm({ ...noteForm, note: e.target.value })} />
+        <label className="field-label">{t("exp.note.content")}</label>
+        <textarea rows={4} placeholder={t("exp.note.placeholder")} value={noteForm.note} onFocus={selectOnFocus} onChange={(e) => setNoteForm({ ...noteForm, note: e.target.value })} />
         <div className="btn-row">
-          <button type="button" className="btn btn-ghost" onClick={() => setNoteOpen(false)}>Cancelar</button>
-          <button type="button" className="btn btn-primary" onClick={saveNote}>Guardar nota</button>
+          <button type="button" className="btn btn-ghost" onClick={() => setNoteOpen(false)}>{t("common.cancel")}</button>
+          <button type="button" className="btn btn-primary" onClick={saveNote}>{t("exp.note.save")}</button>
         </div>
       </SalesModal>
     </>

@@ -1,20 +1,30 @@
 
-import { Link } from "react-router-dom";
 import { useMemo } from "react";
 import { Topbar } from "@/components/layout/topbar";
+import { PageBack } from "@/components/layout/page-back";
 import { clientDisplayName } from "@/lib/clients";
+import { resolveToolBackHref } from "@/lib/calculator-nav.js";
 import { computeSurvey, surveyHasData } from "@/lib/calculations/survey";
+import { useI18n } from "@/hooks/use-i18n.js";
 import { useMoney } from "@/hooks/use-money.js";
 import { useDbStore } from "@/stores/db-store";
 
+const ROW_KEYS = [
+  "tools.survey.pattern.current",
+  "tools.survey.pattern.hist",
+  "tools.survey.pattern.future",
+  "tools.survey.pattern.blend",
+] as const;
+
 export function AnalysisPage({ clientId }: { clientId }) {
+  const { t } = useI18n();
   const { fmt, fmtD } = useMoney();
   const moneySettings = useDbStore((s) => s.db.settings);
   const getClient = useDbStore((s) => s.getClient);
   const c = getClient(clientId);
   const survey = useMemo(
     () => (c?.data?.survey || {}) as Record<string, string>,
-    [c?.data?.survey]
+    [c?.data?.survey],
   );
   const result = useMemo(
     () => computeSurvey(survey, String(survey.stype || "hotel")),
@@ -22,39 +32,41 @@ export function AnalysisPage({ clientId }: { clientId }) {
   );
   const hasData = surveyHasData(survey);
 
-  const rows: { label; vac; night; dp; mi }[] = [
-    { label: "Viaje actual", vac: String(result.current.vac), night: fmtD(result.current.night), dp: fmt(result.current.dp), mi: fmt(result.current.mi) },
-    { label: "Histórico", vac: fmtD(result.hist.vac), night: fmtD(result.hist.night), dp: fmt(result.hist.dp), mi: fmt(result.hist.mi) },
-    { label: "Viajes futuros", vac: fmtD(result.future.vac), night: fmtD(result.future.night), dp: fmt(result.future.dp), mi: fmt(result.future.mi) },
-    { label: "Patrones", vac: fmtD(result.pattern.vac), night: fmtD(result.pattern.night), dp: fmt(result.pattern.dp), mi: fmt(result.pattern.mi) },
+  const rows: { label: string; vac: string; night: string; dp: string; mi: string }[] = [
+    { label: t(ROW_KEYS[0]), vac: String(result.current.vac), night: fmtD(result.current.night), dp: fmt(result.current.dp), mi: fmt(result.current.mi) },
+    { label: t(ROW_KEYS[1]), vac: fmtD(result.hist.vac), night: fmtD(result.hist.night), dp: fmt(result.hist.dp), mi: fmt(result.hist.mi) },
+    { label: t(ROW_KEYS[2]), vac: fmtD(result.future.vac), night: fmtD(result.future.night), dp: fmt(result.future.dp), mi: fmt(result.future.mi) },
+    { label: t(ROW_KEYS[3]), vac: fmtD(result.pattern.vac), night: fmtD(result.pattern.night), dp: fmt(result.pattern.dp), mi: fmt(result.pattern.mi) },
   ];
 
   return (
     <>
-      <Topbar title="Análisis" subtitle="Patrón de vacaciones" />
+      <Topbar title={t("tools.analysis.title")} subtitle={t("tools.analysis.sub")} />
       <div className="sales-page">
-        <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 20 }}>
-          <Link to={`/clients/${clientId}`} className="btn btn-ghost btn-sm">← Volver</Link>
-          <div>
-            <div className="page-title">Análisis</div>
-            <div className="page-sub">Patrón de vacaciones{c ? ` · ${clientDisplayName(c)}` : ""}</div>
+        <div className="page-head tool-page-head">
+          <div className="tool-page-head-main">
+            <PageBack inline href={resolveToolBackHref(clientId)} />
+            <div className="tool-page-head-titles">
+              <div className="page-title">{t("tools.analysis.title")}</div>
+              <div className="page-sub">{t("tools.analysis.sub")}{c ? ` · ${clientDisplayName(c)}` : ""}</div>
+            </div>
           </div>
         </div>
 
         <div className="card">
-          <div className="card-heading">Patrón de vacaciones</div>
-          <div className="card-sub">Calculado con la información guardada en el Survey de este expediente.</div>
+          <div className="card-heading">{t("tools.survey.patternTitle")}</div>
+          <div className="card-sub">{t("tools.analysis.calcSub")}</div>
           {!hasData && (
-            <div className="analysis-empty">Este expediente todavía no tiene Survey guardado. Captura y guarda el Survey del cliente para ver su patrón de vacaciones.</div>
+            <div className="analysis-empty">{t("tools.analysis.emptyLong")}</div>
           )}
           <table className="dtbl pattern-table">
             <thead>
               <tr>
-                <th>Fuente</th>
-                <th className="td-r">Vacaciones al año</th>
-                <th className="td-r">Noches al año</th>
-                <th className="td-r">Enganche</th>
-                <th className="td-r">Mensualidad</th>
+                <th>{t("tools.survey.pattern.source")}</th>
+                <th className="td-r">{t("tools.survey.pattern.vacYear")}</th>
+                <th className="td-r">{t("tools.survey.pattern.nightsYear")}</th>
+                <th className="td-r">{t("tools.survey.pattern.down")}</th>
+                <th className="td-r">{t("tools.survey.pattern.monthly")}</th>
               </tr>
             </thead>
             <tbody>

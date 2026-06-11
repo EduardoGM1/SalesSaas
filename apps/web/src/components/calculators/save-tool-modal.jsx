@@ -3,16 +3,30 @@ import { useEffect, useState } from "react";
 import {  useNavigate  } from "react-router-dom";
 import { SalesModal } from "@/components/ui/sales-modal";
 import { toast } from "@/lib/toast";
+import { translate } from "@/lib/i18n.js";
 import { activeClients, clientDisplayName } from "@/lib/clients";
 import { ymdToday } from "@/lib/format/dates";
 import { parseMoney } from "@/lib/format/money";
 import { createEmptyClient, useDbStore } from "@/stores/db-store";
+import { useI18n } from "@/hooks/use-i18n.js";
+import { selectOnFocus } from "@/lib/focus-select.js";
 
 type Tool = "survey" | "vacaciones" | "worksheet";
 
-const TOOL_LABEL: Record<Tool, string> = {
-  survey: "Survey", vacaciones: "Proyección de Vacaciones", worksheet: "Worksheet",
+const TOOL_LABEL_KEYS: Record<Tool, string> = {
+  survey: "tools.survey",
+  vacaciones: "tools.vacation",
+  worksheet: "tools.worksheet",
 };
+
+const STATUS_OPTIONS = [
+  { value: "", key: "status.empty" },
+  { value: "venta", key: "status.sale" },
+  { value: "bback", key: "status.bback" },
+  { value: "procesable", key: "status.processable" },
+  { value: "no-procesable", key: "status.notProcessable" },
+  { value: "perdido", key: "status.lost" },
+];
 
 const emptyFields = () => ({
   name1: "", occ1: "", name2: "", occ2: "", city: "", country: "",
@@ -28,6 +42,7 @@ interface SaveToolModalProps {
 
 export function SaveToolModal({ open, onOpenChange, tool }: SaveToolModalProps) {
   const navigate = useNavigate();
+  const { t } = useI18n();
   const db = useDbStore((s) => s.db);
   const getToolBucket = useDbStore((s) => s.getToolBucket);
   const saveClient = useDbStore((s) => s.saveClient);
@@ -47,14 +62,14 @@ export function SaveToolModal({ open, onOpenChange, tool }: SaveToolModalProps) 
     const src = { ...getToolBucket(tool, "libre") };
 
     if (targetMode === "existing") {
-      if (!existingId || !db.clients[existingId]) return toast.error("Selecciona un prospecto existente.");
+      if (!existingId || !db.clients[existingId]) return toast.error(translate("tools.saveModal.errorProspect"));
       saveToolBucket(tool, "client", src, existingId);
       onOpenChange(false);
       navigate(`/clients/${existingId}`);
       return;
     }
 
-    if (!f.name1.trim()) return toast.error("Escribe al menos el nombre del cliente 1.");
+    if (!f.name1.trim()) return toast.error(translate("tools.saveModal.errorName"));
     const c = createEmptyClient(f.name1.trim(), f.tourDate || ymdToday());
     c.name = [f.name1, f.name2].filter(Boolean).join(" / ") || f.name1;
     c.name1 = f.name1;
@@ -79,17 +94,17 @@ export function SaveToolModal({ open, onOpenChange, tool }: SaveToolModalProps) 
   const set = (k: keyof ReturnType<typeof emptyFields>, v) => setF((p) => ({ ...p, [k]: v }));
 
   return (
-    <SalesModal open={open} onOpenChange={onOpenChange} title="Guardar en expediente" sub={`Guardar ${TOOL_LABEL[tool]} en un expediente`}>
+    <SalesModal open={open} onOpenChange={onOpenChange} title={t("tools.saveModal.title")} sub={`${t(TOOL_LABEL_KEYS[tool])} · ${t("tools.saveModal.sub")}`}>
       <div className="seg" style={{ marginBottom: 16 }}>
-        <button type="button" className={`seg-btn${targetMode === "new" ? " on" : ""}`} onClick={() => setTargetMode("new")}>Crear nuevo</button>
-        <button type="button" className={`seg-btn${targetMode === "existing" ? " on" : ""}`} onClick={() => setTargetMode("existing")}>Prospecto existente</button>
+        <button type="button" className={`seg-btn${targetMode === "new" ? " on" : ""}`} onClick={() => setTargetMode("new")}>{t("tools.saveModal.modeNew")}</button>
+        <button type="button" className={`seg-btn${targetMode === "existing" ? " on" : ""}`} onClick={() => setTargetMode("existing")}>{t("tools.saveModal.modeExisting")}</button>
       </div>
 
       {targetMode === "existing" && (
         <div style={{ marginBottom: 16 }}>
-          <label className="field-label">Prospectos activos — máximo 10</label>
+          <label className="field-label">{t("tools.saveModal.selectProspect")}</label>
           <select value={existingId} onChange={(e) => setExistingId(e.target.value)}>
-            <option value="">{clients.length ? "Selecciona…" : "Sin prospectos activos"}</option>
+            <option value="">{clients.length ? t("tools.saveModal.selectProspect") : t("clients.emptyAll")}</option>
             {clients.map((c) => (
               <option key={c.id} value={c.id}>{clientDisplayName(c)}{c.contract ? ` · ${c.contract}` : ""}</option>
             ))}
@@ -99,36 +114,33 @@ export function SaveToolModal({ open, onOpenChange, tool }: SaveToolModalProps) 
 
       {targetMode === "new" && (
         <div className="prospect-grid">
-          <div className="prospect-field"><label>Cliente 1</label><input type="text" placeholder="Nombre completo" value={f.name1} onChange={(e) => set("name1", e.target.value)} /></div>
-          <div className="prospect-field"><label>Ocupación 1</label><input type="text" placeholder="Ocupación" value={f.occ1} onChange={(e) => set("occ1", e.target.value)} /></div>
-          <div className="prospect-field"><label>Cliente 2</label><input type="text" placeholder="Nombre completo" value={f.name2} onChange={(e) => set("name2", e.target.value)} /></div>
-          <div className="prospect-field"><label>Ocupación 2</label><input type="text" placeholder="Ocupación" value={f.occ2} onChange={(e) => set("occ2", e.target.value)} /></div>
-          <div className="prospect-field"><label>Ciudad</label><input type="text" placeholder="Ciudad" value={f.city} onChange={(e) => set("city", e.target.value)} /></div>
-          <div className="prospect-field"><label>País</label><input type="text" placeholder="País" value={f.country} onChange={(e) => set("country", e.target.value)} /></div>
-          <div className="prospect-field"><label>Teléfono</label><input type="text" placeholder="Teléfono" value={f.phone} onChange={(e) => set("phone", e.target.value)} /></div>
-          <div className="prospect-field"><label>Email</label><input type="text" placeholder="Email" value={f.email} onChange={(e) => set("email", e.target.value)} /></div>
-          <div className="prospect-field"><label>Contrato / Referencia</label><input type="text" placeholder="Contrato" value={f.contract} onChange={(e) => set("contract", e.target.value)} /></div>
-          <div className="prospect-field"><label>Fecha de tour</label><input type="date" value={f.tourDate} onChange={(e) => set("tourDate", e.target.value)} /></div>
-          <div className="prospect-field"><label>Estado</label>
+          <div className="prospect-field"><label>{t("exp.edit.name")}</label><input type="text" placeholder={t("tools.survey.namePlaceholder")} value={f.name1} onFocus={selectOnFocus} onChange={(e) => set("name1", e.target.value)} /></div>
+          <div className="prospect-field"><label>{t("exp.edit.occ1")}</label><input type="text" placeholder={t("tools.survey.occPlaceholder")} value={f.occ1} onFocus={selectOnFocus} onChange={(e) => set("occ1", e.target.value)} /></div>
+          <div className="prospect-field"><label>{t("exp.edit.companion")}</label><input type="text" placeholder={t("tools.survey.companionPlaceholder")} value={f.name2} onFocus={selectOnFocus} onChange={(e) => set("name2", e.target.value)} /></div>
+          <div className="prospect-field"><label>{t("exp.edit.occ2")}</label><input type="text" placeholder={t("tools.survey.occ2Placeholder")} value={f.occ2} onFocus={selectOnFocus} onChange={(e) => set("occ2", e.target.value)} /></div>
+          <div className="prospect-field"><label>{t("exp.edit.city")}</label><input type="text" placeholder={t("tools.survey.city")} value={f.city} onFocus={selectOnFocus} onChange={(e) => set("city", e.target.value)} /></div>
+          <div className="prospect-field"><label>{t("exp.edit.country")}</label><input type="text" placeholder={t("tools.survey.country")} value={f.country} onFocus={selectOnFocus} onChange={(e) => set("country", e.target.value)} /></div>
+          <div className="prospect-field"><label>{t("exp.edit.phone")}</label><input type="text" placeholder={t("exp.edit.phone")} value={f.phone} onFocus={selectOnFocus} onChange={(e) => set("phone", e.target.value)} /></div>
+          <div className="prospect-field"><label>{t("exp.edit.email")}</label><input type="text" placeholder={t("exp.edit.email")} value={f.email} onFocus={selectOnFocus} onChange={(e) => set("email", e.target.value)} /></div>
+          <div className="prospect-field"><label>{t("exp.edit.contract")}</label><input type="text" placeholder={t("exp.sale.contractPlaceholder")} value={f.contract} onFocus={selectOnFocus} onChange={(e) => set("contract", e.target.value)} /></div>
+          <div className="prospect-field"><label>{t("exp.edit.tourDate")}</label><input type="date" value={f.tourDate} onFocus={selectOnFocus} onChange={(e) => set("tourDate", e.target.value)} /></div>
+          <div className="prospect-field"><label>{t("exp.edit.status")}</label>
             <select value={f.status} onChange={(e) => set("status", e.target.value)}>
-              <option value="">Sin estado</option>
-              <option value="venta">Venta</option>
-              <option value="bback">B-back</option>
-              <option value="procesable">Procesable</option>
-              <option value="no-procesable">No procesable</option>
-              <option value="perdido">Perdido / cerrado</option>
+              {STATUS_OPTIONS.map(({ value, key }) => (
+                <option key={value || "empty"} value={value}>{t(key)}</option>
+              ))}
             </select>
           </div>
-          <div className="prospect-field"><label>Fecha de procesamiento</label><input type="date" value={f.processDate} onChange={(e) => set("processDate", e.target.value)} /></div>
-          <div className="prospect-field"><label>Monto pendiente</label><div className="mfield"><span className="mpfx">$</span><input type="text" placeholder="0" value={f.processAmount} onChange={(e) => set("processAmount", e.target.value)} /></div></div>
-          <div className="prospect-field full"><label>Nota / motivo</label><textarea rows={3} placeholder="Contexto del prospecto, motivo de no procesable o seguimiento..." value={f.note} onChange={(e) => set("note", e.target.value)} /></div>
+          <div className="prospect-field"><label>{t("exp.edit.processDate")}</label><input type="date" value={f.processDate} onFocus={selectOnFocus} onChange={(e) => set("processDate", e.target.value)} /></div>
+          <div className="prospect-field"><label>{t("tools.survey.table.amount")}</label><div className="mfield"><span className="mpfx">$</span><input type="text" placeholder="0" value={f.processAmount} onFocus={selectOnFocus} onChange={(e) => set("processAmount", e.target.value)} /></div></div>
+          <div className="prospect-field full"><label>{t("exp.edit.note")}</label><textarea rows={3} placeholder={t("exp.edit.notePlaceholder")} value={f.note} onFocus={selectOnFocus} onChange={(e) => set("note", e.target.value)} /></div>
         </div>
       )}
 
-      <div className="ethic-box" style={{ marginTop: 16 }}>Prospectos activos debe ser un pipeline temporal. La app final debe limpiar o anonimizar datos personales al cerrar/procesar.</div>
+      <div className="ethic-box" style={{ marginTop: 16 }}>{t("tools.saveModal.ethics")}</div>
       <div className="btn-row">
-        <button type="button" className="btn btn-ghost" onClick={() => onOpenChange(false)}>Cancelar</button>
-        <button type="button" className="btn btn-primary" onClick={handleSave}>Guardar</button>
+        <button type="button" className="btn btn-ghost" onClick={() => onOpenChange(false)}>{t("common.cancel")}</button>
+        <button type="button" className="btn btn-primary" onClick={handleSave}>{t("common.save")}</button>
       </div>
     </SalesModal>
   );

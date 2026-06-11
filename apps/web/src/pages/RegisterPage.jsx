@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Home } from "lucide-react";
 import { useI18n } from "@/hooks/use-i18n.js";
+import { selectOnFocus } from "@/lib/focus-select.js";
 
 export function RegisterPage() {
   const { t } = useI18n();
@@ -51,15 +52,15 @@ export function RegisterPage() {
         <form onSubmit={onSubmit}>
           <div className="auth-field">
             <label className="field-label">{t("auth.register.fullName")}</label>
-            <input className="auth-input" type="text" name="fullName" placeholder={t("auth.register.fullName")} autoComplete="name" />
+            <input className="auth-input" type="text" name="fullName" placeholder={t("auth.register.fullName")} autoComplete="name" onFocus={selectOnFocus} />
           </div>
           <div className="auth-field">
             <label className="field-label">{t("auth.register.email")}</label>
-            <input className="auth-input" type="email" name="email" placeholder="tu@correo.com" required autoComplete="email" />
+            <input className="auth-input" type="email" name="email" placeholder="tu@correo.com" required autoComplete="email" onFocus={selectOnFocus} />
           </div>
           <div className="auth-field">
             <label className="field-label">{t("auth.register.password")}</label>
-            <input className="auth-input" type="password" name="password" placeholder={t("auth.register.passwordPlaceholder")} required autoComplete="new-password" minLength={6} />
+            <input className="auth-input" type="password" name="password" placeholder={t("auth.register.passwordPlaceholder")} required autoComplete="new-password" minLength={6} onFocus={selectOnFocus} />
           </div>
           <button type="submit" className="btn btn-primary btn-full" disabled={pending}>
             {pending ? t("auth.register.pending") : t("auth.register.submit")}

@@ -4,6 +4,7 @@ import { Home } from "lucide-react";
 import { isSupabaseConfigured } from "@/lib/supabase/config.js";
 import { notifyAuthChanged } from "@/lib/session-api.js";
 import { useI18n } from "@/hooks/use-i18n.js";
+import { selectOnFocus } from "@/lib/focus-select.js";
 
 const QUERY_KEYS = {
   auth: "auth.login.errorAuth",
@@ -67,11 +68,11 @@ export function LoginPage() {
       <form onSubmit={onSubmit}>
         <div className="auth-field">
           <label className="field-label">{t("auth.login.email")}</label>
-          <input className="auth-input" type="email" name="email" required autoComplete="email" />
+          <input className="auth-input" type="email" name="email" required autoComplete="email" onFocus={selectOnFocus} />
         </div>
         <div className="auth-field">
           <label className="field-label">{t("auth.login.password")}</label>
-          <input className="auth-input" type="password" name="password" required autoComplete="current-password" />
+          <input className="auth-input" type="password" name="password" required autoComplete="current-password" onFocus={selectOnFocus} />
           <div className="auth-field-foot"><Link to="/forgot-password">{t("auth.login.forgot")}</Link></div>
         </div>
         <button type="submit" className="btn btn-primary btn-full" disabled={pending}>{pending ? t("auth.login.pending") : t("auth.login.submit")}</button>
