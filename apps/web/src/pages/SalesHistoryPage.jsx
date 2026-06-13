@@ -27,6 +27,13 @@ const PROCESSING_OPTIONS = [
   { value: "pendiente", key: "salesHistory.filters.pending" },
 ];
 
+function saleMeta(sale, t) {
+  const pending = sale.status === "no-procesable" || sale.processing === "pendiente";
+  const fileLabel = sale.clientName || sale.prospectCode || t("salesHistory.archivedFile");
+  const processingLabel = pending ? t("exp.sales.pending") : t("salesHistory.filters.processable");
+  return { pending, fileLabel, processingLabel };
+}
+
 export function SalesHistoryPage() {
   const { t, lang } = useI18n();
   const { fmt, fmtN } = useMoney();
@@ -51,10 +58,10 @@ export function SalesHistoryPage() {
   return (
     <>
       <Topbar title={t("page.sales.title")} subtitle={t("page.sales.subtitle")} />
-      <div className="page-body">
-        <p className="page-intro">{t("salesHistory.sub", { count: fmtN(sales.length), volume: fmt(total) })}</p>
+      <div className="sales-page sales-history-page">
+        <p className="sales-history-intro">{t("salesHistory.sub", { count: fmtN(sales.length), volume: fmt(total) })}</p>
 
-        <div className="admin-filters">
+        <div className="sales-history-filters admin-filters">
           <form method="GET" action="/sales" className="admin-filters-form">
             <div className="admin-filter-field">
               <label>{t("admin.filters.from")}</label>
@@ -80,61 +87,92 @@ export function SalesHistoryPage() {
                 ))}
               </select>
             </div>
-            <button type="submit" className="btn btn-primary">{t("admin.filters.apply")}</button>
-            {qs && <Link to="/sales" className="btn btn-ghost">{t("common.clear")}</Link>}
+            <div className="sales-history-filter-actions">
+              <button type="submit" className="btn btn-primary">{t("admin.filters.apply")}</button>
+              {qs && <Link to="/sales" className="btn btn-ghost">{t("common.clear")}</Link>}
+            </div>
           </form>
         </div>
 
-        <div className="client-table-card">
-          {sales.length === 0 ? (
+        {sales.length === 0 ? (
+          <div className="client-table-card sales-history-empty">
             <div className="admin-empty">{t("salesHistory.empty")}</div>
-          ) : (
-            <table className="client-table">
-              <thead>
-                <tr>
-                  <th>{t("admin.table.date")}</th>
-                  <th>{t("admin.table.file")}</th>
-                  <th>{t("admin.table.contract")}</th>
-                  <th>{t("admin.table.status")}</th>
-                  <th>{t("salesHistory.filters.processing")}</th>
-                  <th style={{ textAlign: "right" }}>{t("admin.table.tours")}</th>
-                  <th style={{ textAlign: "right" }}>{t("admin.table.volume")}</th>
-                  {canViewSaleModal && <th>{t("admin.users.col.actions")}</th>}
-                </tr>
-              </thead>
-              <tbody>
-                {sales.map((s) => {
-                  const pending = s.status === "no-procesable" || s.processing === "pendiente";
-                  const fileLabel = s.clientName || s.prospectCode || t("salesHistory.archivedFile");
-                  return (
-                    <tr key={s.saleId}>
-                      <td>{s.date ? longDate(s.date, lang) : "—"}</td>
-                      <td>
-                        {s.clientId && !s.orphaned ? (
-                          <Link to={`/clients/${s.clientId}`} className="dg-link">{fileLabel}</Link>
-                        ) : (
-                          <span title={t("salesHistory.archivedHint")}>{fileLabel}</span>
-                        )}
-                      </td>
-                      <td>{s.contract || "—"}</td>
-                      <td>{statusLabel(s.status, lang)}</td>
-                      <td>
-                        {pending ? t("exp.sales.pending") : t("salesHistory.filters.processable")}
-                      </td>
-                      <td style={{ textAlign: "right" }}>{fmtN(s.tours || 0)}</td>
-                      <td style={{ textAlign: "right" }}>{fmt(s.vol || 0)}</td>
-                      {canViewSaleModal && (
+          </div>
+        ) : (
+          <>
+            <div className="client-table-card sales-history-table-card">
+              <table className="client-table sales-history-table">
+                <thead>
+                  <tr>
+                    <th>{t("admin.table.date")}</th>
+                    <th>{t("admin.table.file")}</th>
+                    <th>{t("admin.table.contract")}</th>
+                    <th>{t("admin.table.status")}</th>
+                    <th>{t("salesHistory.filters.processing")}</th>
+                    <th className="th-num">{t("admin.table.tours")}</th>
+                    <th className="th-num">{t("admin.table.volume")}</th>
+                    {canViewSaleModal && <th>{t("admin.users.col.actions")}</th>}
+                  </tr>
+                </thead>
+                <tbody>
+                  {sales.map((s) => {
+                    const { fileLabel, processingLabel } = saleMeta(s, t);
+                    return (
+                      <tr key={s.saleId}>
+                        <td>{s.date ? longDate(s.date, lang) : "—"}</td>
                         <td>
-                          <button type="button" className="dg-link" onClick={() => setViewSaleId(s.saleId)}>{t("common.viewSale")}</button>
+                          {s.clientId && !s.orphaned ? (
+                            <Link to={`/clients/${s.clientId}`} className="dg-link">{fileLabel}</Link>
+                          ) : (
+                            <span title={t("salesHistory.archivedHint")}>{fileLabel}</span>
+                          )}
                         </td>
-                      )}
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          )}
-        </div>
+                        <td>{s.contract || "—"}</td>
+                        <td>{statusLabel(s.status, lang)}</td>
+                        <td>{processingLabel}</td>
+                        <td className="td-num">{fmtN(s.tours || 0)}</td>
+                        <td className="td-num">{fmt(s.vol || 0)}</td>
+                        {canViewSaleModal && (
+                          <td>
+                            <button type="button" className="btn btn-ghost btn-sm" onClick={() => setViewSaleId(s.saleId)}>{t("common.viewSale")}</button>
+                          </td>
+                        )}
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="sales-history-cards">
+              {sales.map((s) => {
+                const { fileLabel, processingLabel } = saleMeta(s, t);
+                return (
+                  <article key={s.saleId} className="sales-history-card">
+                    <div className="sales-history-card-top">
+                      <div>
+                        <div className="sales-history-card-date">{s.date ? longDate(s.date, lang) : "—"}</div>
+                        <div className="sales-history-card-file">{fileLabel}</div>
+                      </div>
+                      <div className="sales-history-card-vol">{fmt(s.vol || 0)}</div>
+                    </div>
+                    <dl className="sales-history-card-meta">
+                      <div><dt>{t("admin.table.contract")}</dt><dd>{s.contract || "—"}</dd></div>
+                      <div><dt>{t("admin.table.status")}</dt><dd>{statusLabel(s.status, lang)}</dd></div>
+                      <div><dt>{t("salesHistory.filters.processing")}</dt><dd>{processingLabel}</dd></div>
+                      <div><dt>{t("admin.table.tours")}</dt><dd>{fmtN(s.tours || 0)}</dd></div>
+                    </dl>
+                    {canViewSaleModal && (
+                      <button type="button" className="btn btn-ghost btn-sm sales-history-card-action" onClick={() => setViewSaleId(s.saleId)}>
+                        {t("common.viewSale")}
+                      </button>
+                    )}
+                  </article>
+                );
+              })}
+            </div>
+          </>
+        )}
       </div>
       <SaleDetailModal
         open={!!viewSaleId}
