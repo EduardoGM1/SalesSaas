@@ -27,12 +27,12 @@ const NAV_GROUPS = [
     { href: "/clients", label: "Clientes", icon: Users },
   ],
   [
-    { href: "/network", label: "Red", icon: UserPlus, cloudOnly: true },
-    { href: "/messages", label: "Mensajes", icon: MessageSquare, cloudOnly: true, badgeKey: "messages" },
-  ],
-  [
     { href: "/tools", label: "Herramientas", icon: Wrench },
     { href: "/sales", label: "Ventas", icon: Receipt, feature: "sales:history" },
+  ],
+  [
+    { href: "/network", label: "Red", icon: UserPlus, cloudOnly: true },
+    { href: "/messages", label: "Mensajes", icon: MessageSquare, cloudOnly: true, badgeKey: "messages" },
   ],
 ];
 
@@ -108,7 +108,11 @@ export function Sidebar() {
                 return true;
               }).map(({ href, label, icon: Icon, badgeKey }) => {
                 const visibleLabel = navLabel(label, language);
-                const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
+                const active = href === "/"
+                  ? pathname === "/"
+                  : href === "/network"
+                    ? pathname.startsWith("/network") || pathname.startsWith("/red")
+                    : pathname.startsWith(href);
                 const badge = badgeKey === "messages" && unreadMessages > 0 ? unreadMessages : null;
                 return (
                   <Link

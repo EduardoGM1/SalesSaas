@@ -720,6 +720,87 @@ div.modal-backdrop.sales-modal-overlay:not([hidden]) {
   .messages-sidebar { max-height: 220px; }
 }
 
+.network-row-clickable {
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  font: inherit;
+  color: inherit;
+}
+
+.network-row-clickable:hover {
+  border-color: rgba(37, 99, 235, 0.35);
+  background: rgba(37, 99, 235, 0.03);
+}
+
+.contact-page-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.contact-page-meta { flex: 1; min-width: 180px; }
+.contact-page-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.contact-tabs { margin-bottom: 16px; max-width: 520px; }
+
+.modal-body-text {
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--text2);
+  margin-bottom: 16px;
+}
+
+.share-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.share-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--white);
+  flex-wrap: wrap;
+}
+
+.share-row-name {
+  flex: 1;
+  min-width: 100px;
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.share-perm-select {
+  min-width: 140px;
+  font-size: 12px;
+}
+
+.share-perm-saved {
+  font-size: 11px;
+  font-weight: 700;
+  color: #047857;
+}
+
+.network-avatar-sm {
+  width: 32px;
+  height: 32px;
+  font-size: 11px;
+}
+
+.shared-perm-hint {
+  margin-top: 4px;
+  color: var(--blue);
+  font-weight: 600;
+}
+
 @media (max-height: 760px) {
   .sales-modal-viewport:not([hidden]) { padding-top: 14px; }
 }

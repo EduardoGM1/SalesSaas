@@ -18,6 +18,8 @@ function prospectDisplayName(prospect) {
   return name || prospect.name || prospect.prospect_code || "Expediente";
 }
 
+const VALID_PERMISSIONS = ["view", "edit", "comment"];
+
 function mapShare(row, profiles, prospects) {
   const prospect = prospects.get(row.prospect_id);
   return {
@@ -63,6 +65,31 @@ export async function listSharesForProspect(supabase, userId, prospectId) {
   return rows.map((row) => mapShare(row, profiles, prospects));
 }
 
+export async function listSharesWithContact(supabase, userId, contactId) {
+  if (!isUuid(contactId)) throw new ServiceError("Contacto inválido.");
+
+  const { data, error } = await supabase
+    .from("prospect_shares")
+    .select("id, prospect_id, owner_id, shared_with_id, permission, created_at")
+    .or(`and(owner_id.eq.${userId},shared_with_id.eq.${contactId}),and(owner_id.eq.${contactId},shared_with_id.eq.${userId})`)
+    .order("created_at", { ascending: false });
+  if (error) throw new ServiceError(error.message, 500);
+
+  const rows = data ?? [];
+  const profiles = await loadProfiles(supabase, rows.flatMap((r) => [r.owner_id, r.shared_with_id]));
+  const prospectIds = [...new Set(rows.map((r) => r.prospect_id))];
+  const { data: prospectRows } = prospectIds.length
+    ? await supabase.from("prospects").select("id, prospect_code, name, name1, name2").in("id", prospectIds)
+    : { data: [] };
+  const prospects = new Map((prospectRows ?? []).map((p) => [p.id, p]));
+
+  const mapped = rows.map((row) => mapShare(row, profiles, prospects));
+  return {
+    received: mapped.filter((s) => s.owner_id === contactId && s.shared_with_id === userId),
+    sent: mapped.filter((s) => s.owner_id === userId && s.shared_with_id === contactId),
+  };
+}
+
 export async function listSharedWithMe(supabase, userId) {
   const { data, error } = await supabase
     .from("prospect_shares")
@@ -84,7 +111,7 @@ export async function listSharedWithMe(supabase, userId) {
 export async function createShare(supabase, userId, prospectId, { shared_with_id: sharedWithId, permission = "view" }) {
   if (!isUuid(prospectId)) throw new ServiceError("Expediente inválido.");
   if (!isUuid(sharedWithId)) throw new ServiceError("Usuario inválido.");
-  if (!["view", "edit"].includes(permission)) throw new ServiceError("Permiso inválido.");
+  if (!VALID_PERMISSIONS.includes(permission)) throw new ServiceError("Permiso inválido.");
   if (sharedWithId === userId) throw new ServiceError("No puedes compartir contigo mismo.");
 
   const { data: owned } = await supabase
@@ -123,7 +150,7 @@ export async function createShare(supabase, userId, prospectId, { shared_with_id
 
 export async function updateSharePermission(supabase, userId, shareId, permission) {
   if (!isUuid(shareId)) throw new ServiceError("Compartido inválido.");
-  if (!["view", "edit"].includes(permission)) throw new ServiceError("Permiso inválido.");
+  if (!VALID_PERMISSIONS.includes(permission)) throw new ServiceError("Permiso inválido.");
 
   const { data, error } = await supabase
     .from("prospect_shares")

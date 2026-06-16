@@ -1,11 +1,12 @@
 
 import { useEffect, useState } from "react";
-import { UserPlus, Check, X, MessageSquare, FolderOpen } from "lucide-react";
+import { UserPlus, Check, X, MessageSquare } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { Topbar } from "@/components/layout/topbar";
 import { PageBack } from "@/components/layout/page-back";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
-import { networkApi, sharingApi } from "@/lib/network-api.js";
+import { networkApi } from "@/lib/network-api.js";
+import { RemoveContactModal } from "@/components/network/remove-contact-modal.jsx";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { toast } from "@/lib/toast";
 
@@ -21,14 +22,15 @@ function UserAvatar({ user, label }) {
   return <div className="network-avatar">{text}</div>;
 }
 
-function ConnectionActions({ connection, onRefresh, t }) {
+function ConnectionActions({ connection, onRefresh, onRequestRemove, t }) {
   const peer = connection.peer;
   const navigate = useNavigate();
 
   if (connection.status === "pending" && connection.direction === "incoming") {
     return (
       <div className="network-row-actions">
-        <button type="button" className="btn btn-primary btn-sm" onClick={async () => {
+        <button type="button" className="btn btn-primary btn-sm" onClick={async (e) => {
+          e.stopPropagation();
           try {
             await networkApi.updateConnection(connection.id, "accepted");
             toast.success(t("network.accepted"));
@@ -37,7 +39,8 @@ function ConnectionActions({ connection, onRefresh, t }) {
             toast.error(err.message);
           }
         }}><Check size={14} /> {t("network.accept")}</button>
-        <button type="button" className="btn btn-ghost btn-sm" onClick={async () => {
+        <button type="button" className="btn btn-ghost btn-sm" onClick={async (e) => {
+          e.stopPropagation();
           try {
             await networkApi.removeConnection(connection.id);
             onRefresh();
@@ -52,16 +55,15 @@ function ConnectionActions({ connection, onRefresh, t }) {
   if (connection.status === "accepted") {
     return (
       <div className="network-row-actions">
-        <button type="button" className="btn btn-ghost btn-sm" onClick={() => navigate(`/messages?with=${peer.id}`)}>
+        <button type="button" className="btn btn-ghost btn-sm" onClick={(e) => {
+          e.stopPropagation();
+          navigate(`/messages?with=${peer.id}`);
+        }}>
           <MessageSquare size={14} /> {t("network.message")}
         </button>
-        <button type="button" className="btn btn-ghost btn-sm" onClick={async () => {
-          try {
-            await networkApi.removeConnection(connection.id);
-            onRefresh();
-          } catch (err) {
-            toast.error(err.message);
-          }
+        <button type="button" className="btn btn-ghost btn-sm" onClick={(e) => {
+          e.stopPropagation();
+          onRequestRemove(connection);
         }}>{t("network.remove")}</button>
       </div>
     );
@@ -76,22 +78,20 @@ function ConnectionActions({ connection, onRefresh, t }) {
 
 export function NetworkPage() {
   const { t } = useI18n();
+  const navigate = useNavigate();
   const [query, setQuery] = useState("");
   const [searching, setSearching] = useState(false);
   const [results, setResults] = useState([]);
   const [connections, setConnections] = useState([]);
-  const [shared, setShared] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [removeTarget, setRemoveTarget] = useState(null);
+  const [removePending, setRemovePending] = useState(false);
 
   const refresh = async () => {
     if (!isSupabaseConfigured()) return;
     try {
-      const [conn, shares] = await Promise.all([
-        networkApi.listConnections(),
-        sharingApi.listReceived(),
-      ]);
+      const conn = await networkApi.listConnections();
       setConnections(conn);
-      setShared(shares);
     } catch (err) {
       toast.error(err.message);
     } finally {
@@ -120,6 +120,21 @@ export function NetworkPage() {
     }, 300);
     return () => window.clearTimeout(timer);
   }, [query]);
+
+  const handleRemoveConfirm = async () => {
+    if (!removeTarget) return;
+    setRemovePending(true);
+    try {
+      await networkApi.removeConnection(removeTarget.id);
+      toast.success(t("network.contactRemoved"));
+      setRemoveTarget(null);
+      refresh();
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setRemovePending(false);
+    }
+  };
 
   if (!isSupabaseConfigured()) {
     return (
@@ -203,7 +218,7 @@ export function NetworkPage() {
                     <div className="network-row-name">{displayName(c.peer)}</div>
                     <div className="network-row-sub">{c.peer?.email}</div>
                   </div>
-                  <ConnectionActions connection={c} onRefresh={refresh} t={t} />
+                  <ConnectionActions connection={c} onRefresh={refresh} onRequestRemove={setRemoveTarget} t={t} />
                 </div>
               ))}
             </div>
@@ -217,41 +232,32 @@ export function NetworkPage() {
           ) : (
             <div className="network-list">
               {contacts.map((c) => (
-                <div key={c.id} className="network-row">
+                <button
+                  key={c.id}
+                  type="button"
+                  className="network-row network-row-clickable"
+                  onClick={() => navigate(`/red/contacto/${c.peer.id}`)}
+                >
                   <UserAvatar user={c.peer} />
                   <div className="network-row-main">
                     <div className="network-row-name">{displayName(c.peer)}</div>
                     <div className="network-row-sub">{c.peer?.email}</div>
                   </div>
-                  <ConnectionActions connection={c} onRefresh={refresh} t={t} />
-                </div>
-              ))}
-            </div>
-          )}
-        </section>
-
-        <section className="network-section">
-          <div className="section-label">{t("network.sharedWithMe")}</div>
-          {shared.length === 0 ? (
-            <div className="dp-empty">{t("network.noShared")}</div>
-          ) : (
-            <div className="network-list">
-              {shared.map((s) => (
-                <div key={s.id} className="network-row">
-                  <FolderOpen size={20} className="network-folder-icon" />
-                  <div className="network-row-main">
-                    <div className="network-row-name">{s.prospect_name}</div>
-                    <div className="network-row-sub">
-                      {t("network.sharedBy", { name: displayName(s.owner) })} · {s.permission === "edit" ? t("network.permEdit") : t("network.permView")}
-                    </div>
-                  </div>
-                  <Link to={`/network/shared/${s.prospect_id}`} className="btn btn-ghost btn-sm">{t("network.openShared")}</Link>
-                </div>
+                  <ConnectionActions connection={c} onRefresh={refresh} onRequestRemove={setRemoveTarget} t={t} />
+                </button>
               ))}
             </div>
           )}
         </section>
       </div>
+
+      <RemoveContactModal
+        open={!!removeTarget}
+        onOpenChange={(open) => { if (!open) setRemoveTarget(null); }}
+        contact={removeTarget?.peer}
+        pending={removePending}
+        onConfirm={handleRemoveConfirm}
+      />
     </>
   );
 }

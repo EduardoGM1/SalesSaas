@@ -121,6 +121,22 @@ export async function updateConnectionStatus(supabase, userId, connectionId, sta
 
 export async function removeConnection(supabase, userId, connectionId) {
   if (!isUuid(connectionId)) throw new ServiceError("Conexión inválido.");
+
+  const { data: row, error: fetchErr } = await supabase
+    .from("user_connections")
+    .select("requester_id, addressee_id")
+    .eq("id", connectionId)
+    .maybeSingle();
+  if (fetchErr) throw new ServiceError(fetchErr.message, 500);
+  assertFound(row, "Conexión no encontrada.");
+
+  const isParticipant = row.requester_id === userId || row.addressee_id === userId;
+  if (!isParticipant) throw new ServiceError("Sin permiso.", 403);
+
+  const peerId = row.requester_id === userId ? row.addressee_id : row.requester_id;
+  const { error: revokeErr } = await supabase.rpc("revoke_mutual_shares", { peer_id: peerId });
+  if (revokeErr) throw new ServiceError(revokeErr.message, 500);
+
   const { error, count } = await supabase
     .from("user_connections")
     .delete({ count: "exact" })
@@ -129,4 +145,18 @@ export async function removeConnection(supabase, userId, connectionId) {
   if (error) throw new ServiceError(error.message, 400);
   if (!count) throw new ServiceError("Conexión no encontrada.", 404);
   return { ok: true };
+}
+
+export async function getConnectionWithContact(supabase, userId, contactId) {
+  if (!isUuid(contactId)) throw new ServiceError("Contacto inválido.");
+  const { data, error } = await supabase
+    .from("user_connections")
+    .select("id, requester_id, addressee_id, status, created_at, updated_at")
+    .eq("status", "accepted")
+    .or(`and(requester_id.eq.${userId},addressee_id.eq.${contactId}),and(requester_id.eq.${contactId},addressee_id.eq.${userId})`)
+    .maybeSingle();
+  if (error) throw new ServiceError(error.message, 500);
+  if (!data) throw new ServiceError("Contacto no encontrado.", 404);
+  const profiles = await loadProfiles(supabase, [userId, contactId]);
+  return mapConnection(data, userId, profiles);
 }

@@ -5,8 +5,58 @@ import { networkApi, sharingApi } from "@/lib/network-api.js";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { toast } from "@/lib/toast";
 
+const PERM_OPTIONS = [
+  { value: "view", key: "network.permView" },
+  { value: "edit", key: "network.permEdit" },
+  { value: "comment", key: "network.permComment" },
+];
+
 function displayName(user) {
   return user?.full_name?.trim() || user?.email?.split("@")[0] || "Usuario";
+}
+
+function UserAvatar({ user }) {
+  const text = displayName(user).slice(0, 2).toUpperCase();
+  if (user?.avatar_url) {
+    return <img src={user.avatar_url} alt="" className="network-avatar-img network-avatar-sm" />;
+  }
+  return <div className="network-avatar network-avatar-sm">{text}</div>;
+}
+
+function ShareRow({ share, onPermissionChange, onRemove, t }) {
+  const [saved, setSaved] = useState(false);
+
+  const handlePerm = async (permission) => {
+    if (permission === share.permission) return;
+    try {
+      await onPermissionChange(share.id, permission);
+      setSaved(true);
+      window.setTimeout(() => setSaved(false), 2000);
+    } catch (err) {
+      toast.error(err.message);
+    }
+  };
+
+  return (
+    <div className="share-row">
+      <UserAvatar user={share.shared_with} />
+      <div className="share-row-name">{displayName(share.shared_with)}</div>
+      <select
+        className="share-perm-select"
+        value={share.permission}
+        onChange={(e) => handlePerm(e.target.value)}
+        aria-label={t("network.permission")}
+      >
+        {PERM_OPTIONS.map(({ value, key }) => (
+          <option key={value} value={value}>{t(key)}</option>
+        ))}
+      </select>
+      {saved && <span className="share-perm-saved">{t("network.permUpdated")}</span>}
+      <button type="button" className="btn btn-ghost btn-sm" onClick={() => onRemove(share.id)}>
+        {t("network.revoke")}
+      </button>
+    </div>
+  );
 }
 
 export function ShareProspectModal({ open, onOpenChange, prospectId, prospectName }) {
@@ -54,6 +104,11 @@ export function ShareProspectModal({ open, onOpenChange, prospectId, prospectNam
     }
   };
 
+  const handlePermissionChange = async (shareId, perm) => {
+    await sharingApi.updatePermission(shareId, perm);
+    await refresh();
+  };
+
   const handleRemove = async (shareId) => {
     try {
       await sharingApi.remove(shareId);
@@ -69,7 +124,7 @@ export function ShareProspectModal({ open, onOpenChange, prospectId, prospectNam
       onOpenChange={onOpenChange}
       title={t("network.shareTitle")}
       sub={t("network.shareSub", { name: prospectName })}
-      maxWidth={560}
+      maxWidth={600}
     >
       {loading ? (
         <div className="dp-empty">{t("common.loading")}</div>
@@ -92,8 +147,9 @@ export function ShareProspectModal({ open, onOpenChange, prospectId, prospectNam
             <div className="prospect-field">
               <label>{t("network.permission")}</label>
               <select value={permission} onChange={(e) => setPermission(e.target.value)}>
-                <option value="view">{t("network.permView")}</option>
-                <option value="edit">{t("network.permEdit")}</option>
+                {PERM_OPTIONS.map(({ value, key }) => (
+                  <option key={value} value={value}>{t(key)}</option>
+                ))}
               </select>
             </div>
           </div>
@@ -108,17 +164,15 @@ export function ShareProspectModal({ open, onOpenChange, prospectId, prospectNam
       {shares.length > 0 && (
         <>
           <div className="section-label">{t("network.currentShares")}</div>
-          <div className="network-list compact">
+          <div className="share-list">
             {shares.map((s) => (
-              <div key={s.id} className="network-row">
-                <div className="network-row-main">
-                  <div className="network-row-name">{displayName(s.shared_with)}</div>
-                  <div className="network-row-sub">{s.permission === "edit" ? t("network.permEdit") : t("network.permView")}</div>
-                </div>
-                <button type="button" className="btn btn-ghost btn-sm" onClick={() => handleRemove(s.id)}>
-                  {t("network.revoke")}
-                </button>
-              </div>
+              <ShareRow
+                key={s.id}
+                share={s}
+                t={t}
+                onPermissionChange={handlePermissionChange}
+                onRemove={handleRemove}
+              />
             ))}
           </div>
         </>

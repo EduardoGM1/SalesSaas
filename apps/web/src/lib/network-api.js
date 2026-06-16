@@ -12,6 +12,8 @@ async function apiFetch(path, options = {}) {
 export const networkApi = {
   searchUsers: (q) => apiFetch(`/network/users/search?q=${encodeURIComponent(q)}`),
   listConnections: (status) => apiFetch(`/network/connections${status ? `?status=${status}` : ""}`),
+  getContact: (contactId) => apiFetch(`/network/contacts/${contactId}`),
+  listSharesWithContact: (contactId) => apiFetch(`/network/contacts/${contactId}/shares`),
   sendRequest: (addresseeId) => apiFetch("/network/connections", {
     method: "POST",
     body: JSON.stringify({ addressee_id: addresseeId }),
@@ -36,6 +38,7 @@ export const messagesApi = {
 
 export const sharingApi = {
   listReceived: () => apiFetch("/shares/received"),
+  getSharedProspect: (prospectId) => apiFetch(`/shared-prospects/${prospectId}`),
   listForProspect: (prospectId) => apiFetch(`/prospects/${prospectId}/shares`),
   create: (prospectId, sharedWithId, permission) => apiFetch(`/prospects/${prospectId}/shares`, {
     method: "POST",
@@ -46,4 +49,8 @@ export const sharingApi = {
     body: JSON.stringify({ permission }),
   }),
   remove: (shareId) => apiFetch(`/shares/${shareId}`, { method: "DELETE" }),
+  updateProspect: (prospectId, body) => apiFetch(`/prospects/${prospectId}`, {
+    method: "PATCH",
+    body: JSON.stringify(body),
+  }),
 };

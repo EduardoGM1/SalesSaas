@@ -16,8 +16,8 @@ import { ClientDetail } from "@/components/clients/client-detail.jsx";
 import { SettingsPage } from "@/components/settings/settings-page.jsx";
 import { SalesHistoryPage } from "@/pages/SalesHistoryPage.jsx";
 import { NetworkPage } from "@/pages/NetworkPage.jsx";
+import { ContactPage } from "@/pages/ContactPage.jsx";
 import { MessagesPage } from "@/pages/MessagesPage.jsx";
-import { SharedProspectPage } from "@/pages/SharedProspectPage.jsx";
 import { ToolsHubPage } from "@/pages/ToolsHubPage.jsx";
 import { AdminSection } from "@/layouts/AdminSection.jsx";
 import {
@@ -53,9 +53,20 @@ function ClientToolRoute({ tool }) {
   return null;
 }
 
-function SharedProspectRoute() {
-  const { id } = useParams();
-  return <SharedProspectPage prospectId={id} />;
+function SharedClientDetailRoute() {
+  const { contactId, prospectId } = useParams();
+  return (
+    <ClientDetail
+      id={prospectId}
+      sharedRemote
+      backHref={`/red/contacto/${contactId}`}
+    />
+  );
+}
+
+function ContactRoute() {
+  const { contactId } = useParams();
+  return <ContactPage contactId={contactId} />;
 }
 
 export function AppRoutes() {
@@ -79,7 +90,9 @@ export function AppRoutes() {
         <Route path="clients/:id/worksheet" element={<ClientToolRoute tool="worksheet" />} />
         <Route path="clients/:id/analysis" element={<ClientToolRoute tool="analysis" />} />
         <Route path="network" element={<NetworkPage />} />
-        <Route path="network/shared/:id" element={<SharedProspectRoute />} />
+        <Route path="red/contacto/:contactId" element={<ContactRoute />} />
+        <Route path="red/contacto/:contactId/expediente/:prospectId" element={<SharedClientDetailRoute />} />
+        <Route path="network/shared/:id" element={<Navigate to="/network" replace />} />
         <Route path="messages" element={<MessagesPage />} />
         <Route path="tools" element={<ToolsHubPage />} />
         <Route path="tools/survey" element={<Lazy><SurveyPage /></Lazy>} />

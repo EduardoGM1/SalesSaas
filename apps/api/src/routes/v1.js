@@ -344,6 +344,18 @@ router.get("/network/connections", async (req, res) => {
   await runService(res, () => networkService.listConnections(a.supabase, a.userId, { status: req.query.status }), { wrap: "data" });
 });
 
+router.get("/network/contacts/:contactId", async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  await runService(res, () => networkService.getConnectionWithContact(a.supabase, a.userId, req.params.contactId), { wrap: "data" });
+});
+
+router.get("/network/contacts/:contactId/shares", async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  await runService(res, () => sharingService.listSharesWithContact(a.supabase, a.userId, req.params.contactId), { wrap: "data" });
+});
+
 router.post("/network/connections", async (req, res) => {
   const a = await requireAuth(req, res);
   if (!a) return;

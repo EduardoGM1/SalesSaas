@@ -7,6 +7,8 @@ import { SalesModal } from "@/components/ui/sales-modal";
 import { ClientRecordModal } from "@/components/clients/client-record-modal.jsx";
 import { ShareProspectModal } from "@/components/network/share-prospect-modal.jsx";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
+import { sharingApi } from "@/lib/network-api.js";
+import { prospectRowToClient, canEditShared, canCommentShared } from "@/lib/shared-prospect";
 import { Topbar } from "@/components/layout/topbar";
 import { clientDisplayName, ensureProspectIdentity } from "@/lib/clients";
 import { longDate, ymdToday } from "@/lib/format/dates";
@@ -36,7 +38,7 @@ const TOOL_DEFS = [
   { key: "worksheet", labelKey: "exp.tool.worksheet", descKey: "exp.tool.worksheetDesc", icon: DollarSign, href: "worksheet", tone: "purple" },
 ];
 
-export function ClientDetail({ id }) {
+export function ClientDetail({ id, sharedRemote = false, backHref = "/clients" }) {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const hydrated = useAppStore((s) => s.hydrated);
@@ -55,8 +57,34 @@ export function ClientDetail({ id }) {
   const [form, setForm] = useState<Partial<ClientRecord>>({});
   const [saleForm, setSaleForm] = useState({ date: ymdToday(), vol: "", tours: "1", contract: "", status: "procesable", processDate: "", note: "", addProcessingFollowup: true });
   const [noteForm, setNoteForm] = useState({ type: "nota", note: "", date: "", time: "" });
+  const [remoteClient, setRemoteClient] = useState(null);
+  const [sharePerm, setSharePerm] = useState("owner");
+  const [remoteLoading, setRemoteLoading] = useState(sharedRemote);
 
-  const c = getClient(id);
+  const localC = getClient(id);
+  const c = sharedRemote ? remoteClient : localC;
+  const perm = sharedRemote ? sharePerm : "owner";
+  const canEdit = canEditShared(perm);
+  const canComment = canCommentShared(perm);
+  const isOwner = perm === "owner";
+
+  useEffect(() => {
+    if (!sharedRemote || !id) return;
+    setRemoteLoading(true);
+    sharingApi.getSharedProspect(id)
+      .then((data) => {
+        setSharePerm(data.permission);
+        setRemoteClient(prospectRowToClient(data.prospect));
+      })
+      .catch((err) => toast.error(err.message))
+      .finally(() => setRemoteLoading(false));
+  }, [id, sharedRemote]);
+
+  const reloadRemote = async () => {
+    const data = await sharingApi.getSharedProspect(id);
+    setSharePerm(data.permission);
+    setRemoteClient(prospectRowToClient(data.prospect));
+  };
 
   const openSaleModal = (sale?: SaleRecord, prefillFromWorksheet = false) => {
     const ws = c?.data?.worksheet || {};
@@ -79,17 +107,18 @@ export function ClientDetail({ id }) {
   };
 
   useEffect(() => {
-    if (!hydrated || !c || searchParams.get("openSale") !== "1") return;
+    if (sharedRemote || !hydrated || !localC || searchParams.get("openSale") !== "1") return;
     openSaleModal(undefined, searchParams.get("from") === "worksheet");
     navigate(`/clients/${id}`);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hydrated, c?.id, id, searchParams, navigate]);
+  }, [hydrated, localC?.id, id, searchParams, navigate, sharedRemote]);
 
-  if (!hydrated) return <Topbar title={t("exp.title")} subtitle={t("exp.loading")} />;
+  if (sharedRemote && remoteLoading) return <Topbar title={t("exp.title")} subtitle={t("exp.loading")} />;
+  if (!sharedRemote && !hydrated) return <Topbar title={t("exp.title")} subtitle={t("exp.loading")} />;
   if (!c) return (
     <>
       <Topbar title={t("exp.title")} subtitle={t("exp.notFound")} />
-      <div className="sales-page"><Link to="/clients" className="btn btn-ghost btn-sm">{t("exp.back")}</Link></div>
+      <div className="sales-page"><Link to={backHref} className="btn btn-ghost btn-sm">{t("exp.back")}</Link></div>
     </>
   );
 
@@ -100,13 +129,25 @@ export function ClientDetail({ id }) {
 
   const closeRecordModal = () => setRecordModal(null);
 
-  const saveRecord = () => {
+  const saveRecord = async () => {
     if (!recordModal) return;
     if (recordModal.mode === "edit-data") {
+      if (sharedRemote) {
+        try {
+          await sharingApi.updateProspect(id, form);
+          await reloadRemote();
+          toast.success(t("exp.edit.save"));
+          closeRecordModal();
+        } catch (err) {
+          toast.error(err instanceof Error ? err.message : String(err));
+        }
+        return;
+      }
       updateClient(c, form);
       closeRecordModal();
       return;
     }
+    if (sharedRemote) return;
     updateClient(c, form);
     const result = persistSale(id, saleForm, recordModal.editingSaleId || null);
     if (!result.ok) return;
@@ -179,24 +220,26 @@ export function ClientDetail({ id }) {
     ["▣", t("exp.prospect.contract"), psValue(c.contract)],
     ["◉", t("exp.prospect.status"), <span key="st" className="ps-pill">{statusLabel(c.status || "", lang)}</span>],
   ];
-  const saleCard = { label: t("exp.card.sale"), desc: t("exp.card.saleDesc"), icon: DollarSign, tone: "green", onClick: () => openSaleModal() };
-  const notesCard = { label: t("exp.card.notes"), desc: t("exp.card.notesDesc"), icon: MessageSquare, tone: "blue", onClick: () => setNoteOpen(true) };
+  const saleCard = isOwner ? { label: t("exp.card.sale"), desc: t("exp.card.saleDesc"), icon: DollarSign, tone: "green", onClick: () => openSaleModal() } : null;
+  const notesCard = canComment && !sharedRemote ? { label: t("exp.card.notes"), desc: t("exp.card.notesDesc"), icon: MessageSquare, tone: "blue", onClick: () => setNoteOpen(true) } : null;
   const isQuick = !!c.quickExpedient && !c.completedExpedient;
   const toolCards = isQuick
-    ? [saleCard, notesCard]
+    ? [saleCard, notesCard].filter(Boolean)
     : [
         ...TOOL_DEFS.map((tool) => ({
           label: t(tool.labelKey),
           desc: t(tool.descKey),
           icon: tool.icon,
           tone: tool.tone,
-          onClick: () => {
-            setToolMode("client", id);
-            navigate(`/clients/${id}/${tool.href}`);
-          },
+          onClick: sharedRemote
+            ? () => toast.error(t("network.sharedToolsUnavailable"))
+            : () => {
+                setToolMode("client", id);
+                navigate(`/clients/${id}/${tool.href}`);
+              },
         })),
-        saleCard,
-        notesCard,
+        ...(saleCard ? [saleCard] : []),
+        ...(notesCard ? [notesCard] : []),
       ];
   const sales = [...(c.sales || [])].sort((a, b) => (b.ts || 0) - (a.ts || 0));
 
@@ -205,20 +248,27 @@ export function ClientDetail({ id }) {
       <Topbar title={t("exp.title")} subtitle={t("exp.subtitle")} />
       <div className="sales-page">
         <header className="exp-page-head">
-          <Link to="/clients" className="btn btn-ghost btn-sm exp-page-back">{t("exp.back")}</Link>
+          <Link to={backHref} className="btn btn-ghost btn-sm exp-page-back">{t("exp.back")}</Link>
           <div className="exp-page-meta">
             <h1 className="exp-page-title" id="exp-title">{clientDisplayName(c)}</h1>
             <p className="exp-page-sub" id="exp-since">{since}</p>
-          </div>
-          <div className="exp-page-actions">
-            <button type="button" className="btn btn-primary btn-sm" onClick={() => openSaleModal()}>{t("exp.registerSale")}</button>
-            {isSupabaseConfigured() && (
-              <button type="button" className="btn btn-ghost btn-sm" onClick={() => setShareOpen(true)}>{t("network.shareAction")}</button>
+            {sharedRemote && (
+              <p className="exp-page-sub shared-perm-hint">
+                {perm === "edit" ? t("network.permEdit") : perm === "comment" ? t("network.permComment") : t("network.permView")}
+              </p>
             )}
-            <button type="button" className="btn btn-danger btn-sm" onClick={async () => {
-              if (await removeClient(id, clientDisplayName(c))) navigate("/clients");
-            }}>{t("exp.delete")}</button>
           </div>
+          {isOwner && (
+            <div className="exp-page-actions">
+              <button type="button" className="btn btn-primary btn-sm" onClick={() => openSaleModal()}>{t("exp.registerSale")}</button>
+              {isSupabaseConfigured() && (
+                <button type="button" className="btn btn-ghost btn-sm" onClick={() => setShareOpen(true)}>{t("network.shareAction")}</button>
+              )}
+              <button type="button" className="btn btn-danger btn-sm" onClick={async () => {
+                if (await removeClient(id, clientDisplayName(c))) navigate("/clients");
+              }}>{t("exp.delete")}</button>
+            </div>
+          )}
         </header>
 
         <div className="ethic-box" style={{ marginBottom: 16 }}>
@@ -264,7 +314,9 @@ export function ClientDetail({ id }) {
                 <div className="prospect-summary-title">{t("exp.prospect.title")}</div>
                 <div className="prospect-summary-sub">{t("exp.prospect.sub")}</div>
               </div>
-              <button type="button" className="btn btn-ghost btn-sm" onClick={openEdit}>{t("exp.prospect.edit")}</button>
+              {canEdit && (
+                <button type="button" className="btn btn-ghost btn-sm" onClick={openEdit}>{t("exp.prospect.edit")}</button>
+              )}
             </div>
             <div className="prospect-summary-list" id="prospect-summary-list">
               {rows.map((r, i) => (
@@ -301,7 +353,9 @@ export function ClientDetail({ id }) {
                     <div className="activity-date">
                       {longDate(sale.date, lang)}
                       <br />
-                      <button type="button" className="dg-link" onClick={() => openSaleModal(sale)}>{t("exp.sales.open")}</button>
+                      {isOwner && (
+                        <button type="button" className="dg-link" onClick={() => openSaleModal(sale)}>{t("exp.sales.open")}</button>
+                      )}
                     </div>
                   </div>
                 );
@@ -343,12 +397,14 @@ export function ClientDetail({ id }) {
         onCancel={closeRecordModal}
       />
 
-      <ShareProspectModal
-        open={shareOpen}
-        onOpenChange={setShareOpen}
-        prospectId={id}
-        prospectName={clientDisplayName(c)}
-      />
+      {isOwner && (
+        <ShareProspectModal
+          open={shareOpen}
+          onOpenChange={setShareOpen}
+          prospectId={id}
+          prospectName={clientDisplayName(c)}
+        />
+      )}
 
       <SalesModal open={noteOpen} onOpenChange={setNoteOpen} title={t("exp.note.title")} sub={t("exp.note.sub")}>
         <div style={{ marginBottom: 16 }}>
