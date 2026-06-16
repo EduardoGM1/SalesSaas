@@ -38,7 +38,7 @@ const TOOL_DEFS = [
   { key: "worksheet", labelKey: "exp.tool.worksheet", descKey: "exp.tool.worksheetDesc", icon: DollarSign, href: "worksheet", tone: "purple" },
 ];
 
-export function ClientDetail({ id, sharedRemote = false, backHref = "/clients" }) {
+export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", contactId }) {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const hydrated = useAppStore((s) => s.hydrated);
@@ -232,7 +232,10 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients" }
           icon: tool.icon,
           tone: tool.tone,
           onClick: sharedRemote
-            ? () => toast.error(t("network.sharedToolsUnavailable"))
+            ? () => {
+                if (!contactId) return;
+                navigate(`/red/contacto/${contactId}/expediente/${id}/${tool.href}`);
+              }
             : () => {
                 setToolMode("client", id);
                 navigate(`/clients/${id}/${tool.href}`);

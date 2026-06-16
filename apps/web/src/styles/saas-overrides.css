@@ -801,6 +801,32 @@ div.modal-backdrop.sales-modal-overlay:not([hidden]) {
   font-weight: 600;
 }
 
+.shared-tool-readonly-banner {
+  margin-bottom: 14px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--blue) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--blue) 28%, transparent);
+  color: var(--blue);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.shared-tool-fieldset {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
+
+.shared-tool-fieldset:disabled {
+  opacity: 1;
+}
+
+.shared-tool-fieldset:disabled * {
+  cursor: default;
+}
+
 @media (max-height: 760px) {
   .sales-modal-viewport:not([hidden]) { padding-top: 14px; }
 }

@@ -5,13 +5,13 @@ import { PageBack } from "@/components/layout/page-back.jsx";
 import { SaveToolModal } from "@/components/calculators/save-tool-modal";
 import { clientDisplayName, ensureProspectIdentity } from "@/lib/clients";
 import { computeSurvey } from "@/lib/calculations/survey";
-import { resolveToolBackHref } from "@/lib/calculator-nav.js";
+import { SharedToolBanner } from "@/components/calculators/shared-tool-banner.jsx";
 import { COUNTRY_CITY, COUNTRY_FLAGS } from "@/lib/constants";
 import { selectOnFocus } from "@/lib/focus-select.js";
 import { formatMoneyValue } from "@/lib/format/money";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { useMoney } from "@/hooks/use-money.js";
-import { useToolBucketReady } from "@/hooks/use-tool-bucket-ready";
+import { useToolSession } from "@/hooks/use-tool-session.js";
 import { useDbStore } from "@/stores/db-store";
 
 const HIST = ["sh1", "sh2", "sh3"];
@@ -30,14 +30,13 @@ const EMPTY_DATA: Record<string, string> = {
 
 interface SurveyPageProps {
   clientId?;
+  shared?;
 }
 
-export function SurveyPage({ clientId }: SurveyPageProps) {
+export function SurveyPage({ clientId, shared }: SurveyPageProps) {
   const { t } = useI18n();
-  const backHref = resolveToolBackHref(clientId);
-  const { ready, mode } = useToolBucketReady(clientId);
-  const getToolBucket = useDbStore((s) => s.getToolBucket);
-  const saveToolBucket = useDbStore((s) => s.saveToolBucket);
+  const session = useToolSession({ clientId, shared });
+  const { ready, readOnly, backHref, getBucket, saveBucket, syncProspectFields, isFileMode, isShared } = session;
   const saveClient = useDbStore((s) => s.saveClient);
   const getClient = useDbStore((s) => s.getClient);
   const moneySettings = useDbStore((s) => s.db.settings);
@@ -51,15 +50,15 @@ export function SurveyPage({ clientId }: SurveyPageProps) {
 
   useEffect(() => {
     if (!ready) return;
-    const bucket = getToolBucket("survey", mode, clientId);
+    const bucket = getBucket("survey");
     const loaded: Record<string, string> = { ...EMPTY_DATA };
     if (Object.keys(bucket).length) {
       Object.entries(bucket).forEach(([k, v]) => { loaded[k] = String(v); });
       if (bucket.stype) setSType(String(bucket.stype));
       if (bucket.futureType) setFutureType(bucket.futureType === "dream" ? "dream" : "real");
     }
-    if (clientId) {
-      const c = getClient(clientId);
+    if (isFileMode) {
+      const c = session.getProspectClient();
       if (c) {
         loaded.svp_name1 = loaded.svp_name1 || c.name1 || c.name || "";
         loaded.svp_name2 = loaded.svp_name2 || c.name2 || "";
@@ -70,10 +69,10 @@ export function SurveyPage({ clientId }: SurveyPageProps) {
       }
     }
     setData(loaded);
-  }, [ready, clientId, getToolBucket, getClient, mode]);
+  }, [ready, clientId, isFileMode, getBucket, session]);
 
-  const client = clientId ? getClient(clientId) : undefined;
-  const pageCtx = clientId ? (clientDisplayName(client) || t("tools.sub.file")) : t("tools.sub.free");
+  const client = isFileMode ? session.getProspectClient() : undefined;
+  const pageCtx = isFileMode ? (clientDisplayName(client) || t("tools.sub.file")) : t("tools.sub.free");
   const countries = Object.keys(COUNTRY_CITY);
   const cities = COUNTRY_CITY[data.svp_country || ""] || ["Otro"];
 
@@ -83,7 +82,7 @@ export function SurveyPage({ clientId }: SurveyPageProps) {
   );
 
   const syncProspectToClient = (next: Record<string, string>) => {
-    if (!clientId) return;
+    if (!clientId || isShared) return;
     const c = getClient(clientId);
     if (!c) return;
     const name1 = next.svp_name1 || "";
@@ -100,6 +99,20 @@ export function SurveyPage({ clientId }: SurveyPageProps) {
     }));
   };
 
+  const prospectPatchFromData = (next: Record<string, string>) => {
+    const name1 = next.svp_name1 || "";
+    const name2 = next.svp_name2 || "";
+    return {
+      name1,
+      name2,
+      name: [name1, name2].filter(Boolean).join(" / ") || name1 || "Prospecto",
+      country: next.svp_country || "",
+      city: next.svp_city || "",
+      occupation1: next.svp_occ1 || "",
+      occupation2: next.svp_occ2 || "",
+    };
+  };
+
   const update = (k, v) => {
     setData((d) => {
       const next = { ...d, [k]: v };
@@ -109,27 +122,29 @@ export function SurveyPage({ clientId }: SurveyPageProps) {
     });
   };
 
-  const handleSave = () => {
-    saveToolBucket("survey", mode, { ...data, stype: sType, futureType }, clientId);
-    if (clientId) syncProspectToClient(data);
-    if (!clientId) { setSaveToolOpen(true); return; }
+  const handleSave = async () => {
+    if (readOnly) return;
+    await saveBucket("survey", { ...data, stype: sType, futureType });
+    if (isFileMode) await syncProspectFields(prospectPatchFromData(data));
+    if (!isFileMode) { setSaveToolOpen(true); return; }
     setSaved(true);
     setTimeout(() => setSaved(false), 1600);
   };
 
-  const handleClear = () => {
+  const handleClear = async () => {
+    if (readOnly) return;
     const cleared = { ...EMPTY_DATA };
     setData(cleared);
     setSType("hotel");
     setFutureType("real");
     if (ready) {
-      saveToolBucket("survey", mode, { ...cleared, stype: "hotel", futureType: "real" }, clientId);
+      await saveBucket("survey", { ...cleared, stype: "hotel", futureType: "real" });
     }
   };
 
   return (
     <>
-      <Topbar title={t("tools.survey")} subtitle={clientId ? t("tools.sub.surveyClient") : t("tools.sub.free")} />
+      <Topbar title={t("tools.survey")} subtitle={isFileMode ? t("tools.sub.surveyClient") : t("tools.sub.free")} />
       <div className="sales-page">
         <div className="page-head tool-page-head">
           <div className="tool-page-head-main">
@@ -139,10 +154,15 @@ export function SurveyPage({ clientId }: SurveyPageProps) {
               <div className="page-sub">{pageCtx}</div>
             </div>
           </div>
-          <button type="button" className="btn btn-ghost btn-sm" onClick={handleClear}>{t("common.clear")}</button>
+          {!readOnly && (
+            <button type="button" className="btn btn-ghost btn-sm" onClick={handleClear}>{t("common.clear")}</button>
+          )}
         </div>
 
-        <div className={`card client-survey-prospect${clientId ? " show" : ""}`}>
+        <SharedToolBanner show={readOnly} />
+
+        <fieldset className="shared-tool-fieldset" disabled={readOnly}>
+        <div className={`card client-survey-prospect${isFileMode ? " show" : ""}`}>
           <div className="card-heading">{t("tools.survey.prospectTitle")}</div>
           <div className="card-sub">{t("tools.survey.prospectSub")}</div>
           <div className="client-survey-grid">
@@ -327,7 +347,7 @@ export function SurveyPage({ clientId }: SurveyPageProps) {
           </div>
         </div>
 
-        {!clientId && (
+        {!isFileMode && (
           <div className="card" id="sv-pattern-card">
             <div className="card-heading">{t("tools.survey.patternTitle")}</div>
             <div className="card-sub">{t("tools.survey.patternSub")}</div>
@@ -375,10 +395,14 @@ export function SurveyPage({ clientId }: SurveyPageProps) {
           </div>
         )}
 
-        <div className="save-footer">
-          <span className={`save-confirm${saved ? " show" : ""}`}>{t("common.saved")}</span>
-          <button type="button" className="btn btn-primary" onClick={handleSave}>{t("common.save")}</button>
-        </div>
+        </fieldset>
+
+        {!readOnly && (
+          <div className="save-footer">
+            <span className={`save-confirm${saved ? " show" : ""}`}>{t("common.saved")}</span>
+            <button type="button" className="btn btn-primary" onClick={handleSave}>{t("common.save")}</button>
+          </div>
+        )}
       </div>
       <SaveToolModal open={saveToolOpen} onOpenChange={setSaveToolOpen} tool="survey" />
     </>

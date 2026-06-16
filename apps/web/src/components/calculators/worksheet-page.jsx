@@ -6,31 +6,29 @@ import { SalesModal } from "@/components/ui/sales-modal";
 import { SaveToolModal } from "@/components/calculators/save-tool-modal";
 import { Topbar } from "@/components/layout/topbar";
 import { PageBack } from "@/components/layout/page-back.jsx";
+import { SharedToolBanner } from "@/components/calculators/shared-tool-banner.jsx";
 import { WS_CONFIG_IDS, WS_DEFAULTS } from "@/lib/constants";
 import { computeWorksheet, ensureWSConfig } from "@/lib/calculations/worksheet";
-import { resolveToolBackHref } from "@/lib/calculator-nav.js";
 import { selectOnFocus } from "@/lib/focus-select.js";
 import { formatMoneyValue } from "@/lib/format/money";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { useMoney } from "@/hooks/use-money.js";
-import { useToolBucketReady } from "@/hooks/use-tool-bucket-ready";
+import { useToolSession } from "@/hooks/use-tool-session.js";
 import { useDbStore } from "@/stores/db-store";
 
 const EMPTY_FIELDS = { wv: "", we: "", wcc: "", wob: "" };
 
 interface WorksheetPageProps {
   clientId?;
+  shared?;
 }
 
-export function WorksheetPage({ clientId }: WorksheetPageProps) {
+export function WorksheetPage({ clientId, shared }: WorksheetPageProps) {
   const { t } = useI18n();
-  const backHref = resolveToolBackHref(clientId);
+  const { ready, readOnly, backHref, getBucket, saveBucket, isFileMode, isShared } = useToolSession({ clientId, shared });
   const { fmt } = useMoney();
   const moneySettings = useDbStore((s) => s.db.settings);
-  const { ready, mode } = useToolBucketReady(clientId);
   const db = useDbStore((s) => s.db);
-  const getToolBucket = useDbStore((s) => s.getToolBucket);
-  const saveToolBucket = useDbStore((s) => s.saveToolBucket);
   const [fields, setFields] = useState({ ...EMPTY_FIELDS });
   const [configOpen, setConfigOpen] = useState(false);
   const [config, setConfig] = useState<Record<string, string>>({ ...WS_DEFAULTS });
@@ -39,7 +37,7 @@ export function WorksheetPage({ clientId }: WorksheetPageProps) {
 
   useEffect(() => {
     if (!ready) return;
-    const b = getToolBucket("worksheet", mode, clientId);
+    const b = getBucket("worksheet");
     const globalCfg = db.settings?.worksheetConfig || {};
     const cfg = ensureWSConfig({ ...globalCfg, ...b });
     setConfig(Object.fromEntries(WS_CONFIG_IDS.map((k) => [k, String(cfg[k] ?? WS_DEFAULTS[k])])));
@@ -47,11 +45,12 @@ export function WorksheetPage({ clientId }: WorksheetPageProps) {
       wv: String(b.wv ?? ""), we: String(b.we ?? ""),
       wcc: String(b.wcc ?? ""), wob: String(b.wob ?? ""),
     });
-  }, [ready, clientId, getToolBucket, mode, db.settings?.worksheetConfig]);
+  }, [ready, clientId, getBucket, db.settings?.worksheetConfig]);
 
-  const handleClear = () => {
+  const handleClear = async () => {
+    if (readOnly) return;
     setFields({ ...EMPTY_FIELDS });
-    if (ready) saveToolBucket("worksheet", mode, { ...EMPTY_FIELDS, ...config }, clientId);
+    if (ready) await saveBucket("worksheet", { ...EMPTY_FIELDS, ...config });
   };
 
   const result = useMemo(
@@ -59,15 +58,17 @@ export function WorksheetPage({ clientId }: WorksheetPageProps) {
     [fields, config, moneySettings?.currency, moneySettings?.exchangeRate, moneySettings?.language],
   );
 
-  const saveAll = () => {
-    saveToolBucket("worksheet", mode, { ...fields, ...config }, clientId);
+  const saveAll = async () => {
+    if (readOnly) return;
+    await saveBucket("worksheet", { ...fields, ...config });
     setSaved(true);
     setTimeout(() => setSaved(false), 1600);
   };
 
-  const handleSave = () => {
-    saveToolBucket("worksheet", mode, { ...fields, ...config }, clientId);
-    if (!clientId) { setSaveToolOpen(true); return; }
+  const handleSave = async () => {
+    if (readOnly) return;
+    await saveBucket("worksheet", { ...fields, ...config });
+    if (!isFileMode) { setSaveToolOpen(true); return; }
     setSaved(true);
     setTimeout(() => setSaved(false), 1600);
   };
@@ -80,19 +81,24 @@ export function WorksheetPage({ clientId }: WorksheetPageProps) {
 
   return (
     <>
-      <Topbar title={t("tools.worksheet")} subtitle={clientId ? t("tools.sub.financing") : t("tools.sub.free")} />
+      <Topbar title={t("tools.worksheet")} subtitle={isFileMode ? t("tools.sub.financing") : t("tools.sub.free")} />
       <div className="sales-page">
         <div className="page-head tool-page-head">
           <div className="tool-page-head-main">
             <PageBack inline={true} href={backHref} />
             <div className="tool-page-head-titles">
               <div className="page-title">{t("tools.worksheet")}</div>
-              <div className="page-sub">{clientId ? t("tools.sub.file") : t("tools.sub.free")}</div>
+              <div className="page-sub">{isFileMode ? t("tools.sub.file") : t("tools.sub.free")}</div>
             </div>
           </div>
-          <button type="button" className="btn btn-ghost btn-sm" onClick={handleClear}>{t("common.clear")}</button>
+          {!readOnly && (
+            <button type="button" className="btn btn-ghost btn-sm" onClick={handleClear}>{t("common.clear")}</button>
+          )}
         </div>
 
+        <SharedToolBanner show={readOnly} />
+
+        <fieldset className="shared-tool-fieldset" disabled={readOnly}>
         <div className="g2">
           <div className="card">
             <div className="card-heading">{t("tools.worksheet.saleData")}</div>
@@ -118,7 +124,7 @@ export function WorksheetPage({ clientId }: WorksheetPageProps) {
                 <div className="card-heading">{t("tools.worksheet.options")}</div>
                 <div className="card-sub">{t("tools.worksheet.optionsSub")}</div>
               </div>
-              <button type="button" className="config-btn" onClick={() => setConfigOpen(true)} title={t("tools.worksheet.configTitle")} aria-label={t("tools.worksheet.configTitle")}>
+              <button type="button" className="config-btn" onClick={() => setConfigOpen(true)} title={t("tools.worksheet.configTitle")} aria-label={t("tools.worksheet.configTitle")} disabled={readOnly}>
                 <Settings />
               </button>
             </div>
@@ -135,12 +141,15 @@ export function WorksheetPage({ clientId }: WorksheetPageProps) {
             ))}
           </div>
         </div>
+        </fieldset>
 
-        <div className="save-footer">
-          <span className={`save-confirm${saved ? " show" : ""}`}>{t("common.saved")}</span>
-          <button type="button" className="btn btn-primary" onClick={handleSave}>{t("common.save")}</button>
-        </div>
-        {clientId && (
+        {!readOnly && (
+          <div className="save-footer">
+            <span className={`save-confirm${saved ? " show" : ""}`}>{t("common.saved")}</span>
+            <button type="button" className="btn btn-primary" onClick={handleSave}>{t("common.save")}</button>
+          </div>
+        )}
+        {clientId && !isShared && (
           <div className="save-footer" style={{ marginTop: 8 }}>
             <Link to={`/clients/${clientId}?openSale=1&from=worksheet`} className="btn btn-primary">{t("tools.worksheet.registerSale")}</Link>
           </div>

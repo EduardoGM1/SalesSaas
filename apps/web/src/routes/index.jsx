@@ -53,12 +53,23 @@ function ClientToolRoute({ tool }) {
   return null;
 }
 
+function SharedToolRoute({ tool }) {
+  const { contactId, prospectId } = useParams();
+  const shared = { prospectId, contactId };
+  if (tool === "survey") return <Lazy><SurveyPage shared={shared} /></Lazy>;
+  if (tool === "vacaciones") return <Lazy><VacacionesPage shared={shared} /></Lazy>;
+  if (tool === "worksheet") return <Lazy><WorksheetPage shared={shared} /></Lazy>;
+  if (tool === "analysis") return <Lazy><AnalysisPage shared={shared} /></Lazy>;
+  return null;
+}
+
 function SharedClientDetailRoute() {
   const { contactId, prospectId } = useParams();
   return (
     <ClientDetail
       id={prospectId}
       sharedRemote
+      contactId={contactId}
       backHref={`/red/contacto/${contactId}`}
     />
   );
@@ -92,6 +103,10 @@ export function AppRoutes() {
         <Route path="network" element={<NetworkPage />} />
         <Route path="red/contacto/:contactId" element={<ContactRoute />} />
         <Route path="red/contacto/:contactId/expediente/:prospectId" element={<SharedClientDetailRoute />} />
+        <Route path="red/contacto/:contactId/expediente/:prospectId/survey" element={<SharedToolRoute tool="survey" />} />
+        <Route path="red/contacto/:contactId/expediente/:prospectId/vacaciones" element={<SharedToolRoute tool="vacaciones" />} />
+        <Route path="red/contacto/:contactId/expediente/:prospectId/worksheet" element={<SharedToolRoute tool="worksheet" />} />
+        <Route path="red/contacto/:contactId/expediente/:prospectId/analysis" element={<SharedToolRoute tool="analysis" />} />
         <Route path="network/shared/:id" element={<Navigate to="/network" replace />} />
         <Route path="messages" element={<MessagesPage />} />
         <Route path="tools" element={<ToolsHubPage />} />

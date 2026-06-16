@@ -454,6 +454,28 @@ router.get("/shared-prospects/:id", async (req, res) => {
   await runService(res, () => sharingService.getSharedProspect(a.supabase, a.userId, req.params.id), { wrap: "data" });
 });
 
+router.get("/shared-prospects/:id/tools/:tool", async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  await runService(res, () => sharingService.getSharedTool(a.supabase, a.userId, req.params.id, req.params.tool), { wrap: "data" });
+});
+
+router.put("/shared-prospects/:id/tools/:tool", async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  const body = parseJsonBody(req, res);
+  if (!body) return;
+  await runService(res, () => sharingService.saveSharedTool(a.supabase, a.userId, req.params.id, req.params.tool, body?.data ?? body), { wrap: "data" });
+});
+
+router.patch("/shared-prospects/:id", async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  const body = parseJsonBody(req, res);
+  if (!body) return;
+  await runService(res, () => sharingService.updateSharedProspect(a.supabase, a.userId, req.params.id, body), { wrap: "data" });
+});
+
 router.use("/admin", adminRouter);
 
 export default router;

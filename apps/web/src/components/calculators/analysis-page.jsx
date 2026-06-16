@@ -2,11 +2,12 @@
 import { useMemo } from "react";
 import { Topbar } from "@/components/layout/topbar";
 import { PageBack } from "@/components/layout/page-back";
+import { SharedToolBanner } from "@/components/calculators/shared-tool-banner.jsx";
 import { clientDisplayName } from "@/lib/clients";
-import { resolveToolBackHref } from "@/lib/calculator-nav.js";
 import { computeSurvey, surveyHasData } from "@/lib/calculations/survey";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { useMoney } from "@/hooks/use-money.js";
+import { useToolSession } from "@/hooks/use-tool-session.js";
 import { useDbStore } from "@/stores/db-store";
 
 const ROW_KEYS = [
@@ -16,16 +17,23 @@ const ROW_KEYS = [
   "tools.survey.pattern.blend",
 ] as const;
 
-export function AnalysisPage({ clientId }: { clientId }) {
+export function AnalysisPage({ clientId, shared }: { clientId?; shared? }) {
   const { t } = useI18n();
   const { fmt, fmtD } = useMoney();
   const moneySettings = useDbStore((s) => s.db.settings);
-  const getClient = useDbStore((s) => s.getClient);
-  const c = getClient(clientId);
-  const survey = useMemo(
-    () => (c?.data?.survey || {}) as Record<string, string>,
-    [c?.data?.survey],
-  );
+  const session = useToolSession({ clientId, shared });
+  const { ready, backHref, readOnly, isShared } = session;
+
+  const survey = useMemo(() => {
+    if (!ready) return {};
+    if (isShared) return session.getBucket("survey") as Record<string, string>;
+    const bucket = session.getBucket("survey");
+    if (Object.keys(bucket).length) return bucket as Record<string, string>;
+    const c = session.getProspectClient();
+    return (c?.data?.survey || {}) as Record<string, string>;
+  }, [ready, isShared, clientId, session]);
+
+  const c = session.getProspectClient();
   const result = useMemo(
     () => computeSurvey(survey, String(survey.stype || "hotel")),
     [survey, moneySettings?.currency, moneySettings?.exchangeRate, moneySettings?.language],
@@ -45,13 +53,15 @@ export function AnalysisPage({ clientId }: { clientId }) {
       <div className="sales-page">
         <div className="page-head tool-page-head">
           <div className="tool-page-head-main">
-            <PageBack inline href={resolveToolBackHref(clientId)} />
+            <PageBack inline href={backHref} />
             <div className="tool-page-head-titles">
               <div className="page-title">{t("tools.analysis.title")}</div>
               <div className="page-sub">{t("tools.analysis.sub")}{c ? ` · ${clientDisplayName(c)}` : ""}</div>
             </div>
           </div>
         </div>
+
+        <SharedToolBanner show={readOnly} />
 
         <div className="card">
           <div className="card-heading">{t("tools.survey.patternTitle")}</div>

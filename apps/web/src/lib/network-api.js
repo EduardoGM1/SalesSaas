@@ -39,6 +39,11 @@ export const messagesApi = {
 export const sharingApi = {
   listReceived: () => apiFetch("/shares/received"),
   getSharedProspect: (prospectId) => apiFetch(`/shared-prospects/${prospectId}`),
+  getTool: (prospectId, tool) => apiFetch(`/shared-prospects/${prospectId}/tools/${tool}`),
+  saveTool: (prospectId, tool, data) => apiFetch(`/shared-prospects/${prospectId}/tools/${tool}`, {
+    method: "PUT",
+    body: JSON.stringify({ data }),
+  }),
   listForProspect: (prospectId) => apiFetch(`/prospects/${prospectId}/shares`),
   create: (prospectId, sharedWithId, permission) => apiFetch(`/prospects/${prospectId}/shares`, {
     method: "POST",
@@ -49,7 +54,7 @@ export const sharingApi = {
     body: JSON.stringify({ permission }),
   }),
   remove: (shareId) => apiFetch(`/shares/${shareId}`, { method: "DELETE" }),
-  updateProspect: (prospectId, body) => apiFetch(`/prospects/${prospectId}`, {
+  updateProspect: (prospectId, body) => apiFetch(`/shared-prospects/${prospectId}`, {
     method: "PATCH",
     body: JSON.stringify(body),
   }),

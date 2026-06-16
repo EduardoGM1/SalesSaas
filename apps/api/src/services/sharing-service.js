@@ -1,4 +1,5 @@
 import { isUuid } from "@salesapp/shared/data/mappers.js";
+import { bodyToProspectPatch } from "@salesapp/shared/api/validators.js";
 import { ServiceError, assertFound } from "../lib/service-error.js";
 
 async function loadProfiles(supabase, ids) {
@@ -192,7 +193,10 @@ export async function getSharedProspect(supabase, userId, prospectId) {
     .eq("id", prospectId)
     .eq("user_id", userId)
     .maybeSingle();
-  if (owned) return { prospect: owned, permission: "owner" };
+  if (owned) {
+    const tools = await loadProspectTools(supabase, prospectId);
+    return { prospect: owned, permission: "owner", tools };
+  }
 
   const { data: share } = await supabase
     .from("prospect_shares")
@@ -209,5 +213,91 @@ export async function getSharedProspect(supabase, userId, prospectId) {
     .maybeSingle();
   if (error) throw new ServiceError(error.message, 500);
   assertFound(prospect, "Expediente no encontrado.");
-  return { prospect, permission: share.permission };
+  const tools = await loadProspectTools(supabase, prospectId);
+  return { prospect, permission: share.permission, tools };
+}
+
+async function loadProspectTools(supabase, prospectId) {
+  const { data: toolRows, error } = await supabase
+    .from("tool_calculations")
+    .select("tool, data")
+    .eq("prospect_id", prospectId);
+  if (error) throw new ServiceError(error.message, 500);
+  const tools = {};
+  for (const row of toolRows ?? []) {
+    tools[row.tool] = row.data ?? {};
+  }
+  return tools;
+}
+
+async function resolveSharedAccess(supabase, userId, prospectId) {
+  const { data: owned } = await supabase
+    .from("prospects")
+    .select("user_id")
+    .eq("id", prospectId)
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (owned) return { permission: "owner", ownerId: userId };
+
+  const { data: share } = await supabase
+    .from("prospect_shares")
+    .select("permission, owner_id")
+    .eq("prospect_id", prospectId)
+    .eq("shared_with_id", userId)
+    .maybeSingle();
+  if (!share) throw new ServiceError("Expediente no encontrado.", 404);
+  return { permission: share.permission, ownerId: share.owner_id };
+}
+
+const SHARED_TOOLS = new Set(["survey", "vacaciones", "worksheet"]);
+
+export async function getSharedTool(supabase, userId, prospectId, tool) {
+  if (!SHARED_TOOLS.has(tool)) throw new ServiceError("Herramienta inválida.");
+  await resolveSharedAccess(supabase, userId, prospectId);
+  const { data, error } = await supabase
+    .from("tool_calculations")
+    .select("data")
+    .eq("prospect_id", prospectId)
+    .eq("tool", tool)
+    .maybeSingle();
+  if (error) throw new ServiceError(error.message, 500);
+  return data?.data ?? {};
+}
+
+export async function saveSharedTool(supabase, userId, prospectId, tool, data) {
+  if (!SHARED_TOOLS.has(tool)) throw new ServiceError("Herramienta inválida.");
+  const access = await resolveSharedAccess(supabase, userId, prospectId);
+  if (access.permission !== "owner" && access.permission !== "edit") {
+    throw new ServiceError("Solo lectura: no puedes editar esta herramienta.", 403);
+  }
+  const { data: saved, error } = await supabase
+    .from("tool_calculations")
+    .upsert({
+      user_id: access.ownerId,
+      prospect_id: prospectId,
+      tool,
+      data: data || {},
+    }, { onConflict: "user_id,prospect_id,tool" })
+    .select("data")
+    .single();
+  if (error) throw new ServiceError(error.message, 400);
+  return saved?.data ?? {};
+}
+
+export async function updateSharedProspect(supabase, userId, prospectId, body) {
+  if (!isUuid(prospectId)) throw new ServiceError("Expediente inválido.");
+  const access = await resolveSharedAccess(supabase, userId, prospectId);
+  if (access.permission !== "owner" && access.permission !== "edit") {
+    throw new ServiceError("Solo lectura: no puedes editar este expediente.", 403);
+  }
+  const patch = bodyToProspectPatch(body);
+  if (!Object.keys(patch).length) throw new ServiceError("Sin campos para actualizar.");
+  const { data, error } = await supabase
+    .from("prospects")
+    .update(patch)
+    .eq("id", prospectId)
+    .select()
+    .maybeSingle();
+  if (error) throw new ServiceError(error.message, 400);
+  return assertFound(data, "Expediente no encontrado.");
 }

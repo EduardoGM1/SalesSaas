@@ -3,36 +3,34 @@ import { useEffect, useMemo, useState } from "react";
 import { Topbar } from "@/components/layout/topbar";
 import { PageBack } from "@/components/layout/page-back.jsx";
 import { SaveToolModal } from "@/components/calculators/save-tool-modal";
+import { SharedToolBanner } from "@/components/calculators/shared-tool-banner.jsx";
 import { computeVacaciones } from "@/lib/calculations/vacaciones";
-import { resolveToolBackHref } from "@/lib/calculator-nav.js";
 import { selectOnFocus } from "@/lib/focus-select.js";
 import { formatMoneyValue } from "@/lib/format/money";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { useMoney } from "@/hooks/use-money.js";
-import { useToolBucketReady } from "@/hooks/use-tool-bucket-ready";
+import { useToolSession } from "@/hooks/use-tool-session.js";
 import { useDbStore } from "@/stores/db-store";
 
 const EMPTY_FIELDS = { vv: "", vc: "", va: "", vi: "" };
 
 interface VacacionesPageProps {
   clientId?;
+  shared?;
 }
 
-export function VacacionesPage({ clientId }: VacacionesPageProps) {
+export function VacacionesPage({ clientId, shared }: VacacionesPageProps) {
   const { t } = useI18n();
-  const backHref = resolveToolBackHref(clientId);
+  const { ready, readOnly, backHref, getBucket, saveBucket, isFileMode } = useToolSession({ clientId, shared });
   const { fmt, fmtN } = useMoney();
   const moneySettings = useDbStore((s) => s.db.settings);
-  const { ready, mode } = useToolBucketReady(clientId);
-  const getToolBucket = useDbStore((s) => s.getToolBucket);
-  const saveToolBucket = useDbStore((s) => s.saveToolBucket);
   const [fields, setFields] = useState({ ...EMPTY_FIELDS });
   const [saved, setSaved] = useState(false);
   const [saveToolOpen, setSaveToolOpen] = useState(false);
 
   useEffect(() => {
     if (!ready) return;
-    const b = getToolBucket("vacaciones", mode, clientId);
+    const b = getBucket("vacaciones");
     if (Object.keys(b).length) {
       setFields({
         vv: String(b.vv ?? ""), vc: String(b.vc ?? ""), va: String(b.va ?? ""), vi: String(b.vi ?? ""),
@@ -40,11 +38,12 @@ export function VacacionesPage({ clientId }: VacacionesPageProps) {
     } else {
       setFields({ ...EMPTY_FIELDS });
     }
-  }, [ready, clientId, getToolBucket, mode]);
+  }, [ready, clientId, getBucket]);
 
-  const handleClear = () => {
+  const handleClear = async () => {
+    if (readOnly) return;
     setFields({ ...EMPTY_FIELDS });
-    if (ready) saveToolBucket("vacaciones", mode, { ...EMPTY_FIELDS }, clientId);
+    if (ready) await saveBucket("vacaciones", { ...EMPTY_FIELDS });
   };
 
   const r = useMemo(
@@ -52,28 +51,34 @@ export function VacacionesPage({ clientId }: VacacionesPageProps) {
     [fields, moneySettings?.currency, moneySettings?.exchangeRate, moneySettings?.language],
   );
 
-  const handleSave = () => {
-    saveToolBucket("vacaciones", mode, fields, clientId);
-    if (!clientId) { setSaveToolOpen(true); return; }
+  const handleSave = async () => {
+    if (readOnly) return;
+    await saveBucket("vacaciones", fields);
+    if (!isFileMode) { setSaveToolOpen(true); return; }
     setSaved(true);
     setTimeout(() => setSaved(false), 1600);
   };
 
   return (
     <>
-      <Topbar title={t("tools.vacation")} subtitle={clientId ? t("tools.sub.inflation") : t("tools.sub.free")} />
+      <Topbar title={t("tools.vacation")} subtitle={isFileMode ? t("tools.sub.inflation") : t("tools.sub.free")} />
       <div className="sales-page">
         <div className="page-head tool-page-head">
           <div className="tool-page-head-main">
             <PageBack inline={true} href={backHref} />
             <div className="tool-page-head-titles">
               <div className="page-title">{t("tools.vacation")}</div>
-              <div className="page-sub">{clientId ? t("tools.sub.file") : t("tools.sub.free")}</div>
+              <div className="page-sub">{isFileMode ? t("tools.sub.file") : t("tools.sub.free")}</div>
             </div>
           </div>
-          <button type="button" className="btn btn-ghost btn-sm" onClick={handleClear}>{t("common.clear")}</button>
+          {!readOnly && (
+            <button type="button" className="btn btn-ghost btn-sm" onClick={handleClear}>{t("common.clear")}</button>
+          )}
         </div>
 
+        <SharedToolBanner show={readOnly} />
+
+        <fieldset className="shared-tool-fieldset" disabled={readOnly}>
         <div className="g2">
           <div className="card">
             <div className="card-heading">{t("tools.vacation.inputTitle")}</div>
@@ -126,11 +131,14 @@ export function VacacionesPage({ clientId }: VacacionesPageProps) {
             </div>
           </div>
         </div>
+        </fieldset>
 
-        <div className="save-footer">
-          <span className={`save-confirm${saved ? " show" : ""}`}>{t("common.saved")}</span>
-          <button type="button" className="btn btn-primary" onClick={handleSave}>{t("common.save")}</button>
-        </div>
+        {!readOnly && (
+          <div className="save-footer">
+            <span className={`save-confirm${saved ? " show" : ""}`}>{t("common.saved")}</span>
+            <button type="button" className="btn btn-primary" onClick={handleSave}>{t("common.save")}</button>
+          </div>
+        )}
       </div>
       <SaveToolModal open={saveToolOpen} onOpenChange={setSaveToolOpen} tool="vacaciones" />
     </>
