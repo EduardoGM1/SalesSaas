@@ -14,6 +14,7 @@ import { MetasPage } from "@/components/goals/metas-page.jsx";
 import { ClientsPage } from "@/components/clients/clients-page.jsx";
 import { ClientDetail } from "@/components/clients/client-detail.jsx";
 import { SettingsPage } from "@/components/settings/settings-page.jsx";
+import { SalesHistoryPage } from "@/pages/SalesHistoryPage.jsx";
 import { NetworkPage } from "@/pages/NetworkPage.jsx";
 import { MessagesPage } from "@/pages/MessagesPage.jsx";
 import { SharedProspectPage } from "@/pages/SharedProspectPage.jsx";
