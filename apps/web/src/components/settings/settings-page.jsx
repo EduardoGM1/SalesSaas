@@ -169,11 +169,15 @@ export function SettingsPage() {
         {canSeeTechnical && (
           <SettingsEntry icon={<Code2 size={18} />} tone="green" title={ti("settings.hub.apis")} desc={ti("settings.hub.apisDesc")} onClick={() => setActiveSection("apis")} />
         )}
-        <SettingsEntry icon={<Database size={18} />} tone="teal" title={ti("settings.hub.backup")} desc={ti("settings.hub.backupDesc")} onClick={() => setActiveSection("backup")} />
+        {canSeeTechnical && (
+          <SettingsEntry icon={<Database size={18} />} tone="teal" title={ti("settings.hub.backup")} desc={ti("settings.hub.backupDesc")} onClick={() => setActiveSection("backup")} />
+        )}
         {canOfferPwaInstall() && !isStandaloneApp() && (
           <SettingsEntry icon={<Smartphone size={18} />} tone="blue" title={ti("settings.hub.pwa")} desc={ti("settings.hub.pwaDesc")} onClick={openInstallPrompt} />
         )}
-        <SettingsEntry icon={<ShieldAlert size={18} />} tone="purple" title={ti("settings.hub.account")} desc={isSupabaseConfigured() ? (email ? ti("settings.hub.accountSession", { email }) : ti("settings.hub.accountActive")) : ti("settings.hub.accountLocal")} onClick={() => setActiveSection("account")} />
+        {canSeeTechnical && (
+          <SettingsEntry icon={<ShieldAlert size={18} />} tone="purple" title={ti("settings.hub.session")} desc={isSupabaseConfigured() ? (email ? ti("settings.hub.accountSession", { email }) : ti("settings.hub.accountActive")) : ti("settings.hub.accountLocal")} onClick={() => setActiveSection("account")} />
+        )}
       </div>
     </div>
   );
@@ -221,6 +225,28 @@ export function SettingsPage() {
                       <div><div className="settings-label">Teléfono</div><div className="settings-help">Dato opcional del perfil de cuenta.</div></div>
                       <input type="tel" value={phone} onFocus={selectOnFocus} onChange={(e) => setPhone(e.target.value)} placeholder="+52 ..." autoComplete="tel" />
                     </form>
+                  )}
+                  {isSupabaseConfigured() && !canSeeTechnical && (
+                    <div className="btn-row" style={{ marginTop: 8 }}>
+                      <button
+                        type="button"
+                        className="btn btn-ghost"
+                        disabled={signOutPending}
+                        onClick={async () => {
+                          setSignOutPending(true);
+                          try {
+                            await signOut();
+                            navigate("/login", { replace: true });
+                          } catch {
+                            toast.error(ti("toast.settings.signOutFail"));
+                          } finally {
+                            setSignOutPending(false);
+                          }
+                        }}
+                      >
+                        <LogOut size={15} /> {signOutPending ? ti("settings.account.signingOut") : ti("settings.account.signOut")}
+                      </button>
+                    </div>
                   )}
                 </div>
               </div>

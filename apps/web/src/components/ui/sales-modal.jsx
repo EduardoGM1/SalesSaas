@@ -9,16 +9,21 @@ interface SalesModalProps {
   sub?;
   maxWidth?: number;
   popupId?;
+  modalClassName?;
   children;
 }
 
-export function SalesModal({ open, onOpenChange, title, sub, maxWidth, popupId, children }: SalesModalProps) {
+export function SalesModal({ open, onOpenChange, title, sub, maxWidth, popupId, modalClassName, children }: SalesModalProps) {
+  const modalStyle = maxWidth
+    ? { maxWidth: `min(${maxWidth}px, calc(100vw - 40px))`, width: "100%", boxSizing: "border-box" }
+    : undefined;
+
   return (
     <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
       <DialogPrimitive.Portal>
         <DialogPrimitive.Backdrop className="modal-backdrop sales-modal-overlay" />
         <DialogPrimitive.Viewport className="sales-modal-viewport">
-          <DialogPrimitive.Popup id={popupId} className="modal" style={maxWidth ? { maxWidth } : undefined}>
+          <DialogPrimitive.Popup id={popupId} className={["modal", modalClassName].filter(Boolean).join(" ")} style={modalStyle}>
             <div className="modal-title">
               <DialogPrimitive.Title render={<span />}>{title}</DialogPrimitive.Title>
               <DialogPrimitive.Close className="modal-close" aria-label="Cerrar">✕</DialogPrimitive.Close>

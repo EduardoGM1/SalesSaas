@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import {  useNavigate, useSearchParams  } from "react-router-dom";
 import { FileText, Palmtree, DollarSign, MessageSquare } from "lucide-react";
 import { SalesModal } from "@/components/ui/sales-modal";
+import { ClientRecordModal } from "@/components/clients/client-record-modal.jsx";
 import { Topbar } from "@/components/layout/topbar";
 import { clientDisplayName, ensureProspectIdentity } from "@/lib/clients";
 import { longDate, ymdToday } from "@/lib/format/dates";
@@ -20,21 +21,6 @@ import { useSaleActions } from "@/hooks/use-sale-actions.js";
 import { useCalendarActions } from "@/hooks/use-calendar-actions.js";
 import { toast } from "@/lib/toast";
 import { selectOnFocus } from "@/lib/focus-select.js";
-
-const STATUS_OPTIONS = [
-  { value: "", key: "status.empty" },
-  { value: "venta", key: "status.sale" },
-  { value: "bback", key: "status.bback" },
-  { value: "procesable", key: "status.processable" },
-  { value: "no-procesable", key: "status.notProcessable" },
-  { value: "perdido", key: "status.lost" },
-];
-
-const SALE_STATUS_OPTIONS = [
-  { value: "procesable", key: "exp.sale.statusProcessable" },
-  { value: "no-procesable", key: "exp.sale.statusNotProcessable" },
-  { value: "venta", key: "exp.sale.statusProcessed" },
-];
 
 const NOTE_TYPE_OPTIONS = [
   ["nota", "exp.note.typeNote"],
@@ -61,9 +47,7 @@ export function ClientDetail({ id }) {
   const { fmt } = useMoney();
   const { t, lang } = useI18n();
 
-  const [editOpen, setEditOpen] = useState(false);
-  const [saleOpen, setSaleOpen] = useState(false);
-  const [editingSaleId, setEditingSaleId] = useState<string | null>(null);
+  const [recordModal, setRecordModal] = useState<null | { mode: "edit-data" | "sale-new" | "sale-edit"; editingSaleId?: string | null }>(null);
   const [noteOpen, setNoteOpen] = useState(false);
   const [form, setForm] = useState<Partial<ClientRecord>>({});
   const [saleForm, setSaleForm] = useState({ date: ymdToday(), vol: "", tours: "1", contract: "", status: "procesable", processDate: "", note: "", addProcessingFollowup: true });
@@ -76,7 +60,8 @@ export function ClientDetail({ id }) {
     const worksheetVol = prefillFromWorksheet ? parseMoney(String(ws.wv ?? "")) : 0;
     const existingSales = [...(c?.sales || [])].sort((a, b) => (b.ts || 0) - (a.ts || 0));
     const resolvedSale = sale ?? (prefillFromWorksheet ? undefined : existingSales[0]);
-    setEditingSaleId(resolvedSale?.saleId || null);
+    const editingId = resolvedSale?.saleId || null;
+    setForm({ ...c });
     setSaleForm({
       date: resolvedSale?.date || ymdToday(),
       vol: resolvedSale ? String(resolvedSale.vol || "") : worksheetVol ? String(worksheetVol) : "",
@@ -87,7 +72,7 @@ export function ClientDetail({ id }) {
       note: resolvedSale?.note || "",
       addProcessingFollowup: resolvedSale?.addProcessingFollowup ?? true,
     });
-    setSaleOpen(true);
+    setRecordModal({ mode: editingId ? "sale-edit" : "sale-new", editingSaleId: editingId });
   };
 
   useEffect(() => {
@@ -105,17 +90,24 @@ export function ClientDetail({ id }) {
     </>
   );
 
-  const openEdit = () => { setForm({ ...c }); setEditOpen(true); };
-  const saveEdit = () => {
-    updateClient(c, form);
-    setEditOpen(false);
+  const openEdit = () => {
+    setForm({ ...c });
+    setRecordModal({ mode: "edit-data" });
   };
 
-  const saveSale = () => {
-    const result = persistSale(id, saleForm, editingSaleId);
+  const closeRecordModal = () => setRecordModal(null);
+
+  const saveRecord = () => {
+    if (!recordModal) return;
+    if (recordModal.mode === "edit-data") {
+      updateClient(c, form);
+      closeRecordModal();
+      return;
+    }
+    updateClient(c, form);
+    const result = persistSale(id, saleForm, recordModal.editingSaleId || null);
     if (!result.ok) return;
-    setSaleOpen(false);
-    setEditingSaleId(null);
+    closeRecordModal();
   };
 
   const saveNote = () => {
@@ -126,11 +118,6 @@ export function ClientDetail({ id }) {
     });
     if (!result.ok) return;
     setNoteOpen(false);
-  };
-
-  const handleSaleOpenChange = (open: boolean) => {
-    setSaleOpen(open);
-    if (!open) setEditingSaleId(null);
   };
 
   const activityItems = (() => {
@@ -209,10 +196,6 @@ export function ClientDetail({ id }) {
         notesCard,
       ];
   const sales = [...(c.sales || [])].sort((a, b) => (b.ts || 0) - (a.ts || 0));
-  const saleModalTitle = t("exp.sale.modalTitle");
-  const saleModalSub = editingSaleId
-    ? t("exp.sale.modalEditSub", { name: clientDisplayName(c) })
-    : t("exp.sale.modalNewSub", { name: clientDisplayName(c) });
 
   return (
     <>
@@ -341,73 +324,18 @@ export function ClientDetail({ id }) {
         </div>
       </div>
 
-      <SalesModal open={editOpen} onOpenChange={setEditOpen} title={t("exp.edit.title")} sub={t("exp.edit.sub")} maxWidth={760}>
-        <div className="prospect-grid">
-          <div className="prospect-field"><label>{t("exp.edit.name")}</label><input type="text" placeholder={t("tools.survey.namePlaceholder")} value={form.name1 || ""} onFocus={selectOnFocus} onChange={(e) => setForm({ ...form, name1: e.target.value })} /></div>
-          <div className="prospect-field"><label>{t("exp.edit.occ1")}</label><input type="text" placeholder={t("tools.survey.occPlaceholder")} value={form.occupation1 || ""} onFocus={selectOnFocus} onChange={(e) => setForm({ ...form, occupation1: e.target.value })} /></div>
-          <div className="prospect-field"><label>{t("exp.edit.companion")}</label><input type="text" placeholder={t("tools.survey.companionPlaceholder")} value={form.name2 || ""} onFocus={selectOnFocus} onChange={(e) => setForm({ ...form, name2: e.target.value })} /></div>
-          <div className="prospect-field"><label>{t("exp.edit.occ2")}</label><input type="text" placeholder={t("tools.survey.occ2Placeholder")} value={form.occupation2 || ""} onFocus={selectOnFocus} onChange={(e) => setForm({ ...form, occupation2: e.target.value })} /></div>
-          <div className="prospect-field"><label>{t("exp.edit.city")}</label><input type="text" placeholder={t("tools.survey.city")} value={form.city || ""} onFocus={selectOnFocus} onChange={(e) => setForm({ ...form, city: e.target.value })} /></div>
-          <div className="prospect-field"><label>{t("exp.edit.country")}</label><input type="text" placeholder={t("tools.survey.country")} value={form.country || ""} onFocus={selectOnFocus} onChange={(e) => setForm({ ...form, country: e.target.value })} /></div>
-          <div className="prospect-field"><label>{t("exp.edit.phone")}</label><input type="text" placeholder={t("exp.edit.phone")} value={form.phone || ""} onFocus={selectOnFocus} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></div>
-          <div className="prospect-field"><label>{t("exp.edit.email")}</label><input type="text" placeholder={t("exp.edit.email")} value={form.email || ""} onFocus={selectOnFocus} onChange={(e) => setForm({ ...form, email: e.target.value })} /></div>
-          <div className="prospect-field"><label>{t("exp.edit.contract")}</label><input type="text" placeholder={t("exp.sale.contractPlaceholder")} value={form.contract || ""} onFocus={selectOnFocus} onChange={(e) => setForm({ ...form, contract: e.target.value })} /></div>
-          <div className="prospect-field"><label>{t("exp.edit.tourDate")}</label><input type="date" value={form.tourDate || ""} onFocus={selectOnFocus} onChange={(e) => setForm({ ...form, tourDate: e.target.value })} /></div>
-          <div className="prospect-field"><label>{t("exp.edit.status")}</label>
-            <select value={form.status || ""} onChange={(e) => setForm({ ...form, status: e.target.value })}>
-              {STATUS_OPTIONS.map(({ value, key }) => (
-                <option key={value || "empty"} value={value}>{t(key)}</option>
-              ))}
-            </select>
-          </div>
-          <div className="prospect-field"><label>{t("exp.edit.processDate")}</label><input type="date" value={form.processDate || ""} onFocus={selectOnFocus} onChange={(e) => setForm({ ...form, processDate: e.target.value })} /></div>
-          <div className="prospect-field full"><label>{t("exp.edit.note")}</label><textarea rows={3} placeholder={t("exp.edit.notePlaceholder")} value={form.note || ""} onFocus={selectOnFocus} onChange={(e) => setForm({ ...form, note: e.target.value })} /></div>
-        </div>
-        <div className="ethic-box" style={{ marginTop: 16 }}>{t("exp.ethics.edit")}</div>
-        <div className="btn-row">
-          <button type="button" className="btn btn-ghost" onClick={() => setEditOpen(false)}>{t("common.cancel")}</button>
-          <button type="button" className="btn btn-primary" onClick={saveEdit}>{t("exp.edit.save")}</button>
-        </div>
-      </SalesModal>
-
-      <SalesModal open={saleOpen} onOpenChange={handleSaleOpenChange} title={saleModalTitle} sub={saleModalSub}>
-        <div className="prospect-grid">
-          <div className="prospect-field"><label>{t("exp.sale.date")}</label><input type="date" value={saleForm.date} onFocus={selectOnFocus} onChange={(e) => setSaleForm({ ...saleForm, date: e.target.value })} /></div>
-          <div className="prospect-field"><label>{t("exp.sale.volume")}</label><div className="mfield"><span className="mpfx">$</span><input type="text" placeholder="0" value={saleForm.vol} onFocus={selectOnFocus} onChange={(e) => setSaleForm({ ...saleForm, vol: e.target.value })} /></div></div>
-          <div className="prospect-field"><label>{t("exp.sale.tours")}</label><input type="number" min={0} value={saleForm.tours} onFocus={selectOnFocus} onChange={(e) => setSaleForm({ ...saleForm, tours: e.target.value })} /></div>
-          <div className="prospect-field"><label>{t("exp.sale.contract")}</label><input type="text" placeholder={t("exp.sale.contractPlaceholder")} value={saleForm.contract} onFocus={selectOnFocus} onChange={(e) => setSaleForm({ ...saleForm, contract: e.target.value })} /></div>
-          <div className="prospect-field"><label>{t("exp.sale.status")}</label>
-            <select value={saleForm.status} onChange={(e) => setSaleForm({
-              ...saleForm,
-              status: e.target.value,
-              processDate: e.target.value === "no-procesable" ? saleForm.processDate : "",
-              addProcessingFollowup: e.target.value === "no-procesable" ? saleForm.addProcessingFollowup : false,
-            })}>
-              {SALE_STATUS_OPTIONS.map(({ value, key }) => (
-                <option key={value} value={value}>{t(key)}</option>
-              ))}
-            </select>
-          </div>
-          {saleForm.status === "no-procesable" && (
-            <>
-              <div className="prospect-field"><label>{t("exp.sale.processDate")}</label><input type="date" value={saleForm.processDate} onFocus={selectOnFocus} onChange={(e) => setSaleForm({ ...saleForm, processDate: e.target.value })} /></div>
-              <div className="prospect-field">
-                <label>{t("exp.sale.followupLabel")}</label>
-                <label className="choice-pill on" style={{ justifyContent: "flex-start" }}>
-                  <input type="checkbox" checked={saleForm.addProcessingFollowup} onChange={(e) => setSaleForm({ ...saleForm, addProcessingFollowup: e.target.checked })} />
-                  {t("exp.sale.followupCheck")}
-                </label>
-              </div>
-            </>
-          )}
-          <div className="prospect-field full"><label>{t("exp.sale.notes")}</label><textarea rows={3} placeholder={t("exp.sale.notesPlaceholder")} value={saleForm.note} onFocus={selectOnFocus} onChange={(e) => setSaleForm({ ...saleForm, note: e.target.value })} /></div>
-        </div>
-        <div className="ethic-box" style={{ marginTop: 16 }}>{t("exp.ethics.sale")}</div>
-        <div className="btn-row">
-          <button type="button" className="btn btn-ghost" onClick={() => setSaleOpen(false)}>{t("common.cancel")}</button>
-          <button type="button" className="btn btn-primary" onClick={saveSale}>{editingSaleId ? t("exp.sale.saveChanges") : t("exp.sale.save")}</button>
-        </div>
-      </SalesModal>
+      <ClientRecordModal
+        open={!!recordModal}
+        onOpenChange={(open) => { if (!open) closeRecordModal(); }}
+        mode={recordModal?.mode || "edit-data"}
+        clientName={clientDisplayName(c)}
+        prospectForm={form}
+        onProspectChange={setForm}
+        saleForm={saleForm}
+        onSaleChange={setSaleForm}
+        onSave={saveRecord}
+        onCancel={closeRecordModal}
+      />
 
       <SalesModal open={noteOpen} onOpenChange={setNoteOpen} title={t("exp.note.title")} sub={t("exp.note.sub")}>
         <div style={{ marginBottom: 16 }}>

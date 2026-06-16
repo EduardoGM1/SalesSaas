@@ -1,5 +1,6 @@
 
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Topbar } from "@/components/layout/topbar";
 import { toast } from "@/lib/toast";
 import { confirmDialog } from "@/lib/confirm";
@@ -14,9 +15,11 @@ import { useDbStore } from "@/stores/db-store";
 import { EntryDialog } from "./entry-dialog";
 import { SaleDetailModal } from "@/components/sales/sale-detail-modal.jsx";
 import { useUserFeatures } from "@/hooks/use-user-features.js";
+import { resolveEntryClientId } from "@/lib/clients/resolve-entry-client";
 import { CalEntry } from "@/lib/storage/types";
 
 export function CalendarPage() {
+  const navigate = useNavigate();
   const { t, months, weekdays, weekdaysShort } = useI18n();
   const { fmt } = useMoney();
   const hydrated = useAppStore((s) => s.hydrated);
@@ -27,6 +30,7 @@ export function CalendarPage() {
   const calPrev = useAppStore((s) => s.calPrev);
   const calNext = useAppStore((s) => s.calNext);
   const deleteCalEntry = useDbStore((s) => s.deleteCalEntry);
+  const db = useDbStore((s) => s.db);
   const data = useDbStore((s) => s.db.cal[calKey(calYear, calMonth)] ?? EMPTY_CAL_MONTH);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({ venta: true });
@@ -70,19 +74,25 @@ export function CalendarPage() {
           <div className="dg-body open">
             {items.map((e, i) => {
               const idx = selDay ? (data.days[selDay] || []).indexOf(e) : -1;
+              const clientId = resolveEntryClientId(db, e);
               return (
                 <div key={i} className="dg-entry">
                   <div style={{ flex: 1 }}>
                     {e.t === "venta" && <div className="dg-name">{fmt(e.vol || 0)} — {e.tours || 0} {t("cal.tours")}</div>}
                     {e.note && <div className="dp-date" style={{ color: e.t === "venta" ? undefined : "var(--text)" }}>{e.note}</div>}
                   </div>
-                  {type === "venta" && e.saleId && canViewSaleModal ? (
-                    <button type="button" className="dg-link" onClick={() => setViewSaleId(e.saleId || null)}>{t("common.viewSale")}</button>
-                  ) : e.t !== "venta" && !e.clientId ? (
-                    <button type="button" className="dg-del" onClick={async () => {
-                      if (await confirmDialog(translate("toast.cal.deleteEntry")) && selDay) deleteCalEntry(calYear, calMonth, selDay, idx);
-                    }}>✕</button>
-                  ) : null}
+                  <div className="dg-entry-actions">
+                    {type === "venta" && e.saleId && canViewSaleModal ? (
+                      <button type="button" className="dg-link" onClick={() => setViewSaleId(e.saleId || null)}>{t("common.viewSale")}</button>
+                    ) : null}
+                    {clientId ? (
+                      <button type="button" className="dg-link" onClick={() => navigate(`/clients/${clientId}`)}>{t("common.goToFile")}</button>
+                    ) : e.t !== "venta" ? (
+                      <button type="button" className="dg-del" onClick={async () => {
+                        if (await confirmDialog(translate("toast.cal.deleteEntry")) && selDay) deleteCalEntry(calYear, calMonth, selDay, idx);
+                      }}>✕</button>
+                    ) : null}
+                  </div>
                 </div>
               );
             })}

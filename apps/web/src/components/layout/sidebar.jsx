@@ -16,13 +16,19 @@ import { watchSession } from "@/lib/session-api.js";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { navLabel } from "@/lib/i18n.js";
 
-const NAV = [
-  { href: "/", label: "Agenda", icon: Calendar },
-  { href: "/goals", label: "Dashboard", icon: BarChart3 },
-  { href: "/metas", label: "Metas", icon: Target },
-  { href: "/clients", label: "Clientes", icon: Users },
-  { href: "/tools", label: "Herramientas", icon: Wrench },
-  { href: "/sales", label: "Ventas", icon: Receipt, feature: "sales:history" },
+const NAV_GROUPS = [
+  [
+    { href: "/", label: "Agenda", icon: Calendar },
+    { href: "/goals", label: "Dashboard", icon: BarChart3 },
+    { href: "/metas", label: "Metas", icon: Target },
+  ],
+  [
+    { href: "/clients", label: "Clientes", icon: Users },
+  ],
+  [
+    { href: "/tools", label: "Herramientas", icon: Wrench },
+    { href: "/sales", label: "Ventas", icon: Receipt, feature: "sales:history" },
+  ],
 ];
 
 export function Sidebar() {
@@ -76,21 +82,26 @@ export function Sidebar() {
           </div>
         </Link>
         <nav className="sb-nav">
-          {NAV.filter((item) => !item.feature || hasUserFeature(userProfile, item.feature)).map(({ href, label, icon: Icon }) => {
-            const visibleLabel = navLabel(label, language);
-            const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
-            return (
-              <Link
-                key={href}
-                to={href}
-                className={cn("sb-item", active && "active")}
-                onClick={closeSidebar}
-              >
-                <Icon size={18} strokeWidth={2} />
-                <span className="sb-tooltip">{visibleLabel}</span>
-              </Link>
-            );
-          })}
+          {NAV_GROUPS.map((group, gi) => (
+            <div key={gi} className="sb-nav-group">
+              {gi > 0 && <div className="sb-divider" aria-hidden />}
+              {group.filter((item) => !item.feature || hasUserFeature(userProfile, item.feature)).map(({ href, label, icon: Icon }) => {
+                const visibleLabel = navLabel(label, language);
+                const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
+                return (
+                  <Link
+                    key={href}
+                    to={href}
+                    className={cn("sb-item", active && "active")}
+                    onClick={closeSidebar}
+                  >
+                    <Icon size={18} strokeWidth={2} />
+                    <span className="sb-tooltip">{visibleLabel}</span>
+                  </Link>
+                );
+              })}
+            </div>
+          ))}
         </nav>
         {footer.length > 0 && (
           <>
