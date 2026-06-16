@@ -4,7 +4,7 @@ import { useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { useMounted } from "@/hooks/use-mounted";
 import {
-  BarChart3, Calendar, Target, Users, Wrench, Shield, Receipt,
+  BarChart3, Calendar, Target, Users, Wrench, Shield, Receipt, UserPlus, MessageSquare,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/stores/app-store";
@@ -15,6 +15,7 @@ import { hasUserFeature } from "@/lib/auth/user-features";
 import { watchSession } from "@/lib/session-api.js";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { navLabel } from "@/lib/i18n.js";
+import { messagesApi } from "@/lib/network-api.js";
 
 const NAV_GROUPS = [
   [
@@ -24,6 +25,10 @@ const NAV_GROUPS = [
   ],
   [
     { href: "/clients", label: "Clientes", icon: Users },
+  ],
+  [
+    { href: "/network", label: "Red", icon: UserPlus, cloudOnly: true },
+    { href: "/messages", label: "Mensajes", icon: MessageSquare, cloudOnly: true, badgeKey: "messages" },
   ],
   [
     { href: "/tools", label: "Herramientas", icon: Wrench },
@@ -41,6 +46,8 @@ export function Sidebar() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState(null);
   const [userProfile, setUserProfile] = useState(null);
+  const [unreadMessages, setUnreadMessages] = useState(0);
+  const cloudEnabled = mounted && isSupabaseConfigured();
 
   useEffect(() => {
     if (!isSupabaseConfigured()) return;
@@ -62,6 +69,16 @@ export function Sidebar() {
       }));
     });
   }, []);
+
+  useEffect(() => {
+    if (!cloudEnabled) return;
+    const load = () => messagesApi.unreadCount()
+      .then((d) => setUnreadMessages(d?.count ?? 0))
+      .catch(() => {});
+    load();
+    const timer = window.setInterval(load, 30000);
+    return () => window.clearInterval(timer);
+  }, [cloudEnabled]);
 
   const footer = mounted && isAdmin ? [{ href: "/admin", label: "Admin", icon: Shield }] : [];
   const avatarLabel = mounted
@@ -85,9 +102,14 @@ export function Sidebar() {
           {NAV_GROUPS.map((group, gi) => (
             <div key={gi} className="sb-nav-group">
               {gi > 0 && <div className="sb-divider" aria-hidden />}
-              {group.filter((item) => !item.feature || hasUserFeature(userProfile, item.feature)).map(({ href, label, icon: Icon }) => {
+              {group.filter((item) => {
+                if (item.cloudOnly && !cloudEnabled) return false;
+                if (item.feature && !hasUserFeature(userProfile, item.feature)) return false;
+                return true;
+              }).map(({ href, label, icon: Icon, badgeKey }) => {
                 const visibleLabel = navLabel(label, language);
                 const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
+                const badge = badgeKey === "messages" && unreadMessages > 0 ? unreadMessages : null;
                 return (
                   <Link
                     key={href}
@@ -96,6 +118,7 @@ export function Sidebar() {
                     onClick={closeSidebar}
                   >
                     <Icon size={18} strokeWidth={2} />
+                    {badge ? <span className="sb-badge">{badge > 9 ? "9+" : badge}</span> : null}
                     <span className="sb-tooltip">{visibleLabel}</span>
                   </Link>
                 );

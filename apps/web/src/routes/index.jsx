@@ -14,7 +14,9 @@ import { MetasPage } from "@/components/goals/metas-page.jsx";
 import { ClientsPage } from "@/components/clients/clients-page.jsx";
 import { ClientDetail } from "@/components/clients/client-detail.jsx";
 import { SettingsPage } from "@/components/settings/settings-page.jsx";
-import { SalesHistoryPage } from "@/pages/SalesHistoryPage.jsx";
+import { NetworkPage } from "@/pages/NetworkPage.jsx";
+import { MessagesPage } from "@/pages/MessagesPage.jsx";
+import { SharedProspectPage } from "@/pages/SharedProspectPage.jsx";
 import { ToolsHubPage } from "@/pages/ToolsHubPage.jsx";
 import { AdminSection } from "@/layouts/AdminSection.jsx";
 import {
@@ -50,6 +52,11 @@ function ClientToolRoute({ tool }) {
   return null;
 }
 
+function SharedProspectRoute() {
+  const { id } = useParams();
+  return <SharedProspectPage prospectId={id} />;
+}
+
 export function AppRoutes() {
   return (
     <Routes>
@@ -70,6 +77,9 @@ export function AppRoutes() {
         <Route path="clients/:id/vacaciones" element={<ClientToolRoute tool="vacaciones" />} />
         <Route path="clients/:id/worksheet" element={<ClientToolRoute tool="worksheet" />} />
         <Route path="clients/:id/analysis" element={<ClientToolRoute tool="analysis" />} />
+        <Route path="network" element={<NetworkPage />} />
+        <Route path="network/shared/:id" element={<SharedProspectRoute />} />
+        <Route path="messages" element={<MessagesPage />} />
         <Route path="tools" element={<ToolsHubPage />} />
         <Route path="tools/survey" element={<Lazy><SurveyPage /></Lazy>} />
         <Route path="tools/vacaciones" element={<Lazy><VacacionesPage /></Lazy>} />

@@ -5,6 +5,8 @@ import {  useNavigate, useSearchParams  } from "react-router-dom";
 import { FileText, Palmtree, DollarSign, MessageSquare } from "lucide-react";
 import { SalesModal } from "@/components/ui/sales-modal";
 import { ClientRecordModal } from "@/components/clients/client-record-modal.jsx";
+import { ShareProspectModal } from "@/components/network/share-prospect-modal.jsx";
+import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { Topbar } from "@/components/layout/topbar";
 import { clientDisplayName, ensureProspectIdentity } from "@/lib/clients";
 import { longDate, ymdToday } from "@/lib/format/dates";
@@ -47,7 +49,8 @@ export function ClientDetail({ id }) {
   const { fmt } = useMoney();
   const { t, lang } = useI18n();
 
-  const [recordModal, setRecordModal] = useState<null | { mode: "edit-data" | "sale-new" | "sale-edit"; editingSaleId?: string | null }>(null);
+  const [shareOpen, setShareOpen] = useState(false);
+  const [recordModal, setRecordModal] = useState(null);
   const [noteOpen, setNoteOpen] = useState(false);
   const [form, setForm] = useState<Partial<ClientRecord>>({});
   const [saleForm, setSaleForm] = useState({ date: ymdToday(), vol: "", tours: "1", contract: "", status: "procesable", processDate: "", note: "", addProcessingFollowup: true });
@@ -209,6 +212,9 @@ export function ClientDetail({ id }) {
           </div>
           <div className="exp-page-actions">
             <button type="button" className="btn btn-primary btn-sm" onClick={() => openSaleModal()}>{t("exp.registerSale")}</button>
+            {isSupabaseConfigured() && (
+              <button type="button" className="btn btn-ghost btn-sm" onClick={() => setShareOpen(true)}>{t("network.shareAction")}</button>
+            )}
             <button type="button" className="btn btn-danger btn-sm" onClick={async () => {
               if (await removeClient(id, clientDisplayName(c))) navigate("/clients");
             }}>{t("exp.delete")}</button>
@@ -335,6 +341,13 @@ export function ClientDetail({ id }) {
         onSaleChange={setSaleForm}
         onSave={saveRecord}
         onCancel={closeRecordModal}
+      />
+
+      <ShareProspectModal
+        open={shareOpen}
+        onOpenChange={setShareOpen}
+        prospectId={id}
+        prospectName={clientDisplayName(c)}
       />
 
       <SalesModal open={noteOpen} onOpenChange={setNoteOpen} title={t("exp.note.title")} sub={t("exp.note.sub")}>

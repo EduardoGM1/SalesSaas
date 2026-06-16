@@ -1,34 +1,42 @@
-# Compartir expedientes (diseño futuro)
+# Compartir expedientes y red social (MVP)
 
-Concepto: buscar usuarios en la red Sales Timeshare y compartir un expediente con permisos tipo Google Drive.
+## Estado actual (implementado)
 
-## 1. ¿La BD actual permite relaciones entre usuarios sin refactorizar?
+### Base de datos (`0011` + `0012`)
+- `prospect_shares` — compartir expedientes (`view` | `edit`)
+- `user_connections` — solicitudes y contactos (`pending` | `accepted` | `blocked`)
+- `direct_messages` — mensajes entre contactos aceptados
+- RPC `search_profiles(q)` — búsqueda de usuarios activos
+- RLS: perfiles visibles para contactos/pendientes; mensajes solo entre aceptados; shares solo con contactos aceptados
 
-**Sí, con extensión mínima.** Hoy cada `prospect` pertenece a un `user_id` (`profiles` ↔ `auth.users`). No hay relaciones entre usuarios, pero el modelo per-vendedor no impide añadir tablas puente. La migración `0011_prospect_sharing_foundation.sql` reserva `prospect_shares` sin cambiar tablas existentes.
+### API (`/api/v1/...`)
+| Área | Endpoints |
+|------|-----------|
+| Red | `GET /network/users/search`, `GET/POST/PATCH/DELETE /network/connections` |
+| Mensajes | `GET /messages/conversations`, `GET /messages?with=`, `POST /messages`, `PATCH /messages/read`, `GET /messages/unread-count` |
+| Compartir | `GET /shares/received`, `GET/POST /prospects/:id/shares`, `PATCH/DELETE /shares/:id`, `GET /shared-prospects/:id` |
 
-## 2. Tablas / modelos necesarios
+### UI
+- `/network` — buscar, solicitudes, contactos, expedientes compartidos
+- `/messages` — conversaciones y chat
+- Expediente → botón **Compartir** (requiere Supabase + sync)
+- Sidebar: Red, Mensajes (solo con nube), badge de no leídos
 
-| Modelo | Propósito |
-|--------|-----------|
-| `profiles` (existente) | Búsqueda por nombre/email dentro de la org |
-| `prospect_shares` (0011) | `prospect_id`, `owner_id`, `shared_with_id`, `permission` |
-| Opcional: `organizations` + `organization_members` | Si la red crece más allá de usuarios sueltos |
-| Opcional: `share_invites` | Invitaciones pendientes por email |
+## Requisitos
+1. Supabase configurado + usuario autenticado
+2. Expediente sincronizado (UUID en nube) para compartir
+3. Contacto **aceptado** antes de mensajes o shares
 
-En cliente (IndexedDB) haría falta un índice de expedientes compartidos conmigo, sincronizado vía API.
+## Próximas fases (no MVP)
+- Realtime (Supabase subscriptions) para mensajes
+- Sync de expedientes compartidos al store local
+- Organizaciones/equipos (`organizations`, `organization_members`)
+- Compartir herramientas (survey/worksheet) con RLS en `tool_calculations`
+- Notificaciones push
 
-## 3. Permisos
+## Respuestas de diseño original
 
-Enum propuesto: `view` (solo lectura) y `edit` (modificar datos y herramientas). El dueño (`owner_id` / `prospects.user_id`) conserva control total y puede revocar.
-
-RLS en Supabase:
-
-- Dueño: CRUD completo sobre su prospect.
-- `shared_with` + `view`: SELECT sobre prospect y tools.
-- `shared_with` + `edit`: SELECT + UPDATE (sin DELETE del expediente).
-
-Ventas archivadas y agenda seguirían scoped al dueño salvo que se comparta también el historial comercial.
-
-## 4. ¿Dejar la base lista ahora?
-
-**Recomendado:** migración stub (`0011`) + tipos en código cuando se implemente UI. **No** activar sync ni RLS de producto hasta definir org/equipos. Evita rehacer esquema; el costo actual es bajo (tabla vacía, sin UI).
+1. **¿BD permite relaciones sin refactor?** Sí — tablas puente sobre `profiles`/`prospects`.
+2. **¿Qué tablas?** `user_connections`, `direct_messages`, `prospect_shares` (+ opcional org/invites).
+3. **¿Permisos?** Contactos aceptados; shares `view`/`edit`; dueño revoca.
+4. **¿Base lista?** Sí — migraciones 0011–0012; UI/API MVP activos.

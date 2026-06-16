@@ -14,6 +14,9 @@ import * as activitiesService from "../services/activities-service.js";
 import * as toolsService from "../services/tools-service.js";
 import * as geoService from "../services/geo-service.js";
 import * as remindersService from "../services/reminders-service.js";
+import * as networkService from "../services/network-service.js";
+import * as messagesService from "../services/messages-service.js";
+import * as sharingService from "../services/sharing-service.js";
 import { ServiceError } from "../lib/service-error.js";
 
 const router = Router();
@@ -35,6 +38,23 @@ router.get("/", (_req, res) => {
       goals: { GET: "/api/v1/goals", PUT: "/api/v1/goals", DELETE: "/api/v1/goals?year=&month=" },
       activities: { GET: "/api/v1/activities", POST: "/api/v1/activities", GET_ONE: "/api/v1/activities/:id", PATCH: "/api/v1/activities/:id", DELETE: "/api/v1/activities/:id" },
       toolCalculations: { GET: "/api/v1/tool-calculations", PUT: "/api/v1/tool-calculations", DELETE: "/api/v1/tool-calculations?tool=&prospect_id=" },
+      network: {
+        search: { GET: "/api/v1/network/users/search?q=" },
+        connections: { GET: "/api/v1/network/connections", POST: "/api/v1/network/connections", PATCH: "/api/v1/network/connections/:id", DELETE: "/api/v1/network/connections/:id" },
+      },
+      messages: {
+        conversations: { GET: "/api/v1/messages/conversations" },
+        thread: { GET: "/api/v1/messages?with=" },
+        send: { POST: "/api/v1/messages" },
+        read: { PATCH: "/api/v1/messages/read?with=" },
+        unread: { GET: "/api/v1/messages/unread-count" },
+      },
+      shares: {
+        received: { GET: "/api/v1/shares/received" },
+        prospect: { GET: "/api/v1/prospects/:id/shares", POST: "/api/v1/prospects/:id/shares" },
+        update: { PATCH: "/api/v1/shares/:id" },
+        delete: { DELETE: "/api/v1/shares/:id" },
+      },
     },
   });
 });
@@ -310,6 +330,116 @@ router.delete("/tool-calculations", async (req, res) => {
     req.query.tool,
     req.query.prospect_id,
   ), { wrap: "ok" });
+});
+
+router.get("/network/users/search", async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  await runService(res, () => networkService.searchUsers(a.supabase, a.userId, req.query.q, Number(req.query.limit) || 20), { wrap: "data" });
+});
+
+router.get("/network/connections", async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  await runService(res, () => networkService.listConnections(a.supabase, a.userId, { status: req.query.status }), { wrap: "data" });
+});
+
+router.post("/network/connections", async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  const body = parseJsonBody(req, res);
+  if (!body) return;
+  await runService(res, () => networkService.sendConnectionRequest(a.supabase, a.userId, body.addressee_id), { wrap: "data", successStatus: 201 });
+});
+
+router.patch("/network/connections/:id", async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  const body = parseJsonBody(req, res);
+  if (!body) return;
+  await runService(res, () => networkService.updateConnectionStatus(a.supabase, a.userId, req.params.id, body.status), { wrap: "data" });
+});
+
+router.delete("/network/connections/:id", async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  await runService(res, () => networkService.removeConnection(a.supabase, a.userId, req.params.id), { wrap: "ok" });
+});
+
+router.get("/messages/conversations", async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  await runService(res, () => messagesService.listConversations(a.supabase, a.userId), { wrap: "data" });
+});
+
+router.get("/messages/unread-count", async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  await runService(res, () => messagesService.countUnread(a.supabase, a.userId), { wrap: "data" });
+});
+
+router.get("/messages", async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  const withUser = req.query.with;
+  if (!withUser) return apiError(res, "Parámetro with requerido.");
+  await runService(res, () => messagesService.listMessagesWithUser(a.supabase, a.userId, withUser), { wrap: "data" });
+});
+
+router.post("/messages", async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  const body = parseJsonBody(req, res);
+  if (!body) return;
+  await runService(res, () => messagesService.sendMessage(a.supabase, a.userId, body), { wrap: "data", successStatus: 201 });
+});
+
+router.patch("/messages/read", async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  const withUser = req.query.with;
+  if (!withUser) return apiError(res, "Parámetro with requerido.");
+  await runService(res, () => messagesService.markThreadRead(a.supabase, a.userId, withUser), { wrap: "ok" });
+});
+
+router.get("/shares/received", async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  await runService(res, () => sharingService.listSharedWithMe(a.supabase, a.userId), { wrap: "data" });
+});
+
+router.get("/prospects/:id/shares", async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  await runService(res, () => sharingService.listSharesForProspect(a.supabase, a.userId, req.params.id), { wrap: "data" });
+});
+
+router.post("/prospects/:id/shares", async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  const body = parseJsonBody(req, res);
+  if (!body) return;
+  await runService(res, () => sharingService.createShare(a.supabase, a.userId, req.params.id, body), { wrap: "data", successStatus: 201 });
+});
+
+router.patch("/shares/:id", async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  const body = parseJsonBody(req, res);
+  if (!body) return;
+  await runService(res, () => sharingService.updateSharePermission(a.supabase, a.userId, req.params.id, body.permission), { wrap: "data" });
+});
+
+router.delete("/shares/:id", async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  await runService(res, () => sharingService.deleteShare(a.supabase, a.userId, req.params.id), { wrap: "ok" });
+});
+
+router.get("/shared-prospects/:id", async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  await runService(res, () => sharingService.getSharedProspect(a.supabase, a.userId, req.params.id), { wrap: "data" });
 });
 
 router.use("/admin", adminRouter);
