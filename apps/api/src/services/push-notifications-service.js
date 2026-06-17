@@ -119,15 +119,11 @@ export async function notifyConnectionAccepted(requesterId, { peerId, peerName }
   });
 }
 
-// Compatibilidad con rutas antiguas (ya no se usan con OneSignal).
+// Compatibilidad con rutas antiguas (VAPID / web-push).
 export async function savePushSubscription() {
   return { ok: true };
 }
 
 export async function removePushSubscription() {
   return { ok: true };
-}
-
-export function getVapidPublicKey() {
-  return null;
 }

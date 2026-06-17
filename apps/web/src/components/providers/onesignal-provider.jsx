@@ -3,21 +3,24 @@ import { createClient } from "@/lib/supabase/client";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import {
   ensureOneSignal,
-  isOneSignalConfigured,
   linkOneSignalUser,
+  resolveOneSignalAppId,
   unlinkOneSignalUser,
 } from "@/lib/onesignal.js";
 
 /** Inicializa OneSignal y vincula el usuario de Supabase como external_id. */
 export function OneSignalProvider({ children }) {
   useEffect(() => {
-    if (!isSupabaseConfigured() || !isOneSignalConfigured()) return undefined;
+    if (!isSupabaseConfigured()) return undefined;
 
     let authSubscription = null;
     let cancelled = false;
 
     const setup = async () => {
       try {
+        const appId = await resolveOneSignalAppId();
+        if (!appId || cancelled) return;
+
         await ensureOneSignal();
         if (cancelled) return;
 
@@ -33,7 +36,7 @@ export function OneSignalProvider({ children }) {
           }
         }).data.subscription;
       } catch {
-        // SDK no disponible o sin App ID.
+        // SDK no disponible o OneSignal sin configurar en servidor.
       }
     };
 

@@ -1,11 +1,17 @@
+import { notificationsApi } from "@/lib/notifications-api.js";
 import { createClient } from "@/lib/supabase/client";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 
 const SDK_URL = "https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js";
+const SW_PATH = "onesignal/OneSignalSDKWorker.js";
+const SW_SCOPE = "/onesignal/";
+
 let initPromise = null;
 let sdkReady = null;
+let resolvedAppId = null;
+let serverConfigured = null;
 
-function getAppId() {
+function getBuildAppId() {
   return import.meta.env.VITE_ONESIGNAL_APP_ID || null;
 }
 
@@ -24,19 +30,67 @@ function loadScript(src) {
   });
 }
 
+/** App ID embebido en build o obtenido del servidor en runtime. */
+export async function resolveOneSignalAppId() {
+  if (resolvedAppId) return resolvedAppId;
+  const buildId = getBuildAppId();
+  if (buildId) {
+    resolvedAppId = buildId;
+    return buildId;
+  }
+  if (!isSupabaseConfigured()) return null;
+  try {
+    const data = await notificationsApi.config();
+    if (data?.appId) {
+      resolvedAppId = data.appId;
+      serverConfigured = data.configured !== false;
+      return data.appId;
+    }
+  } catch {
+    // Sin sesión o servidor sin OneSignal.
+  }
+  return null;
+}
+
+export async function resolveServerPushConfigured() {
+  if (serverConfigured !== null) return serverConfigured;
+  const buildId = getBuildAppId();
+  if (buildId) {
+    try {
+      const status = await notificationsApi.status();
+      serverConfigured = status?.push_configured === true;
+      return serverConfigured;
+    } catch {
+      serverConfigured = true;
+      return true;
+    }
+  }
+  try {
+    const data = await notificationsApi.config();
+    serverConfigured = data?.configured === true;
+    return serverConfigured;
+  } catch {
+    serverConfigured = false;
+    return false;
+  }
+}
+
+export function isBrowserPushCapable() {
+  return typeof window !== "undefined"
+    && "serviceWorker" in navigator
+    && "Notification" in window;
+}
+
 export function isOneSignalConfigured() {
-  return Boolean(getAppId());
+  return Boolean(getBuildAppId() || resolvedAppId);
 }
 
 export function isPushSupported() {
-  return typeof window !== "undefined"
-    && "serviceWorker" in navigator
-    && "Notification" in window
-    && isOneSignalConfigured();
+  return isBrowserPushCapable() && isSupabaseConfigured();
 }
 
 export function getNotificationPermission() {
-  if (!isPushSupported()) return "unsupported";
+  if (!isBrowserPushCapable()) return "unsupported";
   return Notification.permission;
 }
 
@@ -51,30 +105,68 @@ async function resolveUserId() {
   }
 }
 
+async function cleanupLegacyWebPushSubscription() {
+  if (!("serviceWorker" in navigator)) return;
+  try {
+    const registrations = await navigator.serviceWorker.getRegistrations();
+    for (const registration of registrations) {
+      const scope = registration.scope || "";
+      if (scope.includes("/onesignal/")) continue;
+      const sub = await registration.pushManager?.getSubscription();
+      if (sub) await sub.unsubscribe();
+    }
+  } catch {
+    // Suscripción legacy de VAPID u otro proveedor.
+  }
+}
+
+async function waitForPushSubscription(OneSignal, timeoutMs = 12_000) {
+  if (OneSignal.User.PushSubscription.optedIn) return true;
+
+  return new Promise((resolve) => {
+    let done = false;
+    const finish = (value) => {
+      if (done) return;
+      done = true;
+      OneSignal.User.PushSubscription.removeEventListener("change", onChange);
+      clearTimeout(timer);
+      resolve(value);
+    };
+
+    const onChange = () => {
+      if (OneSignal.User.PushSubscription.optedIn) finish(true);
+    };
+
+    OneSignal.User.PushSubscription.addEventListener("change", onChange);
+    const timer = window.setTimeout(() => finish(Boolean(OneSignal.User.PushSubscription.optedIn)), timeoutMs);
+  });
+}
+
 export async function ensureOneSignal() {
-  if (!isOneSignalConfigured()) {
-    throw new Error("OneSignal no está configurado en esta app.");
+  const appId = await resolveOneSignalAppId();
+  if (!appId) {
+    throw new Error("ONESIGNAL_NOT_CONFIGURED");
   }
   if (sdkReady) return sdkReady;
 
   if (!initPromise) {
     initPromise = (async () => {
       await loadScript(SDK_URL);
-      const appId = getAppId();
       return new Promise((resolve, reject) => {
         window.OneSignalDeferred = window.OneSignalDeferred || [];
         window.OneSignalDeferred.push(async (OneSignal) => {
           try {
             await OneSignal.init({
               appId,
-              serviceWorkerPath: "onesignal/OneSignalSDKWorker.js",
-              serviceWorkerParam: { scope: "/onesignal/" },
+              serviceWorkerPath: SW_PATH,
+              serviceWorkerParam: { scope: SW_SCOPE },
               notifyButton: { enable: false },
               allowLocalhostAsSecureOrigin: import.meta.env.DEV,
             });
             sdkReady = OneSignal;
             resolve(OneSignal);
           } catch (err) {
+            initPromise = null;
             reject(err);
           }
         });
@@ -101,6 +193,13 @@ export async function subscribeToPush() {
     throw new Error("Este navegador no admite notificaciones push.");
   }
 
+  const configured = await resolveServerPushConfigured();
+  if (!configured) {
+    const err = new Error("ONESIGNAL_NOT_CONFIGURED");
+    err.code = "ONESIGNAL_NOT_CONFIGURED";
+    throw err;
+  }
+
   const permission = Notification.permission;
   if (permission === "denied") {
     const err = new Error("PERMISSION_DENIED");
@@ -108,16 +207,34 @@ export async function subscribeToPush() {
     throw err;
   }
 
+  await cleanupLegacyWebPushSubscription();
+
   const OneSignal = await ensureOneSignal();
   const userId = await resolveUserId();
   if (userId) await OneSignal.login(userId);
 
-  await OneSignal.User.PushSubscription.optIn();
+  try {
+    await OneSignal.User.PushSubscription.optIn();
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    if (/push service|registration failed/i.test(message)) {
+      const mapped = new Error("PUSH_SERVICE_ERROR");
+      mapped.code = "PUSH_SERVICE_ERROR";
+      throw mapped;
+    }
+    throw err;
+  }
 
-  const optedIn = OneSignal.User.PushSubscription.optedIn;
+  const optedIn = await waitForPushSubscription(OneSignal);
   if (!optedIn && Notification.permission !== "granted") {
     const err = new Error(Notification.permission === "denied" ? "PERMISSION_DENIED" : "PERMISSION_DISMISSED");
     err.code = Notification.permission === "denied" ? "PERMISSION_DENIED" : "PERMISSION_DISMISSED";
+    throw err;
+  }
+
+  if (!optedIn) {
+    const err = new Error("PUSH_SERVICE_ERROR");
+    err.code = "PUSH_SERVICE_ERROR";
     throw err;
   }
 
@@ -140,21 +257,27 @@ export async function getPushStatus() {
     };
   }
 
+  const pushConfigured = await resolveServerPushConfigured();
+  const appId = await resolveOneSignalAppId();
+
   let subscribed = false;
   let permission = Notification.permission;
 
-  try {
-    const OneSignal = await ensureOneSignal();
-    subscribed = Boolean(OneSignal.User.PushSubscription.optedIn);
-    permission = Notification.permission;
-  } catch {
-    subscribed = false;
+  if (appId) {
+    try {
+      const OneSignal = await ensureOneSignal();
+      subscribed = Boolean(OneSignal.User.PushSubscription.optedIn);
+      permission = Notification.permission;
+    } catch {
+      subscribed = false;
+    }
   }
 
   return {
     supported: true,
     subscribed,
     permission,
-    pushConfigured: true,
+    pushConfigured: pushConfigured && Boolean(appId),
+    provider: "onesignal",
   };
 }

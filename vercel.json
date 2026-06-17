@@ -20,9 +20,16 @@
     { "source": "/health/:path*", "destination": "/api" },
     { "source": "/api/:path*", "destination": "/api" },
     { "source": "/auth/:path*", "destination": "/api" },
-    { "source": "/((?!assets/|icon|favicon|manifest|sw|workbox|registerSW).*)", "destination": "/index.html" }
+    { "source": "/((?!assets/|icon|favicon|manifest|sw|workbox|registerSW|onesignal/).*)", "destination": "/index.html" }
   ],
   "headers": [
+    {
+      "source": "/onesignal/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" },
+        { "key": "Service-Worker-Allowed", "value": "/" }
+      ]
+    },
     {
       "source": "/assets/(.*)",
       "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }]

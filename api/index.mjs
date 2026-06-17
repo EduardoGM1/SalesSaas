@@ -3,6 +3,7 @@
  * Rewrites en vercel.json envían /api/*, /auth/* y /health aquí.
  */
 import dns from "node:dns";
+import "../apps/api/src/load-env.js";
 import app from "../apps/api/src/app.js";
 
 dns.setDefaultResultOrder("ipv4first");

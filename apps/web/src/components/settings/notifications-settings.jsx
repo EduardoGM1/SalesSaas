@@ -61,6 +61,11 @@ export function NotificationsSettings({
         toast.error(t("settings.notifications.deniedHelp"));
       } else if (err?.code === "PERMISSION_DISMISSED") {
         toast.error(t("settings.notifications.dismissed"));
+      } else if (err?.code === "ONESIGNAL_NOT_CONFIGURED") {
+        refreshStatus();
+        toast.error(t("settings.notifications.serverNotConfigured"));
+      } else if (err?.code === "PUSH_SERVICE_ERROR") {
+        toast.error(t("settings.notifications.pushServiceError"));
       } else {
         toast.error(err instanceof Error ? err.message : t("settings.notifications.error"));
       }
