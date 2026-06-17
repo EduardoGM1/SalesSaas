@@ -25,6 +25,7 @@ export function RegisterPage() {
           fullName: fd.get("fullName"),
           email: fd.get("email"),
           password: fd.get("password"),
+          redirectOrigin: window.location.origin,
         }),
       });
       const body = await res.json().catch(() => ({}));

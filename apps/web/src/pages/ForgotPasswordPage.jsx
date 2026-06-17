@@ -20,7 +20,10 @@ export function ForgotPasswordPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ email: fd.get("email") }),
+        body: JSON.stringify({
+          email: fd.get("email"),
+          redirectOrigin: window.location.origin,
+        }),
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body.error ?? t("auth.forgot.submit"));

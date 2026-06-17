@@ -51,12 +51,13 @@ router.post("/register", async (req, res) => {
   if (password.length < 6) return apiError(res, "La contraseña debe tener al menos 6 caracteres.");
   try {
     const sb = createCookieSupabaseClient(req, res);
+    const redirectOrigin = resolveWebOrigin(req, req.body?.redirectOrigin);
     const { data, error } = await sb.auth.signUp({
       email,
       password,
       options: {
         data: { full_name: fullName },
-        emailRedirectTo: `${resolveWebOrigin(req)}/auth/callback?next=/`,
+        emailRedirectTo: `${redirectOrigin}/auth/callback?next=/`,
       },
     });
     if (error) return apiError(res, traducirError(error.message), 400);
@@ -86,8 +87,9 @@ router.post("/forgot-password", async (req, res) => {
   if (!email) return apiError(res, "Escribe tu correo.");
   try {
     const sb = createCookieSupabaseClient(req, res);
+    const redirectOrigin = resolveWebOrigin(req, req.body?.redirectOrigin);
     const { error } = await sb.auth.resetPasswordForEmail(email, {
-      redirectTo: `${resolveWebOrigin(req)}/auth/callback?next=/reset-password`,
+      redirectTo: `${redirectOrigin}/auth/callback?next=/reset-password`,
     });
     if (error) return apiError(res, traducirError(error.message), 400);
     json(res, { message: "Si existe una cuenta con ese correo, recibirás un enlace para restablecer tu contraseña." });
@@ -117,7 +119,7 @@ router.post("/reset-password", async (req, res) => {
 });
 
 router.get("/callback", async (req, res) => {
-  const origin = resolveWebOrigin(req);
+  const origin = resolveWebOrigin(req, req.query.redirect_origin);
   if (!isSupabaseConfigured()) return res.redirect(`${origin}/login?error=auth`);
   const code = req.query.code;
   const next = req.query.next ?? "/";
