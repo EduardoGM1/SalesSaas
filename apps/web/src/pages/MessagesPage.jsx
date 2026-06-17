@@ -1,18 +1,19 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Send } from "lucide-react";
+import { Check, CheckCheck, Send } from "lucide-react";
 import { Topbar } from "@/components/layout/topbar";
 import { PageBack } from "@/components/layout/page-back";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { messagesApi } from "@/lib/network-api.js";
+import {
+  ContactPresenceStatus,
+  NetworkUserAvatar,
+  networkDisplayName,
+} from "@/components/network/network-user-avatar.jsx";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { toast } from "@/lib/toast";
 import { selectOnFocus } from "@/lib/focus-select.js";
-
-function displayName(user) {
-  return user?.full_name?.trim() || "Usuario";
-}
 
 function formatTime(iso, lang) {
   if (!iso) return "";
@@ -23,6 +24,29 @@ function formatTime(iso, lang) {
   } catch {
     return iso;
   }
+}
+
+function MessageReadStatus({ message, lang, t }) {
+  if (!message.mine) return null;
+
+  if (message.read_at) {
+    return (
+      <span
+        className="messages-read-status seen"
+        title={formatTime(message.read_at, lang)}
+      >
+        <CheckCheck size={13} aria-hidden="true" />
+        {t("messages.seen")}
+      </span>
+    );
+  }
+
+  return (
+    <span className="messages-read-status">
+      <Check size={13} aria-hidden="true" />
+      {t("messages.delivered")}
+    </span>
+  );
 }
 
 export function MessagesPage() {
@@ -66,7 +90,7 @@ export function MessagesPage() {
     loadThread(activePeerId).catch((err) => toast.error(err.message));
     const timer = window.setInterval(() => {
       loadThread(activePeerId).catch(() => {});
-    }, 12000);
+    }, 8000);
     return () => window.clearInterval(timer);
   }, [activePeerId]);
 
@@ -77,7 +101,8 @@ export function MessagesPage() {
   }, [messages]);
 
   const activePeer = conversations.find((c) => c.peer?.id === activePeerId)?.peer
-    ?? messages.find((m) => m.peer?.id === activePeerId)?.peer;
+    ?? messages.find((m) => m.peer?.id === activePeerId)?.peer
+    ?? (activePeerId ? { id: activePeerId } : null);
 
   const handleSend = async () => {
     const text = draft.trim();
@@ -130,11 +155,16 @@ export function MessagesPage() {
                     className={`messages-conv-item${active ? " active" : ""}`}
                     onClick={() => navigate(`/messages?with=${id}`)}
                   >
-                    <div className="messages-conv-top">
-                      <span className="messages-conv-name">{displayName(c.peer)}</span>
-                      {c.unread_count > 0 && <span className="messages-unread-badge">{c.unread_count}</span>}
+                    <NetworkUserAvatar user={c.peer} showPresence />
+                    <div className="messages-conv-body">
+                      <div className="messages-conv-top">
+                        <span className="messages-conv-name">{networkDisplayName(c.peer)}</span>
+                        {c.unread_count > 0 && (
+                          <span className="messages-unread-badge">{c.unread_count}</span>
+                        )}
+                      </div>
+                      <div className="messages-conv-preview">{c.last_message?.body}</div>
                     </div>
-                    <div className="messages-conv-preview">{c.last_message?.body}</div>
                   </button>
                 );
               })}
@@ -146,14 +176,26 @@ export function MessagesPage() {
               <div className="messages-thread-empty">{t("messages.selectConversation")}</div>
             ) : (
               <>
-                <div className="messages-thread-head">
-                  <div className="messages-thread-title">{displayName(activePeer)}</div>
+                <div className="messages-thread-head messages-thread-head--with-peer">
+                  <NetworkUserAvatar user={activePeer} showPresence />
+                  <div className="messages-thread-head-main">
+                    <div className="messages-thread-title">{networkDisplayName(activePeer)}</div>
+                    <ContactPresenceStatus
+                      userId={activePeerId}
+                      className="messages-thread-presence"
+                    />
+                  </div>
                 </div>
                 <div className="messages-thread-body" ref={threadRef}>
                   {messages.map((m) => (
                     <div key={m.id} className={`messages-bubble${m.mine ? " mine" : ""}`}>
                       <div className="messages-bubble-text">{m.body}</div>
-                      <div className="messages-bubble-time">{formatTime(m.created_at, lang)}</div>
+                      <div className="messages-bubble-meta">
+                        <span className="messages-bubble-time">
+                          {formatTime(m.created_at, lang)}
+                        </span>
+                        <MessageReadStatus message={m} lang={lang} t={t} />
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -171,7 +213,12 @@ export function MessagesPage() {
                       }
                     }}
                   />
-                  <button type="button" className="btn btn-primary" disabled={!draft.trim() || sending} onClick={handleSend}>
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    disabled={!draft.trim() || sending}
+                    onClick={handleSend}
+                  >
                     <Send size={16} /> {t("messages.send")}
                   </button>
                 </div>

@@ -1,9 +1,15 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
+import { createClient, primeRealtimeAuth } from "@/lib/supabase/client";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { networkApi } from "@/lib/network-api.js";
 import { fetchRealtimeSession, markPresenceOffline } from "@/lib/presence-api.js";
-import { channelHasPresence, presenceTopic } from "@/lib/presence/topics.js";
+import {
+  ensureRealtimeReady,
+  removeChannelSafe,
+  startPresenceHeartbeat,
+  subscribeOwnPresence,
+  subscribePeersBatch,
+} from "@/lib/presence/realtime.js";
 
 const PresenceContext = createContext({
   online: {},
@@ -11,45 +17,33 @@ const PresenceContext = createContext({
   seedLastSeen: () => {},
 });
 
-async function removeChannelSafe(supabase, channel) {
-  if (!supabase || !channel) return;
+async function runExclusive(lockRef, fn) {
+  while (lockRef.current) {
+    await lockRef.current;
+  }
+  const task = fn();
+  lockRef.current = task;
   try {
-    await supabase.removeChannel(channel);
-  } catch {
-    // Canal ya removido o en proceso de cierre.
+    return await task;
+  } finally {
+    if (lockRef.current === task) lockRef.current = null;
   }
 }
 
-/** Elimina cualquier canal activo con el mismo topic antes de crear uno nuevo. */
-async function removeTopicChannel(supabase, topic) {
-  const channels = supabase.getChannels?.() ?? [];
-  const matches = channels.filter((ch) => ch.topic === topic);
-  await Promise.all(matches.map((ch) => removeChannelSafe(supabase, ch)));
-}
+async function resolveSession(supabase) {
+  let { data: { session } } = await supabase.auth.getSession();
+  if (session?.access_token) return session;
 
-function subscribePeerPresence(supabase, peerId, setUserOnline) {
-  const topic = presenceTopic(peerId);
-  const ch = supabase.channel(topic, { config: { private: true } });
-
-  const syncPresence = () => {
-    setUserOnline(peerId, channelHasPresence(ch.presenceState()));
-  };
-
-  return new Promise((resolve) => {
-    ch
-      .on("presence", { event: "sync" }, syncPresence)
-      .on("presence", { event: "join" }, syncPresence)
-      .on("presence", { event: "leave" }, () => setUserOnline(peerId, false))
-      .subscribe((status) => {
-        if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
-          console.warn("[presence] Canal no autorizado o error:", topic, status);
-        }
-        if (status === "SUBSCRIBED") syncPresence();
-        if (status === "SUBSCRIBED" || status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
-          resolve(ch);
-        }
-      });
+  const rt = await fetchRealtimeSession();
+  const { error } = await supabase.auth.setSession({
+    access_token: rt.access_token,
+    refresh_token: rt.refresh_token,
   });
+  if (error) throw error;
+
+  ({ data: { session } } = await supabase.auth.getSession());
+  if (!session?.access_token) throw new Error("Sin sesión para Realtime");
+  return session;
 }
 
 export function PresenceProvider({ children }) {
@@ -59,8 +53,12 @@ export function PresenceProvider({ children }) {
   const userIdRef = useRef(null);
   const ownChannelRef = useRef(null);
   const peerChannelsRef = useRef(new Map());
-  const contactsLoadRef = useRef(null);
+  const presenceLockRef = useRef(null);
   const contactsChangedTimerRef = useRef(null);
+  const authSubscriptionRef = useRef(null);
+  const heartbeatStopRef = useRef(null);
+  const resubscribeTimerRef = useRef(null);
+  const activeRef = useRef(false);
 
   const seedLastSeen = useCallback((peers) => {
     if (!peers?.length) return;
@@ -88,7 +86,9 @@ export function PresenceProvider({ children }) {
     const sb = supabaseRef.current;
     const entries = [...peerChannelsRef.current.entries()];
     peerChannelsRef.current.clear();
-    await Promise.all(entries.map(([, ch]) => removeChannelSafe(sb, ch)));
+    for (const [, ch] of entries) {
+      await removeChannelSafe(sb, ch);
+    }
   }, []);
 
   const subscribeToContacts = useCallback(async (supabase, contacts, selfId) => {
@@ -98,18 +98,12 @@ export function PresenceProvider({ children }) {
       .map((p) => p?.id)
       .filter((id) => id && id !== selfId);
 
-    for (const peerId of peerIds) {
-      const topic = presenceTopic(peerId);
-      await removeTopicChannel(supabase, topic);
-      const ch = await subscribePeerPresence(supabase, peerId, setUserOnline);
-      peerChannelsRef.current.set(peerId, ch);
-    }
+    const channels = await subscribePeersBatch(supabase, peerIds, setUserOnline);
+    peerChannelsRef.current = channels;
   }, [removePeerChannels, setUserOnline]);
 
   const loadContacts = useCallback(async (supabase) => {
-    if (contactsLoadRef.current) return contactsLoadRef.current;
-
-    const task = (async () => {
+    return runExclusive(presenceLockRef, async () => {
       const connections = await networkApi.listConnections();
       const contacts = connections
         .filter((c) => c.status === "accepted")
@@ -118,65 +112,108 @@ export function PresenceProvider({ children }) {
       seedLastSeen(contacts);
       await subscribeToContacts(supabase, contacts, userIdRef.current);
       return contacts;
-    })();
-
-    contactsLoadRef.current = task;
-    try {
-      return await task;
-    } finally {
-      if (contactsLoadRef.current === task) contactsLoadRef.current = null;
-    }
+    });
   }, [seedLastSeen, subscribeToContacts]);
+
+  const startOwnChannel = useCallback(async (supabase, userId) => {
+    heartbeatStopRef.current?.();
+    heartbeatStopRef.current = null;
+
+    if (ownChannelRef.current) {
+      try { await ownChannelRef.current.untrack(); } catch { /* ignore */ }
+      await removeChannelSafe(supabase, ownChannelRef.current);
+      ownChannelRef.current = null;
+    }
+
+    const myChannel = await subscribeOwnPresence(supabase, userId);
+    ownChannelRef.current = myChannel;
+    heartbeatStopRef.current = startPresenceHeartbeat(myChannel);
+    return myChannel;
+  }, []);
+
+  const fullResubscribe = useCallback(async () => {
+    const supabase = supabaseRef.current;
+    const userId = userIdRef.current;
+    if (!supabase || !userId || !activeRef.current) return;
+
+    try {
+      const session = await resolveSession(supabase);
+      primeRealtimeAuth(session.access_token);
+      await ensureRealtimeReady(supabase, session.access_token);
+      await startOwnChannel(supabase, userId);
+      await loadContacts(supabase);
+    } catch (err) {
+      console.warn("[presence] Re-suscripción fallida:", err);
+    }
+  }, [loadContacts, startOwnChannel]);
+
+  const scheduleResubscribe = useCallback(() => {
+    if (resubscribeTimerRef.current) {
+      window.clearTimeout(resubscribeTimerRef.current);
+    }
+    resubscribeTimerRef.current = window.setTimeout(() => {
+      resubscribeTimerRef.current = null;
+      fullResubscribe();
+    }, 600);
+  }, [fullResubscribe]);
 
   useEffect(() => {
     if (!isSupabaseConfigured()) return undefined;
 
-    let active = true;
+    activeRef.current = true;
 
     const teardown = async () => {
-      const sb = supabaseRef.current;
-      try { await ownChannelRef.current?.untrack(); } catch { /* ignore */ }
-      if (ownChannelRef.current && sb) {
-        await removeChannelSafe(sb, ownChannelRef.current);
-      }
-      ownChannelRef.current = null;
-      await removePeerChannels();
+      markPresenceOffline();
+      heartbeatStopRef.current?.();
+      heartbeatStopRef.current = null;
+
+      await runExclusive(presenceLockRef, async () => {
+        const sb = supabaseRef.current;
+        try { await ownChannelRef.current?.untrack(); } catch { /* ignore */ }
+        if (ownChannelRef.current && sb) {
+          await removeChannelSafe(sb, ownChannelRef.current);
+        }
+        ownChannelRef.current = null;
+        await removePeerChannels();
+      });
     };
 
     const setup = async () => {
       try {
-        const rt = await fetchRealtimeSession();
-        if (!active) return;
+        await runExclusive(presenceLockRef, async () => {
+          const supabase = createClient();
+          supabaseRef.current = supabase;
 
-        const supabase = createClient();
-        supabaseRef.current = supabase;
-        const { error } = await supabase.auth.setSession({
-          access_token: rt.access_token,
-          refresh_token: rt.refresh_token,
-        });
-        if (error || !active) return;
+          const session = await resolveSession(supabase);
+          if (!activeRef.current) return;
 
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user?.id || !active) return;
-        userIdRef.current = user.id;
+          primeRealtimeAuth(session.access_token);
 
-        const ownTopic = presenceTopic(user.id);
-        await removeTopicChannel(supabase, ownTopic);
+          authSubscriptionRef.current?.unsubscribe();
+          authSubscriptionRef.current = supabase.auth.onAuthStateChange((event, nextSession) => {
+            if (nextSession?.access_token) {
+              primeRealtimeAuth(nextSession.access_token);
+              supabase.realtime.setAuth(nextSession.access_token);
+              if (event === "TOKEN_REFRESHED" || event === "SIGNED_IN") {
+                scheduleResubscribe();
+              }
+            }
+          }).data.subscription;
 
-        const myChannel = supabase.channel(ownTopic, {
-          config: { private: true, presence: { key: user.id } },
-        });
-        myChannel.subscribe(async (status) => {
-          if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
-            console.warn("[presence] Canal propio no autorizado:", ownTopic, status);
+          const ready = await ensureRealtimeReady(supabase, session.access_token);
+          if (!ready) {
+            console.warn("[presence] Realtime sin JWT/socket; reintentando…");
           }
-          if (status === "SUBSCRIBED") {
-            await myChannel.track({ online_at: new Date().toISOString() });
-          }
-        });
-        ownChannelRef.current = myChannel;
 
-        await loadContacts(supabase);
+          const { data: { user } } = await supabase.auth.getUser();
+          if (!user?.id || !activeRef.current) return;
+          userIdRef.current = user.id;
+
+          await startOwnChannel(supabase, user.id);
+        });
+
+        const sb = supabaseRef.current;
+        if (sb && activeRef.current) await loadContacts(sb);
       } catch (err) {
         console.warn("[presence] No se pudo iniciar Realtime Presence:", err);
       }
@@ -185,6 +222,12 @@ export function PresenceProvider({ children }) {
     setup();
 
     const handlePageLeave = () => markPresenceOffline();
+
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        scheduleResubscribe();
+      }
+    };
 
     const handleContactsChanged = () => {
       const sb = supabaseRef.current;
@@ -201,18 +244,25 @@ export function PresenceProvider({ children }) {
     window.addEventListener("pagehide", handlePageLeave);
     window.addEventListener("beforeunload", handlePageLeave);
     window.addEventListener("network:contacts-changed", handleContactsChanged);
+    document.addEventListener("visibilitychange", handleVisibility);
 
     return () => {
-      active = false;
+      activeRef.current = false;
+      authSubscriptionRef.current?.unsubscribe();
+      authSubscriptionRef.current = null;
       if (contactsChangedTimerRef.current) {
         window.clearTimeout(contactsChangedTimerRef.current);
       }
+      if (resubscribeTimerRef.current) {
+        window.clearTimeout(resubscribeTimerRef.current);
+      }
+      document.removeEventListener("visibilitychange", handleVisibility);
       window.removeEventListener("pagehide", handlePageLeave);
       window.removeEventListener("beforeunload", handlePageLeave);
       window.removeEventListener("network:contacts-changed", handleContactsChanged);
       teardown();
     };
-  }, [loadContacts, removePeerChannels]);
+  }, [loadContacts, removePeerChannels, scheduleResubscribe, startOwnChannel]);
 
   const value = useMemo(
     () => ({ online, lastSeen, seedLastSeen }),

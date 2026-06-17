@@ -232,7 +232,7 @@ export function NetworkPage() {
                   className="network-row network-row-clickable"
                   onClick={() => navigate(`/red/contacto/${c.peer.id}`)}
                 >
-                  <NetworkUserAvatar user={c.peer} />
+                  <NetworkUserAvatar user={c.peer} showPresence />
                   <div className="network-row-main">
                     <div className="network-row-name">{networkDisplayName(c.peer)}</div>
                     <ContactPresenceStatus userId={c.peer?.id} className="network-row-presence" />

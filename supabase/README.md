@@ -53,6 +53,9 @@ Ejecuta en **SQL Editor** (en orden):
 1. `0012_user_network_mvp.sql` — tabla `user_connections` y función `users_are_connected`
 2. `0015_user_presence.sql` — `last_seen_at` + políticas en `realtime.messages`
 3. `0016_realtime_messages_rls.sql` — `ALTER TABLE realtime.messages ENABLE ROW LEVEL SECURITY`
+4. `0017_fix_presence_rls.sql` — corrige sintaxis RLS y grants para canales private
+5. `0018_presence_realtime_grants.sql` — grants en schema `realtime` + función `can_access_presence_topic`
+6. `0019_presence_listen_policy_fix.sql` — corrige política SELECT (sin filtro `extension` en join)
 
 Verifica políticas:
 
@@ -84,7 +87,19 @@ Abre la consola del navegador (F12). Si falla la autorización verás:
 
 - `[presence] Canal no autorizado o error: presence:user:... CHANNEL_ERROR`
 
-Eso indica migraciones 0015/0016 pendientes o contacto no aceptado en `user_connections`.
+Eso indica migraciones pendientes, JWT sin enviar a Realtime, o contacto no aceptado.
+
+### Escalabilidad (~50 usuarios en línea)
+
+| Recurso | Uso actual | ¿Necesitas cambiar algo? |
+|---------|------------|--------------------------|
+| **WebSockets** (Max concurrent clients: 200) | 1 por pestaña activa → ~50 con 50 usuarios | No, margen suficiente |
+| **Canales por usuario** | 1 propio + 1 por contacto aceptado | OK hasta ~50 contactos/usuario |
+| **Pool DB Realtime** (valor 2 en dashboard) | Conexiones internas para evaluar RLS al unirse | Con 50 usuarios puede haber latencia al conectar; en Pro puedes subirlo |
+| **Triggers SQL** | No se usan para “en línea” | No hacen falta; presencia es Realtime |
+| **`last_seen_at`** | Solo al cerrar sesión (`POST /presence/offline`) | No requiere trigger; es “última desconexión” |
+
+No hace falta aumentar el límite de clientes para 50 usuarios. Sí asegura migraciones 0015–0019 y redespliegue del frontend.
 
 ## 5. Siguientes pasos (los implemento yo con las credenciales)
 
