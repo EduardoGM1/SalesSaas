@@ -2,9 +2,11 @@ import { useEffect, useState } from "react";
 import {
   getPushStatus,
   isPushSupported,
+  needsIosPwaInstall,
   subscribeToPush,
   unsubscribeFromPush,
 } from "@/lib/push-notifications.js";
+import { openInstallPrompt } from "@/lib/pwa-install.js";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { toast } from "@/lib/toast";
 
@@ -19,6 +21,8 @@ export function NotificationsSettings({
     subscribed: false,
     permission: "default",
     pushConfigured: true,
+    needsIosPwa: false,
+    needsResync: false,
   });
   const [pending, setPending] = useState(false);
 
@@ -44,6 +48,12 @@ export function NotificationsSettings({
   };
 
   const handleEnable = async () => {
+    if (needsIosPwaInstall()) {
+      toast.error(t("settings.notifications.iosPwaRequired"));
+      openInstallPrompt();
+      return;
+    }
+
     if (status.permission === "denied") {
       toast.error(t("settings.notifications.deniedHelp"));
       return;
@@ -61,6 +71,9 @@ export function NotificationsSettings({
         toast.error(t("settings.notifications.deniedHelp"));
       } else if (err?.code === "PERMISSION_DISMISSED") {
         toast.error(t("settings.notifications.dismissed"));
+      } else if (err?.code === "IOS_PWA_REQUIRED") {
+        toast.error(t("settings.notifications.iosPwaRequired"));
+        openInstallPrompt();
       } else if (err?.code === "ONESIGNAL_NOT_CONFIGURED") {
         refreshStatus();
         toast.error(t("settings.notifications.serverNotConfigured"));
@@ -87,6 +100,17 @@ export function NotificationsSettings({
     }
   };
 
+  if (needsIosPwaInstall()) {
+    return (
+      <div className="ethic-box">
+        <p style={{ marginBottom: 12 }}>{t("settings.notifications.iosPwaRequired")}</p>
+        <button type="button" className="btn btn-primary btn-sm" onClick={openInstallPrompt}>
+          {t("settings.notifications.iosPwaInstall")}
+        </button>
+      </div>
+    );
+  }
+
   if (!isPushSupported()) {
     return (
       <div className="ethic-box">{t("settings.notifications.unsupported")}</div>
@@ -98,6 +122,12 @@ export function NotificationsSettings({
       {!status.pushConfigured && (
         <div className="auth-error" style={{ marginBottom: 12 }}>
           {t("settings.notifications.serverNotConfigured")}
+        </div>
+      )}
+
+      {status.needsResync && (
+        <div className="auth-error" style={{ marginBottom: 12 }}>
+          {t("settings.notifications.needsResync")}
         </div>
       )}
 

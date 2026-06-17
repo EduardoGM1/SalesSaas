@@ -1,6 +1,7 @@
 import { notificationsApi } from "@/lib/notifications-api.js";
 import { createClient } from "@/lib/supabase/client";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
+import { isIosDevice, isStandaloneApp } from "@/lib/pwa-install.js";
 
 const SDK_URL = "https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js";
 const SW_PATH = "onesignal/OneSignalSDKWorker.js";
@@ -86,7 +87,26 @@ export function isOneSignalConfigured() {
 }
 
 export function isPushSupported() {
-  return isBrowserPushCapable() && isSupabaseConfigured();
+  if (!isBrowserPushCapable() || !isSupabaseConfigured()) return false;
+  if (isIosDevice() && !isStandaloneApp()) return false;
+  return true;
+}
+
+export function needsIosPwaInstall() {
+  return isIosDevice() && !isStandaloneApp();
+}
+
+function readSubscriptionState(OneSignal) {
+  const push = OneSignal.User.PushSubscription;
+  const optedIn = Boolean(push.optedIn);
+  const subscriptionId = push.id || null;
+  const token = push.token || null;
+  return {
+    optedIn,
+    subscriptionId,
+    token,
+    subscribed: optedIn && Boolean(subscriptionId || token),
+  };
 }
 
 export function getNotificationPermission() {
@@ -120,8 +140,8 @@ async function cleanupLegacyWebPushSubscription() {
   }
 }
 
-async function waitForPushSubscription(OneSignal, timeoutMs = 12_000) {
-  if (OneSignal.User.PushSubscription.optedIn) return true;
+async function waitForPushSubscription(OneSignal, timeoutMs = 15_000) {
+  if (readSubscriptionState(OneSignal).subscribed) return true;
 
   return new Promise((resolve) => {
     let done = false;
@@ -134,12 +154,28 @@ async function waitForPushSubscription(OneSignal, timeoutMs = 12_000) {
     };
 
     const onChange = () => {
-      if (OneSignal.User.PushSubscription.optedIn) finish(true);
+      if (readSubscriptionState(OneSignal).subscribed) finish(true);
     };
 
     OneSignal.User.PushSubscription.addEventListener("change", onChange);
-    const timer = window.setTimeout(() => finish(Boolean(OneSignal.User.PushSubscription.optedIn)), timeoutMs);
+    const timer = window.setTimeout(
+      () => finish(readSubscriptionState(OneSignal).subscribed),
+      timeoutMs,
+    );
   });
+}
+
+async function requestBrowserPermission(OneSignal) {
+  if (Notification.permission === "granted") return true;
+  if (Notification.permission === "denied") return false;
+
+  if (typeof OneSignal.Notifications?.requestPermission === "function") {
+    await OneSignal.Notifications.requestPermission();
+  } else {
+    await Notification.requestPermission();
+  }
+
+  return Notification.permission === "granted";
 }
 
 export async function ensureOneSignal() {
@@ -180,6 +216,8 @@ export async function ensureOneSignal() {
 export async function linkOneSignalUser(userId) {
   if (!userId) return;
   const OneSignal = await ensureOneSignal();
+  const state = readSubscriptionState(OneSignal);
+  if (!state.subscribed) return;
   await OneSignal.login(userId);
 }
 
@@ -189,7 +227,13 @@ export async function unlinkOneSignalUser() {
 }
 
 export async function subscribeToPush() {
-  if (!isPushSupported()) {
+  if (needsIosPwaInstall()) {
+    const err = new Error("IOS_PWA_REQUIRED");
+    err.code = "IOS_PWA_REQUIRED";
+    throw err;
+  }
+
+  if (!isBrowserPushCapable() || !isSupabaseConfigured()) {
     throw new Error("Este navegador no admite notificaciones push.");
   }
 
@@ -200,8 +244,7 @@ export async function subscribeToPush() {
     throw err;
   }
 
-  const permission = Notification.permission;
-  if (permission === "denied") {
+  if (Notification.permission === "denied") {
     const err = new Error("PERMISSION_DENIED");
     err.code = "PERMISSION_DENIED";
     throw err;
@@ -210,6 +253,23 @@ export async function subscribeToPush() {
   await cleanupLegacyWebPushSubscription();
 
   const OneSignal = await ensureOneSignal();
+
+  if (typeof OneSignal.Notifications?.isPushSupported === "function") {
+    const supported = await OneSignal.Notifications.isPushSupported();
+    if (!supported) {
+      const err = new Error("PUSH_SERVICE_ERROR");
+      err.code = "PUSH_SERVICE_ERROR";
+      throw err;
+    }
+  }
+
+  const granted = await requestBrowserPermission(OneSignal);
+  if (!granted) {
+    const err = new Error(Notification.permission === "denied" ? "PERMISSION_DENIED" : "PERMISSION_DISMISSED");
+    err.code = Notification.permission === "denied" ? "PERMISSION_DENIED" : "PERMISSION_DISMISSED";
+    throw err;
+  }
+
   const userId = await resolveUserId();
   if (userId) await OneSignal.login(userId);
 
@@ -225,20 +285,16 @@ export async function subscribeToPush() {
     throw err;
   }
 
-  const optedIn = await waitForPushSubscription(OneSignal);
-  if (!optedIn && Notification.permission !== "granted") {
-    const err = new Error(Notification.permission === "denied" ? "PERMISSION_DENIED" : "PERMISSION_DISMISSED");
-    err.code = Notification.permission === "denied" ? "PERMISSION_DENIED" : "PERMISSION_DISMISSED";
-    throw err;
-  }
-
-  if (!optedIn) {
+  const subscribed = await waitForPushSubscription(OneSignal);
+  if (!subscribed) {
     const err = new Error("PUSH_SERVICE_ERROR");
     err.code = "PUSH_SERVICE_ERROR";
     throw err;
   }
 
-  return { ok: true };
+  if (userId) await OneSignal.login(userId);
+
+  return readSubscriptionState(OneSignal);
 }
 
 export async function unsubscribeFromPush() {
@@ -248,7 +304,18 @@ export async function unsubscribeFromPush() {
 }
 
 export async function getPushStatus() {
-  if (!isPushSupported()) {
+  if (needsIosPwaInstall()) {
+    return {
+      supported: false,
+      subscribed: false,
+      permission: Notification.permission,
+      pushConfigured: await resolveServerPushConfigured(),
+      needsIosPwa: true,
+      provider: "onesignal",
+    };
+  }
+
+  if (!isBrowserPushCapable() || !isSupabaseConfigured()) {
     return {
       supported: false,
       subscribed: false,
@@ -261,12 +328,15 @@ export async function getPushStatus() {
   const appId = await resolveOneSignalAppId();
 
   let subscribed = false;
+  let subscriptionId = null;
   let permission = Notification.permission;
 
   if (appId) {
     try {
       const OneSignal = await ensureOneSignal();
-      subscribed = Boolean(OneSignal.User.PushSubscription.optedIn);
+      const state = readSubscriptionState(OneSignal);
+      subscribed = state.subscribed;
+      subscriptionId = state.subscriptionId;
       permission = Notification.permission;
     } catch {
       subscribed = false;
@@ -276,8 +346,10 @@ export async function getPushStatus() {
   return {
     supported: true,
     subscribed,
+    subscriptionId,
     permission,
     pushConfigured: pushConfigured && Boolean(appId),
+    needsResync: permission === "granted" && !subscribed,
     provider: "onesignal",
   };
 }

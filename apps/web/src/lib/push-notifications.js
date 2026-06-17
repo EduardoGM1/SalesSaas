@@ -2,11 +2,19 @@ import {
   getNotificationPermission,
   getPushStatus,
   isPushSupported,
+  needsIosPwaInstall,
   subscribeToPush,
   unsubscribeFromPush,
 } from "@/lib/onesignal.js";
 
-export { getNotificationPermission, getPushStatus, isPushSupported, subscribeToPush, unsubscribeFromPush };
+export {
+  getNotificationPermission,
+  getPushStatus,
+  isPushSupported,
+  needsIosPwaInstall,
+  subscribeToPush,
+  unsubscribeFromPush,
+};
 
 export async function syncPushSubscription() {
   const status = await getPushStatus();
