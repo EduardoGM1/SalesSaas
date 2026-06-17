@@ -1,5 +1,7 @@
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 
+import { markPresenceOffline } from "@/lib/presence-api.js";
+
 export async function fetchSession() {
   if (!isSupabaseConfigured()) return null;
   const res = await fetch("/api/v1/auth/session", { credentials: "include" });
@@ -21,6 +23,7 @@ export function notifyAuthChanged() {
 
 export async function signOut() {
   try {
+    markPresenceOffline();
     await fetch("/auth/signout", { method: "POST", credentials: "include" });
   } catch {
     // Limpiar estado local aunque falle la red.

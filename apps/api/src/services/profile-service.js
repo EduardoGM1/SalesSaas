@@ -31,3 +31,15 @@ export async function updateProfile(supabase, userId, body) {
   if (error) throw new ServiceError(error.message, 400);
   return data;
 }
+
+export async function markPresenceOffline(supabase, userId) {
+  const now = new Date().toISOString();
+  const { data, error } = await supabase
+    .from("profiles")
+    .update({ last_seen_at: now })
+    .eq("id", userId)
+    .select("id, last_seen_at")
+    .single();
+  if (error) throw new ServiceError(error.message, 400);
+  return data;
+}

@@ -6,7 +6,7 @@ async function loadProfiles(supabase, ids) {
   if (!unique.length) return new Map();
   const { data, error } = await supabase
     .from("profiles")
-    .select("id, full_name, email, avatar_url")
+    .select("id, full_name, email, avatar_url, last_seen_at")
     .in("id", unique);
   if (error) throw new ServiceError(error.message, 500);
   return new Map((data ?? []).map((p) => [p.id, p]));
@@ -27,7 +27,8 @@ function mapConnection(row, userId, profiles) {
       full_name: peer.full_name,
       email: peer.email,
       avatar_url: peer.avatar_url,
-    } : { id: peerId, full_name: null, email: null, avatar_url: null },
+      last_seen_at: peer.last_seen_at,
+    } : { id: peerId, full_name: null, email: null, avatar_url: null, last_seen_at: null },
   };
 }
 

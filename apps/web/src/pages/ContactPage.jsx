@@ -6,21 +6,11 @@ import { Topbar } from "@/components/layout/topbar";
 import { PageBack } from "@/components/layout/page-back";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { networkApi } from "@/lib/network-api.js";
+import { NetworkUserAvatar, ContactPresenceStatus, networkDisplayName } from "@/components/network/network-user-avatar.jsx";
+import { usePresenceContext } from "@/components/providers/presence-provider.jsx";
 import { RemoveContactModal } from "@/components/network/remove-contact-modal.jsx";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { toast } from "@/lib/toast";
-
-function displayName(user) {
-  return user?.full_name?.trim() || user?.email?.split("@")[0] || "Usuario";
-}
-
-function UserAvatar({ user }) {
-  const text = displayName(user).slice(0, 2).toUpperCase();
-  if (user?.avatar_url) {
-    return <img src={user.avatar_url} alt="" className="network-avatar-img" />;
-  }
-  return <div className="network-avatar">{text}</div>;
-}
 
 function permLabel(perm, t) {
   if (perm === "edit") return t("network.permEdit");
@@ -54,6 +44,7 @@ function ShareList({ items, contactId, t, empty }) {
 export function ContactPage({ contactId }) {
   const { t } = useI18n();
   const navigate = useNavigate();
+  const { seedLastSeen } = usePresenceContext();
   const [connection, setConnection] = useState(null);
   const [shares, setShares] = useState({ received: [], sent: [] });
   const [tab, setTab] = useState("received");
@@ -70,6 +61,7 @@ export function ContactPage({ contactId }) {
       ]);
       setConnection(conn);
       setShares(shareData);
+      if (conn?.peer) seedLastSeen([conn.peer]);
     } catch (err) {
       toast.error(err.message);
       navigate("/network");
@@ -111,7 +103,7 @@ export function ContactPage({ contactId }) {
 
   return (
     <>
-      <Topbar title={t("network.contactTitle")} subtitle={peer ? displayName(peer) : ""} />
+      <Topbar title={t("network.contactTitle")} subtitle={peer ? networkDisplayName(peer) : ""} />
       <div className="sales-page">
         <PageBack href="/network" />
 
@@ -120,10 +112,11 @@ export function ContactPage({ contactId }) {
         ) : peer ? (
           <>
             <header className="contact-page-head">
-              <UserAvatar user={peer} />
+              <NetworkUserAvatar user={peer} size="lg" showPresence />
               <div className="contact-page-meta">
-                <h1 className="exp-page-title">{displayName(peer)}</h1>
+                <h1 className="exp-page-title">{networkDisplayName(peer)}</h1>
                 <p className="exp-page-sub">{peer.email}</p>
+                <ContactPresenceStatus userId={peer.id} className="contact-page-presence" />
               </div>
               <div className="contact-page-actions">
                 <button type="button" className="btn btn-ghost btn-sm" onClick={() => navigate(`/messages?with=${peer.id}`)}>

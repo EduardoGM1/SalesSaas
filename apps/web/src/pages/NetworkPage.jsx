@@ -7,20 +7,10 @@ import { PageBack } from "@/components/layout/page-back";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { networkApi } from "@/lib/network-api.js";
 import { RemoveContactModal } from "@/components/network/remove-contact-modal.jsx";
+import { NetworkUserAvatar, ContactPresenceStatus, networkDisplayName } from "@/components/network/network-user-avatar.jsx";
+import { usePresenceContext } from "@/components/providers/presence-provider.jsx";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { toast } from "@/lib/toast";
-
-function displayName(user) {
-  return user?.full_name?.trim() || user?.email?.split("@")[0] || "Usuario";
-}
-
-function UserAvatar({ user, label }) {
-  const text = (label || displayName(user)).slice(0, 2).toUpperCase();
-  if (user?.avatar_url) {
-    return <img src={user.avatar_url} alt="" className="network-avatar-img" />;
-  }
-  return <div className="network-avatar">{text}</div>;
-}
 
 function ConnectionActions({ connection, onRefresh, onRequestRemove, t }) {
   const peer = connection.peer;
@@ -79,6 +69,7 @@ function ConnectionActions({ connection, onRefresh, onRequestRemove, t }) {
 export function NetworkPage() {
   const { t } = useI18n();
   const navigate = useNavigate();
+  const { seedLastSeen } = usePresenceContext();
   const [query, setQuery] = useState("");
   const [searching, setSearching] = useState(false);
   const [results, setResults] = useState([]);
@@ -92,6 +83,9 @@ export function NetworkPage() {
     try {
       const conn = await networkApi.listConnections();
       setConnections(conn);
+      const peers = conn.filter((c) => c.status === "accepted").map((c) => c.peer).filter(Boolean);
+      seedLastSeen(peers);
+      window.dispatchEvent(new Event("network:contacts-changed"));
     } catch (err) {
       toast.error(err.message);
     } finally {
@@ -181,9 +175,9 @@ export function NetworkPage() {
             <div className="network-list">
               {results.map((user) => (
                 <div key={user.id} className="network-row">
-                  <UserAvatar user={user} />
+                  <NetworkUserAvatar user={user} />
                   <div className="network-row-main">
-                    <div className="network-row-name">{displayName(user)}</div>
+                    <div className="network-row-name">{networkDisplayName(user)}</div>
                     <div className="network-row-sub">{user.email}</div>
                   </div>
                   {user.connection_status === "accepted" ? (
@@ -213,9 +207,9 @@ export function NetworkPage() {
             <div className="network-list">
               {pending.map((c) => (
                 <div key={c.id} className="network-row">
-                  <UserAvatar user={c.peer} />
+                  <NetworkUserAvatar user={c.peer} />
                   <div className="network-row-main">
-                    <div className="network-row-name">{displayName(c.peer)}</div>
+                    <div className="network-row-name">{networkDisplayName(c.peer)}</div>
                     <div className="network-row-sub">{c.peer?.email}</div>
                   </div>
                   <ConnectionActions connection={c} onRefresh={refresh} onRequestRemove={setRemoveTarget} t={t} />
@@ -238,9 +232,10 @@ export function NetworkPage() {
                   className="network-row network-row-clickable"
                   onClick={() => navigate(`/red/contacto/${c.peer.id}`)}
                 >
-                  <UserAvatar user={c.peer} />
+                  <NetworkUserAvatar user={c.peer} showPresence />
                   <div className="network-row-main">
-                    <div className="network-row-name">{displayName(c.peer)}</div>
+                    <div className="network-row-name">{networkDisplayName(c.peer)}</div>
+                    <ContactPresenceStatus userId={c.peer?.id} className="network-row-presence" />
                     <div className="network-row-sub">{c.peer?.email}</div>
                   </div>
                   <ConnectionActions connection={c} onRefresh={refresh} onRequestRemove={setRemoveTarget} t={t} />

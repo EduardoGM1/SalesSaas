@@ -71,6 +71,12 @@ router.get("/auth/session", async (req, res) => {
   }
 });
 
+router.get("/auth/realtime-session", async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  await runService(res, () => sessionService.getRealtimeSession(a.supabase), { wrap: "data" });
+});
+
 router.get("/geo/countries", (_req, res) => {
   json(res, { data: geoService.getCountries() });
 });
@@ -110,6 +116,12 @@ router.patch("/profile", async (req, res) => {
   const body = parseJsonBody(req, res);
   if (!body) return;
   await runService(res, () => profileService.updateProfile(a.supabase, a.userId, body), { wrap: "data" });
+});
+
+router.post("/profile/presence/offline", async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  await runService(res, () => profileService.markPresenceOffline(a.supabase, a.userId), { wrap: "data" });
 });
 
 router.get("/sync", async (req, res) => {
