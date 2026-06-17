@@ -9,16 +9,6 @@ async function apiFetch(path, options = {}) {
 }
 
 export const notificationsApi = {
-  vapidPublicKey: () => apiFetch("/notifications/vapid-public-key"),
+  config: () => apiFetch("/notifications/config"),
   status: () => apiFetch("/notifications/status"),
-  subscribe: (subscription) => apiFetch("/notifications/subscribe", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(subscription),
-  }),
-  unsubscribe: (endpoint) => apiFetch("/notifications/unsubscribe", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ endpoint }),
-  }),
 };

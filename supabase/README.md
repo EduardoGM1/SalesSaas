@@ -101,33 +101,34 @@ Eso indica migraciones pendientes, JWT sin enviar a Realtime, o contacto no acep
 
 No hace falta aumentar el límite de clientes para 50 usuarios. Sí asegura migraciones 0015–0019 y redespliegue del frontend.
 
-## 4c. Notificaciones push (mensajes y solicitudes de contacto)
+## 4c. Notificaciones push con OneSignal
 
-### SQL
+Las notificaciones usan [OneSignal](https://onesignal.com) (plan gratuito hasta ~10.000 suscriptores web).
 
-Ejecuta `0020_push_subscriptions.sql` en el SQL Editor.
+### OneSignal Dashboard
 
-### Claves VAPID (servidor + Vercel)
+1. Crea una app **Web** en OneSignal.
+2. Configura el sitio con **Custom Code** (no WordPress).
+3. Sube o verifica que `https://tu-dominio.com/onesignal/OneSignalSDKWorker.js` sea accesible.
+4. En **Settings → Keys & IDs** copia:
+   - **OneSignal App ID**
+   - **REST API Key**
 
-En la raíz del monorepo:
+### Variables de entorno (Vercel + `.env.local`)
 
-```bash
-npx web-push generate-vapid-keys
 ```
-
-Copia en **Vercel** (y `.env.local`):
-
-- `VAPID_PUBLIC_KEY`
-- `VAPID_PRIVATE_KEY`
-- `VITE_VAPID_PUBLIC_KEY` (misma clave pública)
-- `VAPID_SUBJECT` (p. ej. `mailto:tu@correo.com`)
-- `SUPABASE_SERVICE_ROLE_KEY` (obligatorio para enviar push)
+ONESIGNAL_APP_ID=tu-app-id
+ONESIGNAL_REST_API_KEY=tu-rest-api-key
+VITE_ONESIGNAL_APP_ID=tu-app-id
+```
 
 ### En la app
 
 1. **Configuración → Notificaciones → Activar notificaciones**.
-2. En móvil: instala la PWA en la pantalla de inicio (iOS 16.4+).
+2. En iPhone: instala la PWA en la pantalla de inicio (iOS 16.4+) y abre desde el icono.
 3. Eventos con push: mensaje nuevo, solicitud de contacto, solicitud aceptada.
+
+> La tabla `push_subscriptions` (migración 0020) ya no se usa; OneSignal gestiona los dispositivos vinculados por `external_id` (UUID de Supabase).
 
 ## 5. Siguientes pasos (los implemento yo con las credenciales)
 

@@ -1,31 +1,14 @@
-import webpush from "web-push";
 import { createServiceSupabaseClient } from "../lib/supabase-server.js";
 import { primaryWebOrigin } from "../lib/origins.js";
-import { ServiceError } from "../lib/service-error.js";
 
-let vapidConfigured = false;
+const ONESIGNAL_API = "https://api.onesignal.com/notifications";
 
-function ensureVapid() {
-  if (vapidConfigured) return true;
-  const publicKey = process.env.VAPID_PUBLIC_KEY;
-  const privateKey = process.env.VAPID_PRIVATE_KEY;
-  const subject = process.env.VAPID_SUBJECT || "mailto:support@salesapp.local";
-  if (!publicKey || !privateKey) return false;
-  webpush.setVapidDetails(subject, publicKey, privateKey);
-  vapidConfigured = true;
-  return true;
-}
-
-export function getVapidPublicKey() {
-  return process.env.VAPID_PUBLIC_KEY || process.env.VITE_VAPID_PUBLIC_KEY || null;
+export function getOneSignalAppId() {
+  return process.env.ONESIGNAL_APP_ID || process.env.VITE_ONESIGNAL_APP_ID || null;
 }
 
 export function isPushConfigured() {
-  return Boolean(getVapidPublicKey() && process.env.VAPID_PRIVATE_KEY && process.env.SUPABASE_SERVICE_ROLE_KEY);
-}
-
-function displayName(profile) {
-  return profile?.full_name?.trim() || profile?.email?.split("@")[0] || "Usuario";
+  return Boolean(getOneSignalAppId() && process.env.ONESIGNAL_REST_API_KEY);
 }
 
 async function loadNotificationPrefs(serviceSb, userId) {
@@ -42,86 +25,52 @@ async function loadNotificationPrefs(serviceSb, userId) {
   };
 }
 
-async function sendToUser(userId, payload) {
-  if (!ensureVapid()) return;
-  const serviceSb = createServiceSupabaseClient();
-  if (!serviceSb) return;
+async function sendToUser(userId, { title, body, url, tag }) {
+  const appId = getOneSignalAppId();
+  const apiKey = process.env.ONESIGNAL_REST_API_KEY;
+  if (!appId || !apiKey) return;
 
-  const { data: subs, error } = await serviceSb
-    .from("push_subscriptions")
-    .select("id, endpoint, p256dh, auth")
-    .eq("user_id", userId);
-  if (error || !subs?.length) return;
+  const payload = {
+    app_id: appId,
+    target_channel: "push",
+    include_aliases: { external_id: [String(userId)] },
+    headings: { en: title, es: title },
+    contents: { en: body, es: body },
+    url,
+    web_push_topic: tag,
+    collapse_id: tag,
+    data: { url },
+  };
 
-  const body = JSON.stringify(payload);
+  const res = await fetch(ONESIGNAL_API, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Key ${apiKey}`,
+    },
+    body: JSON.stringify(payload),
+  });
 
-  await Promise.all(subs.map(async (sub) => {
-    try {
-      await webpush.sendNotification({
-        endpoint: sub.endpoint,
-        keys: { p256dh: sub.p256dh, auth: sub.auth },
-      }, body);
-    } catch (err) {
-      const code = err?.statusCode;
-      if (code === 404 || code === 410) {
-        await serviceSb.from("push_subscriptions").delete().eq("id", sub.id);
-      } else if (process.env.NODE_ENV !== "production") {
-        console.warn("[push] Error enviando notificación:", code, err?.message);
-      }
+  if (!res.ok) {
+    const errBody = await res.text().catch(() => "");
+    if (process.env.NODE_ENV !== "production") {
+      console.warn("[onesignal] Error enviando notificación:", res.status, errBody);
     }
-  }));
-}
-
-export async function savePushSubscription(supabase, userId, subscription, userAgent) {
-  const endpoint = subscription?.endpoint;
-  const p256dh = subscription?.keys?.p256dh;
-  const auth = subscription?.keys?.auth;
-  if (!endpoint || !p256dh || !auth) {
-    throw new ServiceError("Suscripción push inválida.", 400);
   }
-
-  const { error } = await supabase
-    .from("push_subscriptions")
-    .upsert({
-      user_id: userId,
-      endpoint,
-      p256dh,
-      auth,
-      user_agent: userAgent ? String(userAgent).slice(0, 500) : null,
-      updated_at: new Date().toISOString(),
-    }, { onConflict: "user_id,endpoint" });
-
-  if (error) throw new ServiceError(error.message, 400);
-  return { ok: true };
 }
 
-export async function removePushSubscription(supabase, userId, endpoint) {
-  if (!endpoint) throw new ServiceError("Endpoint requerido.", 400);
-  const { error } = await supabase
-    .from("push_subscriptions")
-    .delete()
-    .eq("user_id", userId)
-    .eq("endpoint", endpoint);
-  if (error) throw new ServiceError(error.message, 400);
-  return { ok: true };
-}
-
-export async function getPushStatus(supabase, userId) {
-  const { count, error } = await supabase
-    .from("push_subscriptions")
-    .select("id", { count: "exact", head: true })
-    .eq("user_id", userId);
-  if (error) throw new ServiceError(error.message, 500);
+export async function getPushStatus() {
   return {
-    subscribed: (count ?? 0) > 0,
+    subscribed: null,
     push_configured: isPushConfigured(),
+    provider: "onesignal",
     permission_required: true,
   };
 }
 
 export async function notifyNewMessage(recipientId, { senderId, senderName, body }) {
   const serviceSb = createServiceSupabaseClient();
-  if (!serviceSb || !ensureVapid()) return;
+  if (!serviceSb || !isPushConfigured()) return;
 
   const prefs = await loadNotificationPrefs(serviceSb, recipientId);
   if (!prefs.messages) return;
@@ -140,7 +89,7 @@ export async function notifyNewMessage(recipientId, { senderId, senderName, body
 
 export async function notifyConnectionRequest(addresseeId, { requesterId, requesterName }) {
   const serviceSb = createServiceSupabaseClient();
-  if (!serviceSb || !ensureVapid()) return;
+  if (!serviceSb || !isPushConfigured()) return;
 
   const prefs = await loadNotificationPrefs(serviceSb, addresseeId);
   if (!prefs.connection_requests) return;
@@ -156,7 +105,7 @@ export async function notifyConnectionRequest(addresseeId, { requesterId, reques
 
 export async function notifyConnectionAccepted(requesterId, { peerId, peerName }) {
   const serviceSb = createServiceSupabaseClient();
-  if (!serviceSb || !ensureVapid()) return;
+  if (!serviceSb || !isPushConfigured()) return;
 
   const prefs = await loadNotificationPrefs(serviceSb, requesterId);
   if (!prefs.connection_accepted) return;
@@ -168,4 +117,17 @@ export async function notifyConnectionAccepted(requesterId, { peerId, peerName }
     url: `${origin}/red/contacto/${peerId}`,
     tag: `connection-accepted-${peerId}`,
   });
+}
+
+// Compatibilidad con rutas antiguas (ya no se usan con OneSignal).
+export async function savePushSubscription() {
+  return { ok: true };
+}
+
+export async function removePushSubscription() {
+  return { ok: true };
+}
+
+export function getVapidPublicKey() {
+  return null;
 }

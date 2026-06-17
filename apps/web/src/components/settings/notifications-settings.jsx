@@ -3,7 +3,6 @@ import {
   getPushStatus,
   isPushSupported,
   subscribeToPush,
-  syncPushSubscription,
   unsubscribeFromPush,
 } from "@/lib/push-notifications.js";
 import { useI18n } from "@/hooks/use-i18n.js";
@@ -20,7 +19,6 @@ export function NotificationsSettings({
     subscribed: false,
     permission: "default",
     pushConfigured: true,
-    needsSync: false,
   });
   const [pending, setPending] = useState(false);
 
@@ -36,16 +34,6 @@ export function NotificationsSettings({
 
   useEffect(() => {
     refreshStatus();
-    if (!isPushSupported() || Notification.permission !== "granted") return undefined;
-
-    let cancelled = false;
-    syncPushSubscription()
-      .then((result) => {
-        if (!cancelled && result.synced) refreshStatus();
-      })
-      .catch(() => {});
-
-    return () => { cancelled = true; };
   }, []);
 
   const setPref = (key, value) => {
@@ -114,9 +102,7 @@ export function NotificationsSettings({
           <div className="settings-help">
             {status.subscribed
               ? t("settings.notifications.statusOn")
-              : status.needsSync
-                ? t("settings.notifications.needsSync")
-                : t("settings.notifications.statusOff")}
+              : t("settings.notifications.statusOff")}
             {status.permission === "denied" ? ` — ${t("settings.notifications.denied")}` : ""}
           </div>
         </div>
