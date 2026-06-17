@@ -11,6 +11,44 @@ const PresenceContext = createContext({
   seedLastSeen: () => {},
 });
 
+async function removeChannelSafe(supabase, channel) {
+  if (!supabase || !channel) return;
+  try {
+    await supabase.removeChannel(channel);
+  } catch {
+    // Canal ya removido o en proceso de cierre.
+  }
+}
+
+/** Elimina cualquier canal activo con el mismo topic antes de crear uno nuevo. */
+async function removeTopicChannel(supabase, topic) {
+  const channels = supabase.getChannels?.() ?? [];
+  const matches = channels.filter((ch) => ch.topic === topic);
+  await Promise.all(matches.map((ch) => removeChannelSafe(supabase, ch)));
+}
+
+function subscribePeerPresence(supabase, peerId, setUserOnline) {
+  const topic = presenceTopic(peerId);
+  const ch = supabase.channel(topic, { config: { private: true } });
+
+  const syncPresence = () => {
+    setUserOnline(peerId, channelHasPresence(ch.presenceState()));
+  };
+
+  return new Promise((resolve) => {
+    ch
+      .on("presence", { event: "sync" }, syncPresence)
+      .on("presence", { event: "join" }, syncPresence)
+      .on("presence", { event: "leave" }, () => setUserOnline(peerId, false))
+      .subscribe((status) => {
+        if (status === "SUBSCRIBED") syncPresence();
+        if (status === "SUBSCRIBED" || status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+          resolve(ch);
+        }
+      });
+  });
+}
+
 export function PresenceProvider({ children }) {
   const [online, setOnline] = useState({});
   const [lastSeen, setLastSeen] = useState({});
@@ -18,6 +56,8 @@ export function PresenceProvider({ children }) {
   const userIdRef = useRef(null);
   const ownChannelRef = useRef(null);
   const peerChannelsRef = useRef(new Map());
+  const contactsLoadRef = useRef(null);
+  const contactsChangedTimerRef = useRef(null);
 
   const seedLastSeen = useCallback((peers) => {
     if (!peers?.length) return;
@@ -43,38 +83,46 @@ export function PresenceProvider({ children }) {
 
   const removePeerChannels = useCallback(async () => {
     const sb = supabaseRef.current;
-    for (const [, ch] of peerChannelsRef.current) {
-      try { await sb?.removeChannel(ch); } catch { /* ignore */ }
-    }
+    const entries = [...peerChannelsRef.current.entries()];
     peerChannelsRef.current.clear();
+    await Promise.all(entries.map(([, ch]) => removeChannelSafe(sb, ch)));
   }, []);
 
-  const subscribeToContacts = useCallback(async (supabase, contacts) => {
+  const subscribeToContacts = useCallback(async (supabase, contacts, selfId) => {
     await removePeerChannels();
-    for (const peer of contacts) {
-      if (!peer?.id) continue;
-      const peerId = peer.id;
-      const ch = supabase.channel(presenceTopic(peerId), { config: { private: true } });
-      const syncPresence = () => {
-        setUserOnline(peerId, channelHasPresence(ch.presenceState()));
-      };
-      ch.on("presence", { event: "sync" }, syncPresence);
-      ch.on("presence", { event: "join" }, syncPresence);
-      ch.on("presence", { event: "leave" }, () => setUserOnline(peerId, false));
-      ch.subscribe();
+
+    const peerIds = contacts
+      .map((p) => p?.id)
+      .filter((id) => id && id !== selfId);
+
+    for (const peerId of peerIds) {
+      const topic = presenceTopic(peerId);
+      await removeTopicChannel(supabase, topic);
+      const ch = await subscribePeerPresence(supabase, peerId, setUserOnline);
       peerChannelsRef.current.set(peerId, ch);
     }
   }, [removePeerChannels, setUserOnline]);
 
   const loadContacts = useCallback(async (supabase) => {
-    const connections = await networkApi.listConnections();
-    const contacts = connections
-      .filter((c) => c.status === "accepted")
-      .map((c) => c.peer)
-      .filter(Boolean);
-    seedLastSeen(contacts);
-    await subscribeToContacts(supabase, contacts);
-    return contacts;
+    if (contactsLoadRef.current) return contactsLoadRef.current;
+
+    const task = (async () => {
+      const connections = await networkApi.listConnections();
+      const contacts = connections
+        .filter((c) => c.status === "accepted")
+        .map((c) => c.peer)
+        .filter(Boolean);
+      seedLastSeen(contacts);
+      await subscribeToContacts(supabase, contacts, userIdRef.current);
+      return contacts;
+    })();
+
+    contactsLoadRef.current = task;
+    try {
+      return await task;
+    } finally {
+      if (contactsLoadRef.current === task) contactsLoadRef.current = null;
+    }
   }, [seedLastSeen, subscribeToContacts]);
 
   useEffect(() => {
@@ -86,7 +134,7 @@ export function PresenceProvider({ children }) {
       const sb = supabaseRef.current;
       try { await ownChannelRef.current?.untrack(); } catch { /* ignore */ }
       if (ownChannelRef.current && sb) {
-        try { await sb.removeChannel(ownChannelRef.current); } catch { /* ignore */ }
+        await removeChannelSafe(sb, ownChannelRef.current);
       }
       ownChannelRef.current = null;
       await removePeerChannels();
@@ -109,7 +157,10 @@ export function PresenceProvider({ children }) {
         if (!user?.id || !active) return;
         userIdRef.current = user.id;
 
-        const myChannel = supabase.channel(presenceTopic(user.id), {
+        const ownTopic = presenceTopic(user.id);
+        await removeTopicChannel(supabase, ownTopic);
+
+        const myChannel = supabase.channel(ownTopic, {
           config: { private: true, presence: { key: user.id } },
         });
         myChannel.subscribe(async (status) => {
@@ -128,9 +179,17 @@ export function PresenceProvider({ children }) {
     setup();
 
     const handlePageLeave = () => markPresenceOffline();
+
     const handleContactsChanged = () => {
       const sb = supabaseRef.current;
-      if (sb) loadContacts(sb);
+      if (!sb) return;
+      if (contactsChangedTimerRef.current) {
+        window.clearTimeout(contactsChangedTimerRef.current);
+      }
+      contactsChangedTimerRef.current = window.setTimeout(() => {
+        contactsChangedTimerRef.current = null;
+        loadContacts(sb);
+      }, 400);
     };
 
     window.addEventListener("pagehide", handlePageLeave);
@@ -139,6 +198,9 @@ export function PresenceProvider({ children }) {
 
     return () => {
       active = false;
+      if (contactsChangedTimerRef.current) {
+        window.clearTimeout(contactsChangedTimerRef.current);
+      }
       window.removeEventListener("pagehide", handlePageLeave);
       window.removeEventListener("beforeunload", handlePageLeave);
       window.removeEventListener("network:contacts-changed", handleContactsChanged);
