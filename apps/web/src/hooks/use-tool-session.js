@@ -1,3 +1,4 @@
+import { useCallback, useMemo } from "react";
 import { useDbStore } from "@/stores/db-store";
 import { useToolBucketReady } from "@/hooks/use-tool-bucket-ready";
 import { useSharedToolSession } from "@/hooks/use-shared-tool-session";
@@ -20,23 +21,23 @@ export function useToolSession({ clientId, shared }) {
   const readOnly = useShared ? sharedSession.readOnly : false;
   const backHref = resolveToolBackHref(clientId, useShared ? sharedSession.backHref : undefined);
 
-  const getBucket = (tool) => (
+  const getBucket = useCallback((tool) => (
     useShared ? sharedSession.getToolData(tool) : getToolBucket(tool, mode, clientId)
-  );
+  ), [useShared, sharedSession.getToolData, getToolBucket, mode, clientId]);
 
-  const saveBucket = async (tool, data) => {
+  const saveBucket = useCallback(async (tool, data) => {
     if (useShared) {
       await sharedSession.saveTool(tool, data);
       return;
     }
     saveToolBucket(tool, mode, data, clientId);
-  };
+  }, [useShared, sharedSession.saveTool, saveToolBucket, mode, clientId]);
 
-  const getProspectClient = () => (
+  const getProspectClient = useCallback(() => (
     useShared ? sharedSession.prospect : (clientId ? getClient(clientId) : undefined)
-  );
+  ), [useShared, sharedSession.prospect, clientId, getClient]);
 
-  const syncProspectFields = async (fields) => {
+  const syncProspectFields = useCallback(async (fields) => {
     if (!fields) return;
     if (useShared) {
       if (!sharedSession.canEdit) return;
@@ -56,9 +57,9 @@ export function useToolSession({ clientId, shared }) {
     const c = getClient(clientId);
     if (!c) return;
     saveClient(ensureProspectIdentity({ ...c, ...fields }));
-  };
+  }, [useShared, sharedSession.canEdit, sharedSession.reload, shared?.prospectId, clientId, getClient, saveClient]);
 
-  return {
+  return useMemo(() => ({
     ready,
     mode,
     readOnly,
@@ -70,5 +71,20 @@ export function useToolSession({ clientId, shared }) {
     isShared: useShared,
     isFileMode: useShared || !!clientId,
     prospectId: useShared ? shared.prospectId : clientId,
-  };
+    prospect: useShared ? sharedSession.prospect : (clientId ? getClient(clientId) : undefined),
+  }), [
+    ready,
+    mode,
+    readOnly,
+    backHref,
+    getBucket,
+    saveBucket,
+    getProspectClient,
+    syncProspectFields,
+    useShared,
+    clientId,
+    shared?.prospectId,
+    sharedSession.prospect,
+    getClient,
+  ]);
 }

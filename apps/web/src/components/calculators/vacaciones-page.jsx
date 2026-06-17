@@ -21,7 +21,7 @@ interface VacacionesPageProps {
 
 export function VacacionesPage({ clientId, shared }: VacacionesPageProps) {
   const { t } = useI18n();
-  const { ready, readOnly, backHref, getBucket, saveBucket, isFileMode } = useToolSession({ clientId, shared });
+  const { ready, readOnly, backHref, getBucket, saveBucket, isFileMode, isShared } = useToolSession({ clientId, shared });
   const { fmt, fmtN } = useMoney();
   const moneySettings = useDbStore((s) => s.db.settings);
   const [fields, setFields] = useState({ ...EMPTY_FIELDS });
@@ -38,7 +38,7 @@ export function VacacionesPage({ clientId, shared }: VacacionesPageProps) {
     } else {
       setFields({ ...EMPTY_FIELDS });
     }
-  }, [ready, clientId, getBucket]);
+  }, [ready, clientId, getBucket, shared?.prospectId]);
 
   const handleClear = async () => {
     if (readOnly) return;
@@ -140,7 +140,9 @@ export function VacacionesPage({ clientId, shared }: VacacionesPageProps) {
           </div>
         )}
       </div>
-      <SaveToolModal open={saveToolOpen} onOpenChange={setSaveToolOpen} tool="vacaciones" />
+      {!isShared && (
+        <SaveToolModal open={saveToolOpen} onOpenChange={setSaveToolOpen} tool="vacaciones" />
+      )}
     </>
   );
 }

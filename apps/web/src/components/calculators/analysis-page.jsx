@@ -22,18 +22,17 @@ export function AnalysisPage({ clientId, shared }: { clientId?; shared? }) {
   const { fmt, fmtD } = useMoney();
   const moneySettings = useDbStore((s) => s.db.settings);
   const session = useToolSession({ clientId, shared });
-  const { ready, backHref, readOnly, isShared } = session;
+  const { ready, backHref, readOnly, isShared, getBucket, prospect } = session;
 
   const survey = useMemo(() => {
     if (!ready) return {};
-    if (isShared) return session.getBucket("survey") as Record<string, string>;
-    const bucket = session.getBucket("survey");
+    if (isShared) return getBucket("survey") as Record<string, string>;
+    const bucket = getBucket("survey");
     if (Object.keys(bucket).length) return bucket as Record<string, string>;
-    const c = session.getProspectClient();
-    return (c?.data?.survey || {}) as Record<string, string>;
-  }, [ready, isShared, clientId, session]);
+    return (prospect?.data?.survey || {}) as Record<string, string>;
+  }, [ready, isShared, getBucket, prospect, shared?.prospectId]);
 
-  const c = session.getProspectClient();
+  const c = prospect;
   const result = useMemo(
     () => computeSurvey(survey, String(survey.stype || "hotel")),
     [survey, moneySettings?.currency, moneySettings?.exchangeRate, moneySettings?.language],

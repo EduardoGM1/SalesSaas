@@ -36,7 +36,7 @@ interface SurveyPageProps {
 export function SurveyPage({ clientId, shared }: SurveyPageProps) {
   const { t } = useI18n();
   const session = useToolSession({ clientId, shared });
-  const { ready, readOnly, backHref, getBucket, saveBucket, syncProspectFields, isFileMode, isShared } = session;
+  const { ready, readOnly, backHref, getBucket, saveBucket, syncProspectFields, isFileMode, isShared, prospect } = session;
   const saveClient = useDbStore((s) => s.saveClient);
   const getClient = useDbStore((s) => s.getClient);
   const moneySettings = useDbStore((s) => s.db.settings);
@@ -57,8 +57,8 @@ export function SurveyPage({ clientId, shared }: SurveyPageProps) {
       if (bucket.stype) setSType(String(bucket.stype));
       if (bucket.futureType) setFutureType(bucket.futureType === "dream" ? "dream" : "real");
     }
-    if (isFileMode) {
-      const c = session.getProspectClient();
+    if (isFileMode && prospect) {
+      const c = prospect;
       if (c) {
         loaded.svp_name1 = loaded.svp_name1 || c.name1 || c.name || "";
         loaded.svp_name2 = loaded.svp_name2 || c.name2 || "";
@@ -69,9 +69,9 @@ export function SurveyPage({ clientId, shared }: SurveyPageProps) {
       }
     }
     setData(loaded);
-  }, [ready, clientId, isFileMode, getBucket, session]);
+  }, [ready, clientId, isFileMode, getBucket, prospect, shared?.prospectId]);
 
-  const client = isFileMode ? session.getProspectClient() : undefined;
+  const client = isFileMode ? prospect : undefined;
   const pageCtx = isFileMode ? (clientDisplayName(client) || t("tools.sub.file")) : t("tools.sub.free");
   const countries = Object.keys(COUNTRY_CITY);
   const cities = COUNTRY_CITY[data.svp_country || ""] || ["Otro"];
@@ -404,7 +404,9 @@ export function SurveyPage({ clientId, shared }: SurveyPageProps) {
           </div>
         )}
       </div>
-      <SaveToolModal open={saveToolOpen} onOpenChange={setSaveToolOpen} tool="survey" />
+      {!isShared && (
+        <SaveToolModal open={saveToolOpen} onOpenChange={setSaveToolOpen} tool="survey" />
+      )}
     </>
   );
 }

@@ -45,7 +45,7 @@ export function WorksheetPage({ clientId, shared }: WorksheetPageProps) {
       wv: String(b.wv ?? ""), we: String(b.we ?? ""),
       wcc: String(b.wcc ?? ""), wob: String(b.wob ?? ""),
     });
-  }, [ready, clientId, getBucket, db.settings?.worksheetConfig]);
+  }, [ready, clientId, getBucket, db.settings?.worksheetConfig, shared?.prospectId]);
 
   const handleClear = async () => {
     if (readOnly) return;
@@ -179,7 +179,9 @@ export function WorksheetPage({ clientId, shared }: WorksheetPageProps) {
           <button type="button" className="btn btn-primary" onClick={() => { setConfigOpen(false); saveAll(); }}>{t("common.save")}</button>
         </div>
       </SalesModal>
-      <SaveToolModal open={saveToolOpen} onOpenChange={setSaveToolOpen} tool="worksheet" />
+      {!isShared && (
+        <SaveToolModal open={saveToolOpen} onOpenChange={setSaveToolOpen} tool="worksheet" />
+      )}
     </>
   );
 }

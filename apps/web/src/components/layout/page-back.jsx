@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { useI18n } from "@/hooks/use-i18n.js";
 
 export function PageBack({
@@ -8,19 +8,21 @@ export function PageBack({
   inline = false,
 }) {
   const { t } = useI18n();
-  const navigate = useNavigate();
-  const handleClick = () => {
-    if (onClick) {
-      onClick();
-      return;
-    }
-    navigate(href);
-  };
+  const text = label ?? t("common.back");
+
+  if (onClick) {
+    const btn = (
+      <button type="button" className="btn btn-ghost btn-sm" onClick={onClick}>
+        {text}
+      </button>
+    );
+    return inline ? btn : <div className="page-back-row">{btn}</div>;
+  }
+
   const btn = (
-    <button type="button" className="btn btn-ghost btn-sm" onClick={handleClick}>
-      {label ?? t("common.back")}
-    </button>
+    <Link to={href} className="btn btn-ghost btn-sm">
+      {text}
+    </Link>
   );
-  if (inline) return btn;
-  return <div className="page-back-row">{btn}</div>;
+  return inline ? btn : <div className="page-back-row">{btn}</div>;
 }

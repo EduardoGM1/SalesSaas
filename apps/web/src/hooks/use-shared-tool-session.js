@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { sharingApi } from "@/lib/network-api.js";
 import { prospectRowToClient, canEditShared } from "@/lib/shared-prospect";
 
@@ -8,13 +8,14 @@ export function useSharedToolSession(prospectId, contactId) {
   const [prospect, setProspect] = useState(null);
   const [tools, setTools] = useState({});
 
-  const reload = async () => {
+  const reload = useCallback(async () => {
+    if (!prospectId) return null;
     const data = await sharingApi.getSharedProspect(prospectId);
     setPermission(data.permission);
     setProspect(prospectRowToClient(data.prospect));
     setTools(data.tools || {});
     return data;
-  };
+  }, [prospectId]);
 
   useEffect(() => {
     if (!prospectId) return;
@@ -22,7 +23,7 @@ export function useSharedToolSession(prospectId, contactId) {
     reload()
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, [prospectId]);
+  }, [prospectId, reload]);
 
   const canEdit = canEditShared(permission);
   const readOnly = !canEdit;
@@ -30,15 +31,15 @@ export function useSharedToolSession(prospectId, contactId) {
     ? `/red/contacto/${contactId}/expediente/${prospectId}`
     : `/network`;
 
-  const getToolData = (tool) => tools[tool] || {};
+  const getToolData = useCallback((tool) => tools[tool] || {}, [tools]);
 
-  const saveTool = async (tool, data) => {
+  const saveTool = useCallback(async (tool, data) => {
     const saved = await sharingApi.saveTool(prospectId, tool, data);
     setTools((prev) => ({ ...prev, [tool]: saved }));
     return saved;
-  };
+  }, [prospectId]);
 
-  return {
+  return useMemo(() => ({
     ready: !loading && !!prospect,
     loading,
     permission,
@@ -49,5 +50,15 @@ export function useSharedToolSession(prospectId, contactId) {
     getToolData,
     saveTool,
     reload,
-  };
+  }), [
+    loading,
+    permission,
+    prospect,
+    canEdit,
+    readOnly,
+    backHref,
+    getToolData,
+    saveTool,
+    reload,
+  ]);
 }
