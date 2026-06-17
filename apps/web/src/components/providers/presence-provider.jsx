@@ -17,7 +17,11 @@ const PresenceContext = createContext({
   seedLastSeen: () => {},
 });
 
-const RESUBSCRIBE_COOLDOWN_MS = 30_000;
+const RESUBSCRIBE_COOLDOWN_MS = 60_000;
+const CONTACTS_DEBOUNCE_MS = 1_500;
+const PEER_RETRY_BASE_MS = 10_000;
+const PEER_RETRY_MAX_MS = 300_000;
+const MAX_PEER_SUBSCRIBES_PER_PASS = 8;
 
 async function runExclusive(lockRef, fn) {
   while (lockRef.current) {
@@ -55,8 +59,10 @@ export function PresenceProvider({ children }) {
   const userIdRef = useRef(null);
   const ownChannelRef = useRef(null);
   const peerChannelsRef = useRef(new Map());
+  const peerRetryRef = useRef(new Map());
   const presenceLockRef = useRef(null);
   const contactsChangedTimerRef = useRef(null);
+  const contactsSyncingRef = useRef(false);
   const authSubscriptionRef = useRef(null);
   const heartbeatStopRef = useRef(null);
   const resubscribeTimerRef = useRef(null);
@@ -96,6 +102,26 @@ export function PresenceProvider({ children }) {
     }
   }, []);
 
+  const markPeerRetry = useCallback((peerId) => {
+    const prev = peerRetryRef.current.get(peerId) ?? { attempts: 0, retryAfter: 0 };
+    const attempts = prev.attempts + 1;
+    const backoff = Math.min(PEER_RETRY_MAX_MS, PEER_RETRY_BASE_MS * (2 ** (attempts - 1)));
+    peerRetryRef.current.set(peerId, {
+      attempts,
+      retryAfter: Date.now() + backoff,
+    });
+  }, []);
+
+  const clearPeerRetry = useCallback((peerId) => {
+    peerRetryRef.current.delete(peerId);
+  }, []);
+
+  const canRetryPeer = useCallback((peerId) => {
+    const entry = peerRetryRef.current.get(peerId);
+    if (!entry) return true;
+    return Date.now() >= entry.retryAfter;
+  }, []);
+
   const subscribeToContacts = useCallback(async (supabase, contacts, selfId) => {
     const peerIds = new Set(
       contacts
@@ -106,29 +132,47 @@ export function PresenceProvider({ children }) {
     for (const [peerId, ch] of [...peerChannelsRef.current.entries()]) {
       if (!peerIds.has(peerId)) {
         peerChannelsRef.current.delete(peerId);
+        clearPeerRetry(peerId);
         setUserOnline(peerId, false);
         await removeChannelSafe(supabase, ch);
       }
     }
 
-    const pending = [...peerIds].filter((id) => !peerChannelsRef.current.has(id));
+    const pending = [...peerIds].filter(
+      (id) => !peerChannelsRef.current.has(id) && canRetryPeer(id),
+    );
+
+    let subscribedThisPass = 0;
     for (const peerId of pending) {
+      if (subscribedThisPass >= MAX_PEER_SUBSCRIBES_PER_PASS) break;
+      subscribedThisPass += 1;
       const ch = await subscribePeerPresence(supabase, peerId, setUserOnline);
-      if (ch) peerChannelsRef.current.set(peerId, ch);
+      if (ch) {
+        peerChannelsRef.current.set(peerId, ch);
+        clearPeerRetry(peerId);
+      } else {
+        markPeerRetry(peerId);
+      }
     }
-  }, [setUserOnline]);
+  }, [canRetryPeer, clearPeerRetry, markPeerRetry, setUserOnline]);
 
   const loadContacts = useCallback(async (supabase) => {
-    return runExclusive(presenceLockRef, async () => {
-      const connections = await networkApi.listConnections();
-      const contacts = connections
-        .filter((c) => c.status === "accepted")
-        .map((c) => c.peer)
-        .filter(Boolean);
-      seedLastSeen(contacts);
-      await subscribeToContacts(supabase, contacts, userIdRef.current);
-      return contacts;
-    });
+    if (contactsSyncingRef.current) return null;
+    contactsSyncingRef.current = true;
+    try {
+      return await runExclusive(presenceLockRef, async () => {
+        const connections = await networkApi.listConnections();
+        const contacts = connections
+          .filter((c) => c.status === "accepted")
+          .map((c) => c.peer)
+          .filter(Boolean);
+        seedLastSeen(contacts);
+        await subscribeToContacts(supabase, contacts, userIdRef.current);
+        return contacts;
+      });
+    } finally {
+      contactsSyncingRef.current = false;
+    }
   }, [seedLastSeen, subscribeToContacts]);
 
   const startOwnChannel = useCallback(async (supabase, userId) => {
@@ -163,7 +207,11 @@ export function PresenceProvider({ children }) {
       const session = await resolveSession(supabase);
       primeRealtimeAuth(session.access_token);
       await ensureRealtimeReady(supabase, session.access_token);
-      await startOwnChannel(supabase, userId);
+
+      if (!ownChannelRef.current) {
+        await startOwnChannel(supabase, userId);
+      }
+
       await loadContacts(supabase);
     } catch (err) {
       console.warn("[presence] Re-suscripción fallida:", err);
@@ -179,7 +227,7 @@ export function PresenceProvider({ children }) {
     resubscribeTimerRef.current = window.setTimeout(() => {
       resubscribeTimerRef.current = null;
       fullResubscribe(force);
-    }, 800);
+    }, 1_200);
   }, [fullResubscribe]);
 
   const loadContactsRef = useRef(loadContacts);
@@ -209,6 +257,7 @@ export function PresenceProvider({ children }) {
           await removeChannelSafe(sb, ownChannelRef.current);
         }
         ownChannelRef.current = null;
+        peerRetryRef.current.clear();
         await removePeerChannelsRef.current();
       });
     };
@@ -226,18 +275,17 @@ export function PresenceProvider({ children }) {
 
           authSubscriptionRef.current?.unsubscribe();
           authSubscriptionRef.current = supabase.auth.onAuthStateChange((event, nextSession) => {
-            if (nextSession?.access_token) {
-              primeRealtimeAuth(nextSession.access_token);
-              supabase.realtime.setAuth(nextSession.access_token);
-              if (event === "TOKEN_REFRESHED" || event === "SIGNED_IN") {
-                scheduleResubscribeRef.current(true);
-              }
+            if (!nextSession?.access_token) return;
+            primeRealtimeAuth(nextSession.access_token);
+            supabase.realtime.setAuth(nextSession.access_token);
+            // Refrescar token no requiere re-suscribir todos los canales.
+            if (event === "SIGNED_IN") {
+              scheduleResubscribeRef.current(true);
             }
           }).data.subscription;
 
           const ready = await ensureRealtimeReady(supabase, session.access_token);
           if (!ready) {
-            console.warn("[presence] Realtime sin JWT/socket; reintentando…");
             scheduleResubscribeRef.current(true);
             return;
           }
@@ -270,8 +318,11 @@ export function PresenceProvider({ children }) {
         ? Date.now() - hiddenAtRef.current
         : RESUBSCRIBE_COOLDOWN_MS;
       hiddenAtRef.current = null;
-      if (hiddenFor >= 15_000) {
+      if (hiddenFor >= 30_000 && !ownChannelRef.current) {
         scheduleResubscribeRef.current();
+      } else if (hiddenFor >= 30_000) {
+        const sb = supabaseRef.current;
+        if (sb) loadContactsRef.current(sb);
       }
     };
 
@@ -284,7 +335,7 @@ export function PresenceProvider({ children }) {
       contactsChangedTimerRef.current = window.setTimeout(() => {
         contactsChangedTimerRef.current = null;
         loadContactsRef.current(sb);
-      }, 500);
+      }, CONTACTS_DEBOUNCE_MS);
     };
 
     window.addEventListener("pagehide", handlePageLeave);

@@ -1,15 +1,26 @@
 import { channelHasPresence, presenceTopic } from "@/lib/presence/topics.js";
 
 const HEARTBEAT_MS = 45_000;
-const MAX_SUBSCRIBE_ATTEMPTS = 3;
-const RETRY_BASE_MS = 1_000;
+const MAX_SUBSCRIBE_ATTEMPTS = 2;
+const RETRY_BASE_MS = 2_000;
+const SUBSCRIBE_TIMEOUT_MS = 12_000;
+const WARN_COOLDOWN_MS = 60_000;
 
 /** Canales cerrados a propósito (cleanup) no deben generar warnings ni reintentos. */
 const intentionalClosures = new WeakSet();
+const warnCooldown = new Map();
 
 /** El topic interno del SDK puede llevar prefijo `realtime:`. */
 export function normalizeChannelTopic(topic) {
   return (topic ?? "").replace(/^realtime:/, "");
+}
+
+function warnOnce(topic, ...args) {
+  const key = normalizeChannelTopic(topic);
+  const last = warnCooldown.get(key) ?? 0;
+  if (Date.now() - last < WARN_COOLDOWN_MS) return;
+  warnCooldown.set(key, Date.now());
+  console.warn("[presence]", ...args);
 }
 
 export async function removeChannelSafe(supabase, channel) {
@@ -52,7 +63,7 @@ export async function ensureRealtimeReady(supabase, accessToken, maxWaitMs = 10_
   return Boolean(rt.isConnected() && rt.accessTokenValue);
 }
 
-async function subscribeWithRetry(supabase, topic, buildChannel, onSubscribed) {
+async function subscribeWithRetry(supabase, topic, buildChannel, onSubscribed, { critical = false } = {}) {
   let lastError = null;
   let lastStatus = null;
 
@@ -66,8 +77,16 @@ async function subscribeWithRetry(supabase, topic, buildChannel, onSubscribed) {
       const finish = (payload) => {
         if (settled) return;
         settled = true;
+        clearTimeout(timeoutId);
         resolve(payload);
       };
+
+      const timeoutId = window.setTimeout(() => {
+        if (subscribed) return;
+        lastStatus = "TIMED_OUT";
+        lastError = new Error("subscribe timeout");
+        finish({ ok: false, channel: null, error: lastError });
+      }, SUBSCRIBE_TIMEOUT_MS);
 
       ch.subscribe(async (status, err) => {
         if (status === "SUBSCRIBED") {
@@ -83,15 +102,8 @@ async function subscribeWithRetry(supabase, topic, buildChannel, onSubscribed) {
           return;
         }
 
-        if (status === "CLOSED") {
-          if (intentionalClosures.has(ch) || subscribed) return;
-          if (!settled) {
-            lastStatus = status;
-            lastError = err ?? new Error(status);
-            finish({ ok: false, channel: null, error: lastError });
-          }
-          return;
-        }
+        // CLOSED es habitual durante cleanup/reconnect; no reintentar por este motivo.
+        if (status === "CLOSED") return;
 
         if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
           lastStatus = status;
@@ -112,9 +124,10 @@ async function subscribeWithRetry(supabase, topic, buildChannel, onSubscribed) {
     }
   }
 
-  if (lastError) {
-    console.warn(
-      "[presence] No se pudo suscribir a",
+  if (critical && lastError) {
+    warnOnce(
+      topic,
+      "No se pudo suscribir a",
       topic,
       `(${lastStatus || "error"}):`,
       lastError?.message || lastError,
@@ -139,9 +152,15 @@ export async function subscribePeerPresence(supabase, peerId, setUserOnline) {
     return ch;
   };
 
-  const { ok, channel } = await subscribeWithRetry(supabase, topic, buildChannel, (ch) => {
-    setUserOnline(peerId, channelHasPresence(ch.presenceState()));
-  });
+  const { ok, channel } = await subscribeWithRetry(
+    supabase,
+    topic,
+    buildChannel,
+    (ch) => {
+      setUserOnline(peerId, channelHasPresence(ch.presenceState()));
+    },
+    { critical: false },
+  );
 
   return ok ? channel : null;
 }
@@ -160,6 +179,7 @@ export async function subscribeOwnPresence(supabase, userId) {
     async (ch) => {
       await ch.track({ online_at: new Date().toISOString() });
     },
+    { critical: true },
   );
 
   if (!ok) throw error ?? new Error("Canal propio no autorizado");
