@@ -31,7 +31,7 @@ export function PresenceDot({ userId }) {
   );
 }
 
-export function ContactPresenceStatus({ userId, className = "" }) {
+export function ContactPresenceStatus({ userId, className = "", showDot = true }) {
   const { t, lang } = useI18n();
   const { online, lastSeen } = useContactPresence(userId);
 
@@ -40,7 +40,9 @@ export function ContactPresenceStatus({ userId, className = "" }) {
   if (online) {
     return (
       <p className={`contact-presence-status online ${className}`.trim()}>
-        <span className="presence-dot presence-dot--online presence-dot--inline" aria-hidden="true" />
+        {showDot && (
+          <span className="presence-dot presence-dot--online presence-dot--inline" aria-hidden="true" />
+        )}
         {t("network.online")}
       </p>
     );
@@ -49,7 +51,7 @@ export function ContactPresenceStatus({ userId, className = "" }) {
   const seen = formatLastSeen(lastSeen, lang, t);
   return (
     <p className={`contact-presence-status offline ${className}`.trim()}>
-      <span className="presence-dot presence-dot--inline" aria-hidden="true" />
+      {showDot && <span className="presence-dot presence-dot--inline" aria-hidden="true" />}
       {seen || t("network.offline")}
     </p>
   );

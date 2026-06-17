@@ -183,6 +183,7 @@ export function MessagesPage() {
                     <ContactPresenceStatus
                       userId={activePeerId}
                       className="messages-thread-presence"
+                      showDot={false}
                     />
                   </div>
                 </div>
