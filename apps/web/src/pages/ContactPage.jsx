@@ -112,7 +112,7 @@ export function ContactPage({ contactId }) {
         ) : peer ? (
           <>
             <header className="contact-page-head">
-              <NetworkUserAvatar user={peer} size="lg" showPresence />
+              <NetworkUserAvatar user={peer} size="lg" />
               <div className="contact-page-meta">
                 <h1 className="exp-page-title">{networkDisplayName(peer)}</h1>
                 <p className="exp-page-sub">{peer.email}</p>
