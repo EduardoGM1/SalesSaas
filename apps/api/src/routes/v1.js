@@ -439,8 +439,11 @@ router.get("/notifications/config", async (req, res) => {
   json(res, {
     data: {
       appId,
+      safariWebId: pushService.getSafariWebId(),
       provider: "onesignal",
       configured: pushService.isPushConfigured(),
+      serviceWorkerPath: "onesignal/OneSignalSDKWorker.js",
+      serviceWorkerScope: "/onesignal/",
     },
   });
 });

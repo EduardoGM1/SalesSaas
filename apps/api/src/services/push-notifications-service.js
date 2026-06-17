@@ -7,6 +7,10 @@ export function getOneSignalAppId() {
   return process.env.ONESIGNAL_APP_ID || process.env.VITE_ONESIGNAL_APP_ID || null;
 }
 
+export function getSafariWebId() {
+  return process.env.ONESIGNAL_SAFARI_WEB_ID || process.env.VITE_ONESIGNAL_SAFARI_WEB_ID || null;
+}
+
 export function isPushConfigured() {
   return Boolean(getOneSignalAppId() && process.env.ONESIGNAL_REST_API_KEY);
 }

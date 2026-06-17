@@ -20,7 +20,7 @@
     { "source": "/health/:path*", "destination": "/api" },
     { "source": "/api/:path*", "destination": "/api" },
     { "source": "/auth/:path*", "destination": "/api" },
-    { "source": "/((?!assets/|icon|favicon|manifest|sw|workbox|registerSW|onesignal/).*)", "destination": "/index.html" }
+    { "source": "/((?!assets/|icon|favicon|manifest|sw|workbox|registerSW|onesignal/|OneSignalSDKWorker).*)", "destination": "/index.html" }
   ],
   "headers": [
     {

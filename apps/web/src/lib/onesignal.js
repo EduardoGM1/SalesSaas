@@ -12,6 +12,10 @@ let sdkReady = null;
 let resolvedAppId = null;
 let serverConfigured = null;
 
+function getBuildSafariWebId() {
+  return import.meta.env.VITE_ONESIGNAL_SAFARI_WEB_ID || null;
+}
+
 function getBuildAppId() {
   return import.meta.env.VITE_ONESIGNAL_APP_ID || null;
 }
@@ -31,6 +35,8 @@ function loadScript(src) {
   });
 }
 
+let resolvedSafariWebId = null;
+
 /** App ID embebido en build o obtenido del servidor en runtime. */
 export async function resolveOneSignalAppId() {
   if (resolvedAppId) return resolvedAppId;
@@ -49,6 +55,26 @@ export async function resolveOneSignalAppId() {
     }
   } catch {
     // Sin sesión o servidor sin OneSignal.
+  }
+  return null;
+}
+
+export async function resolveSafariWebId() {
+  if (resolvedSafariWebId) return resolvedSafariWebId;
+  const buildId = getBuildSafariWebId();
+  if (buildId) {
+    resolvedSafariWebId = buildId;
+    return buildId;
+  }
+  if (!isSupabaseConfigured()) return null;
+  try {
+    const data = await notificationsApi.config();
+    if (data?.safariWebId) {
+      resolvedSafariWebId = data.safariWebId;
+      return data.safariWebId;
+    }
+  } catch {
+    // Sin sesión.
   }
   return null;
 }
@@ -192,8 +218,10 @@ export async function ensureOneSignal() {
         window.OneSignalDeferred = window.OneSignalDeferred || [];
         window.OneSignalDeferred.push(async (OneSignal) => {
           try {
+            const safariWebId = await resolveSafariWebId();
             await OneSignal.init({
               appId,
+              ...(safariWebId ? { safari_web_id: safariWebId } : {}),
               serviceWorkerPath: SW_PATH,
               serviceWorkerParam: { scope: SW_SCOPE },
               notifyButton: { enable: false },
