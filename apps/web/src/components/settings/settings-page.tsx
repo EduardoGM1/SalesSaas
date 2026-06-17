@@ -484,8 +484,8 @@ function SettingsEntry({
 }: {
   icon: ReactNode;
   tone: "blue" | "green" | "purple" | "teal";
-  title;
-  desc;
+  title: ReactNode;
+  desc: ReactNode;
   onClick: () => void;
 }) {
   return (
@@ -500,7 +500,17 @@ function SettingsEntry({
   );
 }
 
-function ApiItem({ name, desc, done, activeLabel = "Activa" }) {
+function ApiItem({
+  name,
+  desc,
+  done,
+  activeLabel = "Activa",
+}: {
+  name: string;
+  desc: string;
+  done?: boolean;
+  activeLabel?: string;
+}) {
   return (
     <div className="api-item">
       <div className="api-name">

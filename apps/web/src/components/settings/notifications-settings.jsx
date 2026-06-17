@@ -3,6 +3,7 @@ import {
   getPushStatus,
   isPushSupported,
   subscribeToPush,
+  syncPushSubscription,
   unsubscribeFromPush,
 } from "@/lib/push-notifications.js";
 import { useI18n } from "@/hooks/use-i18n.js";
@@ -14,7 +15,13 @@ export function NotificationsSettings({
   onSave,
 }) {
   const { t } = useI18n();
-  const [status, setStatus] = useState({ supported: false, subscribed: false, permission: "default" });
+  const [status, setStatus] = useState({
+    supported: false,
+    subscribed: false,
+    permission: "default",
+    pushConfigured: true,
+    needsSync: false,
+  });
   const [pending, setPending] = useState(false);
 
   const notifications = settings?.notifications ?? {
@@ -29,6 +36,16 @@ export function NotificationsSettings({
 
   useEffect(() => {
     refreshStatus();
+    if (!isPushSupported() || Notification.permission !== "granted") return undefined;
+
+    let cancelled = false;
+    syncPushSubscription()
+      .then((result) => {
+        if (!cancelled && result.synced) refreshStatus();
+      })
+      .catch(() => {});
+
+    return () => { cancelled = true; };
   }, []);
 
   const setPref = (key, value) => {
@@ -39,6 +56,11 @@ export function NotificationsSettings({
   };
 
   const handleEnable = async () => {
+    if (status.permission === "denied") {
+      toast.error(t("settings.notifications.deniedHelp"));
+      return;
+    }
+
     setPending(true);
     try {
       await subscribeToPush();
@@ -46,7 +68,14 @@ export function NotificationsSettings({
       toast.success(t("settings.notifications.enabled"));
       await onSave?.();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : t("settings.notifications.error"));
+      if (err?.code === "PERMISSION_DENIED") {
+        refreshStatus();
+        toast.error(t("settings.notifications.deniedHelp"));
+      } else if (err?.code === "PERMISSION_DISMISSED") {
+        toast.error(t("settings.notifications.dismissed"));
+      } else {
+        toast.error(err instanceof Error ? err.message : t("settings.notifications.error"));
+      }
     } finally {
       setPending(false);
     }
@@ -73,19 +102,32 @@ export function NotificationsSettings({
 
   return (
     <>
+      {!status.pushConfigured && (
+        <div className="auth-error" style={{ marginBottom: 12 }}>
+          {t("settings.notifications.serverNotConfigured")}
+        </div>
+      )}
+
       <div className="settings-row">
         <div>
           <div className="settings-label">{t("settings.notifications.status")}</div>
           <div className="settings-help">
             {status.subscribed
               ? t("settings.notifications.statusOn")
-              : t("settings.notifications.statusOff")}
+              : status.needsSync
+                ? t("settings.notifications.needsSync")
+                : t("settings.notifications.statusOff")}
             {status.permission === "denied" ? ` — ${t("settings.notifications.denied")}` : ""}
           </div>
         </div>
         <div className="btn-row">
           {!status.subscribed ? (
-            <button type="button" className="btn btn-primary" disabled={pending || status.permission === "denied"} onClick={handleEnable}>
+            <button
+              type="button"
+              className="btn btn-primary"
+              disabled={pending || !status.pushConfigured}
+              onClick={handleEnable}
+            >
               {pending ? t("common.loading") : t("settings.notifications.enable")}
             </button>
           ) : (
@@ -95,6 +137,12 @@ export function NotificationsSettings({
           )}
         </div>
       </div>
+
+      {status.permission === "denied" && (
+        <p className="settings-help" style={{ marginBottom: 12 }}>
+          {t("settings.notifications.deniedHelp")}
+        </p>
+      )}
 
       <div className="settings-row">
         <div>

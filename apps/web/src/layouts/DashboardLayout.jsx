@@ -3,6 +3,7 @@ import { StoreHydration } from "@/components/providers/store-hydration.jsx";
 import { SyncProvider } from "@/components/providers/sync-provider.jsx";
 import { ExchangeRateSync } from "@/components/providers/exchange-rate-sync.jsx";
 import { PresenceProvider } from "@/components/providers/presence-provider.jsx";
+import { PushSync } from "@/components/providers/push-sync.jsx";
 import { SidebarClient } from "@/components/layout/sidebar-client.jsx";
 
 export function DashboardLayout() {
@@ -11,6 +12,7 @@ export function DashboardLayout() {
       <SyncProvider>
         <ExchangeRateSync />
         <PresenceProvider>
+          <PushSync />
           <div className="app">
             <SidebarClient />
             <div className="main">

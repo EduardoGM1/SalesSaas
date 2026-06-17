@@ -14,33 +14,35 @@ export function isPushSupported() {
     && "Notification" in window;
 }
 
+export function getNotificationPermission() {
+  if (!isPushSupported()) return "unsupported";
+  return Notification.permission;
+}
+
 async function resolveVapidPublicKey() {
   const envKey = import.meta.env?.VITE_VAPID_PUBLIC_KEY;
-  if (envKey) return envKey;
-  const data = await notificationsApi.vapidPublicKey();
-  return data?.publicKey;
+  if (envKey) return { publicKey: envKey, configured: true };
+  try {
+    const data = await notificationsApi.vapidPublicKey();
+    return {
+      publicKey: data?.publicKey,
+      configured: data?.configured !== false,
+    };
+  } catch {
+    return { publicKey: null, configured: false };
+  }
 }
 
 export async function getServiceWorkerRegistration() {
   if (!("serviceWorker" in navigator)) return null;
-  return navigator.serviceWorker.ready;
+  try {
+    return await navigator.serviceWorker.ready;
+  } catch {
+    return null;
+  }
 }
 
-export async function subscribeToPush() {
-  if (!isPushSupported()) {
-    throw new Error("Este navegador no admite notificaciones push.");
-  }
-
-  const permission = await Notification.requestPermission();
-  if (permission !== "granted") {
-    throw new Error("Permiso de notificaciones denegado.");
-  }
-
-  const publicKey = await resolveVapidPublicKey();
-  if (!publicKey) {
-    throw new Error("El servidor no tiene configuradas las notificaciones push.");
-  }
-
+async function ensureBrowserSubscription(publicKey) {
   const registration = await getServiceWorkerRegistration();
   if (!registration?.pushManager) {
     throw new Error("Service worker no disponible.");
@@ -54,6 +56,63 @@ export async function subscribeToPush() {
     });
   }
 
+  return subscription;
+}
+
+export async function syncPushSubscription() {
+  if (!isPushSupported()) return { synced: false, reason: "unsupported" };
+  if (Notification.permission !== "granted") {
+    return { synced: false, reason: Notification.permission };
+  }
+
+  const { publicKey, configured } = await resolveVapidPublicKey();
+  if (!publicKey || !configured) {
+    return { synced: false, reason: "server_not_configured" };
+  }
+
+  const registration = await getServiceWorkerRegistration();
+  const subscription = await registration?.pushManager?.getSubscription();
+  if (!subscription) {
+    return { synced: false, reason: "no_browser_subscription" };
+  }
+
+  const json = subscription.toJSON();
+  await notificationsApi.subscribe({
+    endpoint: json.endpoint,
+    keys: json.keys,
+  });
+
+  return { synced: true };
+}
+
+export async function subscribeToPush() {
+  if (!isPushSupported()) {
+    throw new Error("Este navegador no admite notificaciones push.");
+  }
+
+  const permission = Notification.permission;
+  if (permission === "denied") {
+    const err = new Error("PERMISSION_DENIED");
+    err.code = "PERMISSION_DENIED";
+    throw err;
+  }
+
+  const nextPermission = permission === "granted"
+    ? "granted"
+    : await Notification.requestPermission();
+
+  if (nextPermission !== "granted") {
+    const err = new Error(nextPermission === "denied" ? "PERMISSION_DENIED" : "PERMISSION_DISMISSED");
+    err.code = nextPermission === "denied" ? "PERMISSION_DENIED" : "PERMISSION_DISMISSED";
+    throw err;
+  }
+
+  const { publicKey, configured } = await resolveVapidPublicKey();
+  if (!publicKey || !configured) {
+    throw new Error("El servidor no tiene configuradas las notificaciones push.");
+  }
+
+  const subscription = await ensureBrowserSubscription(publicKey);
   const json = subscription.toJSON();
   await notificationsApi.subscribe({
     endpoint: json.endpoint,
@@ -76,22 +135,38 @@ export async function unsubscribeFromPush() {
 
 export async function getPushStatus() {
   if (!isPushSupported()) {
-    return { supported: false, subscribed: false, permission: "unsupported" };
+    return {
+      supported: false,
+      subscribed: false,
+      permission: "unsupported",
+      pushConfigured: false,
+      needsSync: false,
+    };
   }
 
   const registration = await getServiceWorkerRegistration();
   const subscription = await registration?.pushManager?.getSubscription();
   let serverSubscribed = false;
+  let pushConfigured = Boolean(import.meta.env?.VITE_VAPID_PUBLIC_KEY);
+
   try {
     const status = await notificationsApi.status();
     serverSubscribed = Boolean(status?.subscribed);
+    pushConfigured = status?.push_configured !== false;
   } catch {
     serverSubscribed = Boolean(subscription);
   }
 
+  const browserSubscribed = Boolean(subscription);
+  const permission = Notification.permission;
+
   return {
     supported: true,
-    subscribed: Boolean(subscription) && serverSubscribed,
-    permission: Notification.permission,
+    subscribed: browserSubscribed && serverSubscribed,
+    browserSubscribed,
+    serverSubscribed,
+    needsSync: browserSubscribed && !serverSubscribed && permission === "granted",
+    pushConfigured,
+    permission,
   };
 }

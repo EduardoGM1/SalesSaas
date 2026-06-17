@@ -8,7 +8,7 @@ import {
   removeChannelSafe,
   startPresenceHeartbeat,
   subscribeOwnPresence,
-  subscribePeersBatch,
+  subscribePeerPresence,
 } from "@/lib/presence/realtime.js";
 
 const PresenceContext = createContext({
@@ -16,6 +16,8 @@ const PresenceContext = createContext({
   lastSeen: {},
   seedLastSeen: () => {},
 });
+
+const RESUBSCRIBE_COOLDOWN_MS = 30_000;
 
 async function runExclusive(lockRef, fn) {
   while (lockRef.current) {
@@ -58,6 +60,9 @@ export function PresenceProvider({ children }) {
   const authSubscriptionRef = useRef(null);
   const heartbeatStopRef = useRef(null);
   const resubscribeTimerRef = useRef(null);
+  const resubscribingRef = useRef(false);
+  const lastResubscribeAtRef = useRef(0);
+  const hiddenAtRef = useRef(null);
   const activeRef = useRef(false);
 
   const seedLastSeen = useCallback((peers) => {
@@ -92,15 +97,26 @@ export function PresenceProvider({ children }) {
   }, []);
 
   const subscribeToContacts = useCallback(async (supabase, contacts, selfId) => {
-    await removePeerChannels();
+    const peerIds = new Set(
+      contacts
+        .map((p) => p?.id)
+        .filter((id) => id && id !== selfId),
+    );
 
-    const peerIds = contacts
-      .map((p) => p?.id)
-      .filter((id) => id && id !== selfId);
+    for (const [peerId, ch] of [...peerChannelsRef.current.entries()]) {
+      if (!peerIds.has(peerId)) {
+        peerChannelsRef.current.delete(peerId);
+        setUserOnline(peerId, false);
+        await removeChannelSafe(supabase, ch);
+      }
+    }
 
-    const channels = await subscribePeersBatch(supabase, peerIds, setUserOnline);
-    peerChannelsRef.current = channels;
-  }, [removePeerChannels, setUserOnline]);
+    const pending = [...peerIds].filter((id) => !peerChannelsRef.current.has(id));
+    for (const peerId of pending) {
+      const ch = await subscribePeerPresence(supabase, peerId, setUserOnline);
+      if (ch) peerChannelsRef.current.set(peerId, ch);
+    }
+  }, [setUserOnline]);
 
   const loadContacts = useCallback(async (supabase) => {
     return runExclusive(presenceLockRef, async () => {
@@ -131,10 +147,17 @@ export function PresenceProvider({ children }) {
     return myChannel;
   }, []);
 
-  const fullResubscribe = useCallback(async () => {
+  const fullResubscribe = useCallback(async (force = false) => {
     const supabase = supabaseRef.current;
     const userId = userIdRef.current;
     if (!supabase || !userId || !activeRef.current) return;
+
+    const now = Date.now();
+    if (!force && now - lastResubscribeAtRef.current < RESUBSCRIBE_COOLDOWN_MS) return;
+    if (resubscribingRef.current) return;
+
+    resubscribingRef.current = true;
+    lastResubscribeAtRef.current = now;
 
     try {
       const session = await resolveSession(supabase);
@@ -144,18 +167,30 @@ export function PresenceProvider({ children }) {
       await loadContacts(supabase);
     } catch (err) {
       console.warn("[presence] Re-suscripción fallida:", err);
+    } finally {
+      resubscribingRef.current = false;
     }
   }, [loadContacts, startOwnChannel]);
 
-  const scheduleResubscribe = useCallback(() => {
+  const scheduleResubscribe = useCallback((force = false) => {
     if (resubscribeTimerRef.current) {
       window.clearTimeout(resubscribeTimerRef.current);
     }
     resubscribeTimerRef.current = window.setTimeout(() => {
       resubscribeTimerRef.current = null;
-      fullResubscribe();
-    }, 600);
+      fullResubscribe(force);
+    }, 800);
   }, [fullResubscribe]);
+
+  const loadContactsRef = useRef(loadContacts);
+  const startOwnChannelRef = useRef(startOwnChannel);
+  const scheduleResubscribeRef = useRef(scheduleResubscribe);
+  const removePeerChannelsRef = useRef(removePeerChannels);
+
+  loadContactsRef.current = loadContacts;
+  startOwnChannelRef.current = startOwnChannel;
+  scheduleResubscribeRef.current = scheduleResubscribe;
+  removePeerChannelsRef.current = removePeerChannels;
 
   useEffect(() => {
     if (!isSupabaseConfigured()) return undefined;
@@ -174,7 +209,7 @@ export function PresenceProvider({ children }) {
           await removeChannelSafe(sb, ownChannelRef.current);
         }
         ownChannelRef.current = null;
-        await removePeerChannels();
+        await removePeerChannelsRef.current();
       });
     };
 
@@ -195,7 +230,7 @@ export function PresenceProvider({ children }) {
               primeRealtimeAuth(nextSession.access_token);
               supabase.realtime.setAuth(nextSession.access_token);
               if (event === "TOKEN_REFRESHED" || event === "SIGNED_IN") {
-                scheduleResubscribe();
+                scheduleResubscribeRef.current(true);
               }
             }
           }).data.subscription;
@@ -203,19 +238,22 @@ export function PresenceProvider({ children }) {
           const ready = await ensureRealtimeReady(supabase, session.access_token);
           if (!ready) {
             console.warn("[presence] Realtime sin JWT/socket; reintentando…");
+            scheduleResubscribeRef.current(true);
+            return;
           }
 
           const { data: { user } } = await supabase.auth.getUser();
           if (!user?.id || !activeRef.current) return;
           userIdRef.current = user.id;
 
-          await startOwnChannel(supabase, user.id);
+          await startOwnChannelRef.current(supabase, user.id);
         });
 
         const sb = supabaseRef.current;
-        if (sb && activeRef.current) await loadContacts(sb);
+        if (sb && activeRef.current) await loadContactsRef.current(sb);
       } catch (err) {
         console.warn("[presence] No se pudo iniciar Realtime Presence:", err);
+        scheduleResubscribeRef.current(true);
       }
     };
 
@@ -224,8 +262,16 @@ export function PresenceProvider({ children }) {
     const handlePageLeave = () => markPresenceOffline();
 
     const handleVisibility = () => {
-      if (document.visibilityState === "visible") {
-        scheduleResubscribe();
+      if (document.visibilityState === "hidden") {
+        hiddenAtRef.current = Date.now();
+        return;
+      }
+      const hiddenFor = hiddenAtRef.current
+        ? Date.now() - hiddenAtRef.current
+        : RESUBSCRIBE_COOLDOWN_MS;
+      hiddenAtRef.current = null;
+      if (hiddenFor >= 15_000) {
+        scheduleResubscribeRef.current();
       }
     };
 
@@ -237,8 +283,8 @@ export function PresenceProvider({ children }) {
       }
       contactsChangedTimerRef.current = window.setTimeout(() => {
         contactsChangedTimerRef.current = null;
-        loadContacts(sb);
-      }, 400);
+        loadContactsRef.current(sb);
+      }, 500);
     };
 
     window.addEventListener("pagehide", handlePageLeave);
@@ -262,7 +308,7 @@ export function PresenceProvider({ children }) {
       window.removeEventListener("network:contacts-changed", handleContactsChanged);
       teardown();
     };
-  }, [loadContacts, removePeerChannels, scheduleResubscribe, startOwnChannel]);
+  }, []);
 
   const value = useMemo(
     () => ({ online, lastSeen, seedLastSeen }),

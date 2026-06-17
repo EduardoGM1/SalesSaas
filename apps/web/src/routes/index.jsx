@@ -13,7 +13,7 @@ import { GoalsPage } from "@/components/goals/goals-page.jsx";
 import { MetasPage } from "@/components/goals/metas-page.jsx";
 import { ClientsPage } from "@/components/clients/clients-page.jsx";
 import { ClientDetail } from "@/components/clients/client-detail.jsx";
-import { SettingsPage } from "@/components/settings/settings-page.jsx";
+import { SettingsPage } from "@/components/settings/settings-page.tsx";
 import { SalesHistoryPage } from "@/pages/SalesHistoryPage.jsx";
 import { NetworkPage } from "@/pages/NetworkPage.jsx";
 import { ContactPage } from "@/pages/ContactPage.jsx";

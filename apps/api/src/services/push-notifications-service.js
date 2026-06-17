@@ -65,6 +65,8 @@ async function sendToUser(userId, payload) {
       const code = err?.statusCode;
       if (code === 404 || code === 410) {
         await serviceSb.from("push_subscriptions").delete().eq("id", sub.id);
+      } else if (process.env.NODE_ENV !== "production") {
+        console.warn("[push] Error enviando notificación:", code, err?.message);
       }
     }
   }));
