@@ -17,6 +17,7 @@ import * as remindersService from "../services/reminders-service.js";
 import * as networkService from "../services/network-service.js";
 import * as messagesService from "../services/messages-service.js";
 import * as sharingService from "../services/sharing-service.js";
+import * as pushService from "../services/push-notifications-service.js";
 import { ServiceError } from "../lib/service-error.js";
 
 const router = Router();
@@ -48,6 +49,12 @@ router.get("/", (_req, res) => {
         send: { POST: "/api/v1/messages" },
         read: { PATCH: "/api/v1/messages/read?with=" },
         unread: { GET: "/api/v1/messages/unread-count" },
+      },
+      notifications: {
+        vapidPublicKey: { GET: "/api/v1/notifications/vapid-public-key" },
+        subscribe: { POST: "/api/v1/notifications/subscribe" },
+        unsubscribe: { POST: "/api/v1/notifications/unsubscribe" },
+        status: { GET: "/api/v1/notifications/status" },
       },
       shares: {
         received: { GET: "/api/v1/shares/received" },
@@ -424,6 +431,45 @@ router.patch("/messages/read", async (req, res) => {
   const withUser = req.query.with;
   if (!withUser) return apiError(res, "Parámetro with requerido.");
   await runService(res, () => messagesService.markThreadRead(a.supabase, a.userId, withUser), { wrap: "ok" });
+});
+
+router.get("/notifications/vapid-public-key", async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  const publicKey = pushService.getVapidPublicKey();
+  if (!publicKey) return apiError(res, "Notificaciones push no configuradas en el servidor.", 503);
+  json(res, { data: { publicKey, configured: pushService.isPushConfigured() } });
+});
+
+router.get("/notifications/status", async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  await runService(res, () => pushService.getPushStatus(a.supabase, a.userId), { wrap: "data" });
+});
+
+router.post("/notifications/subscribe", async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  const body = parseJsonBody(req, res);
+  if (!body) return;
+  const ua = req.get("user-agent");
+  await runService(
+    res,
+    () => pushService.savePushSubscription(a.supabase, a.userId, body, ua),
+    { wrap: "ok" },
+  );
+});
+
+router.post("/notifications/unsubscribe", async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  const body = parseJsonBody(req, res);
+  if (!body) return;
+  await runService(
+    res,
+    () => pushService.removePushSubscription(a.supabase, a.userId, body.endpoint),
+    { wrap: "ok" },
+  );
 });
 
 router.get("/shares/received", async (req, res) => {

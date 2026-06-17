@@ -159,6 +159,11 @@ export interface UserSettings {
   userName?: string;
   userInitials?: string;
   worksheetConfig?: Record<string, string>;
+  notifications?: {
+    messages?: boolean;
+    connection_requests?: boolean;
+    connection_accepted?: boolean;
+  };
 }
 
 export function emptyDatabase(): AppDatabase {

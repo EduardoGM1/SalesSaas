@@ -1,12 +1,17 @@
 import { isUuid } from "@salesapp/shared/data/mappers.js";
 import { ServiceError, assertFound } from "../lib/service-error.js";
+import { notifyNewMessage } from "./push-notifications-service.js";
+
+function profileName(profile) {
+  return profile?.full_name?.trim() || profile?.email?.split("@")[0] || "Usuario";
+}
 
 async function loadProfiles(supabase, ids) {
   const unique = [...new Set(ids.filter(Boolean))];
   if (!unique.length) return new Map();
   const { data, error } = await supabase
     .from("profiles")
-    .select("id, full_name, avatar_url")
+    .select("id, full_name, email, avatar_url")
     .in("id", unique);
   if (error) throw new ServiceError(error.message, 500);
   return new Map((data ?? []).map((p) => [p.id, p]));
@@ -90,7 +95,14 @@ export async function sendMessage(supabase, userId, { recipient_id: recipientId,
     throw new ServiceError(error.message, 400);
   }
   const profiles = await loadProfiles(supabase, [userId, recipientId]);
-  return mapMessage(data, userId, profiles);
+  const mapped = mapMessage(data, userId, profiles);
+  const senderProfile = profiles.get(userId);
+  notifyNewMessage(recipientId, {
+    senderId: userId,
+    senderName: profileName(senderProfile),
+    body: text,
+  }).catch(() => {});
+  return mapped;
 }
 
 export async function markThreadRead(supabase, userId, peerId) {

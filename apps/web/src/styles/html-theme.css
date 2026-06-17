@@ -645,6 +645,8 @@ textarea::placeholder{
 .settings-entry{min-height:84px;}
 .settings-detail{max-width:920px;}
 .settings-section .settings-card{max-width:920px;}
+.settings-checklist{display:flex;flex-direction:column;gap:8px;min-width:min(100%,220px);}
+.settings-check{display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;}
 .settings-mini-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
 .settings-mini-grid input{text-align:center;}
 .api-pill{display:inline-flex;align-items:center;gap:7px;padding:5px 9px;border-radius:999px;background:rgba(217,119,6,.09);color:var(--yellow);font-size:11px;font-weight:800;border:1px solid rgba(217,119,6,.18);}

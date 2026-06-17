@@ -1,7 +1,7 @@
 
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
-import { ChevronRight, Code2, Database, DollarSign, Download, Globe2, LogOut, ShieldAlert, Smartphone, Trash2, Upload, User, WalletCards } from "lucide-react";
+import { ChevronRight, Bell, Code2, Database, DollarSign, Download, Globe2, LogOut, ShieldAlert, Smartphone, Trash2, Upload, User, WalletCards } from "lucide-react";
 import { canOfferPwaInstall, isStandaloneApp, openInstallPrompt } from "@/lib/pwa-install.js";
 import { Topbar } from "@/components/layout/topbar";
 import { PageBack } from "@/components/layout/page-back";
@@ -22,10 +22,11 @@ import { useDbStore } from "@/stores/db-store";
 import { useSyncStore } from "@/stores/sync-store";
 import { toast } from "@/lib/toast";
 import { confirmDialog } from "@/lib/confirm";
+import { NotificationsSettings } from "@/components/settings/notifications-settings.jsx";
 
 const LIVE_PREVIEW_KEYS = new Set(["language", "currency", "exchangeRate", "exchangeMode"]);
 
-type SettingsSection = "user" | "worksheet" | "money" | "language" | "apis" | "backup" | "account" | null;
+type SettingsSection = "user" | "worksheet" | "money" | "language" | "apis" | "backup" | "account" | "notifications" | null;
 
 const CURRENCY_LABEL: Record<string, string> = {
   USD: "USD - US Dollar",
@@ -157,6 +158,10 @@ export function SettingsPage() {
     }));
   };
 
+  const setNotifications = (notifications) => {
+    setSettings((current) => ({ ...current, notifications }));
+  };
+
   if (!hydrated) return <Topbar title={ti("settings.title")} subtitle={ti("common.loading")} />;
 
   const renderHub = () => (
@@ -174,6 +179,9 @@ export function SettingsPage() {
         )}
         {canOfferPwaInstall() && !isStandaloneApp() && (
           <SettingsEntry icon={<Smartphone size={18} />} tone="blue" title={ti("settings.hub.pwa")} desc={ti("settings.hub.pwaDesc")} onClick={openInstallPrompt} />
+        )}
+        {isSupabaseConfigured() && (
+          <SettingsEntry icon={<Bell size={18} />} tone="green" title={ti("settings.hub.notifications")} desc={ti("settings.hub.notificationsDesc")} onClick={() => setActiveSection("notifications")} />
         )}
         {canSeeTechnical && (
           <SettingsEntry icon={<ShieldAlert size={18} />} tone="purple" title={ti("settings.hub.session")} desc={isSupabaseConfigured() ? (email ? ti("settings.hub.accountSession", { email }) : ti("settings.hub.accountActive")) : ti("settings.hub.accountLocal")} onClick={() => setActiveSection("account")} />
@@ -363,6 +371,20 @@ export function SettingsPage() {
                       <option value="en">English</option>
                     </select>
                   </div>
+                </div>
+              </div>
+            )}
+
+            {activeSection === "notifications" && isSupabaseConfigured() && (
+              <div className="settings-section">
+                <div className="settings-card">
+                  <div className="card-heading">{ti("settings.notifications.title")}</div>
+                  <div className="card-sub">{ti("settings.notifications.sub")}</div>
+                  <NotificationsSettings
+                    settings={settings}
+                    onNotificationsChange={setNotifications}
+                    onSave={saveProfile}
+                  />
                 </div>
               </div>
             )}

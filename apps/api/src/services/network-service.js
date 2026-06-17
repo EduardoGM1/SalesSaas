@@ -1,5 +1,13 @@
 import { isUuid } from "@salesapp/shared/data/mappers.js";
 import { ServiceError, assertFound } from "../lib/service-error.js";
+import {
+  notifyConnectionAccepted,
+  notifyConnectionRequest,
+} from "./push-notifications-service.js";
+
+function profileName(profile) {
+  return profile?.full_name?.trim() || profile?.email?.split("@")[0] || "Usuario";
+}
 
 async function loadProfiles(supabase, ids) {
   const unique = [...new Set(ids.filter(Boolean))];
@@ -85,6 +93,11 @@ export async function sendConnectionRequest(supabase, userId, addresseeId) {
     .single();
   if (error) throw new ServiceError(error.message, 400);
   const profiles = await loadProfiles(supabase, [data.requester_id, data.addressee_id]);
+  const requester = profiles.get(data.requester_id);
+  notifyConnectionRequest(data.addressee_id, {
+    requesterId: userId,
+    requesterName: profileName(requester),
+  }).catch(() => {});
   return mapConnection(data, userId, profiles);
 }
 
@@ -117,6 +130,13 @@ export async function updateConnectionStatus(supabase, userId, connectionId, sta
     .single();
   if (error) throw new ServiceError(error.message, 400);
   const profiles = await loadProfiles(supabase, [data.requester_id, data.addressee_id]);
+  if (status === "accepted") {
+    const accepter = profiles.get(userId);
+    notifyConnectionAccepted(data.requester_id, {
+      peerId: userId,
+      peerName: profileName(accepter),
+    }).catch(() => {});
+  }
   return mapConnection(data, userId, profiles);
 }
 

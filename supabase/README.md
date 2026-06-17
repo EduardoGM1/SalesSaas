@@ -101,6 +101,34 @@ Eso indica migraciones pendientes, JWT sin enviar a Realtime, o contacto no acep
 
 No hace falta aumentar el límite de clientes para 50 usuarios. Sí asegura migraciones 0015–0019 y redespliegue del frontend.
 
+## 4c. Notificaciones push (mensajes y solicitudes de contacto)
+
+### SQL
+
+Ejecuta `0020_push_subscriptions.sql` en el SQL Editor.
+
+### Claves VAPID (servidor + Vercel)
+
+En la raíz del monorepo:
+
+```bash
+npx web-push generate-vapid-keys
+```
+
+Copia en **Vercel** (y `.env.local`):
+
+- `VAPID_PUBLIC_KEY`
+- `VAPID_PRIVATE_KEY`
+- `VITE_VAPID_PUBLIC_KEY` (misma clave pública)
+- `VAPID_SUBJECT` (p. ej. `mailto:tu@correo.com`)
+- `SUPABASE_SERVICE_ROLE_KEY` (obligatorio para enviar push)
+
+### En la app
+
+1. **Configuración → Notificaciones → Activar notificaciones**.
+2. En móvil: instala la PWA en la pantalla de inicio (iOS 16.4+).
+3. Eventos con push: mensaje nuevo, solicitud de contacto, solicitud aceptada.
+
 ## 5. Siguientes pasos (los implemento yo con las credenciales)
 
 - Páginas de login/registro + `/auth/callback` + middleware de sesión.

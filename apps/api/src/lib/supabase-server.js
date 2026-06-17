@@ -83,6 +83,23 @@ export function createBearerSupabaseClient(token) {
   });
 }
 
+/** Cliente con service_role para tareas de servidor (p. ej. enviar push). */
+export function createServiceSupabaseClient() {
+  const url = getSupabaseUrl();
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) {
+    return null;
+  }
+  return createClient(url, key, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+      detectSessionInUrl: false,
+    },
+    global: { fetch: fetchWithTimeout },
+  });
+}
+
 export async function probeSupabaseAuth() {
   const url = getSupabaseUrl();
   const key = getSupabaseAnonKey();
