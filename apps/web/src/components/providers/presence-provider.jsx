@@ -41,6 +41,9 @@ function subscribePeerPresence(supabase, peerId, setUserOnline) {
       .on("presence", { event: "join" }, syncPresence)
       .on("presence", { event: "leave" }, () => setUserOnline(peerId, false))
       .subscribe((status) => {
+        if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+          console.warn("[presence] Canal no autorizado o error:", topic, status);
+        }
         if (status === "SUBSCRIBED") syncPresence();
         if (status === "SUBSCRIBED" || status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
           resolve(ch);
@@ -164,6 +167,9 @@ export function PresenceProvider({ children }) {
           config: { private: true, presence: { key: user.id } },
         });
         myChannel.subscribe(async (status) => {
+          if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+            console.warn("[presence] Canal propio no autorizado:", ownTopic, status);
+          }
           if (status === "SUBSCRIBED") {
             await myChannel.track({ online_at: new Date().toISOString() });
           }
@@ -171,8 +177,8 @@ export function PresenceProvider({ children }) {
         ownChannelRef.current = myChannel;
 
         await loadContacts(supabase);
-      } catch {
-        // Presencia opcional: la red sigue funcionando sin Realtime.
+      } catch (err) {
+        console.warn("[presence] No se pudo iniciar Realtime Presence:", err);
       }
     };
 

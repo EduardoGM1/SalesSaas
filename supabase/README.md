@@ -42,6 +42,50 @@ npx supabase db push
    - Site URL: `http://localhost:3000` (y luego el dominio de producción).
    - Redirect URLs: `http://localhost:3000/auth/callback`.
 
+## 4b. Realtime Presence (estado en línea en Red)
+
+Requisitos para que los contactos vean **En línea** (punto verde):
+
+### SQL (migraciones obligatorias)
+
+Ejecuta en **SQL Editor** (en orden):
+
+1. `0012_user_network_mvp.sql` — tabla `user_connections` y función `users_are_connected`
+2. `0015_user_presence.sql` — `last_seen_at` + políticas en `realtime.messages`
+3. `0016_realtime_messages_rls.sql` — `ALTER TABLE realtime.messages ENABLE ROW LEVEL SECURITY`
+
+Verifica políticas:
+
+```sql
+select policyname from pg_policies where tablename = 'messages' and schemaname = 'realtime';
+```
+
+Debes ver `presence_track_own` y `presence_listen_contacts`.
+
+### Dashboard Supabase
+
+1. **Project Settings → Realtime**
+   - Realtime activado.
+   - Para canales **private** (los que usa la app): desactiva **Allow public access**  
+     (o mantén políticas RLS correctas; con `private: true` se evalúan las políticas).
+
+2. **Authentication → URL Configuration**  
+   - Tu URL de Vercel en Site URL y Redirect URLs (ver sección 4).
+
+### En la app (dos cuentas de prueba)
+
+1. Ambas cuentas deben ser **contactos aceptados** (no solo solicitud pendiente).
+2. Ambas deben tener la **app abierta** al mismo tiempo (pestaña activa).
+3. Variables en Vercel: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `SUPABASE_URL`, `SUPABASE_ANON_KEY`.
+
+### Depuración
+
+Abre la consola del navegador (F12). Si falla la autorización verás:
+
+- `[presence] Canal no autorizado o error: presence:user:... CHANNEL_ERROR`
+
+Eso indica migraciones 0015/0016 pendientes o contacto no aceptado en `user_connections`.
+
 ## 5. Siguientes pasos (los implemento yo con las credenciales)
 
 - Páginas de login/registro + `/auth/callback` + middleware de sesión.
