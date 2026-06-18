@@ -1,5 +1,6 @@
 
 import { SalesModal } from "@/components/ui/sales-modal";
+import { CountryCitySelects } from "@/components/clients/country-city-selects.jsx";
 import { selectOnFocus } from "@/lib/focus-select.js";
 import { isSaleFormValid } from "@/lib/sales/form-valid";
 import { useI18n } from "@/hooks/use-i18n.js";
@@ -58,8 +59,11 @@ function ProspectFields({ form, onChange, t, showStatusFields }) {
       <div className="prospect-field"><label>{t("exp.edit.occ1")}</label><input type="text" placeholder={t("tools.survey.occPlaceholder")} value={form.occupation1 || ""} onFocus={selectOnFocus} onChange={(e) => onChange({ ...form, occupation1: e.target.value })} /></div>
       <div className="prospect-field"><label>{t("exp.edit.companion")}</label><input type="text" placeholder={t("tools.survey.companionPlaceholder")} value={form.name2 || ""} onFocus={selectOnFocus} onChange={(e) => onChange({ ...form, name2: e.target.value })} /></div>
       <div className="prospect-field"><label>{t("exp.edit.occ2")}</label><input type="text" placeholder={t("tools.survey.occ2Placeholder")} value={form.occupation2 || ""} onFocus={selectOnFocus} onChange={(e) => onChange({ ...form, occupation2: e.target.value })} /></div>
-      <div className="prospect-field"><label>{t("exp.edit.city")}</label><input type="text" placeholder={t("tools.survey.city")} value={form.city || ""} onFocus={selectOnFocus} onChange={(e) => onChange({ ...form, city: e.target.value })} /></div>
-      <div className="prospect-field"><label>{t("exp.edit.country")}</label><input type="text" placeholder={t("tools.survey.country")} value={form.country || ""} onFocus={selectOnFocus} onChange={(e) => onChange({ ...form, country: e.target.value })} /></div>
+      <CountryCitySelects
+        country={form.country || ""}
+        city={form.city || ""}
+        onChange={(patch) => onChange({ ...form, ...patch })}
+      />
       <div className="prospect-field"><label>{t("exp.edit.phone")}</label><input type="text" placeholder={t("exp.edit.phone")} value={form.phone || ""} onFocus={selectOnFocus} onChange={(e) => onChange({ ...form, phone: e.target.value })} /></div>
       <div className="prospect-field"><label>{t("exp.edit.email")}</label><input type="text" placeholder={t("exp.edit.email")} value={form.email || ""} onFocus={selectOnFocus} onChange={(e) => onChange({ ...form, email: e.target.value })} /></div>
       {showStatusFields ? (
