@@ -7,7 +7,7 @@ import {
   syncPushSubscription,
   unsubscribeFromPush,
 } from "@/lib/push-notifications.js";
-import { openInstallPrompt } from "@/lib/pwa-install.js";
+import { openInstallPrompt, isAndroidDevice } from "@/lib/pwa-install.js";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { toast } from "@/lib/toast";
 
@@ -210,7 +210,7 @@ export function NotificationsSettings({
       </div>
 
       <p className="settings-help" style={{ marginTop: 8 }}>
-        {t("settings.notifications.pwaHint")}
+        {isAndroidDevice() ? t("settings.notifications.androidHint") : t("settings.notifications.pwaHint")}
       </p>
     </>
   );

@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Topbar } from "@/components/layout/topbar";
+import { PageBack } from "@/components/layout/page-back.jsx";
 import { toast } from "@/lib/toast";
 import { confirmDialog } from "@/lib/confirm";
 import { translate } from "@/lib/i18n.js";
@@ -106,6 +107,12 @@ export function CalendarPage() {
     <>
       <Topbar title={t("page.agenda.title")} subtitle={t("page.agenda.subtitle")} />
       <div className="sales-page">
+        <PageBack
+          onClick={() => {
+            if (selDay != null) setSelDay(null);
+            else navigate(-1);
+          }}
+        />
         <div className="cal-layout">
           <div className="cal-widget">
             <div className="agenda-month-nav">

@@ -101,13 +101,13 @@ export function VacacionesPage({ clientId, shared }: VacacionesPageProps) {
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             <div className="card">
               <div className="card-heading" style={{ marginBottom: 16 }}>{t("tools.vacation.futureTitle")}</div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center", gap: 14 }}>
+              <div className="vacation-compare-grid">
                 <div className="vbox blue">
                   <div style={{ fontSize: 10, color: "var(--muted)", textTransform: "uppercase", letterSpacing: ".8px", fontWeight: 700, marginBottom: 8 }}>{t("tools.vacation.currentYear")}</div>
                   <div className="vbox-val">{t("tools.vacation.perYear", { cost: fmt(r.ga) })}</div>
                   <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 6 }}>{t("tools.vacation.tripsLine", { cost: fmtN(r.costo), trips: r.viajes })}</div>
                 </div>
-                <div style={{ color: "var(--muted2)", fontSize: 24, fontWeight: 300 }}>→</div>
+                <div className="vacation-compare-arrow" aria-hidden="true">→</div>
                 <div className="vbox yellow">
                   <div style={{ fontSize: 10, color: "var(--muted)", textTransform: "uppercase", letterSpacing: ".8px", fontWeight: 700, marginBottom: 8 }}>{t("tools.vacation.futureYear", { year: r.futAno })}</div>
                   <div className="vbox-val">{t("tools.vacation.perYear", { cost: fmt(r.cf) })}</div>

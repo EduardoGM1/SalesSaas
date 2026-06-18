@@ -68,6 +68,7 @@ export function AnalysisPage({ clientId, shared }: { clientId?; shared? }) {
           {!hasData && (
             <div className="analysis-empty">{t("tools.analysis.emptyLong")}</div>
           )}
+          <div className="table-scroll">
           <table className="dtbl pattern-table">
             <thead>
               <tr>
@@ -90,6 +91,7 @@ export function AnalysisPage({ clientId, shared }: { clientId?; shared? }) {
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       </div>
     </>

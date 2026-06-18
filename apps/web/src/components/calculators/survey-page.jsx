@@ -212,11 +212,11 @@ export function SurveyPage({ clientId, shared }: SurveyPageProps) {
         <div className="card" style={{ marginBottom: 16 }}>
           <div className="card-heading">{t("tools.survey.currentTrip")}</div>
           <div className="card-sub">{t("tools.survey.currentTripSub")}</div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24, alignItems: "start" }}>
+          <div className="g2 survey-trip-grid">
             <div>
-              <div className="frow" style={{ paddingTop: 0, borderTop: "none" }}>
+              <div className="frow frow-first">
                 <div className="flabel">{t("tools.survey.nights")}</div>
-                <input type="number" id="sv-nights" min={1} style={{ width: 80 }} value={data.nights} onFocus={selectOnFocus} onChange={(e) => update("nights", e.target.value)} />
+                <input type="number" className="input-compact" id="sv-nights" min={1} value={data.nights} onFocus={selectOnFocus} onChange={(e) => update("nights", e.target.value)} />
               </div>
               <div className="frow">
                 <div className="flabel">{t("tools.survey.expenseType")}</div>
@@ -235,9 +235,9 @@ export function SurveyPage({ clientId, shared }: SurveyPageProps) {
               <div id="sv-split" style={{ display: sType === "paquete" ? "block" : "none" }}>
                 <div className="frow">
                   <div className="flabel">{t("tools.survey.hotelPct")}</div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <input type="number" id="sv-hpct" min={1} max={99} style={{ width: 65 }} value={data.hpct} onFocus={selectOnFocus} onChange={(e) => update("hpct", e.target.value)} />
-                    <span style={{ color: "var(--muted)", fontSize: 13 }}>%</span>
+                  <div className="frow-inline">
+                    <input type="number" className="input-compact" id="sv-hpct" min={1} max={99} value={data.hpct} onFocus={selectOnFocus} onChange={(e) => update("hpct", e.target.value)} />
+                    <span className="frow-suffix">%</span>
                   </div>
                 </div>
                 <div className="g2" style={{ marginTop: 10 }}>
@@ -265,6 +265,7 @@ export function SurveyPage({ clientId, shared }: SurveyPageProps) {
           <div className="card">
             <div className="card-heading">{t("tools.survey.histTitle")}</div>
             <div className="card-sub">{t("tools.survey.histSub")}</div>
+            <div className="table-scroll">
             <table className="mtbl">
               <thead><tr><th>{t("tools.survey.table.destination")}</th><th>{t("tools.survey.table.year")}</th><th>{t("tools.survey.table.nights")}</th><th>{t("tools.survey.table.amount")}</th></tr></thead>
               <tbody>
@@ -287,6 +288,7 @@ export function SurveyPage({ clientId, shared }: SurveyPageProps) {
                 </tr>
               </tbody>
             </table>
+            </div>
             <div className="g2" style={{ marginTop: 14 }}>
               <div className="vbox blue">
                 <div className="vbox-val">{fmt(result.hist.dp)}</div>
@@ -302,7 +304,7 @@ export function SurveyPage({ clientId, shared }: SurveyPageProps) {
           </div>
 
           <div className="card">
-            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 14, marginBottom: 4 }}>
+            <div className="survey-future-head">
               <div>
                 <div className="card-heading" style={{ marginBottom: 4 }}>{t("tools.survey.futureTitle")}</div>
                 <div className="card-sub" style={{ marginBottom: 0 }}>{t("tools.survey.futureSub")}</div>
@@ -316,6 +318,7 @@ export function SurveyPage({ clientId, shared }: SurveyPageProps) {
                 </label>
               </div>
             </div>
+            <div className="table-scroll">
             <table className="mtbl">
               <thead><tr><th>{t("tools.survey.table.destination")}</th><th>{t("tools.survey.table.year")}</th><th>{t("tools.survey.table.nights")}</th><th>{t("tools.survey.table.cost")}</th></tr></thead>
               <tbody>
@@ -338,6 +341,7 @@ export function SurveyPage({ clientId, shared }: SurveyPageProps) {
                 </tr>
               </tbody>
             </table>
+            </div>
             <div style={{ marginTop: 14 }}>
               <div className="vbox yellow">
                 <div className="vbox-val">{fmt(result.future.spend)}</div>
@@ -351,6 +355,7 @@ export function SurveyPage({ clientId, shared }: SurveyPageProps) {
           <div className="card" id="sv-pattern-card">
             <div className="card-heading">{t("tools.survey.patternTitle")}</div>
             <div className="card-sub">{t("tools.survey.patternSub")}</div>
+            <div className="table-scroll">
             <table className="dtbl pattern-table">
               <thead>
                 <tr>
@@ -392,6 +397,7 @@ export function SurveyPage({ clientId, shared }: SurveyPageProps) {
                 </tr>
               </tbody>
             </table>
+            </div>
           </div>
         )}
 

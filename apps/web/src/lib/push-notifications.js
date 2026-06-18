@@ -3,6 +3,7 @@ import {
   getPushStatus,
   isPushSupported,
   needsIosPwaInstall,
+  restorePushSubscriptionIfNeeded,
   subscribeToPush,
   unsubscribeFromPush,
 } from "@/lib/onesignal.js";
@@ -13,6 +14,7 @@ export {
   getPushStatus,
   isPushSupported,
   needsIosPwaInstall,
+  restorePushSubscriptionIfNeeded,
   subscribeToPush,
   unsubscribeFromPush,
 };

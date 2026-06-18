@@ -81,7 +81,8 @@ body{font-family:var(--font-sans,'Inter',sans-serif);background:var(--bg);color:
 .g-auto{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;}
 .span2{grid-column:span 2;}
 @media(max-width:1100px){.g4{grid-template-columns:repeat(2,1fr);}}
-@media(max-width:700px){.g2,.g3,.g4{grid-template-columns:1fr;}.span2{grid-column:span 1;}}
+@media(max-width:700px){.g2,.g3,.g4{grid-template-columns:1fr;}.span2{grid-column:span 1;}.g2>*,.g3>*,.g4>*{min-width:0;}}
+@media(max-width:480px){.g-auto{grid-template-columns:1fr;}.cal-widget,.day-panel{padding:14px;}.card-heading{font-size:15px;}}
 
 /* KPI CARDS */
 .kpi{background:var(--white);border:1px solid var(--border);border-radius:var(--r-lg);padding:18px 20px;box-shadow:var(--shadow);position:relative;overflow:hidden;}
@@ -232,8 +233,8 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
 .agenda-month-nav{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid var(--border);}
 .agenda-month-label{font-size:14px;font-weight:800;color:var(--text);text-align:center;flex:1;}
 
-.cal-layout{display:grid;grid-template-columns:minmax(360px,1fr) minmax(360px,1fr);gap:22px;align-items:start;}
-@media(max-width:1000px){.cal-layout{grid-template-columns:1fr;}}
+.cal-layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:22px;align-items:start;}
+@media(max-width:1000px){.cal-layout{grid-template-columns:minmax(0,1fr);gap:16px;}}
 .cal-widget{background:var(--white);border:1px solid var(--border);border-radius:var(--r-lg);padding:16px;box-shadow:var(--shadow);width:100%;max-width:none;}
 .cal-weekdays{display:grid;grid-template-columns:repeat(7,1fr);margin-bottom:6px;}
 .cal-wd{text-align:center;font-size:10px;color:var(--muted);font-weight:700;letter-spacing:0.5px;text-transform:uppercase;padding:4px 0;}
@@ -320,7 +321,7 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
 .dash-lean-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;gap:14px;}
 .dash-title{font-size:28px;font-weight:800;letter-spacing:-0.8px;color:var(--text);}
 .dash-sub{font-size:13px;color:var(--muted);margin-top:3px;}
-.dash-top-grid{display:grid;grid-template-columns:minmax(360px,0.82fr) minmax(520px,1.38fr);gap:18px;align-items:stretch;margin-bottom:18px;}
+.dash-top-grid{display:grid;grid-template-columns:minmax(0,0.82fr) minmax(0,1.38fr);gap:18px;align-items:stretch;margin-bottom:18px;}
 .dash-data-card,.dash-graph-card,.dash-table-card{background:var(--white);border:1px solid var(--border);border-radius:var(--r-lg);box-shadow:var(--shadow);}
 .dash-data-card{padding:22px 24px;}
 .dash-graph-card{padding:22px 24px;}
@@ -396,7 +397,7 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
 .prospect-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px 24px;align-items:start;}
 .prospect-field label{font-size:11px;color:var(--muted);font-weight:700;letter-spacing:.5px;text-transform:uppercase;display:block;margin-bottom:6px;}
 .prospect-field input,.prospect-field select,.prospect-field textarea{width:100%;}
-.exp-layout{display:grid;grid-template-columns:minmax(320px,1fr) minmax(360px,1fr);gap:16px;align-items:start;}
+.exp-layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;align-items:start;}
 .exp-tool-list{display:flex;flex-direction:column;gap:12px;width:100%;}
 .exp-tool-list .tool-card{width:100%;min-height:88px;}
 .exp-side-card{min-height:100%;}
@@ -740,8 +741,9 @@ textarea::placeholder{
 .newclient-field input{width:100%;}
 .readonly-soft input[readonly]{color:var(--text2);background:var(--surface2)!important;border-color:var(--border2)!important;box-shadow:none!important;cursor:default;}
 /* React app aliases */
-.sales-page { display: block; flex: 1; padding: 24px 28px; animation: pageIn 0.18s ease; }
-.main > main { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+.sales-page { display: block; flex: 1; animation: pageIn 0.18s ease; }
+.main > main { display: flex; flex-direction: column; flex: 1; min-height: 0; min-width: 0; }
+.main { min-width: 0; }
 a.sb-item { text-decoration: none; color: rgba(255,255,255,0.55); }
 a.sb-item:hover { color: rgba(255,255,255,0.9); }
 a.sb-item.active { color: #93c5fd; }

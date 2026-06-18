@@ -1193,9 +1193,80 @@ body,
 }
 
 .sales-page {
+  padding-top: 24px;
   padding-left: max(16px, var(--safe-left));
   padding-right: max(16px, var(--safe-right));
   padding-bottom: calc(24px + var(--safe-bottom));
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  overflow-x: clip;
+}
+
+.vacation-compare-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 14px;
+}
+
+.vacation-compare-arrow {
+  color: var(--muted2);
+  font-size: 24px;
+  font-weight: 300;
+  line-height: 1;
+  text-align: center;
+}
+
+.table-scroll {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.table-scroll .mtbl {
+  margin-top: 10px;
+}
+
+.survey-trip-grid {
+  gap: 24px;
+  align-items: start;
+}
+
+.survey-trip-grid > * {
+  min-width: 0;
+}
+
+.survey-future-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 4px;
+  flex-wrap: wrap;
+}
+
+.frow-first {
+  padding-top: 0;
+  border-top: none;
+}
+
+.input-compact {
+  width: 80px;
+  max-width: 100%;
+}
+
+.frow-inline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.frow-suffix {
+  color: var(--muted);
+  font-size: 13px;
+  flex-shrink: 0;
 }
 
 .client-table-card {
@@ -1304,16 +1375,85 @@ body,
     justify-content: center;
   }
 
-  .card .mtbl,
-  .pattern-table {
-    display: block;
-    width: 100%;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
+  .card {
+    padding: 16px 14px;
+    min-width: 0;
   }
 
-  .pattern-table {
+  .sales-page .frow {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .sales-page .frow .flabel {
+    flex: none;
+  }
+
+  .sales-page .frow .seg {
+    width: 100%;
+  }
+
+  .sales-page .frow .seg-btn {
+    flex: 1;
+    min-width: 0;
+    padding: 8px 6px;
+    font-size: 11px;
+    text-align: center;
+  }
+
+  .sales-page .frow .mfield {
+    width: 100%;
+    max-width: none;
+  }
+
+  .sales-page .frow > input[type="number"],
+  .sales-page .frow > input[type="text"],
+  .sales-page .frow .input-compact {
+    width: 100% !important;
+    max-width: none !important;
+  }
+
+  .sales-page .frow .frow-inline {
+    width: 100%;
+  }
+
+  .survey-future-head {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .survey-future-head .choice-row {
+    justify-content: flex-start;
+  }
+
+  .table-scroll .mtbl {
+    min-width: 320px;
+  }
+
+  .table-scroll .pattern-table {
     min-width: 520px;
+  }
+
+  .mtbl .nc input {
+    width: 100%;
+    min-width: 44px;
+    max-width: 56px;
+  }
+
+  .mtbl td.mc .mfield {
+    width: 100%;
+  }
+
+  .mtbl td.mc .mfield input {
+    width: 100%;
+    min-width: 0;
+    max-width: none;
+  }
+
+  .mtbl th,
+  .mtbl td {
+    padding: 5px 3px;
   }
 
   .prospect-grid {
@@ -1340,11 +1480,195 @@ body,
   }
 }
 
+/* Teléfonos estrechos (~360px: Motorola Edge 40, Galaxy S, etc.) */
+@media (max-width: 480px) {
+  html { font-size: 13.5px; }
+
+  .app {
+    overflow-x: clip;
+  }
+
+  .sales-page {
+    padding-top: 12px;
+    padding-left: max(10px, var(--safe-left));
+    padding-right: max(10px, var(--safe-right));
+    padding-bottom: calc(18px + var(--safe-bottom));
+  }
+
+  .topbar:not(.topbar--admin) {
+    padding-left: max(8px, var(--safe-left));
+    padding-right: max(8px, var(--safe-right));
+    gap: 6px;
+  }
+
+  .card {
+    padding: 14px 12px;
+    border-radius: var(--r);
+  }
+
+  .card-heading {
+    font-size: 15px;
+  }
+
+  .card-sub {
+    font-size: 11px;
+    margin-bottom: 12px;
+  }
+
+  .page-title {
+    font-size: 17px;
+  }
+
+  .tool-page-head-main {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .tool-page-head-main > .btn {
+    align-self: flex-start;
+    width: auto;
+    padding-left: 0;
+  }
+
+  .tool-page-head-titles .page-title {
+    font-size: 17px;
+  }
+
+  .choice-row {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .choice-pill {
+    flex: 1;
+    justify-content: center;
+    white-space: normal;
+    text-align: center;
+    padding: 8px 8px;
+    font-size: 10px;
+    line-height: 1.25;
+  }
+
+  .sales-page .frow .seg-btn {
+    padding: 8px 4px;
+    font-size: 10px;
+    line-height: 1.2;
+  }
+
+  .table-scroll .mtbl {
+    min-width: 272px;
+  }
+
+  .table-scroll .pattern-table {
+    min-width: 440px;
+  }
+
+  .vbox {
+    padding: 12px 14px;
+  }
+
+  .vbox-val {
+    font-size: 18px;
+  }
+
+  .vacation-compare-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .vacation-compare-arrow {
+    display: none;
+  }
+
+  .tool-card {
+    padding: 14px 12px;
+    min-height: auto;
+    gap: 12px;
+  }
+
+  .tool-name {
+    font-size: 13px;
+  }
+
+  .tool-desc {
+    font-size: 11px;
+  }
+
+  .day-panel {
+    padding: 14px;
+  }
+
+  .cal-widget {
+    padding: 12px;
+  }
+
+  .dp-title {
+    font-size: 14px;
+  }
+
+  .agenda-month-label {
+    font-size: 13px;
+  }
+
+  .goal-plain-input,
+  .goal-plain-input.small {
+    width: 100%;
+    max-width: none;
+  }
+
+  .save-footer {
+    flex-direction: column-reverse;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .save-footer .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .save-confirm {
+    margin-right: 0;
+    text-align: center;
+  }
+
+  .pwa-install-banner {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .pwa-install-banner-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
 @media (max-width: 390px) {
   .tb-page-sub { display: none; }
   .tb-admin-badge { font-size: 9px; padding: 2px 6px; }
   .topbar-admin-tab span { display: none; }
   .topbar-admin-tab { padding: 7px 10px; }
+
+  .tb-page-title {
+    font-size: 14px;
+  }
+
+  .mobile-menu-btn {
+    width: 34px;
+    height: 34px;
+    font-size: 16px;
+  }
+
+  .table-scroll .mtbl {
+    min-width: 260px;
+  }
+
+  .mtbl th {
+    font-size: 9px;
+    letter-spacing: 0.3px;
+    padding: 5px 2px;
+  }
 }
 
 /* ===== PWA INSTALL PROMPT ===== */

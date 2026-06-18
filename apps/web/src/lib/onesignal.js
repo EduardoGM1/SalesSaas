@@ -226,6 +226,7 @@ export async function ensureOneSignal() {
               serviceWorkerParam: { scope: SW_SCOPE },
               notifyButton: { enable: false },
               allowLocalhostAsSecureOrigin: import.meta.env.DEV,
+              autoResubscribe: true,
             });
             sdkReady = OneSignal;
             resolve(OneSignal);
@@ -368,6 +369,36 @@ export async function subscribeToPush() {
   await registerDeviceSubscription(readSubscriptionState(OneSignal).subscriptionId);
 
   return readSubscriptionState(OneSignal);
+}
+
+export async function restorePushSubscriptionIfNeeded() {
+  if (!isBrowserPushCapable() || !isSupabaseConfigured()) return { restored: false };
+  if (Notification.permission !== "granted") return { restored: false };
+
+  const configured = await resolveServerPushConfigured();
+  if (!configured) return { restored: false };
+
+  try {
+    const OneSignal = await ensureOneSignal();
+    const before = readSubscriptionState(OneSignal);
+    if (before.subscribed) {
+      await registerDeviceSubscription(before.subscriptionId);
+      return { restored: false, alreadySubscribed: true };
+    }
+
+    const userId = await resolveUserId();
+    if (userId) await OneSignal.login(userId);
+
+    await OneSignal.User.PushSubscription.optIn();
+    const subscribed = await waitForPushSubscription(OneSignal, 12_000);
+    if (!subscribed) return { restored: false };
+
+    if (userId) await OneSignal.login(userId);
+    await registerDeviceSubscription(readSubscriptionState(OneSignal).subscriptionId);
+    return { restored: true };
+  } catch {
+    return { restored: false };
+  }
 }
 
 export async function unsubscribeFromPush() {
