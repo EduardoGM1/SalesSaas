@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { ChevronRight, Bell, Code2, Database, DollarSign, Download, Globe2, LogOut, ShieldAlert, Smartphone, Trash2, Upload, User, WalletCards } from "lucide-react";
-import { canOfferPwaInstall, isStandaloneApp, openInstallPrompt } from "@/lib/pwa-install.js";
+import { isStandaloneApp, shouldShowPwaInstallInSettings } from "@/lib/pwa-install.js";
 import { Topbar } from "@/components/layout/topbar";
 import { PageBack } from "@/components/layout/page-back";
 import { CURRENCIES, WS_DEFAULTS } from "@/lib/constants";
@@ -23,10 +23,11 @@ import { useSyncStore } from "@/stores/sync-store";
 import { toast } from "@/lib/toast";
 import { confirmDialog } from "@/lib/confirm";
 import { NotificationsSettings } from "@/components/settings/notifications-settings.jsx";
+import { PwaInstallSettings } from "@/components/settings/pwa-install-settings.jsx";
 
 const LIVE_PREVIEW_KEYS = new Set(["language", "currency", "exchangeRate", "exchangeMode"]);
 
-type SettingsSection = "user" | "worksheet" | "money" | "language" | "apis" | "backup" | "account" | "notifications" | null;
+type SettingsSection = "user" | "worksheet" | "money" | "language" | "apis" | "backup" | "account" | "notifications" | "pwa" | null;
 
 const CURRENCY_LABEL: Record<string, string> = {
   USD: "USD - US Dollar",
@@ -177,8 +178,14 @@ export function SettingsPage() {
         {canSeeTechnical && (
           <SettingsEntry icon={<Database size={18} />} tone="teal" title={ti("settings.hub.backup")} desc={ti("settings.hub.backupDesc")} onClick={() => setActiveSection("backup")} />
         )}
-        {canOfferPwaInstall() && !isStandaloneApp() && (
-          <SettingsEntry icon={<Smartphone size={18} />} tone="blue" title={ti("settings.hub.pwa")} desc={ti("settings.hub.pwaDesc")} onClick={openInstallPrompt} />
+        {shouldShowPwaInstallInSettings() && (
+          <SettingsEntry
+            icon={<Smartphone size={18} />}
+            tone="blue"
+            title={isStandaloneApp() ? ti("settings.hub.pwaInstalled") : ti("settings.hub.pwa")}
+            desc={isStandaloneApp() ? ti("settings.hub.pwaInstalledDesc") : ti("settings.hub.pwaDesc")}
+            onClick={() => setActiveSection("pwa")}
+          />
         )}
         {isSupabaseConfigured() && (
           <SettingsEntry icon={<Bell size={18} />} tone="green" title={ti("settings.hub.notifications")} desc={ti("settings.hub.notificationsDesc")} onClick={() => setActiveSection("notifications")} />
@@ -371,6 +378,16 @@ export function SettingsPage() {
                       <option value="en">English</option>
                     </select>
                   </div>
+                </div>
+              </div>
+            )}
+
+            {activeSection === "pwa" && shouldShowPwaInstallInSettings() && (
+              <div className="settings-section">
+                <div className="settings-card">
+                  <div className="card-heading">{ti("settings.pwa.title")}</div>
+                  <div className="card-sub">{ti("settings.pwa.sub")}</div>
+                  <PwaInstallSettings />
                 </div>
               </div>
             )}

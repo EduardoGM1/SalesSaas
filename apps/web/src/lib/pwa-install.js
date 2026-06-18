@@ -1,6 +1,8 @@
 const DISMISS_KEY = "pwa_install_dismissed_at";
 const DISMISS_DAYS = 14;
 
+/** @typedef {'ios' | 'android' | 'desktop'} InstallPlatform */
+
 export function isStandaloneApp() {
   if (typeof window === "undefined") return false;
   return (
@@ -18,6 +20,20 @@ export function isIosDevice() {
 export function isAndroidDevice() {
   if (typeof navigator === "undefined") return false;
   return /android/i.test(navigator.userAgent);
+}
+
+/** Plataforma detectada para guiar la instalación PWA. */
+export function getInstallPlatform() {
+  if (isIosDevice()) return "ios";
+  if (isAndroidDevice()) return "android";
+  return "desktop";
+}
+
+/** Mostrar entrada de instalación en Ajustes (móvil y navegadores con PWA). */
+export function shouldShowPwaInstallInSettings() {
+  if (typeof window === "undefined") return false;
+  if (isIosDevice() || isAndroidDevice()) return true;
+  return "serviceWorker" in navigator;
 }
 
 export function canOfferPwaInstall() {
@@ -45,6 +61,6 @@ export function registerOpenInstallPrompt(handler) {
   openInstallPromptHandler = handler;
 }
 
-export function openInstallPrompt() {
-  openInstallPromptHandler?.();
+export function openInstallPrompt(options = {}) {
+  openInstallPromptHandler?.(options);
 }

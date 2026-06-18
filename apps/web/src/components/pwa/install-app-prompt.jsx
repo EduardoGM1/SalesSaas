@@ -9,8 +9,10 @@ import {
   registerOpenInstallPrompt,
   wasInstallPromptDismissed,
 } from "@/lib/pwa-install.js";
+import { useI18n } from "@/hooks/use-i18n.js";
 
 export function InstallAppPrompt() {
+  const { t } = useI18n();
   const [deferredPrompt, setDeferredPrompt] = useState(null);
   const [showBanner, setShowBanner] = useState(false);
   const [showIosGuide, setShowIosGuide] = useState(false);
@@ -20,8 +22,26 @@ export function InstallAppPrompt() {
   const android = isAndroidDevice();
   const installed = isStandaloneApp();
 
-  const openGuide = useCallback(() => {
+  const openGuide = useCallback((options = {}) => {
+    const { force = false } = options;
     if (installed) return;
+
+    if (force) {
+      if (ios) {
+        setShowIosGuide(true);
+        return;
+      }
+      if (android && deferredPrompt) {
+        setInstalling(true);
+        void deferredPrompt.prompt()
+          .then(() => deferredPrompt.userChoice)
+          .finally(() => setInstalling(false));
+        return;
+      }
+      setShowIosGuide(true);
+      return;
+    }
+
     if (ios) {
       setShowIosGuide(true);
       return;
@@ -34,7 +54,7 @@ export function InstallAppPrompt() {
       return;
     }
     setShowBanner(true);
-  }, [deferredPrompt, installed, ios]);
+  }, [deferredPrompt, installed, ios, android]);
 
   useEffect(() => {
     registerOpenInstallPrompt(openGuide);
@@ -123,12 +143,14 @@ export function InstallAppPrompt() {
               <Download size={22} />
             </div>
             <h2 id="pwa-install-title" className="pwa-install-modal-title">
-              {ios ? "Instalar en tu iPhone" : "Instalar la aplicación"}
+              {ios ? t("settings.pwa.modalTitleIos") : android ? t("settings.pwa.modalTitleAndroid") : t("settings.pwa.modalTitleDesktop")}
             </h2>
             <p className="pwa-install-modal-sub">
               {ios
-                ? "Apple no permite instalar con un solo botón, pero son solo 3 pasos desde esta pantalla:"
-                : "Si no ves el botón de instalación automática, usa el menú de tu navegador."}
+                ? t("settings.pwa.modalSubIos")
+                : android
+                  ? t("settings.pwa.modalSubAndroid")
+                  : t("settings.pwa.modalSubDesktop")}
             </p>
             <ol className="pwa-install-steps">
               {ios ? (
