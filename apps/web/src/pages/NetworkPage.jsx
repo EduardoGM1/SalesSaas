@@ -1,13 +1,12 @@
 
 import { useEffect, useState } from "react";
-import { UserPlus, Check, X, MessageSquare, UserMinus, Share2 } from "lucide-react";
+import { UserPlus, Check, X, MessageSquare, UserMinus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Topbar } from "@/components/layout/topbar";
 import { PageBack } from "@/components/layout/page-back";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { networkApi } from "@/lib/network-api.js";
 import { RemoveContactModal } from "@/components/network/remove-contact-modal.jsx";
-import { ShareWithContactModal } from "@/components/network/share-with-contact-modal.jsx";
 import { NetworkUserAvatar, networkDisplayName } from "@/components/network/network-user-avatar.jsx";
 import { usePresenceContext } from "@/components/providers/presence-provider.jsx";
 import { useI18n } from "@/hooks/use-i18n.js";
@@ -27,7 +26,7 @@ function NetworkIconButton({ icon: Icon, label, onClick, variant = "default" }) 
   );
 }
 
-function ConnectionActions({ connection, onRefresh, onRequestRemove, onShareContact, t }) {
+function ConnectionActions({ connection, onRefresh, onRequestRemove, t }) {
   const peer = connection.peer;
   const navigate = useNavigate();
 
@@ -76,14 +75,6 @@ function ConnectionActions({ connection, onRefresh, onRequestRemove, onShareCont
           onClick={(e) => {
             e.stopPropagation();
             navigate(`/messages?with=${peer.id}`);
-          }}
-        />
-        <NetworkIconButton
-          icon={Share2}
-          label={t("network.shareAction")}
-          onClick={(e) => {
-            e.stopPropagation();
-            onShareContact?.(peer);
           }}
         />
         <NetworkIconButton
@@ -184,7 +175,6 @@ export function NetworkPage() {
   const [loading, setLoading] = useState(true);
   const [removeTarget, setRemoveTarget] = useState(null);
   const [removePending, setRemovePending] = useState(false);
-  const [shareContact, setShareContact] = useState(null);
 
   const refresh = async () => {
     if (!isSupabaseConfigured()) return;
@@ -311,7 +301,6 @@ export function NetworkPage() {
                     connection={c}
                     onRefresh={refresh}
                     onRequestRemove={setRemoveTarget}
-                    onShareContact={setShareContact}
                     t={t}
                   />
                 </div>
@@ -341,7 +330,6 @@ export function NetworkPage() {
                     connection={c}
                     onRefresh={refresh}
                     onRequestRemove={setRemoveTarget}
-                    onShareContact={setShareContact}
                     t={t}
                   />
                 </button>
@@ -359,11 +347,6 @@ export function NetworkPage() {
         onConfirm={handleRemoveConfirm}
       />
 
-      <ShareWithContactModal
-        open={!!shareContact}
-        onOpenChange={(open) => { if (!open) setShareContact(null); }}
-        contact={shareContact}
-      />
     </>
   );
 }

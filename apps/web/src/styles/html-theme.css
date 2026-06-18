@@ -479,7 +479,8 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
 .client-table tbody tr:hover td{background:rgba(37,99,235,.035);}
 .client-name-link{font-weight:800;color:var(--text);cursor:pointer;display:flex;flex-direction:column;gap:2px;}
 .client-code{font-family:var(--mono);font-size:10px;color:var(--muted);font-weight:600;}
-.client-actions{display:flex;align-items:center;justify-content:center;gap:8px;}
+.client-actions{display:flex;align-items:center;justify-content:center;gap:8px;min-width:108px;}
+.client-table th:last-child,.client-table td:last-child{min-width:108px;width:108px;}
 .icon-btn{width:30px;height:30px;border-radius:8px;border:1px solid var(--border2);background:var(--white);color:var(--muted);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;transition:all .15s;font-size:14px;}
 .icon-btn:hover{border-color:rgba(37,99,235,.35);color:var(--blue);background:rgba(37,99,235,.06);}
 .icon-btn.danger:hover{border-color:rgba(220,38,38,.3);color:var(--red);background:var(--red-lt);}

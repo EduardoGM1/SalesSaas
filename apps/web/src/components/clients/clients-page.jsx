@@ -134,7 +134,11 @@ export function ClientsPage() {
                             type="button"
                             className="icon-btn"
                             title={t("clients.share")}
-                            onClick={() => setShareClient({ id: c.id, name: clientDisplayName(c) })}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              e.preventDefault();
+                              setShareClient({ id: c.id, name: clientDisplayName(c) });
+                            }}
                           >
                             <Share2 size={14} />
                           </button>
