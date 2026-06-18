@@ -30,6 +30,7 @@ export function NotificationsSettings({
     messages: true,
     connection_requests: true,
     connection_accepted: true,
+    shared_prospects: true,
   };
 
   const refreshStatus = () => {
@@ -194,6 +195,14 @@ export function NotificationsSettings({
               onChange={(e) => setPref("connection_accepted", e.target.checked)}
             />
             {t("settings.notifications.prefAccepted")}
+          </label>
+          <label className="settings-check">
+            <input
+              type="checkbox"
+              checked={notifications.shared_prospects !== false}
+              onChange={(e) => setPref("shared_prospects", e.target.checked)}
+            />
+            {t("settings.notifications.prefShared")}
           </label>
         </div>
       </div>

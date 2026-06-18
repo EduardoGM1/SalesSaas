@@ -26,6 +26,7 @@ async function loadNotificationPrefs(serviceSb, userId) {
     messages: notifications.messages !== false,
     connection_requests: notifications.connection_requests !== false,
     connection_accepted: notifications.connection_accepted !== false,
+    shared_prospects: notifications.shared_prospects !== false,
   };
 }
 
@@ -102,8 +103,25 @@ export async function notifyConnectionRequest(addresseeId, { requesterId, reques
   await sendToUser(addresseeId, {
     title: "Solicitud de contacto",
     body: `${requesterName || "Alguien"} quiere agregarte a su red`,
-    url: `${origin}/red`,
+    url: `${origin}/network`,
     tag: `connection-request-${requesterId}`,
+  });
+}
+
+export async function notifyProspectShared(recipientId, { ownerId, ownerName, prospectId, prospectName }) {
+  const serviceSb = createServiceSupabaseClient();
+  if (!serviceSb || !isPushConfigured()) return;
+
+  const prefs = await loadNotificationPrefs(serviceSb, recipientId);
+  if (!prefs.shared_prospects) return;
+
+  const origin = primaryWebOrigin();
+  const label = prospectName || "un expediente";
+  await sendToUser(recipientId, {
+    title: "Expediente compartido",
+    body: `${ownerName || "Un contacto"} compartió «${label}» contigo`,
+    url: `${origin}/red/contacto/${ownerId}/expediente/${prospectId}`,
+    tag: `shared-prospect-${prospectId}`,
   });
 }
 

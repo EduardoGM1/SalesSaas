@@ -254,6 +254,42 @@ export async function unlinkOneSignalUser() {
   await sdkReady.logout();
 }
 
+let notificationHandlersAttached = false;
+
+function resolveNotificationUrl(notification) {
+  return notification?.launchURL
+    || notification?.launchUrl
+    || notification?.additionalData?.url
+    || null;
+}
+
+/** Muestra push en primer plano y navega al pulsar la notificación. */
+export async function setupPushNotificationHandlers({ onNavigate } = {}) {
+  const OneSignal = await ensureOneSignal();
+  if (notificationHandlersAttached) return;
+  notificationHandlersAttached = true;
+
+  OneSignal.Notifications.addEventListener("foregroundWillDisplay", (event) => {
+    event.notification.display();
+  });
+
+  OneSignal.Notifications.addEventListener("click", (event) => {
+    const url = resolveNotificationUrl(event.notification);
+    if (!url) return;
+
+    try {
+      const target = new URL(url, window.location.origin);
+      if (target.origin === window.location.origin && onNavigate) {
+        onNavigate(`${target.pathname}${target.search}${target.hash}`);
+        return;
+      }
+    } catch {
+      // URL absoluta o inválida: navegación completa.
+    }
+    window.location.assign(url);
+  });
+}
+
 export async function subscribeToPush() {
   if (needsIosPwaInstall()) {
     const err = new Error("IOS_PWA_REQUIRED");

@@ -163,6 +163,7 @@ export interface UserSettings {
     messages?: boolean;
     connection_requests?: boolean;
     connection_accepted?: boolean;
+    shared_prospects?: boolean;
   };
 }
 

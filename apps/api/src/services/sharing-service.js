@@ -1,6 +1,11 @@
 import { isUuid } from "@salesapp/shared/data/mappers.js";
 import { bodyToProspectPatch } from "@salesapp/shared/api/validators.js";
 import { ServiceError, assertFound } from "../lib/service-error.js";
+import { notifyProspectShared } from "./push-notifications-service.js";
+
+function profileName(profile) {
+  return profile?.full_name?.trim() || profile?.email?.split("@")[0] || "Usuario";
+}
 
 async function loadProfiles(supabase, ids) {
   const unique = [...new Set(ids.filter(Boolean))];
@@ -123,6 +128,13 @@ export async function createShare(supabase, userId, prospectId, { shared_with_id
     .maybeSingle();
   if (!owned) throw new ServiceError("Expediente no encontrado.", 404);
 
+  const { data: priorShare } = await supabase
+    .from("prospect_shares")
+    .select("id")
+    .eq("prospect_id", prospectId)
+    .eq("shared_with_id", sharedWithId)
+    .maybeSingle();
+
   const { data, error } = await supabase
     .from("prospect_shares")
     .upsert({
@@ -146,7 +158,17 @@ export async function createShare(supabase, userId, prospectId, { shared_with_id
     .eq("id", prospectId)
     .maybeSingle();
   const prospects = new Map(prospect ? [[prospect.id, prospect]] : []);
-  return mapShare(data, profiles, prospects);
+  const mapped = mapShare(data, profiles, prospects);
+  if (!priorShare) {
+    const owner = profiles.get(userId);
+    notifyProspectShared(sharedWithId, {
+      ownerId: userId,
+      ownerName: profileName(owner),
+      prospectId,
+      prospectName: mapped.prospect_name,
+    }).catch(() => {});
+  }
+  return mapped;
 }
 
 export async function updateSharePermission(supabase, userId, shareId, permission) {

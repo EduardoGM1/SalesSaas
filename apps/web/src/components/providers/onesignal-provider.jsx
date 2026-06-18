@@ -1,15 +1,19 @@
 import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { createClient } from "@/lib/supabase/client";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import {
   ensureOneSignal,
   linkOneSignalUser,
   resolveOneSignalAppId,
+  setupPushNotificationHandlers,
   unlinkOneSignalUser,
 } from "@/lib/onesignal.js";
 
 /** Inicializa OneSignal y vincula el usuario de Supabase como external_id. */
 export function OneSignalProvider({ children }) {
+  const navigate = useNavigate();
+
   useEffect(() => {
     if (!isSupabaseConfigured()) return undefined;
 
@@ -22,6 +26,9 @@ export function OneSignalProvider({ children }) {
         if (!appId || cancelled) return;
 
         await ensureOneSignal();
+        if (cancelled) return;
+
+        await setupPushNotificationHandlers({ onNavigate: navigate });
         if (cancelled) return;
 
         const supabase = createClient();
@@ -46,7 +53,7 @@ export function OneSignalProvider({ children }) {
       cancelled = true;
       authSubscription?.unsubscribe();
     };
-  }, []);
+  }, [navigate]);
 
   return children;
 }
