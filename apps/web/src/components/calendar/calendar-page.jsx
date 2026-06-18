@@ -6,7 +6,7 @@ import { PageBack } from "@/components/layout/page-back.jsx";
 import { toast } from "@/lib/toast";
 import { confirmDialog } from "@/lib/confirm";
 import { translate } from "@/lib/i18n.js";
-import { isCalendarSaleCountable } from "@/lib/calculations/calendar";
+import { isActiveAgendaSale } from "@/lib/sales/agenda-sales";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { useMoney } from "@/hooks/use-money.js";
 import { calKey } from "@/lib/format/dates";
@@ -42,7 +42,9 @@ export function CalendarPage() {
   const first = new Date(calYear, calMonth, 1).getDay();
   const dim = new Date(calYear, calMonth + 1, 0).getDate();
   const today = new Date();
-  const entries: CalEntry[] = selDay ? (data.days[selDay] || []).filter((entry) => !entry.completed) : [];
+  const entries: CalEntry[] = selDay
+    ? (data.days[selDay] || []).filter((entry) => !entry.completed && (entry.t !== "venta" || isActiveAgendaSale(db, entry)))
+    : [];
 
   const openAdd = () => {
     if (!selDay) return toast.info(t("cal.selectDayFirst"));
@@ -139,7 +141,7 @@ export function CalendarPage() {
                   >
                     <div className="cal-dn">{d}</div>
                     <div className="cal-dots">
-                      {es.some(isCalendarSaleCountable) && <span className="cal-dot sale" />}
+                      {es.some((e) => isActiveAgendaSale(db, e)) && <span className="cal-dot sale" />}
                       {es.some((e) => e.t === "nota") && <span className="cal-dot note" />}
                       {es.some((e) => e.t === "follow") && <span className="cal-dot follow" />}
                       {es.some((e) => e.t === "descanso") && <span className="cal-dot descanso" />}
@@ -162,7 +164,7 @@ export function CalendarPage() {
             {selDay && !entries.length && <div className="dp-empty">{t("cal.emptyDay")}</div>}
             {selDay && entries.length > 0 && (
               <div>
-                {renderGroup("venta", t("cal.sales"), "sale", entries.filter(isCalendarSaleCountable))}
+                {renderGroup("venta", t("cal.sales"), "sale", entries.filter((e) => isActiveAgendaSale(db, e)))}
                 {renderGroup("nota", t("cal.notes"), "note", entries.filter((e) => e.t === "nota"))}
                 {renderGroup("follow", t("cal.followups"), "follow", entries.filter((e) => e.t === "follow"))}
                 {renderGroup("descanso", t("cal.rest"), "descanso", entries.filter((e) => e.t === "descanso"))}

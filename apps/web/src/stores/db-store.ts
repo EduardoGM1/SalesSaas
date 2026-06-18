@@ -29,6 +29,7 @@ interface DbState {
   getClient: (id: string) => ClientRecord | undefined;
   saveClient: (client: ClientRecord) => void;
   deleteClient: (id: string) => void;
+  deleteClientSale: (clientId: string, saleId: string) => void;
   getToolBucket: (tool: string, mode: "libre" | "client", clientId?: string | null) => Record<string, string | number>;
   saveToolBucket: (tool: string, mode: "libre" | "client", data: Record<string, string | number>, clientId?: string | null) => void;
   addClientActivity: (clientId: string, activity: Omit<ClientActivity, "id" | "ts"> & { ts?: number }) => void;
@@ -73,39 +74,31 @@ function removeCalendarEntriesForSale(db: AppDatabase, saleId: string): void {
   });
 }
 
-function archiveClientSales(db: AppDatabase, client: ClientRecord): void {
-  const sales = client.sales ?? [];
-  if (!sales.length) return;
-  if (!db.sales) db.sales = {};
-  const clientName = clientDisplayName(client);
-  for (const sale of sales) {
-    db.sales[sale.saleId] = withSaleSnapshot(client, {
-      ...sale,
-      prospectCode: client.prospectCode,
-      formerClientId: client.id,
-      orphaned: true,
-    });
-  }
-}
-
-/** Conserva ventas en Agenda; elimina notas/follow-ups ligados solo al expediente. */
-function preserveSalesOnClientDelete(db: AppDatabase, clientId: string, clientName: string): void {
+function removeCalendarEntriesForClient(db: AppDatabase, clientId: string): void {
+  if (!clientId) return;
   Object.values(db.cal).forEach((month) => {
     Object.keys(month.days || {}).forEach((day) => {
       month.days[Number(day)] = (month.days[Number(day)] || []).filter((entry) => {
-        const linked = entry.clientId === clientId || entry.prospectId === clientId;
-        if (!linked) return true;
-        if (entry.t === "venta" || (entry.t === "follow" && entry.saleId)) {
-          entry.clientId = undefined;
-          entry.prospectId = undefined;
-          if (!entry.clientName) entry.clientName = clientName;
-          return true;
-        }
-        return false;
+        if (entry.clientId === clientId || entry.prospectId === clientId) return false;
+        return true;
       });
       if (!month.days[Number(day)]?.length) delete month.days[Number(day)];
     });
   });
+}
+
+function removeArchivedSales(db: AppDatabase, saleIds: string[]): void {
+  if (!db.sales || !saleIds.length) return;
+  for (const saleId of saleIds) {
+    if (saleId) delete db.sales[saleId];
+  }
+}
+
+function recalcClientSaleMeta(client: ClientRecord): void {
+  client.hasSales = (client.sales ?? []).some(isProcessableSale);
+  const lastProcessable = (client.sales ?? []).filter(isProcessableSale).sort((a, b) => (b.ts || 0) - (a.ts || 0))[0];
+  client.lastSaleDate = lastProcessable?.date || "";
+  client.lastSaleVolume = lastProcessable?.vol || 0;
 }
 
 function upsertSaleActivity(client: ClientRecord, sale: SaleRecord): void {
@@ -272,10 +265,28 @@ export const useDbStore = create<DbState>((set, get) => ({
       const db = cloneDb(s.db);
       const client = db.clients[id];
       if (client) {
-        archiveClientSales(db, client);
-        preserveSalesOnClientDelete(db, id, clientDisplayName(client));
+        const saleIds = (client.sales ?? []).map((sale) => sale.saleId).filter(Boolean);
+        for (const saleId of saleIds) removeCalendarEntriesForSale(db, saleId);
+        removeCalendarEntriesForClient(db, id);
+        removeArchivedSales(db, saleIds);
       }
       delete db.clients[id];
+      saveDatabase(db);
+      return { db };
+    });
+  },
+
+  deleteClientSale: (clientId, saleId) => {
+    set((s) => {
+      const db = cloneDb(s.db);
+      const client = db.clients[clientId];
+      if (!client || !saleId) return s;
+      client.sales = (client.sales ?? []).filter((sale) => sale.saleId !== saleId);
+      client.activities = (client.activities ?? []).filter((activity) => activity.saleId !== saleId);
+      recalcClientSaleMeta(client);
+      removeCalendarEntriesForSale(db, saleId);
+      removeArchivedSales(db, [saleId]);
+      db.clients[clientId] = client;
       saveDatabase(db);
       return { db };
     });

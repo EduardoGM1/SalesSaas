@@ -12,6 +12,7 @@ export function loadDatabase(): AppDatabase {
       libre: parsed.libre ?? {},
       cal: parsed.cal ?? {},
       goals: parsed.goals ?? {},
+      sales: parsed.sales ?? {},
       userActivities: parsed.userActivities ?? [],
       settings: parsed.settings ?? emptyDatabase().settings,
     };

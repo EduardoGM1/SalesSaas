@@ -27,13 +27,14 @@ export function GoalsPage() {
   const goalVol = useDbStore((s) => s.db.goals[monthKey]?.vol ?? 0);
   const goalTours = useDbStore((s) => s.db.goals[monthKey]?.tours ?? 0);
   const goalVentas = useDbStore((s) => s.db.goals[monthKey]?.ventas ?? 0);
+  const clients = useDbStore((s) => s.db.clients);
   const goal = useMemo(
     () => normalizeGoal({ vol: goalVol, tours: goalTours, ventas: goalVentas }),
     [goalVol, goalTours, goalVentas],
   );
   const weeks = useMemo(
-    () => getDashboardWeeks(calYear, calMonth, data, goal),
-    [calYear, calMonth, data, goal],
+    () => getDashboardWeeks(calYear, calMonth, data, goal, clients),
+    [calYear, calMonth, data, goal, clients],
   );
 
   const totals = weeks.reduce((a, w) => ({

@@ -1,6 +1,7 @@
 import { MONTHS } from "@/lib/constants";
 import { getISOWeek } from "@/lib/format/dates";
-import { CalMonth, GoalMonth } from "@/lib/storage/types";
+import { collectCountableSalesForMonth } from "@/lib/sales/agenda-sales";
+import { CalMonth, ClientRecord, GoalMonth } from "@/lib/storage/types";
 
 export function isCalendarSaleCountable(entry: { t?: string; status?: string; processing?: string; completed?: boolean }): boolean {
   return !!entry &&
@@ -62,7 +63,8 @@ export function getDashboardWeeks(
   year: number,
   month: number,
   data: CalMonth,
-  goal: GoalMonth
+  goal: GoalMonth,
+  clients: Record<string, ClientRecord> = {},
 ): DashboardWeek[] {
   const dim = new Date(year, month + 1, 0).getDate();
   const groups: { weekNo: number; days: number[] }[] = [];
@@ -78,6 +80,7 @@ export function getDashboardWeeks(
     cur.days.push(d);
   }
 
+  const monthSales = collectCountableSalesForMonth(clients, year, month);
   const totalWorked = Math.max(0, dim - countDescansoDays(data));
   const dailyTarget = (goal.vol || 0) > 0 && totalWorked > 0 ? (goal.vol || 0) / totalWorked : 0;
   let lastWorkedIndex = -1;
@@ -98,22 +101,20 @@ export function getDashboardWeeks(
     };
     g.days.forEach((d) => {
       const ymd = `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
-      ((data.days || {})[d] || []).forEach((e) => {
-        if (isCalendarSaleCountable(e)) {
-          week.real += e.vol || 0;
-          week.tours += e.tours || 0;
-          week.sales++;
-          week.saleItems.push({
-            saleId: e.saleId,
-            vol: e.vol || 0,
-            tours: e.tours || 1,
-            contract: e.contract,
-            clientName: e.clientName,
-            note: e.note,
-            day: d,
-            date: ymd,
-          });
-        }
+      monthSales.filter((sale) => sale.day === d).forEach((sale) => {
+        week.real += sale.vol || 0;
+        week.tours += sale.tours || 0;
+        week.sales++;
+        week.saleItems.push({
+          saleId: sale.saleId,
+          vol: sale.vol || 0,
+          tours: sale.tours || 1,
+          contract: sale.contract,
+          clientName: sale.clientName,
+          note: sale.note,
+          day: d,
+          date: ymd,
+        });
       });
     });
     return week;
