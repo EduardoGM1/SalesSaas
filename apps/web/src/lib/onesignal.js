@@ -2,6 +2,7 @@ import { notificationsApi } from "@/lib/notifications-api.js";
 import { createClient } from "@/lib/supabase/client";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { isIosDevice, isStandaloneApp } from "@/lib/pwa-install.js";
+import { resolvePushPathFromPayload } from "@salesapp/shared/push/notification-targets.js";
 
 const SDK_URL = "https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js";
 const SW_PATH = "onesignal/OneSignalSDKWorker.js";
@@ -264,11 +265,61 @@ export async function unlinkOneSignalUser() {
 
 let notificationHandlersAttached = false;
 
-function resolveNotificationUrl(notification) {
-  return notification?.launchURL
-    || notification?.launchUrl
-    || notification?.additionalData?.url
-    || null;
+function readNotificationPayload(notification) {
+  return notification?.additionalData
+    || notification?.data
+    || {};
+}
+
+export function resolveNotificationTarget(notification) {
+  const payload = readNotificationPayload(notification);
+  const fromPayload = resolvePushPathFromPayload({
+    ...payload,
+    url: payload.url
+      || notification?.launchURL
+      || notification?.launchUrl,
+    launchURL: notification?.launchURL,
+    launchUrl: notification?.launchUrl,
+  });
+  if (fromPayload) return fromPayload;
+
+  const url = notification?.launchURL || notification?.launchUrl || payload?.url;
+  if (!url) return null;
+  try {
+    const target = new URL(url, window.location.origin);
+    return `${target.pathname}${target.search}${target.hash}`;
+  } catch {
+    return null;
+  }
+}
+
+export function navigateToPushTarget(notification, onNavigate) {
+  const target = resolveNotificationTarget(notification);
+  if (!target) return false;
+
+  if (onNavigate) {
+    onNavigate(target);
+    return true;
+  }
+
+  const url = notification?.launchURL || notification?.launchUrl || readNotificationPayload(notification)?.url;
+  if (url) {
+    try {
+      const parsed = new URL(url, window.location.origin);
+      if (parsed.origin === window.location.origin) {
+        window.location.assign(`${parsed.pathname}${parsed.search}${parsed.hash}`);
+        return true;
+      }
+      window.location.assign(url);
+      return true;
+    } catch {
+      window.location.assign(url);
+      return true;
+    }
+  }
+
+  window.location.assign(target);
+  return true;
 }
 
 /** Muestra push en primer plano y navega al pulsar la notificación. */
@@ -282,19 +333,7 @@ export async function setupPushNotificationHandlers({ onNavigate } = {}) {
   });
 
   OneSignal.Notifications.addEventListener("click", (event) => {
-    const url = resolveNotificationUrl(event.notification);
-    if (!url) return;
-
-    try {
-      const target = new URL(url, window.location.origin);
-      if (target.origin === window.location.origin && onNavigate) {
-        onNavigate(`${target.pathname}${target.search}${target.hash}`);
-        return;
-      }
-    } catch {
-      // URL absoluta o inválida: navegación completa.
-    }
-    window.location.assign(url);
+    navigateToPushTarget(event.notification, onNavigate);
   });
 }
 

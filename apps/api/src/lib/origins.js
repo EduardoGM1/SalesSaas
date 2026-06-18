@@ -3,6 +3,12 @@ const LOCAL_ORIGINS = new Set([
   "http://localhost:3000",
 ]);
 
+const PLACEHOLDER_ORIGIN_PATTERNS = [
+  /tu-proyecto\.vercel\.app/i,
+  /tu-dominio\.vercel\.app/i,
+  /example\.com/i,
+];
+
 function normalizeOrigin(value) {
   if (!value) return null;
   try {
@@ -12,21 +18,28 @@ function normalizeOrigin(value) {
   }
 }
 
-function vercelProductionOrigin() {
-  if (process.env.WEB_ORIGIN) {
-    const fromEnv = normalizeOrigin(process.env.WEB_ORIGIN);
-    if (fromEnv) return fromEnv;
-  }
-  if (process.env.VERCEL_PROJECT_PRODUCTION_URL) {
-    return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;
-  }
-  if (process.env.VERCEL_URL) {
-    return `https://${process.env.VERCEL_URL}`;
-  }
-  if (process.env.VERCEL_BRANCH_URL) {
-    return `https://${process.env.VERCEL_BRANCH_URL}`;
+function isPlaceholderOrigin(origin) {
+  if (!origin) return true;
+  return PLACEHOLDER_ORIGIN_PATTERNS.some((pattern) => pattern.test(origin));
+}
+
+function pickFirstValidOrigin(candidates) {
+  for (const candidate of candidates) {
+    const origin = normalizeOrigin(candidate);
+    if (origin && !isPlaceholderOrigin(origin)) return origin;
   }
   return null;
+}
+
+function vercelProductionOrigin() {
+  return pickFirstValidOrigin([
+    process.env.VERCEL_PROJECT_PRODUCTION_URL
+      ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+      : null,
+    process.env.WEB_ORIGIN,
+    process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null,
+    process.env.VERCEL_BRANCH_URL ? `https://${process.env.VERCEL_BRANCH_URL}` : null,
+  ]);
 }
 
 /** Orígenes permitidos para CORS y redirects de auth (local + Vercel). */
@@ -38,7 +51,7 @@ export function webOrigins() {
       : null,
     process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null,
     process.env.VERCEL_BRANCH_URL ? `https://${process.env.VERCEL_BRANCH_URL}` : null,
-  ].filter(Boolean);
+  ].filter((origin) => origin && !isPlaceholderOrigin(origin));
 
   const local = ["http://localhost:5173", "http://localhost:3000"];
   const onVercel = Boolean(process.env.VERCEL);
@@ -49,7 +62,17 @@ export function webOrigins() {
 export function primaryWebOrigin() {
   if (process.env.VERCEL) {
     const fromVercel = vercelProductionOrigin();
-    if (fromVercel) return fromVercel;
+    if (fromVercel) {
+      const configured = normalizeOrigin(process.env.WEB_ORIGIN);
+      if (configured && isPlaceholderOrigin(configured)) {
+        console.warn(
+          "[origins] WEB_ORIGIN parece un placeholder; usando",
+          fromVercel,
+          "— configura WEB_ORIGIN con tu dominio real en Vercel.",
+        );
+      }
+      return fromVercel;
+    }
   }
 
   const origins = webOrigins();
@@ -97,4 +120,4 @@ export function resolveWebOrigin(req, clientOriginHint) {
   return primaryWebOrigin();
 }
 
-export { normalizeOrigin };
+export { normalizeOrigin, isPlaceholderOrigin };

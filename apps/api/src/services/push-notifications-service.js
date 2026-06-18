@@ -1,6 +1,14 @@
 import { createServiceSupabaseClient } from "../lib/supabase-server.js";
 import { primaryWebOrigin } from "../lib/origins.js";
 import { ServiceError } from "../lib/service-error.js";
+import {
+  PushType,
+  contactPath,
+  messagePath,
+  networkPath,
+  pushUrl,
+  sharedProspectPath,
+} from "@salesapp/shared/push/notification-targets.js";
 
 const ONESIGNAL_API = "https://api.onesignal.com/notifications";
 const MAX_STORED_SUBSCRIPTIONS = 5;
@@ -42,7 +50,8 @@ async function loadSubscriptionIds(serviceSb, userId) {
   return Array.isArray(ids) ? ids.filter(Boolean) : [];
 }
 
-function buildMessagePayload(appId, { title, body, url, tag }) {
+function buildMessagePayload(appId, { title, body, url, path, type, tag }) {
+  const appPath = path || "/";
   return {
     app_id: appId,
     headings: { en: title, es: title },
@@ -50,7 +59,7 @@ function buildMessagePayload(appId, { title, body, url, tag }) {
     url,
     web_push_topic: tag,
     collapse_id: tag,
-    data: { url },
+    data: { url, path: appPath, type: type || null },
   };
 }
 
@@ -148,11 +157,14 @@ export async function notifyNewMessage(recipientId, { senderId, senderName, body
   const preview = String(body ?? "").trim();
   const short = preview.length > 120 ? `${preview.slice(0, 120)}…` : preview;
   const origin = primaryWebOrigin();
+  const path = messagePath(senderId);
 
   await sendToUser(serviceSb, recipientId, {
     title: senderName || "Nuevo mensaje",
     body: short || "Tienes un mensaje nuevo",
-    url: `${origin}/messages?with=${senderId}`,
+    url: pushUrl(origin, path),
+    path,
+    type: PushType.MESSAGE,
     tag: `message-${senderId}`,
   });
 }
@@ -165,10 +177,13 @@ export async function notifyConnectionRequest(addresseeId, { requesterId, reques
   if (!prefs.connection_requests) return;
 
   const origin = primaryWebOrigin();
+  const path = networkPath();
   await sendToUser(serviceSb, addresseeId, {
     title: "Solicitud de contacto",
     body: `${requesterName || "Alguien"} quiere agregarte a su red`,
-    url: `${origin}/network`,
+    url: pushUrl(origin, path),
+    path,
+    type: PushType.CONNECTION_REQUEST,
     tag: `connection-request-${requesterId}`,
   });
 }
@@ -182,10 +197,13 @@ export async function notifyProspectShared(recipientId, { ownerId, ownerName, pr
 
   const origin = primaryWebOrigin();
   const label = prospectName || "un expediente";
+  const path = sharedProspectPath(ownerId, prospectId);
   await sendToUser(serviceSb, recipientId, {
     title: "Expediente compartido",
     body: `${ownerName || "Un contacto"} compartió «${label}» contigo`,
-    url: `${origin}/red/contacto/${ownerId}/expediente/${prospectId}`,
+    url: pushUrl(origin, path),
+    path,
+    type: PushType.SHARED_PROSPECT,
     tag: `shared-prospect-${prospectId}`,
   });
 }
@@ -198,10 +216,13 @@ export async function notifyConnectionAccepted(requesterId, { peerId, peerName }
   if (!prefs.connection_accepted) return;
 
   const origin = primaryWebOrigin();
+  const path = contactPath(peerId);
   await sendToUser(serviceSb, requesterId, {
     title: "Solicitud aceptada",
     body: `${peerName || "Tu contacto"} aceptó tu solicitud`,
-    url: `${origin}/red/contacto/${peerId}`,
+    url: pushUrl(origin, path),
+    path,
+    type: PushType.CONNECTION_ACCEPTED,
     tag: `connection-accepted-${peerId}`,
   });
 }

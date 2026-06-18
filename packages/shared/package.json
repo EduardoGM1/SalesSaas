@@ -13,7 +13,8 @@
     "./storage/types.js": "./src/storage/types.js",
     "./ids.js": "./src/ids.js",
     "./constants.js": "./src/constants.js",
-    "./format/dates.js": "./src/format/dates.js"
+    "./format/dates.js": "./src/format/dates.js",
+    "./push/notification-targets.js": "./src/push/notification-targets.js"
   },
   "scripts": {
     "build": "node ../../scripts/port-shared.mjs && node ../../scripts/fix-shared-imports.mjs"
