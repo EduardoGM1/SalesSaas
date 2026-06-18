@@ -11,4 +11,9 @@ async function apiFetch(path, options = {}) {
 export const notificationsApi = {
   config: () => apiFetch("/notifications/config"),
   status: () => apiFetch("/notifications/status"),
+  registerDevice: (subscriptionId) => apiFetch("/notifications/device", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ subscription_id: subscriptionId }),
+  }),
 };

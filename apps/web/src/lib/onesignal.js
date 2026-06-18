@@ -241,12 +241,19 @@ export async function ensureOneSignal() {
   return initPromise;
 }
 
+async function registerDeviceSubscription(subscriptionId) {
+  if (!subscriptionId) return;
+  try {
+    await notificationsApi.registerDevice(subscriptionId);
+  } catch {
+    // Se reintentará al abrir la app.
+  }
+}
+
 export async function linkOneSignalUser(userId) {
   if (!userId) return;
   const OneSignal = await ensureOneSignal();
-  const state = readSubscriptionState(OneSignal);
-  if (!state.subscribed) return;
-  await OneSignal.login(userId);
+  await OneSignal.login(String(userId));
 }
 
 export async function unlinkOneSignalUser() {
@@ -357,6 +364,8 @@ export async function subscribeToPush() {
   }
 
   if (userId) await OneSignal.login(userId);
+
+  await registerDeviceSubscription(readSubscriptionState(OneSignal).subscriptionId);
 
   return readSubscriptionState(OneSignal);
 }

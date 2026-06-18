@@ -53,6 +53,7 @@ router.get("/", (_req, res) => {
       notifications: {
         config: { GET: "/api/v1/notifications/config" },
         status: { GET: "/api/v1/notifications/status" },
+        device: { POST: "/api/v1/notifications/device" },
       },
       shares: {
         received: { GET: "/api/v1/shares/received" },
@@ -452,6 +453,19 @@ router.get("/notifications/status", async (req, res) => {
   const a = await requireAuth(req, res);
   if (!a) return;
   await runService(res, () => pushService.getPushStatus(), { wrap: "data" });
+});
+
+router.post("/notifications/device", async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  const body = parseJsonBody(req, res);
+  if (!body) return;
+  const subscriptionId = body.subscription_id ?? body.subscriptionId;
+  await runService(
+    res,
+    () => pushService.registerPushDevice(a.supabase, a.userId, subscriptionId),
+    { wrap: "data" },
+  );
 });
 
 router.get("/shares/received", async (req, res) => {

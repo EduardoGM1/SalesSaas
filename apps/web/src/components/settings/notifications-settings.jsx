@@ -4,6 +4,7 @@ import {
   isPushSupported,
   needsIosPwaInstall,
   subscribeToPush,
+  syncPushSubscription,
   unsubscribeFromPush,
 } from "@/lib/push-notifications.js";
 import { openInstallPrompt } from "@/lib/pwa-install.js";
@@ -63,6 +64,7 @@ export function NotificationsSettings({
     setPending(true);
     try {
       await subscribeToPush();
+      await syncPushSubscription();
       refreshStatus();
       toast.success(t("settings.notifications.enabled"));
       await onSave?.();

@@ -9,6 +9,7 @@ import {
   setupPushNotificationHandlers,
   unlinkOneSignalUser,
 } from "@/lib/onesignal.js";
+import { syncPushSubscription } from "@/lib/push-notifications.js";
 
 /** Inicializa OneSignal y vincula el usuario de Supabase como external_id. */
 export function OneSignalProvider({ children }) {
@@ -18,6 +19,8 @@ export function OneSignalProvider({ children }) {
     if (!isSupabaseConfigured()) return undefined;
 
     let authSubscription = null;
+    let pushSubscriptionListener = null;
+    let oneSignalInstance = null;
     let cancelled = false;
 
     const setup = async () => {
@@ -25,7 +28,7 @@ export function OneSignalProvider({ children }) {
         const appId = await resolveOneSignalAppId();
         if (!appId || cancelled) return;
 
-        await ensureOneSignal();
+        oneSignalInstance = await ensureOneSignal();
         if (cancelled) return;
 
         await setupPushNotificationHandlers({ onNavigate: navigate });
@@ -33,11 +36,25 @@ export function OneSignalProvider({ children }) {
 
         const supabase = createClient();
         const { data: { user } } = await supabase.auth.getUser();
-        if (user?.id) await linkOneSignalUser(user.id);
+        let activeUserId = user?.id ?? null;
+
+        const syncIdentity = async (userId) => {
+          if (!userId || cancelled) return;
+          await linkOneSignalUser(userId);
+          await syncPushSubscription();
+        };
+
+        if (activeUserId) await syncIdentity(activeUserId);
+
+        pushSubscriptionListener = () => {
+          if (activeUserId) syncIdentity(activeUserId);
+        };
+        oneSignalInstance.User.PushSubscription.addEventListener("change", pushSubscriptionListener);
 
         authSubscription = supabase.auth.onAuthStateChange(async (event, session) => {
+          activeUserId = session?.user?.id ?? null;
           if (session?.user?.id) {
-            await linkOneSignalUser(session.user.id);
+            await syncIdentity(session.user.id);
           } else if (event === "SIGNED_OUT") {
             await unlinkOneSignalUser();
           }
@@ -52,6 +69,9 @@ export function OneSignalProvider({ children }) {
     return () => {
       cancelled = true;
       authSubscription?.unsubscribe();
+      if (oneSignalInstance && pushSubscriptionListener) {
+        oneSignalInstance.User.PushSubscription.removeEventListener("change", pushSubscriptionListener);
+      }
     };
   }, [navigate]);
 

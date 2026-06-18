@@ -1,7 +1,9 @@
 import { createServiceSupabaseClient } from "../lib/supabase-server.js";
 import { primaryWebOrigin } from "../lib/origins.js";
+import { ServiceError } from "../lib/service-error.js";
 
 const ONESIGNAL_API = "https://api.onesignal.com/notifications";
+const MAX_STORED_SUBSCRIPTIONS = 5;
 
 export function getOneSignalAppId() {
   return process.env.ONESIGNAL_APP_ID || process.env.VITE_ONESIGNAL_APP_ID || null;
@@ -15,13 +17,17 @@ export function isPushConfigured() {
   return Boolean(getOneSignalAppId() && process.env.ONESIGNAL_REST_API_KEY);
 }
 
-async function loadNotificationPrefs(serviceSb, userId) {
+async function loadProfileSettings(serviceSb, userId) {
   const { data } = await serviceSb
     .from("profiles")
     .select("settings")
     .eq("id", userId)
     .maybeSingle();
-  const notifications = data?.settings?.notifications ?? {};
+  return data?.settings ?? {};
+}
+
+async function loadNotificationPrefs(serviceSb, userId) {
+  const notifications = (await loadProfileSettings(serviceSb, userId)).notifications ?? {};
   return {
     messages: notifications.messages !== false,
     connection_requests: notifications.connection_requests !== false,
@@ -30,15 +36,15 @@ async function loadNotificationPrefs(serviceSb, userId) {
   };
 }
 
-async function sendToUser(userId, { title, body, url, tag }) {
-  const appId = getOneSignalAppId();
-  const apiKey = process.env.ONESIGNAL_REST_API_KEY;
-  if (!appId || !apiKey) return;
+async function loadSubscriptionIds(serviceSb, userId) {
+  const settings = await loadProfileSettings(serviceSb, userId);
+  const ids = settings.onesignal_subscription_ids;
+  return Array.isArray(ids) ? ids.filter(Boolean) : [];
+}
 
-  const payload = {
+function buildMessagePayload(appId, { title, body, url, tag }) {
+  return {
     app_id: appId,
-    target_channel: "push",
-    include_aliases: { external_id: [String(userId)] },
     headings: { en: title, es: title },
     contents: { en: body, es: body },
     url,
@@ -46,7 +52,9 @@ async function sendToUser(userId, { title, body, url, tag }) {
     collapse_id: tag,
     data: { url },
   };
+}
 
+async function postOneSignal(apiKey, payload) {
   const res = await fetch(ONESIGNAL_API, {
     method: "POST",
     headers: {
@@ -56,18 +64,75 @@ async function sendToUser(userId, { title, body, url, tag }) {
     body: JSON.stringify(payload),
   });
 
-  if (!res.ok) {
-    const errBody = await res.text().catch(() => "");
-    if (process.env.NODE_ENV !== "production") {
-      console.warn("[onesignal] Error enviando notificación:", res.status, errBody);
-    }
+  const body = await res.json().catch(() => ({}));
+  const ok = res.ok && Boolean(body.id) && !body.errors?.length;
+  if (!ok) {
+    console.warn("[onesignal] Envío fallido:", {
+      status: res.status,
+      errors: body.errors,
+      recipients: body.recipients,
+    });
   }
+  return { ok, body };
+}
+
+async function sendToUser(serviceSb, userId, message) {
+  const appId = getOneSignalAppId();
+  const apiKey = process.env.ONESIGNAL_REST_API_KEY;
+  if (!appId || !apiKey) return { ok: false, reason: "not_configured" };
+
+  const base = buildMessagePayload(appId, message);
+
+  const byAlias = await postOneSignal(apiKey, {
+    ...base,
+    target_channel: "push",
+    include_aliases: { external_id: [String(userId)] },
+  });
+  if (byAlias.ok) return byAlias;
+
+  const subscriptionIds = await loadSubscriptionIds(serviceSb, userId);
+  if (!subscriptionIds.length) {
+    console.warn("[onesignal] Sin suscripción para usuario", userId, byAlias.body?.errors);
+    return { ok: false, reason: "no_subscription", errors: byAlias.body?.errors };
+  }
+
+  return postOneSignal(apiKey, {
+    ...base,
+    include_subscription_ids: subscriptionIds,
+  });
+}
+
+export async function registerPushDevice(supabase, userId, subscriptionId) {
+  const id = String(subscriptionId ?? "").trim();
+  if (!id) throw new ServiceError("Suscripción inválida.");
+
+  const { data: current, error: readErr } = await supabase
+    .from("profiles")
+    .select("settings")
+    .eq("id", userId)
+    .maybeSingle();
+  if (readErr) throw new ServiceError(readErr.message, 500);
+
+  const settings = current?.settings ?? {};
+  const existing = Array.isArray(settings.onesignal_subscription_ids)
+    ? settings.onesignal_subscription_ids.filter(Boolean)
+    : [];
+  const nextIds = [id, ...existing.filter((entry) => entry !== id)].slice(0, MAX_STORED_SUBSCRIPTIONS);
+
+  const { error } = await supabase
+    .from("profiles")
+    .update({ settings: { ...settings, onesignal_subscription_ids: nextIds } })
+    .eq("id", userId);
+  if (error) throw new ServiceError(error.message, 400);
+
+  return { ok: true, subscription_ids: nextIds };
 }
 
 export async function getPushStatus() {
   return {
     subscribed: null,
     push_configured: isPushConfigured(),
+    service_role_configured: Boolean(createServiceSupabaseClient()),
     provider: "onesignal",
     permission_required: true,
   };
@@ -84,7 +149,7 @@ export async function notifyNewMessage(recipientId, { senderId, senderName, body
   const short = preview.length > 120 ? `${preview.slice(0, 120)}…` : preview;
   const origin = primaryWebOrigin();
 
-  await sendToUser(recipientId, {
+  await sendToUser(serviceSb, recipientId, {
     title: senderName || "Nuevo mensaje",
     body: short || "Tienes un mensaje nuevo",
     url: `${origin}/messages?with=${senderId}`,
@@ -100,7 +165,7 @@ export async function notifyConnectionRequest(addresseeId, { requesterId, reques
   if (!prefs.connection_requests) return;
 
   const origin = primaryWebOrigin();
-  await sendToUser(addresseeId, {
+  await sendToUser(serviceSb, addresseeId, {
     title: "Solicitud de contacto",
     body: `${requesterName || "Alguien"} quiere agregarte a su red`,
     url: `${origin}/network`,
@@ -117,7 +182,7 @@ export async function notifyProspectShared(recipientId, { ownerId, ownerName, pr
 
   const origin = primaryWebOrigin();
   const label = prospectName || "un expediente";
-  await sendToUser(recipientId, {
+  await sendToUser(serviceSb, recipientId, {
     title: "Expediente compartido",
     body: `${ownerName || "Un contacto"} compartió «${label}» contigo`,
     url: `${origin}/red/contacto/${ownerId}/expediente/${prospectId}`,
@@ -133,7 +198,7 @@ export async function notifyConnectionAccepted(requesterId, { peerId, peerName }
   if (!prefs.connection_accepted) return;
 
   const origin = primaryWebOrigin();
-  await sendToUser(requesterId, {
+  await sendToUser(serviceSb, requesterId, {
     title: "Solicitud aceptada",
     body: `${peerName || "Tu contacto"} aceptó tu solicitud`,
     url: `${origin}/red/contacto/${peerId}`,

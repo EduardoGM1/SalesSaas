@@ -165,6 +165,7 @@ export interface UserSettings {
     connection_accepted?: boolean;
     shared_prospects?: boolean;
   };
+  onesignal_subscription_ids?: string[];
 }
 
 export function emptyDatabase(): AppDatabase {

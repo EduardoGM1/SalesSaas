@@ -22,6 +22,15 @@ export function buildProfilePatch(body) {
 
 export async function updateProfile(supabase, userId, body) {
   const patch = buildProfilePatch(body);
+  if (patch.settings) {
+    const { data: current, error: readErr } = await supabase
+      .from("profiles")
+      .select("settings")
+      .eq("id", userId)
+      .maybeSingle();
+    if (readErr) throw new ServiceError(readErr.message, 500);
+    patch.settings = { ...(current?.settings ?? {}), ...patch.settings };
+  }
   const { data, error } = await supabase
     .from("profiles")
     .update(patch)
