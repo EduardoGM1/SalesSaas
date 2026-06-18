@@ -1,7 +1,7 @@
 
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { MessageSquare, FolderOpen } from "lucide-react";
+import { MessageSquare, FolderOpen, UserMinus } from "lucide-react";
 import { Topbar } from "@/components/layout/topbar";
 import { PageBack } from "@/components/layout/page-back";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
@@ -112,18 +112,29 @@ export function ContactPage({ contactId }) {
         ) : peer ? (
           <>
             <header className="contact-page-head">
-              <NetworkUserAvatar user={peer} size="lg" showPresence />
+              <NetworkUserAvatar user={peer} size="lg" />
               <div className="contact-page-meta">
                 <h1 className="exp-page-title">{networkDisplayName(peer)}</h1>
-                <p className="exp-page-sub">{peer.email}</p>
-                <ContactPresenceStatus userId={peer.id} className="contact-page-presence" />
+                <ContactPresenceStatus userId={peer.id} className="contact-page-presence" showDot={false} />
               </div>
               <div className="contact-page-actions">
-                <button type="button" className="btn btn-ghost btn-sm" onClick={() => navigate(`/messages?with=${peer.id}`)}>
-                  <MessageSquare size={14} /> {t("network.message")}
+                <button
+                  type="button"
+                  className="network-icon-btn"
+                  aria-label={t("network.message")}
+                  title={t("network.message")}
+                  onClick={() => navigate(`/messages?with=${peer.id}`)}
+                >
+                  <MessageSquare size={18} aria-hidden="true" />
                 </button>
-                <button type="button" className="btn btn-ghost btn-sm" onClick={() => setRemoveOpen(true)}>
-                  {t("network.remove")}
+                <button
+                  type="button"
+                  className="network-icon-btn network-icon-btn--danger"
+                  aria-label={t("network.remove")}
+                  title={t("network.remove")}
+                  onClick={() => setRemoveOpen(true)}
+                >
+                  <UserMinus size={18} aria-hidden="true" />
                 </button>
               </div>
             </header>

@@ -557,9 +557,91 @@ div.modal-backdrop.sales-modal-overlay:not([hidden]) {
 }
 
 .network-row-main { flex: 1; min-width: 0; }
-.network-row-name { font-weight: 700; font-size: 14px; color: var(--text); }
+.network-row-name {
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .network-row-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
-.network-row-actions { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.network-row-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.network-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--white);
+  color: var(--text2);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+
+.network-icon-btn:hover {
+  border-color: rgba(37, 99, 235, 0.35);
+  color: var(--blue);
+  background: rgba(37, 99, 235, 0.04);
+}
+
+.network-icon-btn--primary {
+  background: var(--blue);
+  border-color: var(--blue);
+  color: #fff;
+}
+
+.network-icon-btn--primary:hover {
+  background: #1d4ed8;
+  border-color: #1d4ed8;
+  color: #fff;
+}
+
+.network-icon-btn--danger:hover {
+  border-color: rgba(239, 68, 68, 0.45);
+  color: #dc2626;
+  background: rgba(239, 68, 68, 0.06);
+}
+
+@media (max-width: 520px) {
+  .network-row {
+    gap: 10px;
+    padding: 10px 12px;
+  }
+
+  .network-row-actions {
+    gap: 4px;
+  }
+
+  .network-icon-btn {
+    width: 34px;
+    height: 34px;
+  }
+
+  .network-pill {
+    font-size: 10px;
+    padding: 3px 8px;
+  }
+
+  .contact-page-head {
+    gap: 10px;
+  }
+
+  .contact-page-actions {
+    margin-left: auto;
+  }
+}
 
 .network-avatar,
 .network-avatar-img {

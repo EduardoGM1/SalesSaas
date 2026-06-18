@@ -1,16 +1,30 @@
 
 import { useEffect, useState } from "react";
-import { UserPlus, Check, X, MessageSquare } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
+import { UserPlus, Check, X, MessageSquare, UserMinus } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { Topbar } from "@/components/layout/topbar";
 import { PageBack } from "@/components/layout/page-back";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { networkApi } from "@/lib/network-api.js";
 import { RemoveContactModal } from "@/components/network/remove-contact-modal.jsx";
-import { NetworkUserAvatar, ContactPresenceStatus, networkDisplayName } from "@/components/network/network-user-avatar.jsx";
+import { NetworkUserAvatar, networkDisplayName } from "@/components/network/network-user-avatar.jsx";
 import { usePresenceContext } from "@/components/providers/presence-provider.jsx";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { toast } from "@/lib/toast";
+
+function NetworkIconButton({ icon: Icon, label, onClick, variant = "default" }) {
+  return (
+    <button
+      type="button"
+      className={`network-icon-btn${variant === "danger" ? " network-icon-btn--danger" : ""}${variant === "primary" ? " network-icon-btn--primary" : ""}`}
+      onClick={onClick}
+      aria-label={label}
+      title={label}
+    >
+      <Icon size={18} aria-hidden="true" />
+    </button>
+  );
+}
 
 function ConnectionActions({ connection, onRefresh, onRequestRemove, t }) {
   const peer = connection.peer;
@@ -19,25 +33,35 @@ function ConnectionActions({ connection, onRefresh, onRequestRemove, t }) {
   if (connection.status === "pending" && connection.direction === "incoming") {
     return (
       <div className="network-row-actions">
-        <button type="button" className="btn btn-primary btn-sm" onClick={async (e) => {
-          e.stopPropagation();
-          try {
-            await networkApi.updateConnection(connection.id, "accepted");
-            toast.success(t("network.accepted"));
-            onRefresh();
-          } catch (err) {
-            toast.error(err.message);
-          }
-        }}><Check size={14} /> {t("network.accept")}</button>
-        <button type="button" className="btn btn-ghost btn-sm" onClick={async (e) => {
-          e.stopPropagation();
-          try {
-            await networkApi.removeConnection(connection.id);
-            onRefresh();
-          } catch (err) {
-            toast.error(err.message);
-          }
-        }}><X size={14} /></button>
+        <NetworkIconButton
+          icon={Check}
+          label={t("network.accept")}
+          variant="primary"
+          onClick={async (e) => {
+            e.stopPropagation();
+            try {
+              await networkApi.updateConnection(connection.id, "accepted");
+              toast.success(t("network.accepted"));
+              onRefresh();
+            } catch (err) {
+              toast.error(err.message);
+            }
+          }}
+        />
+        <NetworkIconButton
+          icon={X}
+          label={t("network.reject")}
+          variant="danger"
+          onClick={async (e) => {
+            e.stopPropagation();
+            try {
+              await networkApi.removeConnection(connection.id);
+              onRefresh();
+            } catch (err) {
+              toast.error(err.message);
+            }
+          }}
+        />
       </div>
     );
   }
@@ -45,25 +69,99 @@ function ConnectionActions({ connection, onRefresh, onRequestRemove, t }) {
   if (connection.status === "accepted") {
     return (
       <div className="network-row-actions">
-        <button type="button" className="btn btn-ghost btn-sm" onClick={(e) => {
-          e.stopPropagation();
-          navigate(`/messages?with=${peer.id}`);
-        }}>
-          <MessageSquare size={14} /> {t("network.message")}
-        </button>
-        <button type="button" className="btn btn-ghost btn-sm" onClick={(e) => {
-          e.stopPropagation();
-          onRequestRemove(connection);
-        }}>{t("network.remove")}</button>
+        <NetworkIconButton
+          icon={MessageSquare}
+          label={t("network.message")}
+          onClick={(e) => {
+            e.stopPropagation();
+            navigate(`/messages?with=${peer.id}`);
+          }}
+        />
+        <NetworkIconButton
+          icon={UserMinus}
+          label={t("network.remove")}
+          variant="danger"
+          onClick={(e) => {
+            e.stopPropagation();
+            onRequestRemove(connection);
+          }}
+        />
       </div>
     );
   }
 
   if (connection.status === "pending" && connection.direction === "outgoing") {
-    return <span className="network-pill pending">{t("network.pending")}</span>;
+    return (
+      <div className="network-row-actions">
+        <span className="network-pill pending">{t("network.pending")}</span>
+        <NetworkIconButton
+          icon={X}
+          label={t("network.cancelRequest")}
+          variant="danger"
+          onClick={async (e) => {
+            e.stopPropagation();
+            try {
+              await networkApi.removeConnection(connection.id);
+              toast.success(t("network.requestCanceled"));
+              onRefresh();
+            } catch (err) {
+              toast.error(err.message);
+            }
+          }}
+        />
+      </div>
+    );
   }
 
   return null;
+}
+
+function SearchResultActions({ user, connections, onRefresh, t }) {
+  const connection = connections.find(
+    (c) => c.peer?.id === user.id && c.status === "pending",
+  );
+
+  if (user.connection_status === "accepted") {
+    return <span className="network-pill ok">{t("network.contact")}</span>;
+  }
+
+  if (user.connection_status === "pending" && user.connection_direction === "outgoing" && connection) {
+    return (
+      <div className="network-row-actions">
+        <span className="network-pill pending">{t("network.pending")}</span>
+        <NetworkIconButton
+          icon={X}
+          label={t("network.cancelRequest")}
+          variant="danger"
+          onClick={async () => {
+            try {
+              await networkApi.removeConnection(connection.id);
+              toast.success(t("network.requestCanceled"));
+              onRefresh();
+            } catch (err) {
+              toast.error(err.message);
+            }
+          }}
+        />
+      </div>
+    );
+  }
+
+  if (user.connection_status === "pending") {
+    return <span className="network-pill pending">{t("network.pending")}</span>;
+  }
+
+  return (
+    <button type="button" className="btn btn-primary btn-sm" onClick={async () => {
+      try {
+        await networkApi.sendRequest(user.id);
+        toast.success(t("network.requestSent"));
+        onRefresh();
+      } catch (err) {
+        toast.error(err.message);
+      }
+    }}>{t("network.addContact")}</button>
+  );
 }
 
 export function NetworkPage() {
@@ -178,23 +276,8 @@ export function NetworkPage() {
                   <NetworkUserAvatar user={user} />
                   <div className="network-row-main">
                     <div className="network-row-name">{networkDisplayName(user)}</div>
-                    <div className="network-row-sub">{user.email}</div>
                   </div>
-                  {user.connection_status === "accepted" ? (
-                    <span className="network-pill ok">{t("network.contact")}</span>
-                  ) : user.connection_status === "pending" ? (
-                    <span className="network-pill pending">{t("network.pending")}</span>
-                  ) : (
-                    <button type="button" className="btn btn-primary btn-sm" onClick={async () => {
-                      try {
-                        await networkApi.sendRequest(user.id);
-                        toast.success(t("network.requestSent"));
-                        refresh();
-                      } catch (err) {
-                        toast.error(err.message);
-                      }
-                    }}>{t("network.addContact")}</button>
-                  )}
+                  <SearchResultActions user={user} connections={connections} onRefresh={refresh} t={t} />
                 </div>
               ))}
             </div>
@@ -210,7 +293,9 @@ export function NetworkPage() {
                   <NetworkUserAvatar user={c.peer} />
                   <div className="network-row-main">
                     <div className="network-row-name">{networkDisplayName(c.peer)}</div>
-                    <div className="network-row-sub">{c.peer?.email}</div>
+                    {c.direction === "outgoing" && (
+                      <div className="network-row-sub">{t("network.pending")}</div>
+                    )}
                   </div>
                   <ConnectionActions connection={c} onRefresh={refresh} onRequestRemove={setRemoveTarget} t={t} />
                 </div>
@@ -235,8 +320,6 @@ export function NetworkPage() {
                   <NetworkUserAvatar user={c.peer} showPresence />
                   <div className="network-row-main">
                     <div className="network-row-name">{networkDisplayName(c.peer)}</div>
-                    <ContactPresenceStatus userId={c.peer?.id} className="network-row-presence" />
-                    <div className="network-row-sub">{c.peer?.email}</div>
                   </div>
                   <ConnectionActions connection={c} onRefresh={refresh} onRequestRemove={setRemoveTarget} t={t} />
                 </button>
