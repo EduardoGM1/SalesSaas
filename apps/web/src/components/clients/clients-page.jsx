@@ -1,8 +1,10 @@
 
 import { Link } from "react-router-dom";
 import { useEffect, useRef, useState } from "react";
-import { Eye, Trash2 } from "lucide-react";
+import { Eye, Share2, Trash2 } from "lucide-react";
 import { SalesModal } from "@/components/ui/sales-modal";
+import { ShareProspectModal } from "@/components/network/share-prospect-modal.jsx";
+import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { Topbar } from "@/components/layout/topbar";
 import { PageBack } from "@/components/layout/page-back";
 import { clientDisplayName } from "@/lib/clients";
@@ -22,7 +24,9 @@ export function ClientsPage() {
   const [name, setName] = useState("");
   const [missingName, setMissingName] = useState(false);
   const [query, setQuery] = useState("");
+  const [shareClient, setShareClient] = useState(null);
   const nameRef = useRef<HTMLInputElement>(null);
+  const canShare = isSupabaseConfigured();
 
   useEffect(() => {
     if (!open) return;
@@ -125,7 +129,17 @@ export function ClientsPage() {
                     <td>
                       <div className="client-actions">
                         <Link to={`/clients/${c.id}`} className="icon-btn" title={t("clients.viewFile")}><Eye size={14} /></Link>
-                        <button type="button" className="icon-btn" title={t("clients.delete")} onClick={async () => {
+                        {canShare && (
+                          <button
+                            type="button"
+                            className="icon-btn"
+                            title={t("clients.share")}
+                            onClick={() => setShareClient({ id: c.id, name: clientDisplayName(c) })}
+                          >
+                            <Share2 size={14} />
+                          </button>
+                        )}
+                        <button type="button" className="icon-btn danger" title={t("clients.delete")} onClick={async () => {
                           await removeClient(c.id, clientDisplayName(c));
                         }}><Trash2 size={14} color="#dc2626" /></button>
                       </div>
@@ -137,6 +151,15 @@ export function ClientsPage() {
           </div>
         )}
       </div>
+
+      {canShare && (
+        <ShareProspectModal
+          open={!!shareClient}
+          onOpenChange={(open) => { if (!open) setShareClient(null); }}
+          prospectId={shareClient?.id}
+          prospectName={shareClient?.name}
+        />
+      )}
 
       <SalesModal
         open={open}
