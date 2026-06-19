@@ -1,10 +1,10 @@
-
-import { Link } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import Image from "@/components/ui/safe-image.jsx";
 import { ArrowLeft, Menu, Settings } from "lucide-react";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { useAppStore } from "@/stores/app-store";
 import { AdminTopbarTabs } from "@/components/layout/admin-topbar-tabs.jsx";
+import { MobileTopAvatar, MobileTopNavActions } from "@/components/layout/mobile-top-nav.jsx";
 
 export function Topbar({ title, subtitle, showMonthNav, admin }) {
   const { t, months } = useI18n();
@@ -20,7 +20,7 @@ export function Topbar({ title, subtitle, showMonthNav, admin }) {
       <header className="topbar topbar--admin">
         <div className="topbar-primary">
           <div className="tb-left">
-            <button type="button" className="mobile-menu-btn" onClick={toggleSidebar} aria-label={t("common.menu")}>
+            <button type="button" className="mobile-menu-btn mobile-menu-btn--admin" onClick={toggleSidebar} aria-label={t("common.menu")}>
               <Menu size={18} />
             </button>
             <div>
@@ -36,7 +36,7 @@ export function Topbar({ title, subtitle, showMonthNav, admin }) {
               <ArrowLeft size={15} />
               <span>{t("topbar.backToApp")}</span>
             </Link>
-            <Link to="/settings" className="top-settings-btn" title={t("common.settings")} aria-label={t("common.settings")}>
+            <Link to="/settings" className="top-settings-btn top-settings-btn--desktop" title={t("common.settings")} aria-label={t("common.settings")}>
               <Settings size={17} />
             </Link>
           </div>
@@ -49,7 +49,8 @@ export function Topbar({ title, subtitle, showMonthNav, admin }) {
   return (
     <header className="topbar">
       <div className="tb-left">
-        <button type="button" className="mobile-menu-btn" onClick={toggleSidebar} aria-label={t("common.menu")}>
+        <MobileTopAvatar />
+        <button type="button" className="mobile-menu-btn mobile-menu-btn--legacy" onClick={toggleSidebar} aria-label={t("common.menu")}>
           <Menu size={18} />
         </button>
         <div>
@@ -68,7 +69,8 @@ export function Topbar({ title, subtitle, showMonthNav, admin }) {
         <div className="topbar-brand" title="Saletse" aria-label="Saletse">
           <Image src="/saletse-logo.png" alt="Saletse" width={132} height={30} priority />
         </div>
-        <Link to="/settings" className="top-settings-btn" title={t("common.settings")} aria-label={t("common.settings")}>
+        <MobileTopNavActions />
+        <Link to="/settings" className="top-settings-btn top-settings-btn--desktop" title={t("common.settings")} aria-label={t("common.settings")}>
           <Settings size={17} />
         </Link>
       </div>

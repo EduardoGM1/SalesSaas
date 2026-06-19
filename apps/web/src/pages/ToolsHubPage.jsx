@@ -19,7 +19,7 @@ export function ToolsHubPage() {
     <>
       <Topbar title={t("page.tools.title")} subtitle={t("page.tools.subtitle")} />
       <div className="sales-page">
-        <PageBack href="/" />
+        <PageBack />
         <div className="exp-tool-list" style={{ marginTop: 16 }}>
           {TOOLS.map((tool) => {
             const Icon = tool.icon;

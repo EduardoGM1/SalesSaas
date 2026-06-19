@@ -1,7 +1,7 @@
 
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { MessageSquare, FolderOpen, UserMinus } from "lucide-react";
+import { MessageSquareText, FolderOpen, UserMinus } from "lucide-react";
 import { Topbar } from "@/components/layout/topbar";
 import { PageBack } from "@/components/layout/page-back";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
@@ -125,7 +125,7 @@ export function ContactPage({ contactId }) {
                   title={t("network.message")}
                   onClick={() => navigate(`/messages?with=${peer.id}`)}
                 >
-                  <MessageSquare size={18} aria-hidden="true" />
+                  <MessageSquareText size={18} aria-hidden="true" />
                 </button>
                 <button
                   type="button"

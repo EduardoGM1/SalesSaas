@@ -1,6 +1,6 @@
 
 import { useEffect, useState } from "react";
-import { UserPlus, Check, X, MessageSquare, UserMinus } from "lucide-react";
+import { UserPlus, Check, X, MessageSquareText, UserMinus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Topbar } from "@/components/layout/topbar";
 import { PageBack } from "@/components/layout/page-back";
@@ -72,7 +72,7 @@ function ConnectionActions({ connection, onRefresh, onRequestRemove, t }) {
     return (
       <div className="network-row-actions">
         <NetworkIconButton
-          icon={MessageSquare}
+          icon={MessageSquareText}
           label={t("network.message")}
           onClick={(e) => {
             e.stopPropagation();

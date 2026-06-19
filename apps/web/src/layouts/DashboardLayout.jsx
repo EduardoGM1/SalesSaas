@@ -6,6 +6,7 @@ import { PresenceProvider } from "@/components/providers/presence-provider.jsx";
 import { OneSignalProvider } from "@/components/providers/onesignal-provider.jsx";
 import { PushPermissionPrompt } from "@/components/notifications/push-permission-prompt.jsx";
 import { SidebarClient } from "@/components/layout/sidebar-client.jsx";
+import { BottomNav } from "@/components/layout/bottom-nav.jsx";
 
 export function DashboardLayout() {
   return (
@@ -19,6 +20,7 @@ export function DashboardLayout() {
               <div className="main">
                 <main><Outlet /></main>
               </div>
+              <BottomNav />
             </div>
             <PushPermissionPrompt />
           </OneSignalProvider>
