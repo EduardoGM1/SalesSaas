@@ -3,10 +3,9 @@ import {
   getPushStatus,
   isPushSupported,
   needsIosPwaInstall,
-  subscribeToPush,
-  syncPushSubscription,
   unsubscribeFromPush,
 } from "@/lib/push-notifications.js";
+import { enablePushNotifications, toastPushEnableResult } from "@/lib/push-enable.js";
 import { openInstallPrompt, isAndroidDevice } from "@/lib/pwa-install.js";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { toast } from "@/lib/toast";
@@ -63,28 +62,10 @@ export function NotificationsSettings({
 
     setPending(true);
     try {
-      await subscribeToPush();
-      await syncPushSubscription();
+      const result = await enablePushNotifications();
       refreshStatus();
-      toast.success(t("settings.notifications.enabled"));
-      await onSave?.();
-    } catch (err) {
-      if (err?.code === "PERMISSION_DENIED") {
-        refreshStatus();
-        toast.error(t("settings.notifications.deniedHelp"));
-      } else if (err?.code === "PERMISSION_DISMISSED") {
-        toast.error(t("settings.notifications.dismissed"));
-      } else if (err?.code === "IOS_PWA_REQUIRED") {
-        toast.error(t("settings.notifications.iosPwaRequired"));
-        openInstallPrompt();
-      } else if (err?.code === "ONESIGNAL_NOT_CONFIGURED") {
-        refreshStatus();
-        toast.error(t("settings.notifications.serverNotConfigured"));
-      } else if (err?.code === "PUSH_SERVICE_ERROR") {
-        toast.error(t("settings.notifications.pushServiceError"));
-      } else {
-        toast.error(err instanceof Error ? err.message : t("settings.notifications.error"));
-      }
+      toastPushEnableResult(result, t);
+      if (result.ok) await onSave?.();
     } finally {
       setPending(false);
     }

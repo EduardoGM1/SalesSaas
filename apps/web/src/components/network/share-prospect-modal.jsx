@@ -4,6 +4,7 @@ import { SalesModal } from "@/components/ui/sales-modal";
 import { networkApi, sharingApi } from "@/lib/network-api.js";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { toast } from "@/lib/toast";
+import { nudgePushPrompt } from "@/lib/push-prompt.js";
 
 const PERM_OPTIONS = [
   { value: "view", key: "network.permView" },
@@ -99,6 +100,7 @@ export function ShareProspectModal({ open, onOpenChange, prospectId, prospectNam
       toast.success(t("network.shareSuccess"));
       setSelectedId("");
       refresh();
+      nudgePushPrompt({ contextual: true, reason: "prospect-shared" });
     } catch (err) {
       toast.error(err.message);
     }

@@ -11,6 +11,7 @@ import { NetworkUserAvatar, networkDisplayName } from "@/components/network/netw
 import { usePresenceContext } from "@/components/providers/presence-provider.jsx";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { toast } from "@/lib/toast";
+import { nudgePushPrompt } from "@/lib/push-prompt.js";
 
 function NetworkIconButton({ icon: Icon, label, onClick, variant = "default" }) {
   return (
@@ -43,6 +44,7 @@ function ConnectionActions({ connection, onRefresh, onRequestRemove, t }) {
               await networkApi.updateConnection(connection.id, "accepted");
               toast.success(t("network.accepted"));
               onRefresh();
+              nudgePushPrompt({ contextual: true, reason: "contact-accepted" });
             } catch (err) {
               toast.error(err.message);
             }

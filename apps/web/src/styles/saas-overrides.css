@@ -1731,6 +1731,107 @@ body,
   flex-shrink: 0;
 }
 
+/* ===== PUSH PERMISSION PROMPT ===== */
+.push-permission-banner {
+  position: fixed;
+  left: max(12px, var(--safe-left));
+  right: max(12px, var(--safe-right));
+  bottom: calc(12px + var(--safe-bottom));
+  z-index: 9988;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 14px 14px 14px 16px;
+  background: var(--navy);
+  color: #fff;
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-lg);
+  animation: toastIn 0.25s ease;
+}
+
+.push-permission-banner-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: rgba(16, 185, 129, 0.22);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.push-permission-banner-copy {
+  flex: 1;
+  min-width: 140px;
+}
+
+.push-permission-banner-title {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.push-permission-banner-sub {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.72);
+  margin-top: 2px;
+  line-height: 1.35;
+}
+
+.push-permission-banner-btn {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.push-permission-banner-later {
+  border: 0;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.78);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 6px 8px;
+  flex-shrink: 0;
+}
+
+.push-permission-banner-later:hover {
+  color: #fff;
+}
+
+.push-permission-banner-close {
+  border: 0;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.65);
+  cursor: pointer;
+  padding: 4px;
+  flex-shrink: 0;
+}
+
+@media (max-width: 520px) {
+  .push-permission-banner {
+    position: fixed;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    padding-top: 36px;
+  }
+
+  .push-permission-banner-copy {
+    flex: 1 1 calc(100% - 52px);
+    min-width: 0;
+  }
+
+  .push-permission-banner-btn,
+  .push-permission-banner-later {
+    margin-top: 2px;
+  }
+
+  .push-permission-banner-close {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+  }
+}
+
 .pwa-install-overlay {
   position: fixed;
   inset: 0;
