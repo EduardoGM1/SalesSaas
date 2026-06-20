@@ -65,13 +65,9 @@ export function ClientsPage() {
     <>
       <Topbar title={t("page.clients.title")} subtitle={t("page.clients.subtitle")} />
       <div className="sales-page">
-        <PageBack />
-        <div className="page-head">
-          <div>
-            <div className="page-title">{t("page.clients.title")}</div>
-            <div className="page-sub">{t("page.clients.subtitle")}</div>
-          </div>
-          <button type="button" className="btn btn-primary" onClick={() => handleOpenChange(true)}>{t("clients.new")}</button>
+        <div className="page-toolbar page-toolbar--between">
+          <PageBack inline />
+          <button type="button" className="btn btn-primary btn-sm" onClick={() => handleOpenChange(true)}>{t("clients.new")}</button>
         </div>
 
         <div className="client-search-card">

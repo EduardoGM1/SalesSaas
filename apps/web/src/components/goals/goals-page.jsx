@@ -65,7 +65,7 @@ export function GoalsPage() {
   return (
     <>
       <Topbar title={t("page.dashboard.title")} subtitle={t("page.dashboard.subtitle")} />
-      <div className="sales-page sales-page--compact">
+      <div className="sales-page">
         <div className="page-toolbar">
           <PageBack inline />
           <div className="local-month-nav">

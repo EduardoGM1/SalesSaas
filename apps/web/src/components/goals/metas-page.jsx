@@ -59,7 +59,7 @@ export function MetasPage() {
   return (
     <>
       <Topbar title={t("page.metas.title")} subtitle={t("page.metas.subtitle")} />
-      <div className="sales-page sales-page--compact">
+      <div className="sales-page">
         <div className="page-toolbar">
           <PageBack inline />
           <div className="local-month-nav">

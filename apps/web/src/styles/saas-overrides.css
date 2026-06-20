@@ -1695,6 +1695,15 @@ body,
   font-size: 12px;
 }
 
+.page-toolbar--between {
+  justify-content: space-between;
+}
+
+.page-toolbar--between .local-month-nav {
+  flex: 1;
+  margin-left: 0;
+}
+
 .flabel-help {
   display: block;
   font-size: 11px;
@@ -1747,6 +1756,10 @@ body,
 
 .metas-layout {
   gap: 14px;
+}
+
+.tools-hub-list {
+  margin-top: 0;
 }
 
 /* ===== MOBILE APP NAV (≤768px) ===== */
@@ -1980,122 +1993,305 @@ body,
     min-width: 0;
   }
 
-  /* Dashboard y Metas — densidad móvil */
-  .sales-page--compact {
+  /* Densidad móvil — todas las pantallas sales-page y admin */
+  .sales-page {
     padding-top: 10px;
   }
 
-  .sales-page--compact .page-toolbar {
+  .sales-page > .page-back-row {
+    margin-bottom: 8px;
+  }
+
+  .sales-page .page-toolbar {
     margin-bottom: 10px;
     gap: 8px;
   }
 
-  .sales-page--compact .local-month-nav {
+  .sales-page .page-head {
+    margin-bottom: 10px;
+    gap: 8px;
+  }
+
+  .sales-page .page-head > div:first-child:has(.page-title) {
+    display: none;
+  }
+
+  .sales-page .page-head:has(.page-title) {
+    justify-content: flex-end;
+  }
+
+  .sales-page .tool-page-head-titles {
+    display: none;
+  }
+
+  .sales-page .tool-page-head,
+  .sales-page .tool-page-head-main {
+    gap: 8px;
+  }
+
+  .sales-page .local-month-nav,
+  .sales-page .agenda-month-nav {
     padding: 6px 8px;
     gap: 6px;
   }
 
-  .sales-page--compact .local-month-label {
+  .sales-page .local-month-label,
+  .sales-page .agenda-month-label {
     font-size: 13px;
+    min-width: 0;
   }
 
-  .sales-page--compact .card {
+  .sales-page .card,
+  .sales-page .settings-card,
+  .sales-page .client-search-card,
+  .sales-page .network-search-card {
     padding: 14px 12px;
   }
 
-  .sales-page--compact .card-heading {
+  .sales-page .card-heading {
     margin-bottom: 2px;
   }
 
-  .sales-page--compact .card-sub {
+  .sales-page .card-sub {
     margin-bottom: 10px;
     line-height: 1.35;
   }
 
-  .sales-page--compact .metas-period-rows,
-  .sales-page--compact .metas-period-rows + .metas-divider {
+  .sales-page .metas-period-rows,
+  .sales-page .metas-period-rows + .metas-divider {
     display: none;
   }
 
-  .sales-page--compact .frow {
+  .sales-page .frow {
     padding: 8px 0;
     gap: 6px;
   }
 
-  .sales-page--compact .goal-plain-input,
-  .sales-page--compact .goal-plain-input.small {
+  .sales-page .goal-plain-input,
+  .sales-page .goal-plain-input.small {
     width: 100%;
     max-width: none;
     text-align: left;
     padding: 8px 10px;
   }
 
-  .sales-page--compact .metas-readonly-val,
-  .sales-page--compact .metas-readonly-val--lg {
+  .sales-page .metas-readonly-val,
+  .sales-page .metas-readonly-val--lg {
     align-self: flex-start;
   }
 
-  .sales-page--compact .hint {
+  .sales-page .hint,
+  .sales-page .ethic-box {
     padding: 10px 12px;
     font-size: 11px;
     line-height: 1.45;
   }
 
-  .sales-page--compact .metas-side-stack {
-    gap: 10px;
-  }
-
-  .sales-page--compact .metas-kpi-grid {
-    gap: 8px;
-  }
-
-  .sales-page--compact .vbox {
-    padding: 10px 12px;
-  }
-
-  .sales-page--compact .vbox-val {
-    font-size: 17px;
-  }
-
-  .sales-page--compact .vbox-label {
-    margin-top: 3px;
-  }
-
-  .sales-page--compact .dash-top-grid {
-    gap: 12px;
+  .sales-page .ethic-box {
     margin-bottom: 12px;
   }
 
-  .sales-page--compact .dash-data-card,
-  .sales-page--compact .dash-graph-card,
-  .sales-page--compact .dash-table-card {
+  .sales-page .metas-side-stack {
+    gap: 10px;
+  }
+
+  .sales-page .metas-kpi-grid,
+  .sales-page .metas-layout {
+    gap: 10px;
+  }
+
+  .sales-page .vbox {
+    padding: 10px 12px;
+  }
+
+  .sales-page .vbox-val {
+    font-size: 17px;
+  }
+
+  .sales-page .vbox-label {
+    margin-top: 3px;
+  }
+
+  .sales-page .dash-top-grid,
+  .sales-page .cal-layout,
+  .sales-page .exp-layout {
+    gap: 12px;
+  }
+
+  .sales-page .dash-top-grid {
+    margin-bottom: 12px;
+  }
+
+  .sales-page .dash-data-card,
+  .sales-page .dash-graph-card,
+  .sales-page .dash-table-card {
     padding: 14px 12px;
   }
 
-  .sales-page--compact .dash-card-title {
+  .sales-page .dash-card-title {
     font-size: 15px;
     margin-bottom: 10px;
   }
 
-  .sales-page--compact .dash-data-row {
+  .sales-page .dash-data-row {
     padding: 7px 0;
     gap: 8px;
   }
 
-  .sales-page--compact .dash-data-label {
+  .sales-page .dash-data-label {
     font-size: 13px;
   }
 
-  .sales-page--compact .dash-data-value {
+  .sales-page .dash-data-value {
     font-size: 13px;
   }
 
-  .sales-page--compact .dash-area-chart {
+  .sales-page .dash-area-chart {
     height: 240px;
   }
 
-  .sales-page--compact .dash-week-prod-table th,
-  .sales-page--compact .dash-week-prod-table td {
+  .sales-page .dash-week-prod-table th,
+  .sales-page .dash-week-prod-table td {
+    padding: 8px 6px;
+    font-size: 12px;
+  }
+
+  .sales-page .cal-widget,
+  .sales-page .day-panel {
+    padding: 14px 12px;
+  }
+
+  .sales-page .client-search-card,
+  .sales-page .network-search-card {
+    margin-bottom: 10px;
+  }
+
+  .sales-page .client-search-help {
+    margin-top: 6px;
+  }
+
+  .sales-page .network-section {
+    margin-bottom: 16px;
+  }
+
+  .sales-page .section-label {
+    margin-bottom: 8px;
+  }
+
+  .sales-page .tools-hub-list,
+  .sales-page .exp-tool-list {
+    gap: 10px;
+  }
+
+  .sales-page .tool-card {
+    padding: 12px;
+    min-height: auto;
+    gap: 10px;
+  }
+
+  .sales-page .exp-page-head {
+    margin-bottom: 12px;
+    gap: 10px;
+  }
+
+  .sales-page .exp-page-title {
+    font-size: 18px;
+  }
+
+  .sales-page .exp-page-sub {
+    margin-top: 2px;
+    font-size: 12px;
+  }
+
+  .sales-page .contact-page-head {
+    margin-bottom: 12px;
+    gap: 10px;
+  }
+
+  .sales-page .settings-row {
+    padding: 8px 0;
+    gap: 6px;
+  }
+
+  .sales-page .settings-card {
+    padding: 14px 12px;
+  }
+
+  .sales-page .settings-detail > .page-back-row {
+    display: none;
+  }
+
+  .sales-page .sales-history-intro {
+    margin-bottom: 10px;
+    font-size: 12px;
+    line-height: 1.4;
+  }
+
+  .sales-page .messages-layout {
+    gap: 10px;
+  }
+
+  .sales-page .messages-sidebar-head,
+  .sales-page .messages-thread-head {
+    padding: 10px 12px;
+  }
+
+  .sales-page .messages-sidebar {
+    max-height: 200px;
+  }
+
+  .sales-page .messages-compose {
+    padding: 10px;
+    gap: 8px;
+  }
+
+  .admin-main {
+    padding-top: 12px;
+    padding-left: max(12px, var(--safe-left));
+    padding-right: max(12px, var(--safe-right));
+  }
+
+  .admin-page-head {
+    margin-bottom: 12px;
+  }
+
+  .admin-h1 {
+    font-size: 18px;
+    line-height: 1.2;
+  }
+
+  .admin-sub {
+    font-size: 12px;
+    margin-top: 2px;
+  }
+
+  .admin-kpis {
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+
+  .admin-kpi {
+    padding: 12px;
+  }
+
+  .admin-kpi-label {
+    margin-bottom: 4px;
+  }
+
+  .admin-filters {
+    margin-bottom: 12px;
+  }
+
+  .admin-filters-form {
+    gap: 8px;
+  }
+
+  .admin-card-head {
+    padding: 10px 12px;
+  }
+
+  .admin-page .client-table th,
+  .admin-page .client-table td {
     padding: 8px 6px;
     font-size: 12px;
   }

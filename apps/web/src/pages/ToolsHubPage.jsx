@@ -19,8 +19,8 @@ export function ToolsHubPage() {
     <>
       <Topbar title={t("page.tools.title")} subtitle={t("page.tools.subtitle")} />
       <div className="sales-page">
-        <PageBack />
-        <div className="exp-tool-list" style={{ marginTop: 16 }}>
+        <PageBack inline />
+        <div className="exp-tool-list tools-hub-list">
           {TOOLS.map((tool) => {
             const Icon = tool.icon;
             return (

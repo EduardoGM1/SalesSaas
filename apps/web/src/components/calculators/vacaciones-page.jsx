@@ -63,14 +63,8 @@ export function VacacionesPage({ clientId, shared }: VacacionesPageProps) {
     <>
       <Topbar title={t("tools.vacation")} subtitle={isFileMode ? t("tools.sub.inflation") : t("tools.sub.free")} />
       <div className="sales-page">
-        <div className="page-head tool-page-head">
-          <div className="tool-page-head-main">
-            <PageBack inline={true} href={backHref} />
-            <div className="tool-page-head-titles">
-              <div className="page-title">{t("tools.vacation")}</div>
-              <div className="page-sub">{isFileMode ? t("tools.sub.file") : t("tools.sub.free")}</div>
-            </div>
-          </div>
+        <div className="page-toolbar page-toolbar--between">
+          <PageBack inline href={backHref} />
           {!readOnly && (
             <button type="button" className="btn btn-ghost btn-sm" onClick={handleClear}>{t("common.clear")}</button>
           )}

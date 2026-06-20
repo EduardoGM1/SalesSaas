@@ -201,20 +201,19 @@ export function SettingsPage() {
     <>
       <Topbar title={ti("settings.title")} subtitle={ti("settings.subtitle")} />
       <div className="sales-page">
-        {!activeSection && <PageBack />}
-        <div className="page-head">
-          <div>
-            <div className="page-title">{ti("settings.title")}</div>
-            <div className="page-sub">{ti("settings.hubTitle")}</div>
-          </div>
-          <button type="button" className="btn btn-primary" disabled={profilePending} onClick={() => saveProfile()}>
+        <div className="page-toolbar page-toolbar--between">
+          {!activeSection ? (
+            <PageBack inline />
+          ) : (
+            <PageBack inline onClick={() => setActiveSection(null)} />
+          )}
+          <button type="button" className="btn btn-primary btn-sm" disabled={profilePending} onClick={() => saveProfile()}>
             {profilePending ? ti("settings.saving") : ti("settings.save")}
           </button>
         </div>
 
         {!activeSection ? renderHub() : (
           <div className="settings-detail">
-            <PageBack onClick={() => setActiveSection(null)} />
 
             {activeSection === "user" && (
               <div className="settings-section">

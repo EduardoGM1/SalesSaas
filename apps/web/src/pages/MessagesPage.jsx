@@ -124,7 +124,9 @@ export function MessagesPage() {
       <>
         <Topbar title={t("messages.title")} subtitle={t("messages.subtitle")} />
         <div className="sales-page">
-          <PageBack />
+          <div className="page-toolbar">
+            <PageBack inline />
+          </div>
           <div className="ethic-box">{t("network.cloudRequired")}</div>
         </div>
       </>
@@ -135,7 +137,7 @@ export function MessagesPage() {
     <>
       <Topbar title={t("messages.title")} subtitle={t("messages.subtitle")} />
       <div className="sales-page">
-        <PageBack />
+        <PageBack inline />
         <div className="messages-layout">
           <aside className="messages-sidebar">
             <div className="messages-sidebar-head">{t("messages.conversations")}</div>

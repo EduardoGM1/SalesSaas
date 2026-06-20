@@ -235,7 +235,9 @@ export function NetworkPage() {
       <>
         <Topbar title={t("network.title")} subtitle={t("network.subtitle")} />
         <div className="sales-page">
-          <PageBack />
+          <div className="page-toolbar">
+            <PageBack inline />
+          </div>
           <div className="ethic-box">{t("network.cloudRequired")}</div>
         </div>
       </>
@@ -249,13 +251,7 @@ export function NetworkPage() {
     <>
       <Topbar title={t("network.title")} subtitle={t("network.subtitle")} />
       <div className="sales-page">
-        <PageBack />
-        <div className="page-head">
-          <div>
-            <div className="page-title">{t("network.title")}</div>
-            <div className="page-sub">{t("network.subtitle")}</div>
-          </div>
-        </div>
+        <PageBack inline />
 
         <div className="network-search-card">
           <UserPlus size={18} className="network-search-icon" />

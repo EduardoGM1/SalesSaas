@@ -109,12 +109,15 @@ export function CalendarPage() {
     <>
       <Topbar title={t("page.agenda.title")} subtitle={t("page.agenda.subtitle")} />
       <div className="sales-page">
-        <PageBack
-          onClick={() => {
-            if (selDay != null) setSelDay(null);
-            else navigate(-1);
-          }}
-        />
+        <div className="page-toolbar">
+          <PageBack
+            inline
+            onClick={() => {
+              if (selDay != null) setSelDay(null);
+              else navigate(-1);
+            }}
+          />
+        </div>
         <div className="cal-layout">
           <div className="cal-widget">
             <div className="agenda-month-nav">

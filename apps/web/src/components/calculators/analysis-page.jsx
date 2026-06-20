@@ -50,14 +50,8 @@ export function AnalysisPage({ clientId, shared }: { clientId?; shared? }) {
     <>
       <Topbar title={t("tools.analysis.title")} subtitle={t("tools.analysis.sub")} />
       <div className="sales-page">
-        <div className="page-head tool-page-head">
-          <div className="tool-page-head-main">
-            <PageBack inline href={backHref} />
-            <div className="tool-page-head-titles">
-              <div className="page-title">{t("tools.analysis.title")}</div>
-              <div className="page-sub">{t("tools.analysis.sub")}{c ? ` · ${clientDisplayName(c)}` : ""}</div>
-            </div>
-          </div>
+        <div className="page-toolbar">
+          <PageBack inline href={backHref} />
         </div>
 
         <SharedToolBanner show={readOnly} />

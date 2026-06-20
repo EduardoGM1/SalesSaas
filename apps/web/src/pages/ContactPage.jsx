@@ -92,7 +92,9 @@ export function ContactPage({ contactId }) {
       <>
         <Topbar title={t("network.contactTitle")} subtitle="" />
         <div className="sales-page">
-          <PageBack href="/network" />
+          <div className="page-toolbar">
+            <PageBack inline href="/network" />
+          </div>
           <div className="ethic-box">{t("network.cloudRequired")}</div>
         </div>
       </>
@@ -105,7 +107,9 @@ export function ContactPage({ contactId }) {
     <>
       <Topbar title={t("network.contactTitle")} subtitle={peer ? networkDisplayName(peer) : ""} />
       <div className="sales-page">
-        <PageBack href="/network" />
+        <div className="page-toolbar">
+          <PageBack inline href="/network" />
+        </div>
 
         {loading ? (
           <div className="dp-empty">{t("common.loading")}</div>

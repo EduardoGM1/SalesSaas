@@ -72,7 +72,6 @@ export function SurveyPage({ clientId, shared }: SurveyPageProps) {
   }, [ready, clientId, isFileMode, getBucket, prospect, shared?.prospectId]);
 
   const client = isFileMode ? prospect : undefined;
-  const pageCtx = isFileMode ? (clientDisplayName(client) || t("tools.sub.file")) : t("tools.sub.free");
   const countries = Object.keys(COUNTRY_CITY);
   const cities = COUNTRY_CITY[data.svp_country || ""] || ["Otro"];
 
@@ -146,14 +145,8 @@ export function SurveyPage({ clientId, shared }: SurveyPageProps) {
     <>
       <Topbar title={t("tools.survey")} subtitle={isFileMode ? t("tools.sub.surveyClient") : t("tools.sub.free")} />
       <div className="sales-page">
-        <div className="page-head tool-page-head">
-          <div className="tool-page-head-main">
-            <PageBack inline={true} href={backHref} />
-            <div className="tool-page-head-titles">
-              <div className="page-title">{t("tools.survey")}</div>
-              <div className="page-sub">{pageCtx}</div>
-            </div>
-          </div>
+        <div className="page-toolbar page-toolbar--between">
+          <PageBack inline href={backHref} />
           {!readOnly && (
             <button type="button" className="btn btn-ghost btn-sm" onClick={handleClear}>{t("common.clear")}</button>
           )}
