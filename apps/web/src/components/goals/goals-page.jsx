@@ -1,6 +1,6 @@
 
 import { useMemo, useState } from "react";
-import { BarChart3, Calendar, Target } from "lucide-react";
+import { BarChart3, Calendar, Tag, Target, TrendingUp } from "lucide-react";
 import { Topbar } from "@/components/layout/topbar";
 import { PageBack } from "@/components/layout/page-back";
 import { DashboardChart } from "@/components/goals/dashboard-chart";
@@ -49,10 +49,14 @@ export function GoalsPage() {
   const efic = totals.tours > 0 ? totals.real / totals.tours : 0;
   const cierre = totals.tours > 0 ? (totals.sales / totals.tours) * 100 : 0;
 
-  const rows = [
+  const volumeRows = [
     [t("goals.volumeProduced"), fmt(totals.real), "green"],
     [t("goals.volumeRemaining"), fmt(vfalt), "red"],
     [t("goals.dailyProductionNeeded"), fmt(prod), "yellow"],
+  ];
+
+  const desktopRows = [
+    ...volumeRows,
     [t("goals.toursAccumulated"), fmtN(totals.tours), "blue"],
     [t("goals.salesAccumulated"), fmtN(totals.sales), "blue"],
     [t("goals.avgSale"), fmt(vprom), "teal"],
@@ -62,61 +66,129 @@ export function GoalsPage() {
 
   if (!hydrated) return <Topbar title={t("page.dashboard.title")} subtitle={t("common.loading")} />;
 
+  const periodBadges = (
+    <div className="dash-period-badges">
+      <div className="dash-period-badge">
+        <Calendar size={15} aria-hidden="true" />
+        <span className="dash-period-badge-label">{t("metas.year")}</span>
+        <span className="dash-period-badge-val">{calYear}</span>
+      </div>
+      <div className="dash-period-badge">
+        <Calendar size={15} aria-hidden="true" />
+        <span className="dash-period-badge-label">{t("metas.month")}</span>
+        <span className="dash-period-badge-val">{months[calMonth]}</span>
+      </div>
+    </div>
+  );
+
+  const dataRows = (rows) => rows.map(([label, value, color]) => (
+    <div key={label} className="dash-data-row">
+      <span className="dash-data-dot" />
+      <span className="dash-data-label">{label}</span>
+      <span className={`dash-data-value ${color}`}>{value}</span>
+    </div>
+  ));
+
+  const chartBlock = (
+    <div className="dash-graph-card">
+      <div className="dash-graph-head">
+        <div className="dash-card-title"><Target size={18} color="#2563eb" /> {t("goals.targetVsReal")}</div>
+        <div className="dash-chart-toggles">
+          <label className="dash-chart-toggle">
+            <input type="checkbox" checked={showTarget} onChange={(e) => setShowTarget(e.target.checked)} />
+            <span className="legend-line" /> {t("goals.showTarget")}
+          </label>
+          <label className="dash-chart-toggle">
+            <input type="checkbox" checked={showReal} onChange={(e) => setShowReal(e.target.checked)} />
+            <span className="legend-box" /> {t("goals.showReal")}
+          </label>
+        </div>
+      </div>
+      <DashboardChart weeks={weeks} showTarget={showTarget} showReal={showReal} />
+    </div>
+  );
+
+  const weeklyTable = (
+    <div className="dash-table-card">
+      <div className="dash-card-title"><Calendar size={18} color="#2563eb" /> {t("goals.weeklyProduction")}</div>
+      <table className="dash-week-prod-table">
+        <thead><tr><th>{t("goals.weekNum")}</th><th>{t("goals.objective")}</th><th>{t("goals.real")}</th></tr></thead>
+        <tbody>
+          {weeks.map((w) => (
+            <tr key={w.weekNo}><td>{w.weekNo}</td><td>{fmt(w.obj)}</td><td>{fmt(w.real)}</td></tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+
   return (
     <>
       <Topbar title={t("page.dashboard.title")} subtitle={t("page.dashboard.subtitle")} />
-      <div className="sales-page">
-        <div className="page-toolbar">
+      <div className="sales-page dash-page">
+        <div className="dash-page-nav">
           <PageBack inline />
-          <div className="local-month-nav">
-            <button type="button" className="tb-nav-btn" onClick={calPrev} aria-label={t("common.previousMonth")}>‹</button>
-            <div className="local-month-label">{months[calMonth]} {calYear}</div>
-            <button type="button" className="tb-nav-btn" onClick={calNext} aria-label={t("common.nextMonth")}>›</button>
-          </div>
+        </div>
+        <div className="local-month-nav dash-month-nav">
+          <button type="button" className="tb-nav-btn" onClick={calPrev} aria-label={t("common.previousMonth")}>‹</button>
+          <div className="local-month-label">{months[calMonth]} {calYear}</div>
+          <button type="button" className="tb-nav-btn" onClick={calNext} aria-label={t("common.nextMonth")}>›</button>
         </div>
 
-        <div className="dash-top-grid">
-          <div className="dash-data-card">
-            <div className="dash-card-title"><BarChart3 size={18} color="#2563eb" /> {t("goals.data")}</div>
-            <div>
-              {rows.map(([label, value, color]) => (
-                <div key={label} className="dash-data-row">
-                  <span className="dash-data-dot" />
-                  <span className="dash-data-label">{label}</span>
-                  <span className={`dash-data-value ${color}`}>{value}</span>
-                </div>
-              ))}
+        <div className="dash-mobile-layout">
+          <div className="dash-data-card dash-main-card">
+            <div className="dash-card-head">
+              <div className="dash-card-title"><BarChart3 size={18} color="#2563eb" /> {t("goals.data")}</div>
+              {periodBadges}
             </div>
-          </div>
+            <div className="dash-data-list">
+              {dataRows(volumeRows)}
+            </div>
 
-          <div className="dash-graph-card">
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 14, gap: 12, flexWrap: "wrap" }}>
-              <div className="dash-card-title" style={{ marginBottom: 0 }}><Target size={18} color="#2563eb" /> {t("goals.targetVsReal")}</div>
-              <div className="dash-chart-toggles">
-                <label className="dash-chart-toggle">
-                  <input type="checkbox" checked={showTarget} onChange={(e) => setShowTarget(e.target.checked)} />
-                  <span className="legend-line" /> {t("goals.showTarget")}
-                </label>
-                <label className="dash-chart-toggle">
-                  <input type="checkbox" checked={showReal} onChange={(e) => setShowReal(e.target.checked)} />
-                  <span className="legend-box" /> {t("goals.showReal")}
-                </label>
+            <div className="dash-section-divider">{t("goals.accumulated")}</div>
+            <div className="dash-stat-grid dash-stat-grid--2">
+              <div className="dash-stat-card">
+                <span className="dash-stat-label">{t("metas.tours")}</span>
+                <span className="dash-stat-val">{fmtN(totals.tours)}</span>
+              </div>
+              <div className="dash-stat-card">
+                <span className="dash-stat-label">{t("metas.sales")}</span>
+                <span className="dash-stat-val">{fmtN(totals.sales)}</span>
               </div>
             </div>
-            <DashboardChart weeks={weeks} showTarget={showTarget} showReal={showReal} />
+
+            <div className="dash-section-divider">{t("goals.kpisSection")}</div>
+            <div className="dash-stat-grid dash-stat-grid--3">
+              <div className="dash-kpi-mini">
+                <Tag size={14} aria-hidden="true" />
+                <span className="dash-kpi-mini-label">{t("goals.avgSale")}</span>
+                <span className="dash-kpi-mini-val">{fmt(vprom)}</span>
+              </div>
+              <div className="dash-kpi-mini">
+                <Target size={14} aria-hidden="true" />
+                <span className="dash-kpi-mini-label">{t("goals.closeRate")}</span>
+                <span className="dash-kpi-mini-val">{cierre.toFixed(0)}%</span>
+              </div>
+              <div className="dash-kpi-mini">
+                <TrendingUp size={14} aria-hidden="true" />
+                <span className="dash-kpi-mini-label">{t("goals.efficiency")}</span>
+                <span className="dash-kpi-mini-val">{fmt(efic)}</span>
+              </div>
+            </div>
           </div>
         </div>
 
-        <div className="dash-table-card">
-          <div className="dash-card-title"><Calendar size={18} color="#2563eb" /> {t("goals.weeklyProduction")}</div>
-          <table className="dash-week-prod-table">
-            <thead><tr><th>{t("goals.weekNum")}</th><th>{t("goals.objective")}</th><th>{t("goals.real")}</th></tr></thead>
-            <tbody>
-              {weeks.map((w) => (
-                <tr key={w.weekNo}><td>{w.weekNo}</td><td>{fmt(w.obj)}</td><td>{fmt(w.real)}</td></tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="dash-desktop-layout">
+          <div className="dash-top-grid">
+            <div className="dash-data-card">
+              <div className="dash-card-title"><BarChart3 size={18} color="#2563eb" /> {t("goals.data")}</div>
+              <div className="dash-data-list">
+                {dataRows(desktopRows)}
+              </div>
+            </div>
+            {chartBlock}
+          </div>
+          {weeklyTable}
         </div>
       </div>
     </>
