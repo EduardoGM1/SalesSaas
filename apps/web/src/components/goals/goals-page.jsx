@@ -176,6 +176,8 @@ export function GoalsPage() {
               </div>
             </div>
           </div>
+          {chartBlock}
+          {weeklyTable}
         </div>
 
         <div className="dash-desktop-layout">
