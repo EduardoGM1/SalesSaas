@@ -915,6 +915,82 @@ div.modal-backdrop.sales-modal-overlay:not([hidden]) {
   resize: vertical;
 }
 
+/* Chat — input fijo, solo el hilo hace scroll */
+.messages-page {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  padding-bottom: 12px;
+}
+
+.messages-page .messages-layout {
+  flex: 1;
+  min-height: 0;
+  align-items: stretch;
+}
+
+.messages-page .messages-sidebar,
+.messages-page .messages-thread {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  max-height: 100%;
+}
+
+.messages-page .messages-sidebar .messages-conv-list {
+  flex: 1;
+  min-height: 0;
+  max-height: none;
+  overflow-y: auto;
+}
+
+.messages-page .messages-thread {
+  flex: 1;
+  min-height: 0;
+}
+
+.messages-page .messages-thread-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.messages-page .messages-compose {
+  flex-shrink: 0;
+  background: var(--white);
+}
+
+@media (max-width: 900px) {
+  .messages-page .messages-layout {
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+
+  .messages-page .messages-layout--thread-open {
+    grid-template-rows: minmax(0, 1fr);
+  }
+
+  .messages-page .messages-layout--thread-open .messages-sidebar {
+    display: none;
+  }
+
+  .messages-page .messages-sidebar {
+    max-height: min(200px, 28vh);
+  }
+}
+
+@media (max-width: 768px) {
+  .messages-page.sales-page {
+    padding-bottom: 0;
+  }
+
+  .messages-page .messages-compose textarea {
+    resize: none;
+  }
+}
+
 @media (max-width: 900px) {
   .messages-layout { grid-template-columns: 1fr; }
   .messages-sidebar { max-height: 220px; }
@@ -2692,7 +2768,7 @@ body,
     line-height: 1.4;
   }
 
-  .sales-page .messages-layout {
+  .sales-page:not(.messages-page) .messages-layout {
     gap: 10px;
   }
 
@@ -2701,7 +2777,7 @@ body,
     padding: 10px 12px;
   }
 
-  .sales-page .messages-sidebar {
+  .sales-page:not(.messages-page) .messages-sidebar {
     max-height: 200px;
   }
 

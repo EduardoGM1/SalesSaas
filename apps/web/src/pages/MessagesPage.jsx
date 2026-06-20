@@ -136,9 +136,9 @@ export function MessagesPage() {
   return (
     <>
       <Topbar title={t("messages.title")} subtitle={t("messages.subtitle")} />
-      <div className="sales-page">
+      <div className="sales-page messages-page">
         <PageBack inline />
-        <div className="messages-layout">
+        <div className={`messages-layout${activePeerId ? " messages-layout--thread-open" : ""}`}>
           <aside className="messages-sidebar">
             <div className="messages-sidebar-head">{t("messages.conversations")}</div>
             {loading && <div className="dp-empty">{t("common.loading")}</div>}
