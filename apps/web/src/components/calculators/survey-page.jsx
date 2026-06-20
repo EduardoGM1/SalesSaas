@@ -183,7 +183,7 @@ export function SurveyPage({ clientId, shared }: SurveyPageProps) {
               </select>
             </div>
             <div className="client-survey-field right">
-              <label>{t("tools.survey.name")}</label>
+              <label>{t("exp.edit.companion")}</label>
               <input type="text" id="svp-name2" placeholder={t("tools.survey.companionPlaceholder")} value={data.svp_name2 || ""} onFocus={selectOnFocus} onChange={(e) => update("svp_name2", e.target.value)} />
             </div>
             <div className="client-survey-field left">
@@ -203,7 +203,7 @@ export function SurveyPage({ clientId, shared }: SurveyPageProps) {
               </select>
             </div>
             <div className="client-survey-field right">
-              <label>{t("tools.survey.occupation")}</label>
+              <label>{t("exp.edit.occ2")}</label>
               <input type="text" id="svp-occ2" placeholder={t("tools.survey.occ2Placeholder")} value={data.svp_occ2 || ""} onFocus={selectOnFocus} onChange={(e) => update("svp_occ2", e.target.value)} />
             </div>
           </div>

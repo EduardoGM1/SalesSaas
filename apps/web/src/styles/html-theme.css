@@ -554,10 +554,16 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
 .client-survey-field.left label{text-align:left;}
 .client-survey-field.left input{text-align:left;}
 .analysis-empty{background:var(--surface2);border:1px dashed var(--border2);border-radius:var(--r);padding:16px;color:var(--muted);font-size:13px;line-height:1.5;margin-bottom:14px;}
-@media(max-width:900px){.client-survey-grid{grid-template-columns:1fr;}}
+@media(max-width:900px){
+  .client-survey-grid{grid-template-columns:1fr;gap:14px;}
+  .client-survey-field.right label,
+  .client-survey-field.right input,
+  .client-survey-field.right input::placeholder,
+  .client-survey-field.center label,
+  .client-survey-field.center select{text-align:left;text-align-last:left;}
+}
 @media(max-width:640px){
-  .client-survey-grid{gap:10px 12px;}
-  .client-survey-field label{font-size:9px;}
+  .client-survey-field label{font-size:11px;}
   .mtbl{font-size:12px;}
   .mtbl input,.mtbl .mfield input{font-size:13px;padding:6px 8px;}
 }

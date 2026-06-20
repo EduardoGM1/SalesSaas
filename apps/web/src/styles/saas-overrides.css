@@ -1822,6 +1822,85 @@ body,
   .pwa-install-banner {
     bottom: calc(72px + var(--safe-bottom));
   }
+
+  /* Survey — prospecto en una columna, alineación y tap targets móvil */
+  .client-survey-grid {
+    grid-template-columns: 1fr !important;
+    gap: 14px;
+  }
+
+  .client-survey-field,
+  .client-survey-field.left,
+  .client-survey-field.center,
+  .client-survey-field.right {
+    text-align: left;
+    width: 100%;
+  }
+
+  .client-survey-field label {
+    text-align: left !important;
+    font-size: 11px;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+  }
+
+  .client-survey-field input,
+  .client-survey-field select {
+    width: 100%;
+    min-height: 44px;
+    padding: 10px 12px;
+    font-size: 16px;
+    text-align: left !important;
+    text-align-last: left !important;
+    box-sizing: border-box;
+  }
+
+  .client-survey-field.right input::placeholder {
+    text-align: left !important;
+  }
+
+  .client-survey-field select {
+    appearance: menulist;
+    -webkit-appearance: menulist;
+    cursor: pointer;
+  }
+
+  .survey-trip-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .sales-page .frow {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    padding: 14px 0;
+  }
+
+  .sales-page .frow .flabel {
+    flex: none;
+  }
+
+  .sales-page .frow .seg,
+  .sales-page .frow .mfield,
+  .sales-page .frow .frow-inline {
+    width: 100%;
+  }
+
+  .sales-page .frow > input[type="number"],
+  .sales-page .frow > input[type="text"],
+  .sales-page .frow .input-compact {
+    width: 100% !important;
+    max-width: none !important;
+    min-height: 44px;
+    font-size: 16px;
+  }
+
+  .sales-page .frow .seg-btn {
+    flex: 1;
+    min-height: 44px;
+    min-width: 0;
+  }
 }
 
 @media (min-width: 769px) {
