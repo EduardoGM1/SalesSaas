@@ -1,6 +1,6 @@
 
 import { useEffect, useRef, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { Check, CheckCheck, Send } from "lucide-react";
 import { Topbar } from "@/components/layout/topbar";
 import { PageBack } from "@/components/layout/page-back";
@@ -52,6 +52,7 @@ function MessageReadStatus({ message, lang, t }) {
 export function MessagesPage() {
   const { t, lang } = useI18n();
   const navigate = useNavigate();
+  const location = useLocation();
   const [params] = useSearchParams();
   const activePeerId = params.get("with");
   const [conversations, setConversations] = useState([]);
@@ -133,11 +134,25 @@ export function MessagesPage() {
     );
   }
 
+  const handleBack = () => {
+    if (activePeerId && window.matchMedia("(max-width: 900px)").matches) {
+      navigate("/messages");
+      return;
+    }
+    if (location.key !== "default") {
+      navigate(-1);
+      return;
+    }
+    navigate("/");
+  };
+
   return (
     <>
       <Topbar title={t("messages.title")} subtitle={t("messages.subtitle")} />
       <div className="sales-page messages-page">
-        <PageBack inline />
+        <div className="messages-page-nav">
+          <PageBack inline onClick={handleBack} />
+        </div>
         <div className={`messages-layout${activePeerId ? " messages-layout--thread-open" : ""}`}>
           <aside className="messages-sidebar">
             <div className="messages-sidebar-head">{t("messages.conversations")}</div>

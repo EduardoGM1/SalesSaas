@@ -916,18 +916,56 @@ div.modal-backdrop.sales-modal-overlay:not([hidden]) {
 }
 
 /* Chat — input fijo, solo el hilo hace scroll */
-.messages-page {
-  display: flex;
-  flex-direction: column;
+.app:has(.messages-page) {
+  height: var(--app-height);
+  max-height: var(--app-height);
+  overflow: hidden;
+}
+
+.main:has(.messages-page) {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.main > main:has(.messages-page) {
   flex: 1;
   min-height: 0;
   overflow: hidden;
-  padding-bottom: 12px;
+}
+
+.sales-page.messages-page {
+  --messages-chrome: calc(var(--topbar-h) + var(--safe-top) + 20px);
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  height: calc(var(--app-height) - var(--messages-chrome));
+  max-height: calc(var(--app-height) - var(--messages-chrome));
+  min-height: 0;
+  overflow: hidden;
+  padding-top: 6px;
+  padding-bottom: 8px;
+  box-sizing: border-box;
+}
+
+.messages-page-nav {
+  flex-shrink: 0;
+  margin-bottom: 6px;
+}
+
+.messages-page-nav .btn-ghost.btn-sm {
+  width: auto;
+  align-self: flex-start;
+  padding: 5px 10px;
+  font-size: 12px;
+  gap: 5px;
+  min-height: 0;
 }
 
 .messages-page .messages-layout {
   flex: 1;
-  min-height: 0;
+  min-height: 0 !important;
+  max-height: 100%;
+  height: 100%;
   align-items: stretch;
 }
 
@@ -935,8 +973,10 @@ div.modal-backdrop.sales-modal-overlay:not([hidden]) {
 .messages-page .messages-thread {
   display: flex;
   flex-direction: column;
-  min-height: 0;
+  min-height: 0 !important;
   max-height: 100%;
+  height: 100%;
+  overflow: hidden;
 }
 
 .messages-page .messages-sidebar .messages-conv-list {
@@ -944,11 +984,6 @@ div.modal-backdrop.sales-modal-overlay:not([hidden]) {
   min-height: 0;
   max-height: none;
   overflow-y: auto;
-}
-
-.messages-page .messages-thread {
-  flex: 1;
-  min-height: 0;
 }
 
 .messages-page .messages-thread-body {
@@ -964,6 +999,10 @@ div.modal-backdrop.sales-modal-overlay:not([hidden]) {
 }
 
 @media (max-width: 900px) {
+  .sales-page.messages-page {
+    --messages-chrome: calc(var(--topbar-h) + var(--safe-top) + 56px + var(--safe-bottom) + 12px);
+  }
+
   .messages-page .messages-layout {
     grid-template-rows: auto minmax(0, 1fr);
   }
@@ -977,13 +1016,14 @@ div.modal-backdrop.sales-modal-overlay:not([hidden]) {
   }
 
   .messages-page .messages-sidebar {
-    max-height: min(200px, 28vh);
+    max-height: min(180px, 26vh);
   }
 }
 
 @media (max-width: 768px) {
-  .messages-page.sales-page {
+  .sales-page.messages-page {
     padding-bottom: 0;
+    --messages-chrome: calc(var(--topbar-h) + 22px + var(--safe-top) + 64px + var(--safe-bottom) + 8px);
   }
 
   .messages-page .messages-compose textarea {
