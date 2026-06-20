@@ -65,19 +65,13 @@ export function GoalsPage() {
   return (
     <>
       <Topbar title={t("page.dashboard.title")} subtitle={t("page.dashboard.subtitle")} />
-      <div className="sales-page">
-        <PageBack />
-        <div className="dash-lean-head">
-          <div>
-            <div className="dash-title">{t("page.dashboard.title")}</div>
-            <div className="dash-sub">{months[calMonth]} {calYear}</div>
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", justifyContent: "flex-end" }}>
-            <div className="local-month-nav">
-              <button type="button" className="tb-nav-btn" onClick={calPrev} aria-label={t("common.previousMonth")}>‹</button>
-              <div className="local-month-label">{months[calMonth]} {calYear}</div>
-              <button type="button" className="tb-nav-btn" onClick={calNext} aria-label={t("common.nextMonth")}>›</button>
-            </div>
+      <div className="sales-page sales-page--compact">
+        <div className="page-toolbar">
+          <PageBack inline />
+          <div className="local-month-nav">
+            <button type="button" className="tb-nav-btn" onClick={calPrev} aria-label={t("common.previousMonth")}>‹</button>
+            <div className="local-month-label">{months[calMonth]} {calYear}</div>
+            <button type="button" className="tb-nav-btn" onClick={calNext} aria-label={t("common.nextMonth")}>›</button>
           </div>
         </div>
 

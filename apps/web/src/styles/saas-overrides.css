@@ -1671,6 +1671,84 @@ body,
   }
 }
 
+/* ===== COMPACT PAGE LAYOUT (Dashboard, Metas) ===== */
+.page-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+  min-width: 0;
+}
+
+.page-toolbar .local-month-nav {
+  flex: 1;
+  min-width: 0;
+}
+
+.page-toolbar .local-month-label {
+  min-width: 0;
+}
+
+.page-toolbar .btn-ghost.btn-sm {
+  flex-shrink: 0;
+  padding: 7px 10px;
+  font-size: 12px;
+}
+
+.flabel-help {
+  display: block;
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--muted);
+  margin-top: 2px;
+  line-height: 1.35;
+}
+
+.metas-readonly-val {
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--blue);
+}
+
+.metas-readonly-val--lg {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--navy);
+}
+
+.metas-readonly-val--blue {
+  color: var(--blue);
+}
+
+.metas-divider {
+  margin: 10px 0 8px;
+  border: none;
+  border-top: 1px solid var(--border);
+}
+
+.metas-hint {
+  margin-top: 10px;
+}
+
+.metas-save-btn {
+  margin-top: 12px;
+}
+
+.metas-side-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.metas-kpi-grid {
+  gap: 10px;
+}
+
+.metas-layout {
+  gap: 14px;
+}
+
 /* ===== MOBILE APP NAV (≤768px) ===== */
 .mobile-top-avatar,
 .topbar-mobile-actions,
@@ -1900,6 +1978,126 @@ body,
     flex: 1;
     min-height: 44px;
     min-width: 0;
+  }
+
+  /* Dashboard y Metas — densidad móvil */
+  .sales-page--compact {
+    padding-top: 10px;
+  }
+
+  .sales-page--compact .page-toolbar {
+    margin-bottom: 10px;
+    gap: 8px;
+  }
+
+  .sales-page--compact .local-month-nav {
+    padding: 6px 8px;
+    gap: 6px;
+  }
+
+  .sales-page--compact .local-month-label {
+    font-size: 13px;
+  }
+
+  .sales-page--compact .card {
+    padding: 14px 12px;
+  }
+
+  .sales-page--compact .card-heading {
+    margin-bottom: 2px;
+  }
+
+  .sales-page--compact .card-sub {
+    margin-bottom: 10px;
+    line-height: 1.35;
+  }
+
+  .sales-page--compact .metas-period-rows,
+  .sales-page--compact .metas-period-rows + .metas-divider {
+    display: none;
+  }
+
+  .sales-page--compact .frow {
+    padding: 8px 0;
+    gap: 6px;
+  }
+
+  .sales-page--compact .goal-plain-input,
+  .sales-page--compact .goal-plain-input.small {
+    width: 100%;
+    max-width: none;
+    text-align: left;
+    padding: 8px 10px;
+  }
+
+  .sales-page--compact .metas-readonly-val,
+  .sales-page--compact .metas-readonly-val--lg {
+    align-self: flex-start;
+  }
+
+  .sales-page--compact .hint {
+    padding: 10px 12px;
+    font-size: 11px;
+    line-height: 1.45;
+  }
+
+  .sales-page--compact .metas-side-stack {
+    gap: 10px;
+  }
+
+  .sales-page--compact .metas-kpi-grid {
+    gap: 8px;
+  }
+
+  .sales-page--compact .vbox {
+    padding: 10px 12px;
+  }
+
+  .sales-page--compact .vbox-val {
+    font-size: 17px;
+  }
+
+  .sales-page--compact .vbox-label {
+    margin-top: 3px;
+  }
+
+  .sales-page--compact .dash-top-grid {
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+
+  .sales-page--compact .dash-data-card,
+  .sales-page--compact .dash-graph-card,
+  .sales-page--compact .dash-table-card {
+    padding: 14px 12px;
+  }
+
+  .sales-page--compact .dash-card-title {
+    font-size: 15px;
+    margin-bottom: 10px;
+  }
+
+  .sales-page--compact .dash-data-row {
+    padding: 7px 0;
+    gap: 8px;
+  }
+
+  .sales-page--compact .dash-data-label {
+    font-size: 13px;
+  }
+
+  .sales-page--compact .dash-data-value {
+    font-size: 13px;
+  }
+
+  .sales-page--compact .dash-area-chart {
+    height: 240px;
+  }
+
+  .sales-page--compact .dash-week-prod-table th,
+  .sales-page--compact .dash-week-prod-table td {
+    padding: 8px 6px;
+    font-size: 12px;
   }
 }
 

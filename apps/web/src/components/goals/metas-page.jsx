@@ -59,13 +59,9 @@ export function MetasPage() {
   return (
     <>
       <Topbar title={t("page.metas.title")} subtitle={t("page.metas.subtitle")} />
-      <div className="sales-page">
-        <PageBack />
-        <div className="page-head">
-          <div>
-            <div className="page-title">{t("page.metas.title")}</div>
-            <div className="page-sub">{months[calMonth]} {calYear}</div>
-          </div>
+      <div className="sales-page sales-page--compact">
+        <div className="page-toolbar">
+          <PageBack inline />
           <div className="local-month-nav">
             <button type="button" className="tb-nav-btn" onClick={calPrev} aria-label={t("common.previousMonth")}>‹</button>
             <div className="local-month-label">{months[calMonth]} {calYear}</div>
@@ -73,64 +69,66 @@ export function MetasPage() {
           </div>
         </div>
 
-        <div className="g2">
+        <div className="g2 metas-layout">
           <div className="card">
             <div className="card-heading">{t("metas.monthGoal")}</div>
             <div className="card-sub">{t("metas.enterGoals")}</div>
 
-            <div className="frow" style={{ paddingTop: 0, borderTop: "none" }}>
+            <div className="metas-period-rows">
+            <div className="frow frow-first">
               <div className="flabel"><strong>{t("metas.year")}</strong></div>
-              <div style={{ fontFamily: "var(--font-geist-mono), monospace", fontSize: 16, fontWeight: 600, color: "var(--blue)" }}>{calYear}</div>
+              <div className="metas-readonly-val">{calYear}</div>
             </div>
             <div className="frow">
               <div className="flabel"><strong>{t("metas.month")}</strong></div>
-              <div style={{ fontFamily: "var(--font-geist-mono), monospace", fontSize: 16, fontWeight: 600, color: "var(--blue)" }}>{months[calMonth]}</div>
+              <div className="metas-readonly-val">{months[calMonth]}</div>
+            </div>
             </div>
 
-            <hr style={{ margin: "14px 0 10px" }} />
+            <hr className="metas-divider" />
 
-            <div className="frow" style={{ borderTop: "none", paddingTop: 0 }}>
+            <div className="frow frow-first">
               <div className="flabel">
                 <strong>{t("metas.volume")}</strong>
-                <span style={{ display: "block", fontSize: 11, fontWeight: 400, color: "var(--muted)" }}>{t("metas.volumeHelp")}</span>
+                <span className="flabel-help">{t("metas.volumeHelp")}</span>
               </div>
               <input type="text" className="goal-plain-input" placeholder="200,000" inputMode="numeric" value={vol} onFocus={selectOnFocus} onChange={(e) => setVol(e.target.value)} onBlur={formatVol} />
             </div>
             <div className="frow">
               <div className="flabel">
                 <strong>{t("metas.tours")}</strong>
-                <span style={{ display: "block", fontSize: 11, fontWeight: 400, color: "var(--muted)" }}>{t("metas.toursHelp")}</span>
+                <span className="flabel-help">{t("metas.toursHelp")}</span>
               </div>
               <input type="text" className="goal-plain-input small" placeholder="20" inputMode="numeric" value={tours} onFocus={selectOnFocus} onChange={(e) => setTours(e.target.value)} />
             </div>
             <div className="frow">
               <div className="flabel">
                 <strong>{t("metas.sales")}</strong>
-                <span style={{ display: "block", fontSize: 11, fontWeight: 400, color: "var(--muted)" }}>{t("metas.salesHelp")}</span>
+                <span className="flabel-help">{t("metas.salesHelp")}</span>
               </div>
               <input type="text" className="goal-plain-input small" placeholder="5" inputMode="numeric" value={ventas} onFocus={selectOnFocus} onChange={(e) => setVentas(e.target.value)} />
             </div>
 
-            <hr style={{ margin: "14px 0 10px" }} />
+            <hr className="metas-divider" />
 
-            <div className="frow" style={{ borderTop: "none", paddingTop: 0 }}>
+            <div className="frow frow-first">
               <div className="flabel">
                 <strong>{t("metas.restDays")}</strong>
-                <span style={{ display: "block", fontSize: 11, fontWeight: 400, color: "var(--muted)" }}>{t("metas.restDaysHelp")}</span>
+                <span className="flabel-help">{t("metas.restDaysHelp")}</span>
               </div>
-              <div style={{ fontFamily: "var(--font-geist-mono), monospace", fontSize: 18, fontWeight: 700, color: "var(--navy)" }}>{kpis.descDays}</div>
+              <div className="metas-readonly-val metas-readonly-val--lg">{kpis.descDays}</div>
             </div>
             <div className="frow">
               <div className="flabel">
                 <strong>{t("metas.workDays")}</strong>
-                <span style={{ display: "block", fontSize: 11, fontWeight: 400, color: "var(--muted)" }}>{t("metas.workDaysHelp")}</span>
+                <span className="flabel-help">{t("metas.workDaysHelp")}</span>
               </div>
-              <div style={{ fontFamily: "var(--font-geist-mono), monospace", fontSize: 18, fontWeight: 700, color: "var(--blue)" }}>{diasTrab}</div>
+              <div className="metas-readonly-val metas-readonly-val--lg metas-readonly-val--blue">{diasTrab}</div>
             </div>
 
-            <div className="hint" style={{ marginTop: 14 }}>{t("metas.hint")}</div>
+            <div className="hint metas-hint">{t("metas.hint")}</div>
 
-            <button type="button" className="btn btn-primary btn-full" style={{ marginTop: 16 }} onClick={() => {
+            <button type="button" className="btn btn-primary btn-full metas-save-btn" onClick={() => {
               saveGoalMonth(calYear, calMonth, {
                 vol: Number(onlyDigits(vol)) || 0,
                 tours: Number(onlyDigits(tours)) || 0,
@@ -141,11 +139,11 @@ export function MetasPage() {
             }}>{saved ? t("metas.saved") : t("metas.save")}</button>
           </div>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          <div className="metas-side-stack">
             <div className="card">
               <div className="card-heading">{t("metas.kpisProjected")}</div>
               <div className="card-sub">{t("metas.kpisSub")}</div>
-              <div className="g2" style={{ gap: 12 }}>
+              <div className="g2 metas-kpi-grid">
                 <div className="vbox blue">
                   <div className="vbox-val">{fmt(kpis.vprom)}</div>
                   <div className="vbox-label">{t("goals.avgSale")}</div>
