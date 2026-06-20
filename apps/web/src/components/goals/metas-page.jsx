@@ -1,5 +1,6 @@
 
 import { useEffect, useMemo, useState } from "react";
+import { Calendar, Info } from "lucide-react";
 import { Topbar } from "@/components/layout/topbar";
 import { PageBack } from "@/components/layout/page-back";
 import { computeMetasKpis } from "@/lib/calculations/calendar";
@@ -59,66 +60,72 @@ export function MetasPage() {
   return (
     <>
       <Topbar title={t("page.metas.title")} subtitle={t("page.metas.subtitle")} />
-      <div className="sales-page">
-        <div className="page-toolbar">
+      <div className="sales-page metas-page">
+        <div className="metas-page-nav">
           <PageBack inline />
-          <div className="local-month-nav">
-            <button type="button" className="tb-nav-btn" onClick={calPrev} aria-label={t("common.previousMonth")}>‹</button>
-            <div className="local-month-label">{months[calMonth]} {calYear}</div>
-            <button type="button" className="tb-nav-btn" onClick={calNext} aria-label={t("common.nextMonth")}>›</button>
-          </div>
+        </div>
+        <div className="local-month-nav metas-month-nav">
+          <button type="button" className="tb-nav-btn" onClick={calPrev} aria-label={t("common.previousMonth")}>‹</button>
+          <div className="local-month-label">{months[calMonth]} {calYear}</div>
+          <button type="button" className="tb-nav-btn" onClick={calNext} aria-label={t("common.nextMonth")}>›</button>
         </div>
 
         <div className="g2 metas-layout">
-          <div className="card">
-            <div className="card-heading">{t("metas.monthGoal")}</div>
-            <div className="card-sub">{t("metas.enterGoals")}</div>
-
-            <div className="metas-period-rows">
-            <div className="frow frow-first">
-              <div className="flabel"><strong>{t("metas.year")}</strong></div>
-              <div className="metas-readonly-val">{calYear}</div>
+          <div className="card metas-goal-card">
+            <div className="metas-card-head">
+              <div className="metas-card-head-titles">
+                <div className="card-heading">{t("metas.monthGoal")}</div>
+                <div className="card-sub">{t("metas.enterGoals")}</div>
+              </div>
+              <div className="metas-period-badges">
+                <div className="metas-period-badge">
+                  <Calendar size={15} aria-hidden="true" />
+                  <span className="metas-period-badge-label">{t("metas.year")}</span>
+                  <span className="metas-period-badge-val">{calYear}</span>
+                </div>
+                <div className="metas-period-badge">
+                  <Calendar size={15} aria-hidden="true" />
+                  <span className="metas-period-badge-label">{t("metas.month")}</span>
+                  <span className="metas-period-badge-val">{months[calMonth]}</span>
+                </div>
+              </div>
             </div>
-            <div className="frow">
-              <div className="flabel"><strong>{t("metas.month")}</strong></div>
-              <div className="metas-readonly-val">{months[calMonth]}</div>
-            </div>
-            </div>
 
-            <hr className="metas-divider" />
-
-            <div className="frow frow-first">
+            <div className="frow frow-first metas-frow">
               <div className="flabel">
                 <strong>{t("metas.volume")}</strong>
                 <span className="flabel-help">{t("metas.volumeHelp")}</span>
               </div>
-              <input type="text" className="goal-plain-input" placeholder="200,000" inputMode="numeric" value={vol} onFocus={selectOnFocus} onChange={(e) => setVol(e.target.value)} onBlur={formatVol} />
+              <div className="mfield metas-vol-field">
+                <span className="mpfx">$</span>
+                <input type="text" className="metas-input" placeholder="500,000" inputMode="numeric" value={vol} onFocus={selectOnFocus} onChange={(e) => setVol(e.target.value)} onBlur={formatVol} />
+              </div>
             </div>
-            <div className="frow">
+            <div className="frow metas-frow">
               <div className="flabel">
                 <strong>{t("metas.tours")}</strong>
                 <span className="flabel-help">{t("metas.toursHelp")}</span>
               </div>
-              <input type="text" className="goal-plain-input small" placeholder="20" inputMode="numeric" value={tours} onFocus={selectOnFocus} onChange={(e) => setTours(e.target.value)} />
+              <input type="text" className="goal-plain-input small metas-num-input" placeholder="30" inputMode="numeric" value={tours} onFocus={selectOnFocus} onChange={(e) => setTours(e.target.value)} />
             </div>
-            <div className="frow">
+            <div className="frow metas-frow">
               <div className="flabel">
                 <strong>{t("metas.sales")}</strong>
                 <span className="flabel-help">{t("metas.salesHelp")}</span>
               </div>
-              <input type="text" className="goal-plain-input small" placeholder="5" inputMode="numeric" value={ventas} onFocus={selectOnFocus} onChange={(e) => setVentas(e.target.value)} />
+              <input type="text" className="goal-plain-input small metas-num-input" placeholder="10" inputMode="numeric" value={ventas} onFocus={selectOnFocus} onChange={(e) => setVentas(e.target.value)} />
             </div>
 
             <hr className="metas-divider" />
 
-            <div className="frow frow-first">
+            <div className="frow frow-first metas-frow">
               <div className="flabel">
                 <strong>{t("metas.restDays")}</strong>
                 <span className="flabel-help">{t("metas.restDaysHelp")}</span>
               </div>
               <div className="metas-readonly-val metas-readonly-val--lg">{kpis.descDays}</div>
             </div>
-            <div className="frow">
+            <div className="frow metas-frow">
               <div className="flabel">
                 <strong>{t("metas.workDays")}</strong>
                 <span className="flabel-help">{t("metas.workDaysHelp")}</span>
@@ -126,7 +133,10 @@ export function MetasPage() {
               <div className="metas-readonly-val metas-readonly-val--lg metas-readonly-val--blue">{diasTrab}</div>
             </div>
 
-            <div className="hint metas-hint">{t("metas.hint")}</div>
+            <div className="hint metas-hint">
+              <Info size={16} className="metas-hint-icon" aria-hidden="true" />
+              <span>{t("metas.hint")}</span>
+            </div>
 
             <button type="button" className="btn btn-primary btn-full metas-save-btn" onClick={() => {
               saveGoalMonth(calYear, calMonth, {
@@ -140,7 +150,7 @@ export function MetasPage() {
           </div>
 
           <div className="metas-side-stack">
-            <div className="card">
+            <div className="card metas-kpi-card">
               <div className="card-heading">{t("metas.kpisProjected")}</div>
               <div className="card-sub">{t("metas.kpisSub")}</div>
               <div className="g2 metas-kpi-grid">
@@ -167,7 +177,7 @@ export function MetasPage() {
               </div>
             </div>
 
-            <div className="card">
+            <div className="card metas-breakdown-card">
               <div className="card-heading">{t("metas.monthBreakdown")}</div>
               <div className="card-sub">{t("metas.monthBreakdownSub")}</div>
               <table className="dtbl">
