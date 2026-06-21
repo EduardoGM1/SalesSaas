@@ -1606,6 +1606,29 @@ body,
     grid-template-columns: 1fr !important;
   }
 
+  .prospect-geo-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    grid-column: 1 / -1;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .prospect-geo-row .prospect-field {
+    min-width: 0;
+  }
+
+  .prospect-geo-row .prospect-field label {
+    font-size: 10px;
+    letter-spacing: 0.3px;
+  }
+
+  .prospect-geo-row select {
+    font-size: 13px;
+    padding: 8px 6px;
+  }
+
   .client-table-card {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;

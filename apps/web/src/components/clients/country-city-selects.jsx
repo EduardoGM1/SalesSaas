@@ -16,7 +16,7 @@ export function CountryCitySelects({
   const cities = COUNTRY_CITY[country || ""] || ["Otro"];
 
   return (
-    <>
+    <div className="prospect-geo-row">
       <div className={fieldClassName}>
         <label>{t(countryLabelKey)}</label>
         <select
@@ -52,6 +52,6 @@ export function CountryCitySelects({
           )}
         </select>
       </div>
-    </>
+    </div>
   );
 }

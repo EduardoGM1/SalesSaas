@@ -397,6 +397,7 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
 .prospect-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px 24px;align-items:start;}
 .prospect-field label{font-size:11px;color:var(--muted);font-weight:700;letter-spacing:.5px;text-transform:uppercase;display:block;margin-bottom:6px;}
 .prospect-field input,.prospect-field select,.prospect-field textarea{width:100%;}
+.prospect-geo-row{display:contents;}
 .exp-layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;align-items:start;}
 .exp-tool-list{display:flex;flex-direction:column;gap:12px;width:100%;}
 .exp-tool-list .tool-card{width:100%;min-height:88px;}
