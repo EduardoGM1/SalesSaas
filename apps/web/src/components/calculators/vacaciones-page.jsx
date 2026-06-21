@@ -62,7 +62,7 @@ export function VacacionesPage({ clientId, shared }: VacacionesPageProps) {
   return (
     <>
       <Topbar title={t("tools.vacation")} subtitle={isFileMode ? t("tools.sub.inflation") : t("tools.sub.free")} />
-      <div className="sales-page">
+      <div className="sales-page tool-calc-page">
         <div className="page-toolbar page-toolbar--between">
           <PageBack inline href={backHref} />
           {!readOnly && (
@@ -74,21 +74,28 @@ export function VacacionesPage({ clientId, shared }: VacacionesPageProps) {
 
         <fieldset className="shared-tool-fieldset" disabled={readOnly}>
         <div className="g2">
-          <div className="card">
+          <div className="card tool-calc-card">
             <div className="card-heading">{t("tools.vacation.inputTitle")}</div>
-            <div className="frow"><div className="flabel">{t("tools.vacation.tripsPerYear")}</div>
-              <input type="number" min={1} style={{ width: 80, padding: "7px 8px", border: "1px solid var(--border2)", borderRadius: 8, background: "var(--surface2)" }} value={fields.vv} onFocus={selectOnFocus} onChange={(e) => setFields({ ...fields, vv: e.target.value })} />
-            </div>
-            <div className="frow"><div className="flabel">{t("tools.vacation.costPerTrip")}</div>
-              <div className="mfield"><span className="mpfx">$</span>
-                <input type="text" value={fields.vc} onFocus={selectOnFocus} onChange={(e) => setFields({ ...fields, vc: e.target.value })} onBlur={(e) => setFields({ ...fields, vc: formatMoneyValue(e.target.value) })} />
+            <div className="tool-calc-fields">
+              <div className="frow frow-first tool-frow">
+                <div className="flabel">{t("tools.vacation.tripsPerYear")}</div>
+                <input type="number" className="tool-num-input" min={1} value={fields.vv} onFocus={selectOnFocus} onChange={(e) => setFields({ ...fields, vv: e.target.value })} />
               </div>
-            </div>
-            <div className="frow"><div className="flabel">{t("tools.vacation.yearsProject")}</div>
-              <input type="number" min={1} max={60} style={{ width: 80, padding: "7px 8px", border: "1px solid var(--border2)", borderRadius: 8, background: "var(--surface2)" }} value={fields.va} onFocus={selectOnFocus} onChange={(e) => setFields({ ...fields, va: e.target.value })} />
-            </div>
-            <div className="frow"><div className="flabel">{t("tools.vacation.inflation")} — <strong style={{ color: "var(--blue)" }}>{(r.inf * 100).toFixed(1)}%</strong></div>
-              <input type="range" min={0} max={20} step={0.5} value={fields.vi} onChange={(e) => setFields({ ...fields, vi: e.target.value })} style={{ width: 130, accentColor: "var(--blue)" }} />
+              <div className="frow tool-frow">
+                <div className="flabel">{t("tools.vacation.costPerTrip")}</div>
+                <div className="mfield">
+                  <span className="mpfx">$</span>
+                  <input type="text" value={fields.vc} onFocus={selectOnFocus} onChange={(e) => setFields({ ...fields, vc: e.target.value })} onBlur={(e) => setFields({ ...fields, vc: formatMoneyValue(e.target.value) })} />
+                </div>
+              </div>
+              <div className="frow tool-frow">
+                <div className="flabel">{t("tools.vacation.yearsProject")}</div>
+                <input type="number" className="tool-num-input" min={1} max={60} value={fields.va} onFocus={selectOnFocus} onChange={(e) => setFields({ ...fields, va: e.target.value })} />
+              </div>
+              <div className="frow tool-frow tool-frow--range">
+                <div className="flabel">{t("tools.vacation.inflation")} — <strong style={{ color: "var(--blue)" }}>{(r.inf * 100).toFixed(1)}%</strong></div>
+                <input type="range" className="tool-range-input" min={0} max={20} step={0.5} value={fields.vi} onChange={(e) => setFields({ ...fields, vi: e.target.value })} />
+              </div>
             </div>
           </div>
 

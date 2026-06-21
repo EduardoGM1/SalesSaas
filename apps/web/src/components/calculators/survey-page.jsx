@@ -144,7 +144,7 @@ export function SurveyPage({ clientId, shared }: SurveyPageProps) {
   return (
     <>
       <Topbar title={t("tools.survey")} subtitle={isFileMode ? t("tools.sub.surveyClient") : t("tools.sub.free")} />
-      <div className="sales-page">
+      <div className="sales-page tool-calc-page">
         <div className="page-toolbar page-toolbar--between">
           <PageBack inline href={backHref} />
           {!readOnly && (
@@ -206,19 +206,19 @@ export function SurveyPage({ clientId, shared }: SurveyPageProps) {
           <div className="card-heading">{t("tools.survey.currentTrip")}</div>
           <div className="card-sub">{t("tools.survey.currentTripSub")}</div>
           <div className="g2 survey-trip-grid">
-            <div>
-              <div className="frow frow-first">
+            <div className="tool-calc-fields">
+              <div className="frow frow-first tool-frow">
                 <div className="flabel">{t("tools.survey.nights")}</div>
-                <input type="number" className="input-compact" id="sv-nights" min={1} value={data.nights} onFocus={selectOnFocus} onChange={(e) => update("nights", e.target.value)} />
+                <input type="number" className="input-compact tool-num-input" id="sv-nights" min={1} value={data.nights} onFocus={selectOnFocus} onChange={(e) => update("nights", e.target.value)} />
               </div>
-              <div className="frow">
+              <div className="frow tool-frow">
                 <div className="flabel">{t("tools.survey.expenseType")}</div>
                 <div className="seg">
                   <button type="button" className={`seg-btn${sType === "hotel" ? " on" : ""}`} onClick={() => setSType("hotel")}>{t("tools.survey.hotelOnly")}</button>
                   <button type="button" className={`seg-btn${sType === "paquete" ? " on" : ""}`} onClick={() => setSType("paquete")}>{t("tools.survey.hotelFlight")}</button>
                 </div>
               </div>
-              <div className="frow">
+              <div className="frow tool-frow">
                 <div className="flabel">{t("tools.survey.totalPaid")}</div>
                 <div className="mfield">
                   <span className="mpfx">$</span>
@@ -226,20 +226,20 @@ export function SurveyPage({ clientId, shared }: SurveyPageProps) {
                 </div>
               </div>
               <div id="sv-split" style={{ display: sType === "paquete" ? "block" : "none" }}>
-                <div className="frow">
+                <div className="frow tool-frow">
                   <div className="flabel">{t("tools.survey.hotelPct")}</div>
                   <div className="frow-inline">
-                    <input type="number" className="input-compact" id="sv-hpct" min={1} max={99} value={data.hpct} onFocus={selectOnFocus} onChange={(e) => update("hpct", e.target.value)} />
+                    <input type="number" className="input-compact tool-num-input" id="sv-hpct" min={1} max={99} value={data.hpct} onFocus={selectOnFocus} onChange={(e) => update("hpct", e.target.value)} />
                     <span className="frow-suffix">%</span>
                   </div>
                 </div>
-                <div className="g2" style={{ marginTop: 10 }}>
+                <div className="g2 survey-result-pair" style={{ marginTop: 10 }}>
                   <div className="vbox blue"><div className="vbox-val">{fmt(result.split.hval)}</div><div className="vbox-label">{t("tools.survey.splitHotel", { pct: result.split.hpct })}</div></div>
                   <div className="vbox blue"><div className="vbox-val">{fmt(result.split.vval)}</div><div className="vbox-label">{t("tools.survey.splitFlight", { pct: 100 - result.split.hpct })}</div></div>
                 </div>
               </div>
             </div>
-            <div className="g2">
+            <div className="g2 survey-result-pair">
               <div className="vbox blue">
                 <div className="vbox-val">{fmt(result.trip.dp)}</div>
                 <div className="vbox-label">{t("tools.survey.suggestedDown")}</div>
@@ -282,7 +282,7 @@ export function SurveyPage({ clientId, shared }: SurveyPageProps) {
               </tbody>
             </table>
             </div>
-            <div className="g2" style={{ marginTop: 14 }}>
+            <div className="g2 survey-result-pair" style={{ marginTop: 14 }}>
               <div className="vbox blue">
                 <div className="vbox-val">{fmt(result.hist.dp)}</div>
                 <div className="vbox-label">{t("tools.survey.suggestedDown")}</div>
