@@ -82,7 +82,7 @@ export function WorksheetPage({ clientId, shared }: WorksheetPageProps) {
   return (
     <>
       <Topbar title={t("tools.worksheet")} subtitle={isFileMode ? t("tools.sub.financing") : t("tools.sub.free")} />
-      <div className="sales-page">
+      <div className="sales-page tool-calc-page">
         <div className="page-toolbar page-toolbar--between">
           <PageBack inline href={backHref} />
           {!readOnly && (
@@ -94,18 +94,30 @@ export function WorksheetPage({ clientId, shared }: WorksheetPageProps) {
 
         <fieldset className="shared-tool-fieldset" disabled={readOnly}>
         <div className="g2">
-          <div className="card">
+          <div className="card tool-calc-card">
             <div className="card-heading">{t("tools.worksheet.saleData")}</div>
-            <div className="frow"><div className="flabel">{t("tools.worksheet.saleAmount")}</div>{moneyField("wv")}</div>
-            <div className="frow"><div className="flabel">{t("tools.worksheet.downPct")}</div>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <input type="number" min={0} max={100} style={{ width: 65, padding: "7px 8px", border: "1px solid var(--border2)", borderRadius: 8, background: "var(--surface2)" }} value={fields.we} onFocus={selectOnFocus} onChange={(e) => setFields({ ...fields, we: e.target.value })} />
-                <span style={{ color: "var(--muted)", fontSize: 13 }}>%</span>
+            <div className="tool-calc-fields">
+              <div className="frow frow-first tool-frow">
+                <div className="flabel">{t("tools.worksheet.saleAmount")}</div>
+                {moneyField("wv")}
+              </div>
+              <div className="frow tool-frow">
+                <div className="flabel">{t("tools.worksheet.downPct")}</div>
+                <div className="frow-inline">
+                  <input type="number" className="tool-num-input" min={0} max={100} value={fields.we} onFocus={selectOnFocus} onChange={(e) => setFields({ ...fields, we: e.target.value })} />
+                  <span className="frow-suffix">%</span>
+                </div>
+              </div>
+              <div className="frow tool-frow">
+                <div className="flabel">{t("tools.worksheet.contractCost")}</div>
+                {moneyField("wcc")}
+              </div>
+              <div className="frow tool-frow">
+                <div className="flabel">{t("tools.worksheet.prevBalance")}</div>
+                {moneyField("wob")}
               </div>
             </div>
-            <div className="frow"><div className="flabel">{t("tools.worksheet.contractCost")}</div>{moneyField("wcc")}</div>
-            <div className="frow"><div className="flabel">{t("tools.worksheet.prevBalance")}</div>{moneyField("wob")}</div>
-            <div className="g2" style={{ marginTop: 14 }}>
+            <div className="g2 survey-result-pair" style={{ marginTop: 14 }}>
               <div className="vbox blue"><div className="vbox-val">{fmt(result.eng)}</div><div className="vbox-label">{t("tools.worksheet.down")}</div></div>
               <div className="vbox green"><div className="vbox-val">{fmt(result.engCc)}</div><div className="vbox-label">{t("tools.worksheet.downContract")}</div></div>
               <div className="vbox yellow span2"><div className="vbox-val">{fmt(result.bal)}</div><div className="vbox-label">{t("tools.worksheet.toFinance")}</div><div className="vbox-sub">{t("tools.worksheet.balanceFormula")}</div></div>

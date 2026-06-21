@@ -2483,6 +2483,10 @@ body,
     line-height: 1.3;
   }
 
+  .sales-page.tool-calc-page .survey-result-pair .span2 {
+    grid-column: span 2;
+  }
+
   /* Densidad móvil — todas las pantallas sales-page y admin */
   .sales-page {
     padding-top: 10px;
