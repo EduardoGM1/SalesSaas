@@ -1,15 +1,17 @@
 import { parseMoney } from "@/lib/format/money";
 import { translate } from "@/lib/i18n.js";
+import { resolveSaleProcessDate } from "@/lib/sales/form-valid";
 import { useDbStore } from "@/stores/db-store";
 import { toast } from "@/lib/toast";
 
 export function validateSaleForm(saleForm) {
   const vol = parseMoney(saleForm.vol);
-  if (vol <= 0 || !saleForm.contract) {
+  if (vol <= 0 || !String(saleForm.contract ?? "").trim()) {
     toast.error(translate("toast.sale.incomplete"));
     return null;
   }
-  if (saleForm.status === "no-procesable" && !saleForm.processDate) {
+  const processDate = resolveSaleProcessDate(saleForm);
+  if (saleForm.status === "no-procesable" && !processDate) {
     toast.error(translate("toast.sale.needProcessDate"));
     return null;
   }
@@ -19,7 +21,7 @@ export function validateSaleForm(saleForm) {
     tours: parseMoney(saleForm.tours) || 1,
     contract: saleForm.contract,
     status: saleForm.status,
-    processDate: saleForm.processDate,
+    processDate: saleForm.status === "no-procesable" ? processDate : "",
     note: saleForm.note,
     addProcessingFollowup: saleForm.addProcessingFollowup,
   };

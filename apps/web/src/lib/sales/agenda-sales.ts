@@ -35,9 +35,11 @@ export interface MonthSaleItem {
   note?: string;
   day: number;
   date: string;
+  status?: string;
+  processing?: string;
 }
 
-export function collectCountableSalesForMonth(
+export function collectSalesForMonth(
   clients: Record<string, ClientRecord>,
   year: number,
   month: number,
@@ -48,7 +50,6 @@ export function collectCountableSalesForMonth(
   for (const client of Object.values(clients)) {
     for (const sale of client.sales ?? []) {
       if (!sale.date?.startsWith(prefix)) continue;
-      if (!isSaleCountable(sale)) continue;
       const day = Number(sale.date.slice(prefix.length));
       if (!day) continue;
       items.push({
@@ -60,9 +61,19 @@ export function collectCountableSalesForMonth(
         note: sale.note,
         day,
         date: sale.date,
+        status: sale.status,
+        processing: sale.processing,
       });
     }
   }
 
   return items;
+}
+
+export function collectCountableSalesForMonth(
+  clients: Record<string, ClientRecord>,
+  year: number,
+  month: number,
+): MonthSaleItem[] {
+  return collectSalesForMonth(clients, year, month).filter(isSaleCountable);
 }

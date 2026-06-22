@@ -105,7 +105,9 @@ function SaleFields({ saleForm, onChange, t }) {
         <select value={saleForm.status} onChange={(e) => onChange({
           ...saleForm,
           status: e.target.value,
-          processDate: e.target.value === "no-procesable" ? saleForm.processDate : "",
+          processDate: e.target.value === "no-procesable"
+            ? (saleForm.processDate || saleForm.date)
+            : "",
           addProcessingFollowup: e.target.value === "no-procesable" ? saleForm.addProcessingFollowup : false,
         })}>
           {SALE_STATUS_OPTIONS.map(({ value, key }) => (
