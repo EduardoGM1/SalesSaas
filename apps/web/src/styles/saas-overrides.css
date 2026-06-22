@@ -2510,6 +2510,102 @@ body,
     grid-column: span 2;
   }
 
+  /* Expediente — datos del prospecto en grid 2 columnas */
+  .prospect-summary-card {
+    padding: 18px 14px;
+  }
+
+  .prospect-summary-grid .ps-grid-row--pair {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .prospect-summary-grid .ps-grid-row--full {
+    border-bottom: 1px solid var(--border);
+  }
+
+  .prospect-summary-grid > .ps-grid-row:last-child {
+    border-bottom: none;
+  }
+
+  .prospect-summary-grid .ps-grid-row--full .ps-row,
+  .prospect-summary-grid .ps-grid-row--pair .ps-row {
+    border-bottom: none;
+  }
+
+  .prospect-summary-grid .ps-grid-row--pair .ps-row:first-child {
+    border-right: 1px solid var(--border);
+  }
+
+  .prospect-summary-grid .ps-grid-row--pair .ps-row {
+    grid-template-columns: 24px minmax(0, 1fr);
+    grid-template-rows: auto auto;
+    gap: 4px 8px;
+    padding: 10px 8px;
+    align-items: start;
+  }
+
+  .prospect-summary-grid .ps-grid-row--pair .ps-icon {
+    width: 24px;
+    height: 24px;
+    font-size: 12px;
+    grid-row: 1 / span 2;
+    align-self: start;
+  }
+
+  .prospect-summary-grid .ps-grid-row--pair .ps-label {
+    font-size: 11px;
+    grid-column: 2;
+    grid-row: 1;
+    line-height: 1.25;
+  }
+
+  .prospect-summary-grid .ps-grid-row--pair .ps-value {
+    grid-column: 2;
+    grid-row: 2;
+    font-size: 12px;
+    word-break: break-word;
+  }
+
+  .prospect-summary-grid .ps-grid-row--pair .ps-pill {
+    font-size: 11px;
+    padding: 3px 8px;
+    min-height: 22px;
+    max-width: 100%;
+  }
+
+  .prospect-summary-grid .ps-grid-row--pair .ps-empty {
+    width: 48px;
+  }
+
+  .prospect-summary-grid .ps-grid-row--full .ps-row {
+    grid-template-columns: 24px 1fr auto;
+    gap: 8px 10px;
+    padding: 10px 12px;
+    align-items: center;
+  }
+
+  .prospect-summary-grid .ps-grid-row--full .ps-icon {
+    width: 24px;
+    height: 24px;
+    font-size: 12px;
+  }
+
+  .prospect-summary-grid .ps-grid-row--full .ps-label {
+    font-size: 12px;
+  }
+
+  .prospect-summary-grid .ps-grid-row--full .ps-value {
+    text-align: right;
+    justify-self: end;
+    font-size: 12px;
+  }
+
+  .prospect-summary-list .ps-row:last-child {
+    border-bottom: none;
+  }
+
   /* Densidad móvil — todas las pantallas sales-page y admin */
   .sales-page {
     padding-top: 10px;

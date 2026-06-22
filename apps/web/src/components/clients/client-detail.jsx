@@ -210,16 +210,14 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
     return pill ? <span className="ps-pill">{val}</span> : val;
   };
 
-  const rows: [string, string, React.ReactNode][] = [
-    ["#", t("exp.prospect.id"), psValue(c.prospectCode, true)],
-    ["👤", t("exp.prospect.name"), psValue(c.name1 || c.name, true)],
-    ["👥", t("exp.prospect.companion"), psValue(c.name2)],
-    ["📍", t("exp.prospect.location"), psValue(cityCountry)],
-    ["☎", t("exp.prospect.phone"), psValue(c.phone)],
-    ["✉", t("exp.prospect.email"), psValue(c.email)],
-    ["▣", t("exp.prospect.contract"), psValue(c.contract)],
-    ["◉", t("exp.prospect.status"), <span key="st" className="ps-pill">{statusLabel(c.status || "", lang)}</span>],
-  ];
+  const psCell = (icon, label, value) => (
+    <div className="ps-row">
+      <div className="ps-icon">{icon}</div>
+      <div className="ps-label">{label}</div>
+      <div className="ps-value">{value}</div>
+    </div>
+  );
+
   const saleCard = isOwner ? { label: t("exp.card.sale"), desc: t("exp.card.saleDesc"), icon: DollarSign, tone: "green", onClick: () => openSaleModal() } : null;
   const notesCard = canComment && !sharedRemote ? { label: t("exp.card.notes"), desc: t("exp.card.notesDesc"), icon: MessageSquare, tone: "blue", onClick: () => setNoteOpen(true) } : null;
   const isQuick = !!c.quickExpedient && !c.completedExpedient;
@@ -321,14 +319,25 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
                 <button type="button" className="btn btn-ghost btn-sm" onClick={openEdit}>{t("exp.prospect.edit")}</button>
               )}
             </div>
-            <div className="prospect-summary-list" id="prospect-summary-list">
-              {rows.map((r, i) => (
-                <div key={i} className="ps-row">
-                  <div className="ps-icon">{r[0]}</div>
-                  <div className="ps-label">{r[1]}</div>
-                  <div className="ps-value">{r[2]}</div>
-                </div>
-              ))}
+            <div className="prospect-summary-list prospect-summary-grid" id="prospect-summary-list">
+              <div className="ps-grid-row ps-grid-row--full">
+                {psCell("#", t("exp.prospect.id"), psValue(c.prospectCode, true))}
+              </div>
+              <div className="ps-grid-row ps-grid-row--pair">
+                {psCell("👤", t("exp.prospect.name"), psValue(c.name1 || c.name, true))}
+                {psCell("👥", t("exp.prospect.companion"), psValue(c.name2))}
+              </div>
+              <div className="ps-grid-row ps-grid-row--full">
+                {psCell("📍", t("exp.prospect.location"), psValue(cityCountry))}
+              </div>
+              <div className="ps-grid-row ps-grid-row--pair">
+                {psCell("☎", t("exp.prospect.phone"), psValue(c.phone))}
+                {psCell("✉", t("exp.prospect.email"), psValue(c.email))}
+              </div>
+              <div className="ps-grid-row ps-grid-row--pair">
+                {psCell("▣", t("exp.prospect.contract"), psValue(c.contract))}
+                {psCell("◉", t("exp.prospect.status"), <span className="ps-pill">{statusLabel(c.status || "", lang)}</span>)}
+              </div>
             </div>
           </div>
         </div>
