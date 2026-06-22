@@ -92,28 +92,36 @@ function SaleFields({ saleForm, onChange, t }) {
         <label className="field-required">{t("exp.sale.date")}</label>
         <input type="date" value={saleForm.date} onFocus={selectOnFocus} onChange={(e) => onChange({ ...saleForm, date: e.target.value })} />
       </div>
-      <div className="prospect-field">
-        <label className="field-required">{t("exp.sale.volume")}</label>
-        <div className="mfield"><span className="mpfx">$</span><input type="text" placeholder="0" value={saleForm.vol} onFocus={selectOnFocus} onChange={(e) => onChange({ ...saleForm, vol: e.target.value })} /></div>
+      <div className="prospect-geo-row">
+        <div className="prospect-field">
+          <label className="field-required">{t("exp.sale.volume")}</label>
+          <div className="mfield"><span className="mpfx">$</span><input type="text" placeholder="0" value={saleForm.vol} onFocus={selectOnFocus} onChange={(e) => onChange({ ...saleForm, vol: e.target.value })} /></div>
+        </div>
+        <div className="prospect-field">
+          <label>{t("exp.sale.tours")}</label>
+          <input type="number" min={0} value={saleForm.tours} onFocus={selectOnFocus} onChange={(e) => onChange({ ...saleForm, tours: e.target.value })} />
+        </div>
       </div>
-      <div className="prospect-field"><label>{t("exp.sale.tours")}</label><input type="number" min={0} value={saleForm.tours} onFocus={selectOnFocus} onChange={(e) => onChange({ ...saleForm, tours: e.target.value })} /></div>
-      <div className="prospect-field">
-        <label className="field-required">{t("exp.sale.contract")}</label>
-        <input type="text" placeholder={t("exp.sale.contractPlaceholder")} value={saleForm.contract} onFocus={selectOnFocus} onChange={(e) => onChange({ ...saleForm, contract: e.target.value })} />
-      </div>
-      <div className="prospect-field"><label>{t("exp.sale.status")}</label>
-        <select value={saleForm.status} onChange={(e) => onChange({
-          ...saleForm,
-          status: e.target.value,
-          processDate: e.target.value === "no-procesable"
-            ? (saleForm.processDate || saleForm.date)
-            : "",
-          addProcessingFollowup: e.target.value === "no-procesable" ? saleForm.addProcessingFollowup : false,
-        })}>
-          {SALE_STATUS_OPTIONS.map(({ value, key }) => (
-            <option key={value} value={value}>{t(key)}</option>
-          ))}
-        </select>
+      <div className="prospect-geo-row">
+        <div className="prospect-field">
+          <label className="field-required">{t("exp.sale.contract")}</label>
+          <input type="text" placeholder={t("exp.sale.contractPlaceholder")} value={saleForm.contract} onFocus={selectOnFocus} onChange={(e) => onChange({ ...saleForm, contract: e.target.value })} />
+        </div>
+        <div className="prospect-field">
+          <label>{t("exp.sale.status")}</label>
+          <select value={saleForm.status} onChange={(e) => onChange({
+            ...saleForm,
+            status: e.target.value,
+            processDate: e.target.value === "no-procesable"
+              ? (saleForm.processDate || saleForm.date)
+              : "",
+            addProcessingFollowup: e.target.value === "no-procesable" ? saleForm.addProcessingFollowup : false,
+          })}>
+            {SALE_STATUS_OPTIONS.map(({ value, key }) => (
+              <option key={value} value={value}>{t(key)}</option>
+            ))}
+          </select>
+        </div>
       </div>
       {saleForm.status === "no-procesable" && (
         <>

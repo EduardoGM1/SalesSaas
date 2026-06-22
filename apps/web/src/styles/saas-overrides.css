@@ -1629,6 +1629,16 @@ body,
     padding: 8px 6px;
   }
 
+  .prospect-geo-row input[type="text"],
+  .prospect-geo-row input[type="number"] {
+    font-size: 13px;
+    padding: 8px 6px;
+  }
+
+  .prospect-geo-row .mfield {
+    padding: 7px 9px;
+  }
+
   .client-table-card {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
