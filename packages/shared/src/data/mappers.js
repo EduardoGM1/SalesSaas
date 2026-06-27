@@ -7,11 +7,9 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 const STATUSES = /* @__PURE__ */ new Set([
   "venta",
   "bback",
-  "procesable",
-  "no-procesable",
+  "pendiente",
   "perdido",
-  "cerrado",
-  "procesado"
+  "cerrado"
 ]);
 const TOOLS = ["survey", "vacaciones", "worksheet"];
 function isUuid(v) {
@@ -179,7 +177,7 @@ function dbToRows(db, userId) {
         tours: intOr(sale.tours, 1),
         contract: sale.contract ?? null,
         status: sanitizeStatus(sale.status),
-        processing: sale.processing ?? (sale.status === "no-procesable" ? "pendiente" : "procesable"),
+        processing: sale.processing ?? (sale.status === "pendiente" ? "pendiente" : "venta"),
         process_date: toDateOrNull(sale.processDate),
         add_processing_followup: !!sale.addProcessingFollowup,
         note: sale.note ?? null,
@@ -222,7 +220,7 @@ function dbToRows(db, userId) {
       tours: intOr(sale.tours, 1),
       contract: sale.contract ?? null,
       status: sanitizeStatus(sale.status),
-      processing: sale.processing ?? (sale.status === "no-procesable" ? "pendiente" : "procesable"),
+        processing: sale.processing ?? (sale.status === "pendiente" ? "pendiente" : "venta"),
       process_date: toDateOrNull(sale.processDate),
       add_processing_followup: !!sale.addProcessingFollowup,
       note: sale.note ?? null,
@@ -323,7 +321,7 @@ function rowsToDb(rows) {
       tours: intOr(s.tours, 1),
       contract: s.contract ?? void 0,
       status: s.status ?? void 0,
-      processing: s.processing ?? (s.status === "no-procesable" ? "pendiente" : "procesable"),
+      processing: s.processing ?? (s.status === "pendiente" ? "pendiente" : "venta"),
       processDate: s.process_date ?? void 0,
       addProcessingFollowup: !!s.add_processing_followup,
       note: s.note ?? void 0,

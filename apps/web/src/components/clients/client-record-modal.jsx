@@ -9,15 +9,14 @@ const STATUS_OPTIONS = [
   { value: "", key: "status.empty" },
   { value: "venta", key: "status.sale" },
   { value: "bback", key: "status.bback" },
-  { value: "procesable", key: "status.processable" },
-  { value: "no-procesable", key: "status.notProcessable" },
+  { value: "pendiente", key: "status.notProcessable" },
   { value: "perdido", key: "status.lost" },
 ];
 
 const SALE_STATUS_OPTIONS = [
-  { value: "procesable", key: "exp.sale.statusProcessable" },
-  { value: "no-procesable", key: "exp.sale.statusNotProcessable" },
-  { value: "venta", key: "exp.sale.statusProcessed" },
+  { value: "venta", key: "exp.sale.statusProcessable" },
+  { value: "pendiente", key: "exp.sale.statusNotProcessable" },
+  { value: "cerrado", key: "exp.sale.statusProcessed" },
 ];
 
 function isProspectFormValid(form) {
@@ -64,8 +63,6 @@ function ProspectFields({ form, onChange, t, showStatusFields }) {
         city={form.city || ""}
         onChange={(patch) => onChange({ ...form, ...patch })}
       />
-      <div className="prospect-field"><label>{t("exp.edit.phone")}</label><input type="text" placeholder={t("exp.edit.phone")} value={form.phone || ""} onFocus={selectOnFocus} onChange={(e) => onChange({ ...form, phone: e.target.value })} /></div>
-      <div className="prospect-field"><label>{t("exp.edit.email")}</label><input type="text" placeholder={t("exp.edit.email")} value={form.email || ""} onFocus={selectOnFocus} onChange={(e) => onChange({ ...form, email: e.target.value })} /></div>
       {showStatusFields ? (
         <>
           <div className="prospect-field"><label>{t("exp.edit.contract")}</label><input type="text" placeholder={t("exp.sale.contractPlaceholder")} value={form.contract || ""} onFocus={selectOnFocus} onChange={(e) => onChange({ ...form, contract: e.target.value })} /></div>
@@ -112,10 +109,10 @@ function SaleFields({ saleForm, onChange, t }) {
           <select value={saleForm.status} onChange={(e) => onChange({
             ...saleForm,
             status: e.target.value,
-            processDate: e.target.value === "no-procesable"
+            processDate: e.target.value === "pendiente"
               ? (saleForm.processDate || saleForm.date)
               : "",
-            addProcessingFollowup: e.target.value === "no-procesable" ? saleForm.addProcessingFollowup : false,
+            addProcessingFollowup: e.target.value === "pendiente" ? saleForm.addProcessingFollowup : false,
           })}>
             {SALE_STATUS_OPTIONS.map(({ value, key }) => (
               <option key={value} value={value}>{t(key)}</option>
@@ -123,7 +120,7 @@ function SaleFields({ saleForm, onChange, t }) {
           </select>
         </div>
       </div>
-      {saleForm.status === "no-procesable" && (
+      {saleForm.status === "pendiente" && (
         <>
           <div className="prospect-field">
             <label className="field-required">{t("exp.sale.processDate")}</label>

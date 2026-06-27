@@ -56,7 +56,7 @@ export function SaleDetailModal({ open, onOpenChange, saleId, showTools = true }
 
   if (!sale) return null;
 
-  const pending = sale.status === "no-procesable" || sale.processing === "pendiente";
+  const pending = sale.status === "pendiente" || sale.processing === "pendiente";
   const fileLabel = sale.clientName || sale.prospectCode || t("salesHistory.archivedFile");
   const summary = snapshot?.prospectSummary || {};
   const displayName = summary.name || [summary.name1, summary.name2].filter(Boolean).join(" / ") || fileLabel;

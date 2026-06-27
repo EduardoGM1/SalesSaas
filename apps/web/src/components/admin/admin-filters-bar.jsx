@@ -9,11 +9,9 @@ const STATUS_OPTIONS = [
   { value: "", key: "admin.filters.allStatuses" },
   { value: "venta", key: "status.sale" },
   { value: "bback", key: "status.bback" },
-  { value: "procesable", key: "status.processable" },
-  { value: "no-procesable", key: "status.notProcessable" },
+  { value: "pendiente", key: "status.notProcessable" },
   { value: "perdido", key: "status.lost" },
   { value: "cerrado", key: "status.closed" },
-  { value: "procesado", key: "status.processed" },
 ];
 
 interface AdminFiltersBarProps {

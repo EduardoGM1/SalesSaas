@@ -121,7 +121,7 @@ export interface SupabaseRows {
 // ---------- Helpers ----------
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const STATUSES = new Set([
-  "venta", "bback", "procesable", "no-procesable", "perdido", "cerrado", "procesado",
+  "venta", "bback", "pendiente", "perdido", "cerrado",
 ]);
 const TOOLS = ["survey", "vacaciones", "worksheet"] as const;
 
@@ -325,7 +325,7 @@ export function dbToRows(db: AppDatabase, userId: string): SupabaseRows {
         tours: intOr(sale.tours, 1),
         contract: sale.contract ?? null,
         status: sanitizeStatus(sale.status),
-        processing: sale.processing ?? (sale.status === "no-procesable" ? "pendiente" : "procesable"),
+        processing: sale.processing ?? (sale.status === "pendiente" ? "pendiente" : "venta"),
         process_date: toDateOrNull(sale.processDate),
         add_processing_followup: !!sale.addProcessingFollowup,
         note: sale.note ?? null,
@@ -373,7 +373,7 @@ export function dbToRows(db: AppDatabase, userId: string): SupabaseRows {
       tours: intOr(sale.tours, 1),
       contract: sale.contract ?? null,
       status: sanitizeStatus(sale.status),
-      processing: sale.processing ?? (sale.status === "no-procesable" ? "pendiente" : "procesable"),
+      processing: sale.processing ?? (sale.status === "pendiente" ? "pendiente" : "venta"),
       process_date: toDateOrNull(sale.processDate),
       add_processing_followup: !!sale.addProcessingFollowup,
       note: sale.note ?? null,
@@ -492,7 +492,7 @@ export function rowsToDb(rows: SupabaseRows): AppDatabase {
       tours: intOr(s.tours, 1),
       contract: s.contract ?? undefined,
       status: s.status ?? undefined,
-      processing: s.processing ?? (s.status === "no-procesable" ? "pendiente" : "procesable"),
+      processing: s.processing ?? (s.status === "pendiente" ? "pendiente" : "venta"),
       processDate: s.process_date ?? undefined,
       addProcessingFollowup: !!s.add_processing_followup,
       note: s.note ?? undefined,

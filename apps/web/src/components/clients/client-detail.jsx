@@ -55,7 +55,7 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
   const [recordModal, setRecordModal] = useState(null);
   const [noteOpen, setNoteOpen] = useState(false);
   const [form, setForm] = useState<Partial<ClientRecord>>({});
-  const [saleForm, setSaleForm] = useState({ date: ymdToday(), vol: "", tours: "1", contract: "", status: "procesable", processDate: "", note: "", addProcessingFollowup: true });
+  const [saleForm, setSaleForm] = useState({ date: ymdToday(), vol: "", tours: "1", contract: "", status: "venta", processDate: "", note: "", addProcessingFollowup: true });
   const [noteForm, setNoteForm] = useState({ type: "nota", note: "", date: "", time: "" });
   const [remoteClient, setRemoteClient] = useState(null);
   const [sharePerm, setSharePerm] = useState("owner");
@@ -98,7 +98,7 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
       vol: resolvedSale ? String(resolvedSale.vol || "") : worksheetVol ? String(worksheetVol) : "",
       tours: String(resolvedSale?.tours || 1),
       contract: resolvedSale?.contract || c?.contract || "",
-      status: resolvedSale?.status === "no-procesable" ? "no-procesable" : "procesable",
+      status: resolvedSale?.status === "pendiente" ? "pendiente" : "venta",
       processDate: resolvedSale?.processDate || c?.processDate || "",
       note: resolvedSale?.note || "",
       addProcessingFollowup: resolvedSale?.addProcessingFollowup ?? true,
@@ -331,10 +331,6 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
                 {psCell("📍", t("exp.prospect.location"), psValue(cityCountry))}
               </div>
               <div className="ps-grid-row ps-grid-row--pair">
-                {psCell("☎", t("exp.prospect.phone"), psValue(c.phone))}
-                {psCell("✉", t("exp.prospect.email"), psValue(c.email))}
-              </div>
-              <div className="ps-grid-row ps-grid-row--pair">
                 {psCell("▣", t("exp.prospect.contract"), psValue(c.contract))}
                 {psCell("◉", t("exp.prospect.status"), <span className="ps-pill">{statusLabel(c.status || "", lang)}</span>)}
               </div>
@@ -348,7 +344,7 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
           <div className="activity-list" id="client-sales-list">
             {!sales.length ? <div className="activity-empty">{t("exp.sales.empty")}</div> : (
               sales.map((sale) => {
-                const pending = sale.status === "no-procesable" || sale.processing === "pendiente";
+                const pending = sale.status === "pendiente" || sale.processing === "pendiente";
                 return (
                   <div key={sale.saleId} className="activity-item">
                     <span className="activity-dot venta" />

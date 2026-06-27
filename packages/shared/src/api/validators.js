@@ -3,11 +3,9 @@ import { generateClientId, generateEntryId, generateProspectCode, generateSaleId
 const STATUSES = /* @__PURE__ */ new Set([
   "venta",
   "bback",
-  "procesable",
-  "no-procesable",
+  "pendiente",
   "perdido",
-  "cerrado",
-  "procesado"
+  "cerrado"
 ]);
 const ENTRY_TYPES = /* @__PURE__ */ new Set(["venta", "nota", "follow", "descanso"]);
 const TOOLS = /* @__PURE__ */ new Set(["survey", "vacaciones", "worksheet"]);
@@ -105,7 +103,7 @@ function bodyToSaleInsert(body, userId, defaultProspectId) {
     tours: Math.max(1, Math.trunc(Number(body.tours ?? 1) || 1)),
     contract: body.contract ?? null,
     status: sanitizeStatus(body.status),
-    processing: body.processing ?? (body.status === "no-procesable" ? "pendiente" : "procesable"),
+    processing: body.processing ?? (body.status === "pendiente" ? "pendiente" : "venta"),
     process_date: toDateOrNull(body.process_date ?? body.processDate),
     add_processing_followup: Boolean(body.add_processing_followup ?? body.addProcessingFollowup ?? false),
     note: body.note ?? null

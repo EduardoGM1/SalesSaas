@@ -2,7 +2,7 @@ import { isUuid } from "@/lib/data/mappers";
 import { generateClientId, generateEntryId, generateProspectCode, generateSaleId, generateActivityId } from "@/lib/ids";
 
 const STATUSES = new Set([
-  "venta", "bback", "procesable", "no-procesable", "perdido", "cerrado", "procesado",
+  "venta", "bback", "pendiente", "perdido", "cerrado",
 ]);
 const ENTRY_TYPES = new Set(["venta", "nota", "follow", "descanso"]);
 const TOOLS = new Set(["survey", "vacaciones", "worksheet"]);
@@ -116,7 +116,7 @@ export function bodyToSaleInsert(
     tours: Math.max(1, Math.trunc(Number(body.tours ?? 1) || 1)),
     contract: body.contract ?? null,
     status: sanitizeStatus(body.status),
-    processing: body.processing ?? (body.status === "no-procesable" ? "pendiente" : "procesable"),
+    processing: body.processing ?? (body.status === "pendiente" ? "pendiente" : "venta"),
     process_date: toDateOrNull(body.process_date ?? body.processDate),
     add_processing_followup: Boolean(body.add_processing_followup ?? body.addProcessingFollowup ?? false),
     note: body.note ?? null,

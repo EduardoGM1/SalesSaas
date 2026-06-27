@@ -23,14 +23,13 @@ const STATUS_OPTIONS = [
   { value: "", key: "status.empty" },
   { value: "venta", key: "status.sale" },
   { value: "bback", key: "status.bback" },
-  { value: "procesable", key: "status.processable" },
-  { value: "no-procesable", key: "status.notProcessable" },
+  { value: "pendiente", key: "status.notProcessable" },
   { value: "perdido", key: "status.lost" },
 ];
 
 const emptyFields = () => ({
   name1: "", occ1: "", name2: "", occ2: "", city: "", country: "",
-  phone: "", email: "", contract: "", tourDate: "", status: "",
+  contract: "", tourDate: "", status: "",
   processDate: "", processAmount: "", note: "",
 });
 
@@ -78,8 +77,6 @@ export function SaveToolModal({ open, onOpenChange, tool }: SaveToolModalProps) 
     c.occupation2 = f.occ2;
     c.city = f.city;
     c.country = f.country;
-    c.phone = f.phone;
-    c.email = f.email;
     c.contract = f.contract;
     c.status = f.status;
     c.processDate = f.processDate;
@@ -120,8 +117,6 @@ export function SaveToolModal({ open, onOpenChange, tool }: SaveToolModalProps) 
           <div className="prospect-field"><label>{t("exp.edit.occ2")}</label><input type="text" placeholder={t("tools.survey.occ2Placeholder")} value={f.occ2} onFocus={selectOnFocus} onChange={(e) => set("occ2", e.target.value)} /></div>
           <div className="prospect-field"><label>{t("exp.edit.city")}</label><input type="text" placeholder={t("tools.survey.city")} value={f.city} onFocus={selectOnFocus} onChange={(e) => set("city", e.target.value)} /></div>
           <div className="prospect-field"><label>{t("exp.edit.country")}</label><input type="text" placeholder={t("tools.survey.country")} value={f.country} onFocus={selectOnFocus} onChange={(e) => set("country", e.target.value)} /></div>
-          <div className="prospect-field"><label>{t("exp.edit.phone")}</label><input type="text" placeholder={t("exp.edit.phone")} value={f.phone} onFocus={selectOnFocus} onChange={(e) => set("phone", e.target.value)} /></div>
-          <div className="prospect-field"><label>{t("exp.edit.email")}</label><input type="text" placeholder={t("exp.edit.email")} value={f.email} onFocus={selectOnFocus} onChange={(e) => set("email", e.target.value)} /></div>
           <div className="prospect-field"><label>{t("exp.edit.contract")}</label><input type="text" placeholder={t("exp.sale.contractPlaceholder")} value={f.contract} onFocus={selectOnFocus} onChange={(e) => set("contract", e.target.value)} /></div>
           <div className="prospect-field"><label>{t("exp.edit.tourDate")}</label><input type="date" value={f.tourDate} onFocus={selectOnFocus} onChange={(e) => set("tourDate", e.target.value)} /></div>
           <div className="prospect-field"><label>{t("exp.edit.status")}</label>

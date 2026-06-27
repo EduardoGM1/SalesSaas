@@ -7,8 +7,8 @@ export function isCalendarSaleCountable(entry: { t?: string; status?: string; pr
   return !!entry &&
     entry.t === "venta" &&
     !entry.completed &&
-    String(entry.status || "procesable") !== "no-procesable" &&
-    String(entry.processing || "procesable") !== "pendiente";
+    String(entry.status || "venta") !== "pendiente" &&
+    String(entry.processing || "venta") !== "pendiente";
 }
 
 export function countDescansoDays(data: CalMonth): number {

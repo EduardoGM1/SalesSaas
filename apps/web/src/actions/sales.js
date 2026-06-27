@@ -11,7 +11,7 @@ export function validateSaleForm(saleForm) {
     return null;
   }
   const processDate = resolveSaleProcessDate(saleForm);
-  if (saleForm.status === "no-procesable" && !processDate) {
+  if (saleForm.status === "pendiente" && !processDate) {
     toast.error(translate("toast.sale.needProcessDate"));
     return null;
   }
@@ -21,7 +21,7 @@ export function validateSaleForm(saleForm) {
     tours: parseMoney(saleForm.tours) || 1,
     contract: saleForm.contract,
     status: saleForm.status,
-    processDate: saleForm.status === "no-procesable" ? processDate : "",
+    processDate: saleForm.status === "pendiente" ? processDate : "",
     note: saleForm.note,
     addProcessingFollowup: saleForm.addProcessingFollowup,
   };
@@ -33,7 +33,7 @@ export function saveClientSale(clientId, saleForm, editingSaleId) {
   const store = useDbStore.getState();
   if (editingSaleId) store.updateClientSale(clientId, editingSaleId, payload);
   else store.registerClientSale(clientId, payload);
-  const message = saleForm.status === "no-procesable"
+  const message = saleForm.status === "pendiente"
     ? translate("toast.sale.pendingSaved")
     : translate("toast.sale.saved");
   toast.success(message);

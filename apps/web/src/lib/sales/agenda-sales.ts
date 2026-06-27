@@ -2,8 +2,8 @@ import { clientDisplayName } from "@/lib/clients";
 import { AppDatabase, CalEntry, ClientRecord, SaleRecord } from "@/lib/storage/types";
 
 export function isSaleCountable(sale: Pick<SaleRecord, "status" | "processing">): boolean {
-  return String(sale.status || "procesable") !== "no-procesable"
-    && String(sale.processing || "procesable") !== "pendiente";
+  return String(sale.status || "venta") !== "pendiente"
+    && String(sale.processing || "venta") !== "pendiente";
 }
 
 export function findActiveClientSale(

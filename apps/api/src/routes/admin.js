@@ -30,11 +30,9 @@ const STATUS_LABELS = {
   "": "Sin estado",
   venta: "Venta",
   bback: "B-back",
-  procesable: "Procesable",
-  "no-procesable": "No procesable",
+  pendiente: "Pendiente",
   perdido: "Perdido / cerrado",
   cerrado: "Cerrado",
-  procesado: "Procesado",
 };
 
 function statusLabel(s) {
@@ -159,7 +157,7 @@ router.get("/export/sales", async (req, res) => {
   const filters = parseAdminFilters(req.query);
   const sales = await getSales(a.supabase, filters);
   const csv = toCsv(
-    ["Fecha", "Vendedor", "Expediente", "Contrato", "Estado", "Tours", "Volumen"],
+    ["Fecha", "Vendedor", "Expediente", "Folio", "Estado", "Tours", "Volumen"],
     sales.map((s) => [
       s.sale_date,
       s.seller,

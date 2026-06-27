@@ -14,21 +14,19 @@ const STATUS_OPTIONS = [
   { value: "", key: "salesHistory.filters.allStatuses" },
   { value: "venta", key: "status.sale" },
   { value: "bback", key: "status.bback" },
-  { value: "procesable", key: "status.processable" },
-  { value: "no-procesable", key: "status.notProcessable" },
+  { value: "pendiente", key: "status.notProcessable" },
   { value: "perdido", key: "status.lost" },
   { value: "cerrado", key: "status.closed" },
-  { value: "procesado", key: "status.processed" },
 ];
 
 const PROCESSING_OPTIONS = [
   { value: "", key: "salesHistory.filters.allProcessing" },
-  { value: "procesable", key: "salesHistory.filters.processable" },
+  { value: "venta", key: "salesHistory.filters.processable" },
   { value: "pendiente", key: "salesHistory.filters.pending" },
 ];
 
 function saleMeta(sale, t) {
-  const pending = sale.status === "no-procesable" || sale.processing === "pendiente";
+  const pending = sale.status === "pendiente" || sale.processing === "pendiente";
   const fileLabel = sale.clientName || sale.prospectCode || t("salesHistory.archivedFile");
   const processingLabel = pending ? t("exp.sales.pending") : t("salesHistory.filters.processable");
   return { pending, fileLabel, processingLabel };

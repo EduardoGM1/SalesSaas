@@ -51,7 +51,7 @@ function cloneDb(db: AppDatabase): AppDatabase {
 }
 
 function isProcessableSale(sale: Pick<SaleRecord, "status" | "processing">): boolean {
-  return String(sale.status || "procesable") !== "no-procesable" && String(sale.processing || "procesable") !== "pendiente";
+  return String(sale.status || "venta") !== "pendiente" && String(sale.processing || "venta") !== "pendiente";
 }
 
 function addCalendarEventByDateToDb(db: AppDatabase, dateStr: string, entry: CalEntry): void {
@@ -114,9 +114,9 @@ function upsertSaleActivity(client: ClientRecord, sale: SaleRecord): void {
     tours: sale.tours,
     ts: sale.ts || Date.now(),
     note: [
-      isProcessableSale(sale) ? "Procesable" : "No procesable",
+      isProcessableSale(sale) ? "Venta" : "Pendiente",
       sale.tours ? `${sale.tours} tour(s)` : null,
-      sale.contract ? `Contrato ${sale.contract}` : null,
+      sale.contract ? `Folio ${sale.contract}` : null,
       sale.note,
     ].filter(Boolean).join(" · "),
     source: sale.source || "Venta del expediente",
@@ -142,7 +142,7 @@ function ensureSaleInClientAndAgenda(db: AppDatabase, clientId: string, sale: Sa
       saleId: sale.saleId,
       vol: sale.vol,
       tours: sale.tours,
-      note: [clientDisplayName(client), sale.contract ? `Contrato ${sale.contract}` : "", sale.note].filter(Boolean).join(" · "),
+      note: [clientDisplayName(client), sale.contract ? `Folio ${sale.contract}` : "", sale.note].filter(Boolean).join(" · "),
       contract: sale.contract,
       status: sale.status,
       processing: sale.processing,
@@ -154,7 +154,7 @@ function ensureSaleInClientAndAgenda(db: AppDatabase, clientId: string, sale: Sa
       source: "client",
     });
   } else if (sale.addProcessingFollowup && sale.processDate) {
-    const note = `Procesar venta pendiente - Cliente ${clientDisplayName(client)}${sale.contract ? ` - Contrato ${sale.contract}` : ""}`;
+    const note = `Procesar venta pendiente - Cliente ${clientDisplayName(client)}${sale.contract ? ` - Folio ${sale.contract}` : ""}`;
     addCalendarEventByDateToDb(db, sale.processDate, {
       id: generateEntryId(),
       t: "follow",
@@ -347,7 +347,7 @@ export const useDbStore = create<DbState>((set, get) => ({
     set((s) => {
       const db = cloneDb(s.db);
       const c = ensureProspectIdentity(db.clients[clientId]);
-      const status = sale.status || "procesable";
+      const status = sale.status || "venta";
       const saleRecord: SaleRecord = {
         saleId,
         date: sale.date,
@@ -355,9 +355,9 @@ export const useDbStore = create<DbState>((set, get) => ({
         tours: sale.tours || 1,
         contract: sale.contract,
         status,
-        processing: status === "no-procesable" ? "pendiente" : "procesable",
-        processDate: status === "no-procesable" ? sale.processDate : "",
-        addProcessingFollowup: status === "no-procesable" && !!sale.addProcessingFollowup,
+        processing: status === "pendiente" ? "pendiente" : "venta",
+        processDate: status === "pendiente" ? sale.processDate : "",
+        addProcessingFollowup: status === "pendiente" && !!sale.addProcessingFollowup,
         note: sale.note,
         ts: Date.now(),
         prospectId: c.prospectId || clientId,
@@ -385,7 +385,7 @@ export const useDbStore = create<DbState>((set, get) => ({
       const db = cloneDb(s.db);
       const c = ensureProspectIdentity(db.clients[clientId]);
       const existing = (c.sales || []).find((item) => item.saleId === saleId);
-      const status = sale.status || existing?.status || "procesable";
+      const status = sale.status || existing?.status || "venta";
       const saleRecord: SaleRecord = {
         ...existing,
         saleId,
@@ -394,9 +394,9 @@ export const useDbStore = create<DbState>((set, get) => ({
         tours: sale.tours || 1,
         contract: sale.contract,
         status,
-        processing: status === "no-procesable" ? "pendiente" : "procesable",
-        processDate: status === "no-procesable" ? sale.processDate : "",
-        addProcessingFollowup: status === "no-procesable" && !!sale.addProcessingFollowup,
+        processing: status === "pendiente" ? "pendiente" : "venta",
+        processDate: status === "pendiente" ? sale.processDate : "",
+        addProcessingFollowup: status === "pendiente" && !!sale.addProcessingFollowup,
         note: sale.note,
         ts: Date.now(),
         prospectId: c.prospectId || clientId,
