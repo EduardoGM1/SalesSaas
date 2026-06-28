@@ -16,6 +16,7 @@ apps/*/node_modules
 
 # next.js
 /.next/
+apps/web/.next/
 /out/
 
 # serwist (generated service worker)
@@ -33,6 +34,7 @@ apps/web/dist
 # misc
 .DS_Store
 *.pem
+.tmp-pdf-pages/
 
 # debug
 npm-debug.log*
