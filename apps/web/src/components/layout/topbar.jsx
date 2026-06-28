@@ -4,7 +4,7 @@ import { ArrowLeft, Menu, Settings } from "lucide-react";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { useAppStore } from "@/stores/app-store";
 import { AdminTopbarTabs } from "@/components/layout/admin-topbar-tabs.jsx";
-import { MobileTopAvatar, MobileTopNavActions } from "@/components/layout/mobile-top-nav.jsx";
+import { MobileTopAvatar, MobileTopNavActions, DesktopTopNavActions } from "@/components/layout/mobile-top-nav.jsx";
 
 export function Topbar({ title, subtitle, showMonthNav, admin }) {
   const { t, months } = useI18n();
@@ -46,8 +46,15 @@ export function Topbar({ title, subtitle, showMonthNav, admin }) {
     );
   }
 
+  const saletseLogo = (
+    <div className="topbar-brand" title="Saletse" aria-label="Saletse">
+      <Image src="/saletse-logo.png" alt="Saletse" width={132} height={30} priority />
+    </div>
+  );
+
   return (
     <header className="topbar">
+      <div className="topbar-mobile-brand">{saletseLogo}</div>
       <div className="tb-left">
         <MobileTopAvatar />
         <button type="button" className="mobile-menu-btn mobile-menu-btn--legacy" onClick={toggleSidebar} aria-label={t("common.menu")}>
@@ -66,9 +73,8 @@ export function Topbar({ title, subtitle, showMonthNav, admin }) {
             <button type="button" className="tb-nav-btn" onClick={calNext} aria-label={t("common.nextMonth")}>›</button>
           </div>
         )}
-        <div className="topbar-brand" title="Saletse" aria-label="Saletse">
-          <Image src="/saletse-logo.png" alt="Saletse" width={132} height={30} priority />
-        </div>
+        <DesktopTopNavActions />
+        {saletseLogo}
         <MobileTopNavActions />
         <Link to="/settings" className="top-settings-btn top-settings-btn--desktop" title={t("common.settings")} aria-label={t("common.settings")}>
           <Settings size={17} />

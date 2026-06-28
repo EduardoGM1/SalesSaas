@@ -237,7 +237,10 @@ export function GoalsPage() {
             </div>
             {chartBlock}
           </div>
-          {weeklyTable}
+          <div className="dash-bottom-grid">
+            {weeklyTable}
+            {tourTypeBlock}
+          </div>
         </div>
       </div>
     </>

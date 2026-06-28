@@ -39,6 +39,36 @@ export function MobileTopNavActions() {
   );
 }
 
+export function DesktopTopNavActions() {
+  const { pathname } = useLocation();
+  const { lang: language } = useI18n();
+  const { mobileHeaderItems, unreadMessages } = useAppNav();
+
+  return (
+    <div className="topbar-desktop-actions">
+      {mobileHeaderItems.map(({ href, label, icon: Icon, badgeKey }) => {
+        const active = isNavItemActive(pathname, href);
+        const visibleLabel = navLabel(label, language);
+        const badge = badgeKey === "messages" && unreadMessages > 0 ? unreadMessages : null;
+        return (
+          <Link
+            key={href}
+            to={href}
+            className={cn("top-settings-btn", active && "active")}
+            title={visibleLabel}
+            aria-label={visibleLabel}
+          >
+            <Icon size={17} strokeWidth={2} />
+            {badge ? (
+              <span className="topbar-action-badge">{badge > 9 ? "9+" : badge}</span>
+            ) : null}
+          </Link>
+        );
+      })}
+    </div>
+  );
+}
+
 export function MobileTopAvatar() {
   const { avatarUrl, avatarLabel } = useAppNav();
   const { t } = useI18n();

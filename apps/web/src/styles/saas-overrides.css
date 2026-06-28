@@ -2209,6 +2209,26 @@ body,
   margin-bottom: 0;
 }
 
+/* Dashboard bottom grid: weekly production + tour types side by side */
+.dash-bottom-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+  margin-top: 18px;
+}
+
+/* Desktop top nav actions (Red + Mensajes) */
+.topbar-desktop-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Mobile brand row (Saletse logo) — hidden on desktop */
+.topbar-mobile-brand {
+  display: none;
+}
+
 /* ===== MOBILE APP NAV (≤768px) ===== */
 .mobile-top-avatar,
 .topbar-mobile-actions,
@@ -2258,6 +2278,28 @@ body,
 
   .mobile-menu-btn--legacy {
     display: none !important;
+  }
+
+  /* Topbar mobile: two-row layout */
+  .topbar {
+    flex-direction: column;
+    gap: 0;
+    padding: 0;
+  }
+
+  .topbar-mobile-brand {
+    display: flex;
+    justify-content: flex-end;
+    padding: 4px 12px 2px;
+  }
+
+  .topbar-desktop-actions {
+    display: none !important;
+  }
+
+  .topbar .tb-left,
+  .topbar .tb-right {
+    width: 100%;
   }
 
   .mobile-menu-btn--admin {
@@ -2890,6 +2932,11 @@ body,
   .dash-tour-summary-table th {
     padding: 4px 4px;
     font-size: 9px;
+  }
+
+  .dash-page .dash-bottom-grid {
+    grid-template-columns: 1fr;
+    margin-top: 0;
   }
 
   .sales-page .frow {
