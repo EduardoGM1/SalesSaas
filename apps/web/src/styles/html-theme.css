@@ -566,6 +566,14 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
 .client-survey-field.right input::placeholder{text-align:right;}
 .client-survey-field.left label{text-align:left;}
 .client-survey-field.left input{text-align:left;}
+.client-survey-compact{display:flex;flex-direction:column;gap:6px;}
+.client-survey-cfield{display:flex;align-items:center;gap:8px;}
+.client-survey-cfield label{font-size:10px;color:var(--muted);font-weight:800;letter-spacing:.65px;text-transform:uppercase;white-space:nowrap;min-width:80px;flex-shrink:0;}
+.client-survey-cfield input,.client-survey-cfield select{flex:1;min-height:32px;padding:4px 8px;}
+.client-survey-crow{display:flex;gap:8px;}
+.client-survey-crow .client-survey-cfield{flex:1;}
+.client-survey-name-error{color:var(--danger);font-size:11px;margin-top:-2px;margin-bottom:4px;padding-left:88px;}
+.input-error{border-color:var(--danger)!important;}
 .analysis-empty{background:var(--surface2);border:1px dashed var(--border2);border-radius:var(--r);padding:16px;color:var(--muted);font-size:13px;line-height:1.5;margin-bottom:14px;}
 @media(max-width:900px){
   .client-survey-grid{grid-template-columns:1fr;gap:14px;}

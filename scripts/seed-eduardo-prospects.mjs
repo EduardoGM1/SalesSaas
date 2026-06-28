@@ -43,8 +43,8 @@ function loadEnvLocal() {
 function surveyData(overrides = {}) {
   return {
     nights: "5", total: "8500", hpct: "72", stype: "hotel", futureType: "real",
-    svp_name1: "Roberto Mendoza", svp_name2: "Laura Mendoza",
-    svp_country: "México", svp_occ1: "Ingeniero", svp_occ2: "Contadora", svp_city: "Monterrey",
+    svp_name1: "Roberto Mendoza",
+    svp_country: "México", svp_occ1: "Ingeniero", svp_city: "Monterrey",
     sh1c: "Cancún", sh1y: "2023", sh1n: "5", sh1a: "7200",
     sh2c: "Los Cabos", sh2y: "2022", sh2n: "4", sh2a: "6800",
     sf1c: "Miami", sf1y: "2026", sf1n: "5", sf1a: "9000",
@@ -87,7 +87,7 @@ const PROSPECTS = [
     note: "Pendiente comprobante de ingresos y referencias bancarias.",
     completed: false, quick_expedient: false,
     tools: {
-      survey: surveyData({ svp_name1: "Carlos Ruiz", svp_name2: "Patricia Ruiz", svp_city: "Guadalajara", total: "12000", futureType: "dream" }),
+      survey: surveyData({ svp_name1: "Carlos Ruiz", svp_city: "Guadalajara", total: "12000", futureType: "dream" }),
       vacaciones: vacacionesData({ vc: "5200", va: "20" }),
       worksheet: worksheetData({ wv: "32000", we: "25", wcc: "595" }),
     },
@@ -105,7 +105,7 @@ const PROSPECTS = [
     note: "B-back agendado para mediados de abril.",
     completed: false, quick_expedient: true,
     tools: {
-      survey: surveyData({ svp_name1: "James Miller", svp_name2: "Susan Miller", svp_country: "Estados Unidos", stype: "cruise", nights: "7", total: "15000" }),
+      survey: surveyData({ svp_name1: "James Miller", svp_country: "Estados Unidos", stype: "cruise", nights: "7", total: "15000" }),
       worksheet: worksheetData({ wv: "45000", we: "35", wob: "0" }),
     },
     sales: [{ sale_date: "2026-03-08", vol: 18500, tours: 1, contract: "EDU-2026-0003", status: "bback", note: "Primera presentación" }],
@@ -122,7 +122,7 @@ const PROSPECTS = [
     note: "Expediente completo enviado a procesamiento.",
     completed: true, quick_expedient: false,
     tools: {
-      survey: surveyData({ svp_name1: "Fernando Vargas", svp_name2: "Elena Vargas", svp_city: "CDMX", total: "9500", hpct: "78" }),
+      survey: surveyData({ svp_name1: "Fernando Vargas", svp_city: "CDMX", total: "9500", hpct: "78" }),
       vacaciones: vacacionesData({ vc: "3800", va: "15" }),
       worksheet: worksheetData({ wv: "35000", we: "28" }),
     },
@@ -160,7 +160,7 @@ const PROSPECTS = [
     note: "Posponen decisión 12 meses por mudanza internacional.",
     completed: false, quick_expedient: false,
     tools: {
-      survey: surveyData({ svp_name1: "Ricardo Herrera", svp_name2: "Gloria Herrera", svp_city: "Querétaro", total: "8000" }),
+      survey: surveyData({ svp_name1: "Ricardo Herrera", svp_city: "Querétaro", total: "8000" }),
       vacaciones: vacacionesData({ vv: "3", vc: "6000" }),
       worksheet: worksheetData({ wv: "40000", we: "32" }),
     },
@@ -195,7 +195,7 @@ const PROSPECTS = [
     note: "Interés en plan familiar 2+2. Prefieren pagos mensuales.",
     completed: false, quick_expedient: true,
     tools: {
-      survey: surveyData({ svp_name1: "Alejandro Navarro", svp_name2: "Sofía Navarro", svp_city: "Puebla", stype: "resort", total: "6500" }),
+      survey: surveyData({ svp_name1: "Alejandro Navarro", svp_city: "Puebla", stype: "resort", total: "6500" }),
       vacaciones: vacacionesData({ vc: "3200", va: "12", vi: "6.5" }),
       worksheet: worksheetData({ wv: "19800", we: "22", wcc: "395" }),
     },
@@ -213,7 +213,7 @@ const PROSPECTS = [
     note: "Segunda visita programada. Traen referidos.",
     completed: false, quick_expedient: false,
     tools: {
-      survey: surveyData({ svp_name1: "William Brooks", svp_name2: "Linda Brooks", svp_country: "Estados Unidos", svp_city: "Denver", nights: "6" }),
+      survey: surveyData({ svp_name1: "William Brooks", svp_country: "Estados Unidos", svp_city: "Denver", nights: "6" }),
       vacaciones: vacacionesData({ vv: "4", vc: "7200", va: "22" }),
       worksheet: worksheetData({ wv: "38000", we: "28", wcc: "550" }),
     },
@@ -231,7 +231,7 @@ const PROSPECTS = [
     note: "Documentación casi completa. Falta acta matrimonio apostillada.",
     completed: false, quick_expedient: false,
     tools: {
-      survey: surveyData({ svp_name1: "Jorge Delgado", svp_name2: "Carmen Delgado", svp_city: "León", total: "7800", hpct: "65" }),
+      survey: surveyData({ svp_name1: "Jorge Delgado", svp_city: "León", total: "7800", hpct: "65" }),
       vacaciones: vacacionesData({ vc: "4100", va: "16", vi: "8" }),
       worksheet: worksheetData({ wv: "26500", we: "26", wcc: "480", wob: "800" }),
     },

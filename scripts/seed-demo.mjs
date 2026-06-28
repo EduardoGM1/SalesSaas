@@ -54,10 +54,8 @@ function surveyData(overrides = {}) {
     stype: "hotel",
     futureType: "real",
     svp_name1: "Roberto Mendoza",
-    svp_name2: "Laura Mendoza",
     svp_country: "México",
     svp_occ1: "Ingeniero civil",
-    svp_occ2: "Contadora",
     svp_city: "Monterrey",
     sh1c: "Cancún", sh1y: "2023", sh1n: "5", sh1a: "7200",
     sh2c: "Los Cabos", sh2y: "2022", sh2n: "4", sh2a: "6800",
@@ -329,7 +327,7 @@ const VENDORS = [
         quick_expedient: false,
         tools: {
           survey: surveyData({
-            svp_name1: "Carlos Ruiz", svp_name2: "Patricia Ruiz",
+            svp_name1: "Carlos Ruiz", 
             svp_city: "Guadalajara", total: "12000", hpct: "68",
             futureType: "dream",
           }),
@@ -358,7 +356,7 @@ const VENDORS = [
         quick_expedient: true,
         tools: {
           survey: surveyData({
-            svp_name1: "James Miller", svp_name2: "Susan Miller",
+            svp_name1: "James Miller", 
             svp_country: "Estados Unidos", svp_city: "Dallas",
             stype: "cruise", nights: "7", total: "15000",
           }),
@@ -430,7 +428,7 @@ const VENDORS = [
         note: "Pareja joven, alta capacidad de pago.",
         completed: true,
         tools: {
-          survey: surveyData({ svp_name1: "Fernando Vargas", svp_name2: "Elena Vargas", svp_city: "Ciudad de México", total: "9500" }),
+          survey: surveyData({ svp_name1: "Fernando Vargas", svp_city: "Ciudad de México", total: "9500" }),
           vacaciones: vacacionesData({ vc: "3800", va: "15" }),
           worksheet: worksheetData({ wv: "35000", we: "28" }),
         },
@@ -513,7 +511,7 @@ const VENDORS = [
         note: "Decidieron posponer compra 12 meses.",
         completed: false,
         tools: {
-          survey: surveyData({ svp_name1: "Ricardo Herrera", svp_name2: "Gloria Herrera", svp_city: "Querétaro" }),
+          survey: surveyData({ svp_name1: "Ricardo Herrera", svp_city: "Querétaro" }),
           vacaciones: vacacionesData(),
           worksheet: worksheetData({ wv: "40000", we: "32" }),
         },

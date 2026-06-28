@@ -51,6 +51,8 @@ export function bodyToProspectInsert(
     process_date: toDateOrNull(body.process_date ?? body.processDate),
     process_amount: Number(body.process_amount ?? body.processAmount ?? 0) || 0,
     note: body.note ?? null,
+    tipo_tour: body.tipo_tour ?? body.tipoTour ?? null,
+    tour_cuantificable: body.tour_cuantificable != null ? Boolean(body.tour_cuantificable) : body.tourCuantificable != null ? Boolean(body.tourCuantificable) : null,
     completed: Boolean(body.completed ?? body.completedExpedient ?? false),
     quick_expedient: Boolean(body.quick_expedient ?? body.quickExpedient ?? false),
   };
@@ -70,6 +72,8 @@ export function bodyToProspectPatch(body: Record<string, unknown>): Record<strin
     ["email", ["email"]],
     ["contract", ["contract"]],
     ["note", ["note"]],
+    ["tipo_tour", ["tipo_tour", "tipoTour"]],
+    ["tour_cuantificable", ["tour_cuantificable", "tourCuantificable"]],
   ];
   for (const [col, keys] of map) {
     for (const k of keys) {

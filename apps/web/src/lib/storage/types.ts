@@ -113,6 +113,8 @@ export interface ClientRecord {
   processDate?: string;
   processAmount?: number;
   note?: string;
+  tipo_tour?: string;
+  tour_cuantificable?: boolean;
   createdAt?: number;
   createdYmd?: string;
   date?: string;
@@ -159,6 +161,7 @@ export interface UserSettings {
   userName?: string;
   userInitials?: string;
   worksheetConfig?: Record<string, string>;
+  tourTypes?: string[];
   notifications?: {
     messages?: boolean;
     connection_requests?: boolean;

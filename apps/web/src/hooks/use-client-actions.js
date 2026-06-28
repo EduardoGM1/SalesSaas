@@ -14,8 +14,8 @@ export function useClientActions() {
 
   const searchClients = useCallback((query) => filterAndSortClients(db.clients, query), [db.clients]);
 
-  const createProspect = useCallback((name) => {
-    const result = createProspectFromName(name);
+  const createProspect = useCallback((name, tipoTour, tourCuantificable) => {
+    const result = createProspectFromName(name, tipoTour, tourCuantificable);
     if (result.ok && result.client) navigate(`/clients/${result.client.id}`);
     return result;
   }, [navigate]);

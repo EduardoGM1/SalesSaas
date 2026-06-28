@@ -162,6 +162,8 @@ function dbToRows(db, userId) {
       process_date: toDateOrNull(client.processDate),
       process_amount: num(client.processAmount),
       note: client.note ?? null,
+      tipo_tour: client.tipo_tour ?? null,
+      tour_cuantificable: client.tour_cuantificable ?? null,
       completed: !!client.completedExpedient,
       quick_expedient: !!client.quickExpedient,
       created_at: tsToISO(client.createdAt)
@@ -301,6 +303,8 @@ function rowsToDb(rows) {
       processDate: p.process_date ?? void 0,
       processAmount: p.process_amount != null ? num(p.process_amount) : void 0,
       note: p.note ?? void 0,
+      tipo_tour: p.tipo_tour ?? void 0,
+      tour_cuantificable: p.tour_cuantificable != null ? !!p.tour_cuantificable : void 0,
       completedExpedient: !!p.completed,
       quickExpedient: !!p.quick_expedient,
       createdAt: isoToMs(p.created_at),

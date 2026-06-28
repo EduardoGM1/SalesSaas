@@ -1,7 +1,7 @@
 
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
-import { ChevronRight, Bell, Code2, Database, DollarSign, Download, Globe2, LogOut, ShieldAlert, Smartphone, Trash2, Upload, User, WalletCards } from "lucide-react";
+import { ChevronRight, Bell, Code2, Database, DollarSign, Download, Globe2, LogOut, ShieldAlert, Smartphone, Tag, Trash2, Upload, User, WalletCards } from "lucide-react";
 import { isStandaloneApp, shouldShowPwaInstallInSettings } from "@/lib/pwa-install.js";
 import { Topbar } from "@/components/layout/topbar";
 import { PageBack } from "@/components/layout/page-back";
@@ -170,6 +170,7 @@ export function SettingsPage() {
       <div className="exp-tool-list">
         <SettingsEntry icon={<User size={18} />} tone="blue" title={ti("settings.hub.user")} desc={ti("settings.hub.userDesc")} onClick={() => setActiveSection("user")} />
         <SettingsEntry icon={<WalletCards size={18} />} tone="purple" title={ti("settings.hub.worksheet")} desc={ti("settings.hub.worksheetDesc")} onClick={() => setActiveSection("worksheet")} />
+        <SettingsEntry icon={<Tag size={18} />} tone="teal" title={ti("settings.hub.tourTypes")} desc={ti("settings.hub.tourTypesDesc")} onClick={() => setActiveSection("tourTypes")} />
         <SettingsEntry icon={<DollarSign size={18} />} tone="green" title={ti("settings.hub.money")} desc={ti("settings.hub.moneyDesc")} onClick={() => setActiveSection("money")} />
         <SettingsEntry icon={<Globe2 size={18} />} tone="blue" title={ti("settings.hub.language")} desc={ti("settings.hub.languageDesc")} onClick={() => setActiveSection("language")} />
         {canSeeTechnical && (
@@ -281,6 +282,36 @@ export function SettingsPage() {
                     </div>
                   ))}
                   <div className="hint" style={{ marginTop: 14 }}><strong>Nota:</strong> esta configuración usa la misma fuente que el engrane local de Worksheet.</div>
+                </div>
+              </div>
+            )}
+
+            {activeSection === "tourTypes" && (
+              <div className="settings-section">
+                <div className="settings-card">
+                  <div className="card-heading">{ti("settings.tourTypes.title")}</div>
+                  <div className="card-sub">{ti("settings.tourTypes.sub")}</div>
+                  {[1, 2, 3, 4].map((n) => {
+                    const idx = n - 1;
+                    return (
+                      <div key={n} className="settings-row">
+                        <div>
+                          <div className="settings-label">{ti(`settings.tourTypes.label${n}`)}</div>
+                        </div>
+                        <input
+                          type="text"
+                          value={(settings.tourTypes ?? ["Q", "NQ", "CT", "Member"])[idx] || ""}
+                          onFocus={selectOnFocus}
+                          onChange={(e) => {
+                            const list = [...(settings.tourTypes ?? ["Q", "NQ", "CT", "Member"])];
+                            list[idx] = e.target.value;
+                            setSetting("tourTypes", list);
+                          }}
+                          style={{ width: "100%" }}
+                        />
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}

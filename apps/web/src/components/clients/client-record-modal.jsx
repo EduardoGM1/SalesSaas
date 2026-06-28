@@ -4,6 +4,7 @@ import { CountryCitySelects } from "@/components/clients/country-city-selects.js
 import { selectOnFocus } from "@/lib/focus-select.js";
 import { isSaleFormValid } from "@/lib/sales/form-valid";
 import { useI18n } from "@/hooks/use-i18n.js";
+import { useDbStore } from "@/stores/db-store";
 
 const STATUS_OPTIONS = [
   { value: "", key: "status.empty" },
@@ -49,6 +50,7 @@ function getModalCopy(mode, t, clientName) {
 }
 
 function ProspectFields({ form, onChange, t, showStatusFields }) {
+  const tourTypes = useDbStore((s) => s.db.settings?.tourTypes ?? ["Q", "NQ", "CT", "Member"]);
   return (
     <div className="prospect-grid">
       <div className="prospect-field">
@@ -63,6 +65,20 @@ function ProspectFields({ form, onChange, t, showStatusFields }) {
         city={form.city || ""}
         onChange={(patch) => onChange({ ...form, ...patch })}
       />
+      <div className="prospect-field"><label>{t("clients.tourType")}</label>
+        <select value={form.tipo_tour || ""} onChange={(e) => onChange({ ...form, tipo_tour: e.target.value })}>
+          <option value="">{t("clients.tourTypePlaceholder")}</option>
+          {tourTypes.map((type) => (
+            <option key={type} value={type}>{type}</option>
+          ))}
+        </select>
+      </div>
+      <div className="prospect-field"><label>{t("clients.isTourQuantifiable")}</label>
+        <select value={form.tour_cuantificable !== false ? "yes" : "no"} onChange={(e) => onChange({ ...form, tour_cuantificable: e.target.value === "yes" })}>
+          <option value="yes">{t("clients.yes")}</option>
+          <option value="no">{t("clients.no")}</option>
+        </select>
+      </div>
       {showStatusFields ? (
         <>
           <div className="prospect-field"><label>{t("exp.edit.contract")}</label><input type="text" placeholder={t("exp.sale.contractPlaceholder")} value={form.contract || ""} onFocus={selectOnFocus} onChange={(e) => onChange({ ...form, contract: e.target.value })} /></div>

@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Topbar } from "@/components/layout/topbar";
 import { PageBack } from "@/components/layout/page-back.jsx";
 import { SaveToolModal } from "@/components/calculators/save-tool-modal";
-import { clientDisplayName, ensureProspectIdentity } from "@/lib/clients";
+import { ensureProspectIdentity } from "@/lib/clients";
 import { computeSurvey } from "@/lib/calculations/survey";
 import { SharedToolBanner } from "@/components/calculators/shared-tool-banner.jsx";
 import { COUNTRY_CITY, COUNTRY_FLAGS } from "@/lib/constants";
@@ -25,7 +25,7 @@ const EMPTY_DATA: Record<string, string> = {
   sf1c: "", sf1y: "", sf1n: "", sf1a: "",
   sf2c: "", sf2y: "", sf2n: "", sf2a: "",
   sf3c: "", sf3y: "", sf3n: "", sf3a: "",
-  svp_name1: "", svp_name2: "", svp_country: "", svp_occ1: "", svp_occ2: "", svp_city: "",
+  svp_name1: "", svp_country: "", svp_occ1: "", svp_city: "",
 };
 
 interface SurveyPageProps {
@@ -47,6 +47,7 @@ export function SurveyPage({ clientId, shared }: SurveyPageProps) {
   const [futureType, setFutureType] = useState<"real" | "dream">("real");
   const [saved, setSaved] = useState(false);
   const [saveToolOpen, setSaveToolOpen] = useState(false);
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (!ready) return;
@@ -61,10 +62,8 @@ export function SurveyPage({ clientId, shared }: SurveyPageProps) {
       const c = prospect;
       if (c) {
         loaded.svp_name1 = loaded.svp_name1 || c.name1 || c.name || "";
-        loaded.svp_name2 = loaded.svp_name2 || c.name2 || "";
         loaded.svp_country = loaded.svp_country || c.country || "";
         loaded.svp_occ1 = loaded.svp_occ1 || c.occupation1 || "";
-        loaded.svp_occ2 = loaded.svp_occ2 || c.occupation2 || "";
         loaded.svp_city = loaded.svp_city || c.city || "";
       }
     }
@@ -85,30 +84,24 @@ export function SurveyPage({ clientId, shared }: SurveyPageProps) {
     const c = getClient(clientId);
     if (!c) return;
     const name1 = next.svp_name1 || "";
-    const name2 = next.svp_name2 || "";
     saveClient(ensureProspectIdentity({
       ...c,
       name1,
-      name2,
-      name: [name1, name2].filter(Boolean).join(" / ") || name1 || c.name || "Prospecto",
+      name: name1 || c.name || "Prospecto",
       country: next.svp_country || "",
       city: next.svp_city || "",
       occupation1: next.svp_occ1 || "",
-      occupation2: next.svp_occ2 || "",
     }));
   };
 
   const prospectPatchFromData = (next: Record<string, string>) => {
     const name1 = next.svp_name1 || "";
-    const name2 = next.svp_name2 || "";
     return {
       name1,
-      name2,
-      name: [name1, name2].filter(Boolean).join(" / ") || name1 || "Prospecto",
+      name: name1 || "Prospecto",
       country: next.svp_country || "",
       city: next.svp_city || "",
       occupation1: next.svp_occ1 || "",
-      occupation2: next.svp_occ2 || "",
     };
   };
 
@@ -119,10 +112,23 @@ export function SurveyPage({ clientId, shared }: SurveyPageProps) {
       if (k.startsWith("svp_")) syncProspectToClient(next);
       return next;
     });
+    if (validationErrors[k]) {
+      setValidationErrors((prev) => {
+        const next = { ...prev };
+        delete next[k];
+        return next;
+      });
+    }
   };
 
   const handleSave = async () => {
     if (readOnly) return;
+    const errors: Record<string, string> = {};
+    const name = data.svp_name1?.trim() || "";
+    if (!name) errors.svp_name1 = "Campo requerido";
+    else if (name.includes(" ")) errors.svp_name1 = "Solo un nombre (sin espacios)";
+    setValidationErrors(errors);
+    if (Object.keys(errors).length) return;
     await saveBucket("survey", { ...data, stype: sType, futureType });
     if (isFileMode) await syncProspectFields(prospectPatchFromData(data));
     if (!isFileMode) { setSaveToolOpen(true); return; }
@@ -158,46 +164,41 @@ export function SurveyPage({ clientId, shared }: SurveyPageProps) {
         <div className={`card client-survey-prospect${isFileMode ? " show" : ""}`}>
           <div className="card-heading">{t("tools.survey.prospectTitle")}</div>
           <div className="card-sub">{t("tools.survey.prospectSub")}</div>
-          <div className="client-survey-grid">
-            <div className="client-survey-field left">
+          <div className="client-survey-compact">
+            <div className="client-survey-cfield">
               <label>{t("tools.survey.name")}</label>
-              <input type="text" id="svp-name1" placeholder={t("tools.survey.namePlaceholder")} value={data.svp_name1 || ""} onFocus={selectOnFocus} onChange={(e) => update("svp_name1", e.target.value)} />
+              <input type="text" id="svp-name1" placeholder="Ej: Michell" value={data.svp_name1 || ""} onFocus={selectOnFocus} onChange={(e) => update("svp_name1", e.target.value)} className={validationErrors.svp_name1 ? "input-error" : ""} />
             </div>
-            <div className="client-survey-field center">
-              <label>{t("tools.survey.country")}</label>
-              <select id="svp-country" value={data.svp_country || ""} onFocus={selectOnFocus} onChange={(e) => update("svp_country", e.target.value)}>
-                <option value="">{t("tools.survey.selectCountry")}</option>
-                {countries.map((country) => (
-                  <option key={country} value={country}>{COUNTRY_FLAGS[country] || "🌐"} {country}</option>
-                ))}
-                {data.svp_country && !countries.includes(data.svp_country) && (
-                  <option value={data.svp_country}>{data.svp_country}</option>
-                )}
-              </select>
+            {validationErrors.svp_name1 && <div className="client-survey-name-error">{validationErrors.svp_name1}</div>}
+            <div className="client-survey-crow">
+              <div className="client-survey-cfield">
+                <label>{t("tools.survey.country")}</label>
+                <select id="svp-country" value={data.svp_country || ""} onFocus={selectOnFocus} onChange={(e) => update("svp_country", e.target.value)}>
+                  <option value="">{t("tools.survey.selectCountry")}</option>
+                  {countries.map((country) => (
+                    <option key={country} value={country}>{COUNTRY_FLAGS[country] || "🌐"} {country}</option>
+                  ))}
+                  {data.svp_country && !countries.includes(data.svp_country) && (
+                    <option value={data.svp_country}>{data.svp_country}</option>
+                  )}
+                </select>
+              </div>
+              <div className="client-survey-cfield">
+                <label>{t("tools.survey.city")}</label>
+                <select id="svp-city" value={data.svp_city || ""} onFocus={selectOnFocus} onChange={(e) => update("svp_city", e.target.value)}>
+                  <option value="">{t("tools.survey.selectCity")}</option>
+                  {cities.map((city) => (
+                    <option key={city} value={city}>{city}</option>
+                  ))}
+                  {data.svp_city && !cities.includes(data.svp_city) && (
+                    <option value={data.svp_city}>{data.svp_city}</option>
+                  )}
+                </select>
+              </div>
             </div>
-            <div className="client-survey-field right">
-              <label>{t("exp.edit.companion")}</label>
-              <input type="text" id="svp-name2" placeholder={t("tools.survey.companionPlaceholder")} value={data.svp_name2 || ""} onFocus={selectOnFocus} onChange={(e) => update("svp_name2", e.target.value)} />
-            </div>
-            <div className="client-survey-field left">
+            <div className="client-survey-cfield">
               <label>{t("tools.survey.occupation")}</label>
               <input type="text" id="svp-occ1" placeholder={t("tools.survey.occPlaceholder")} value={data.svp_occ1 || ""} onFocus={selectOnFocus} onChange={(e) => update("svp_occ1", e.target.value)} />
-            </div>
-            <div className="client-survey-field center">
-              <label>{t("tools.survey.city")}</label>
-              <select id="svp-city" value={data.svp_city || ""} onFocus={selectOnFocus} onChange={(e) => update("svp_city", e.target.value)}>
-                <option value="">{t("tools.survey.selectCity")}</option>
-                {cities.map((city) => (
-                  <option key={city} value={city}>{city}</option>
-                ))}
-                {data.svp_city && !cities.includes(data.svp_city) && (
-                  <option value={data.svp_city}>{data.svp_city}</option>
-                )}
-              </select>
-            </div>
-            <div className="client-survey-field right">
-              <label>{t("exp.edit.occ2")}</label>
-              <input type="text" id="svp-occ2" placeholder={t("tools.survey.occ2Placeholder")} value={data.svp_occ2 || ""} onFocus={selectOnFocus} onChange={(e) => update("svp_occ2", e.target.value)} />
             </div>
           </div>
         </div>

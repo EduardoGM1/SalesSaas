@@ -430,12 +430,14 @@ export const useDbStore = create<DbState>((set, get) => ({
   },
 }));
 
-export function createEmptyClient(name1: string, tourDate?: string): ClientRecord {
+export function createEmptyClient(name1: string, tourDate?: string, tipoTour?: string, tourCuantificable?: boolean): ClientRecord {
   const id = generateClientId();
   const ymd = tourDate || new Date().toISOString().slice(0, 10);
   return {
     id, prospectId: id, prospectCode: generateProspectCode(id),
     name: name1, name1, name2: "",
+    tipo_tour: tipoTour,
+    tour_cuantificable: tourCuantificable ?? true,
     createdAt: Date.now(), createdYmd: ymd, tourDate: ymd,
     quickExpedient: false,
     completedExpedient: true,

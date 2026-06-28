@@ -2408,6 +2408,31 @@ body,
     gap: 12px;
   }
 
+  .client-survey-crow {
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .client-survey-cfield {
+    gap: 10px;
+  }
+
+  .client-survey-cfield label {
+    min-width: 70px;
+    font-size: 11px;
+  }
+
+  .client-survey-cfield input,
+  .client-survey-cfield select {
+    min-height: 44px;
+    padding: 8px 10px;
+    font-size: 16px;
+  }
+
+  .client-survey-name-error {
+    padding-left: 80px;
+  }
+
   .sales-page .frow {
     flex-direction: column;
     align-items: stretch;

@@ -21,17 +21,24 @@ export function ClientsPage() {
   const navigate = useNavigate();
   const hydrated = useAppStore((s) => s.hydrated);
   const { searchClients, createProspect, removeClient } = useClientActions();
+  const db = useDbStore((s) => s.db);
   const [open, setOpen] = useState(false);
-  const [name, setName] = useState("");
+  const [name, setname] = useState("");
+  const [tourCuantificable, setTourCuantificable] = useState(true);
+  const [tipoTour, setTipoTour] = useState("");
   const [missingName, setMissingName] = useState(false);
+  const [missingTipoTour, setMissingTipoTour] = useState(false);
   const [query, setQuery] = useState("");
   const [shareClient, setShareClient] = useState(null);
   const nameRef = useRef<HTMLInputElement>(null);
   const canShare = isSupabaseConfigured();
 
+  const tourTypes = db.settings?.tourTypes ?? ["Q", "NQ", "CT", "Member"];
+
   useEffect(() => {
     if (!open) return;
     setMissingName(false);
+    setMissingTipoTour(false);
     const timer = window.setTimeout(() => nameRef.current?.focus(), 300);
     return () => window.clearTimeout(timer);
   }, [open]);
@@ -43,13 +50,27 @@ export function ClientsPage() {
   const handleOpenChange = (next) => {
     setOpen(next);
     if (!next) {
-      setName("");
+      setname("");
+      setTourCuantificable(true);
+      setTipoTour("");
       setMissingName(false);
+      setMissingTipoTour(false);
     }
   };
 
   const handleCreate = () => {
-    const result = createProspect(name);
+    let hasError = false;
+    if (!name.trim()) {
+      setMissingName(true);
+      nameRef.current?.focus();
+      hasError = true;
+    }
+    if (!tipoTour) {
+      setMissingTipoTour(true);
+      hasError = true;
+    }
+    if (hasError) return;
+    const result = createProspect(name.trim(), tipoTour, tourCuantificable);
     if (!result.ok) {
       if (result.reason === "missing_name") {
         setMissingName(true);
@@ -178,12 +199,11 @@ export function ClientsPage() {
         open={open}
         onOpenChange={handleOpenChange}
         title={t("clients.modalTitle")}
-        sub={t("clients.createModalSub")}
+        sub={t("clients.modalSub")}
       >
         <div className={`newclient-field required-field${missingName ? " field-missing" : ""}`}>
           <label className="required-label">
-            {t("clients.namePlaceholder")}{" "}
-            <em style={{ fontStyle: "italic", textTransform: "none", letterSpacing: ".2px" }}>{t("clients.client1")}</em>
+            {t("clients.name")}
             <span className="req-star">*</span>
           </label>
           <input
@@ -191,14 +211,42 @@ export function ClientsPage() {
             id="nc-name"
             type="text"
             value={name}
-            placeholder={t("clients.namePlaceholder")}
+            placeholder={t("clients.name")}
             onFocus={selectOnFocus}
             onChange={(e) => {
-              setName(e.target.value);
+              setname(e.target.value);
               if (e.target.value.trim()) setMissingName(false);
             }}
             onKeyDown={(e) => { if (e.key === "Enter") handleCreate(); }}
           />
+        </div>
+        <div className="newclient-field">
+          <label>{t("clients.isTourQuantifiable")}</label>
+          <select
+            value={tourCuantificable ? "yes" : "no"}
+            onChange={(e) => setTourCuantificable(e.target.value === "yes")}
+          >
+            <option value="yes">{t("clients.yes")}</option>
+            <option value="no">{t("clients.no")}</option>
+          </select>
+        </div>
+        <div className={`newclient-field required-field${missingTipoTour ? " field-missing" : ""}`}>
+          <label className="required-label">
+            {t("clients.tourType")}
+            <span className="req-star">*</span>
+          </label>
+          <select
+            value={tipoTour}
+            onChange={(e) => {
+              setTipoTour(e.target.value);
+              if (e.target.value) setMissingTipoTour(false);
+            }}
+          >
+            <option value="">{t("clients.tourTypePlaceholder")}</option>
+            {tourTypes.map((type) => (
+              <option key={type} value={type}>{type}</option>
+            ))}
+          </select>
         </div>
         <div className="btn-row" style={{ marginTop: 20 }}>
           <button type="button" className="btn btn-ghost" onClick={() => handleOpenChange(false)}>{t("common.cancel")}</button>

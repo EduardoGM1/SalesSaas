@@ -23,6 +23,7 @@ export function filterAndSortClients(clients, query) {
         const text = [
           clientDisplayName(c), c.name, c.name1, c.name2, c.occupation1, c.occupation2,
           c.contract, c.prospectCode, c.city, c.country, c.status, statusLabel(c.status, lang),
+          c.tipo_tour, String(c.tour_cuantificable ?? ""),
           date, date ? longDate(date, lang) : "", monthName, dt ? String(dt.getMonth() + 1) : "", dt ? String(dt.getFullYear()) : "",
         ].filter(Boolean).join(" ");
         const haystack = normalizeSearch(text);
@@ -38,13 +39,13 @@ export function filterAndSortClients(clients, query) {
   });
 }
 
-export function createProspectFromName(name) {
+export function createProspectFromName(name, tipoTour, tourCuantificable) {
   const trimmed = String(name ?? "").trim();
   if (!trimmed) {
     toast.error(translate("toast.client.missingName"));
     return { ok: false, reason: "missing_name" };
   }
-  const client = createEmptyClient(trimmed);
+  const client = createEmptyClient(trimmed, undefined, tipoTour, tourCuantificable);
   useDbStore.getState().saveClient(client);
   return { ok: true, client };
 }

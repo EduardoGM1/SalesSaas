@@ -1,7 +1,8 @@
 import { clientDisplayName } from "@/lib/clients";
 import { AppDatabase, CalEntry, ClientRecord, SaleRecord } from "@/lib/storage/types";
 
-export function isSaleCountable(sale: Pick<SaleRecord, "status" | "processing">): boolean {
+export function isSaleCountable(sale: Pick<SaleRecord, "status" | "processing"> & { tourCuantificable?: boolean }): boolean {
+  if (sale.tourCuantificable === false) return false;
   return String(sale.status || "venta") !== "pendiente"
     && String(sale.processing || "venta") !== "pendiente";
 }
@@ -37,6 +38,7 @@ export interface MonthSaleItem {
   date: string;
   status?: string;
   processing?: string;
+  tourCuantificable?: boolean;
 }
 
 export function collectSalesForMonth(
@@ -63,6 +65,7 @@ export function collectSalesForMonth(
         date: sale.date,
         status: sale.status,
         processing: sale.processing,
+        tourCuantificable: client.tour_cuantificable,
       });
     }
   }
