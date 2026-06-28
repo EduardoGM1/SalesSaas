@@ -1,7 +1,7 @@
 
 import { Link } from "react-router-dom";
-import { useEffect, useState } from "react";
-import {  useNavigate, useSearchParams  } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
+import {  useNavigate  } from "react-router-dom";
 import { FileText, Palmtree, DollarSign, MessageSquare } from "lucide-react";
 import { SalesModal } from "@/components/ui/sales-modal";
 import { ClientRecordModal } from "@/components/clients/client-record-modal.jsx";
@@ -40,7 +40,6 @@ const TOOL_DEFS = [
 
 export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", contactId }) {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
   const hydrated = useAppStore((s) => s.hydrated);
   const setToolMode = useAppStore((s) => s.setToolMode);
   const getClient = useDbStore((s) => s.getClient);
@@ -106,12 +105,17 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
     setRecordModal({ mode: editingId ? "sale-edit" : "sale-new", editingSaleId: editingId });
   };
 
+  const openedSaleRef = useRef(false);
+
   useEffect(() => {
-    if (sharedRemote || !hydrated || !localC || searchParams.get("openSale") !== "1") return;
-    openSaleModal(undefined, searchParams.get("from") === "worksheet");
+    if (sharedRemote || !hydrated || !localC || openedSaleRef.current) return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("openSale") !== "1") return;
+    openedSaleRef.current = true;
+    openSaleModal(undefined, params.get("from") === "worksheet");
     navigate(`/clients/${id}`);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hydrated, localC?.id, id, searchParams, navigate, sharedRemote]);
+  }, [hydrated, localC?.id, id, navigate, sharedRemote]);
 
   if (sharedRemote && remoteLoading) return <Topbar title={t("exp.title")} subtitle={t("exp.loading")} />;
   if (!sharedRemote && !hydrated) return <Topbar title={t("exp.title")} subtitle={t("exp.loading")} />;
