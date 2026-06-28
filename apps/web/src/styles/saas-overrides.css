@@ -2882,6 +2882,16 @@ body,
     font-size: 12px;
   }
 
+  .dash-tour-summary-table td {
+    padding: 6px 4px;
+    font-size: 12px;
+  }
+
+  .dash-tour-summary-table th {
+    padding: 4px 4px;
+    font-size: 9px;
+  }
+
   .sales-page .frow {
     padding: 8px 0;
     gap: 6px;

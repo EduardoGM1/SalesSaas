@@ -1,6 +1,6 @@
 
 import { useMemo, useState } from "react";
-import { BarChart3, Calendar, Tag, Target, TrendingUp } from "lucide-react";
+import { BarChart3, Calendar, List, Tag, Target, TrendingUp } from "lucide-react";
 import { Topbar } from "@/components/layout/topbar";
 import { PageBack } from "@/components/layout/page-back";
 import { DashboardChart } from "@/components/goals/dashboard-chart";
@@ -48,6 +48,17 @@ export function GoalsPage() {
   const vprom = totals.sales > 0 ? totals.real / totals.sales : 0;
   const efic = totals.tours > 0 ? totals.real / totals.tours : 0;
   const cierre = totals.tours > 0 ? (totals.sales / totals.tours) * 100 : 0;
+
+  const tourSummary = useMemo(() => {
+    const map: Record<string, { yes: number; no: number }> = {};
+    Object.values(clients).forEach((c) => {
+      if (!c.tipo_tour) return;
+      if (!map[c.tipo_tour]) map[c.tipo_tour] = { yes: 0, no: 0 };
+      if (c.tour_cuantificable !== false) map[c.tipo_tour].yes++;
+      else map[c.tipo_tour].no++;
+    });
+    return map;
+  }, [clients]);
 
   const volumeRows = [
     [t("goals.volumeProduced"), fmt(totals.real), "green"],
@@ -122,6 +133,41 @@ export function GoalsPage() {
     </div>
   );
 
+  const tourTypeEntries = Object.entries(tourSummary);
+  const tourTypeBlock = tourTypeEntries.length > 0 ? (
+    <div className="dash-table-card">
+      <div className="dash-card-title"><List size={18} color="#2563eb" /> {t("goals.tourTypeSummary")}</div>
+      <table className="dash-tour-summary-table">
+        <thead>
+          <tr>
+            <th>{t("goals.tourTypeCol")}</th>
+            <th colSpan={2} style={{ textAlign: "center" }}>{t("goals.quantifiable")}</th>
+            <th>{t("goals.total")}</th>
+          </tr>
+          <tr className="dash-ts-subhead">
+            <th></th>
+            <th>{t("goals.yesShort")}</th>
+            <th>{t("goals.noShort")}</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {tourTypeEntries.map(([type, counts]) => {
+            const total = counts.yes + counts.no;
+            return (
+              <tr key={type}>
+                <td className="dash-ts-type">{type}</td>
+                <td className="dash-ts-yes">{counts.yes}</td>
+                <td className="dash-ts-no">{counts.no}</td>
+                <td className="dash-ts-total">{total}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  ) : null;
+
   return (
     <>
       <Topbar title={t("page.dashboard.title")} subtitle={t("page.dashboard.subtitle")} />
@@ -178,6 +224,7 @@ export function GoalsPage() {
           </div>
           {chartBlock}
           {weeklyTable}
+          {tourTypeBlock}
         </div>
 
         <div className="dash-desktop-layout">

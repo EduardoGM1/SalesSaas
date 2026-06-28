@@ -8,8 +8,7 @@ import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { Topbar } from "@/components/layout/topbar";
 import { PageBack } from "@/components/layout/page-back";
 import { clientDisplayName } from "@/lib/clients";
-import { longDate } from "@/lib/format/dates";
-import { statusLabel, statusClass } from "@/lib/format/status";
+import { shortDate } from "@/lib/format/dates";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { selectOnFocus } from "@/lib/focus-select.js";
 import { useDbStore } from "@/stores/db-store";
@@ -130,9 +129,8 @@ export function ClientsPage() {
               <thead>
                 <tr>
                   <th>{t("clients.colName")}</th>
-                  <th>{t("clients.colTourDate")}</th>
-                  <th>{t("clients.colLocation")}</th>
-                  <th>{t("clients.colStatus")}</th>
+                  <th>{t("clients.colDate")}</th>
+                  <th>{t("clients.colTourType")}</th>
                   <th style={{ textAlign: "center" }}>{t("clients.colActions")}</th>
                 </tr>
               </thead>
@@ -153,11 +151,8 @@ export function ClientsPage() {
                         <span className="client-code">{c.prospectCode}</span>
                       </div>
                     </td>
-                    <td>{c.tourDate ? longDate(c.tourDate, lang) : c.createdYmd ? longDate(c.createdYmd, lang) : "—"}</td>
-                    <td>{[c.city, c.country].filter(Boolean).join(" / ") || "—"}</td>
-                    <td>
-                      <span className={`client-status-badge ${statusClass(c.status)}`}>{statusLabel(c.status, lang)}</span>
-                    </td>
+                    <td>{c.tourDate ? shortDate(c.tourDate, lang) : c.createdYmd ? shortDate(c.createdYmd, lang) : "—"}</td>
+                    <td>{c.tipo_tour ? `${c.tipo_tour} - ${c.tour_cuantificable !== false ? "1" : "0"}` : "—"}</td>
                     <td>
                       <div className="client-actions" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
                         <Link to={`/clients/${c.id}`} className="icon-btn client-action-view" title={t("clients.viewFile")}><Eye size={14} /></Link>

@@ -20,6 +20,15 @@ export function longDate(s: string, lang: "es" | "en" = "es"): string {
   return `${d.getDate()} de ${months[d.getMonth()]} de ${d.getFullYear()}`;
 }
 
+export function shortDate(s: string, lang: "es" | "en" = "es"): string {
+  const d = parseYMD(s);
+  if (!d) return s || "—";
+  const short = lang === "en"
+    ? ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+    : ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+  return `${d.getDate()} ${short[d.getMonth()]} ${d.getFullYear()}`;
+}
+
 export function calKey(year: number, month: number): string {
   return `${year}-${String(month + 1).padStart(2, "0")}`;
 }
