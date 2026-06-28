@@ -10,9 +10,9 @@ import {
 
 export function useClientActions() {
   const navigate = useNavigate();
-  const db = useDbStore((s) => s.db);
+  const clients = useDbStore((s) => s.db.clients);
 
-  const searchClients = useCallback((query) => filterAndSortClients(db.clients, query), [db.clients]);
+  const searchClients = useCallback((query) => filterAndSortClients(clients, query), [clients]);
 
   const createProspect = useCallback((name, tipoTour, tourCuantificable) => {
     const result = createProspectFromName(name, tipoTour, tourCuantificable);
