@@ -28,6 +28,7 @@ export function GoalsPage() {
   const goalTours = useDbStore((s) => s.db.goals[monthKey]?.tours ?? 0);
   const goalVentas = useDbStore((s) => s.db.goals[monthKey]?.ventas ?? 0);
   const clients = useDbStore((s) => s.db.clients);
+  const tourTypes = useDbStore((s) => s.db.settings?.tourTypes ?? ["Q", "NQ", "CT", "Member"]);
   const goal = useMemo(
     () => normalizeGoal({ vol: goalVol, tours: goalTours, ventas: goalVentas }),
     [goalVol, goalTours, goalVentas],
@@ -36,6 +37,20 @@ export function GoalsPage() {
     () => getDashboardWeeks(calYear, calMonth, data, goal, clients),
     [calYear, calMonth, data, goal, clients],
   );
+
+  const tourSummary = useMemo(() => {
+    const map: Record<string, { yes: number; no: number }> = {};
+    tourTypes.forEach((type) => {
+      map[type] = { yes: 0, no: 0 };
+    });
+    Object.values(clients).forEach((c) => {
+      if (!c.tipo_tour) return;
+      if (!map[c.tipo_tour]) map[c.tipo_tour] = { yes: 0, no: 0 };
+      if (c.tour_cuantificable !== false) map[c.tipo_tour].yes++;
+      else map[c.tipo_tour].no++;
+    });
+    return map;
+  }, [clients, tourTypes]);
 
   const totals = weeks.reduce((a, w) => ({
     obj: a.obj + (w.obj || 0), real: a.real + (w.real || 0),
@@ -48,17 +63,6 @@ export function GoalsPage() {
   const vprom = totals.sales > 0 ? totals.real / totals.sales : 0;
   const efic = totals.tours > 0 ? totals.real / totals.tours : 0;
   const cierre = totals.tours > 0 ? (totals.sales / totals.tours) * 100 : 0;
-
-  const tourSummary = useMemo(() => {
-    const map: Record<string, { yes: number; no: number }> = {};
-    Object.values(clients).forEach((c) => {
-      if (!c.tipo_tour) return;
-      if (!map[c.tipo_tour]) map[c.tipo_tour] = { yes: 0, no: 0 };
-      if (c.tour_cuantificable !== false) map[c.tipo_tour].yes++;
-      else map[c.tipo_tour].no++;
-    });
-    return map;
-  }, [clients]);
 
   const volumeRows = [
     [t("goals.volumeProduced"), fmt(totals.real), "green"],
@@ -133,7 +137,7 @@ export function GoalsPage() {
     </div>
   );
 
-  const tourTypeEntries = Object.entries(tourSummary);
+  const tourTypeEntries = tourTypes.map((type) => [type, tourSummary[type] ?? { yes: 0, no: 0 }] as [string, { yes: number; no: number }] );
   const tourTypeBlock = tourTypeEntries.length > 0 ? (
     <div className="dash-table-card">
       <div className="dash-card-title"><List size={18} color="#2563eb" /> {t("goals.tourTypeSummary")}</div>

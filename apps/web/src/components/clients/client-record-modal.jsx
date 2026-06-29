@@ -23,7 +23,8 @@ const SALE_STATUS_OPTIONS = [
 const DEFAULT_TOUR_TYPES = ["Q", "NQ", "CT", "Member"];
 
 function isProspectFormValid(form) {
-  return Boolean(String(form?.name1 || form?.name || "").trim());
+  return Boolean(String(form?.name1 || form?.name || "").trim())
+    && Boolean(String(form?.tipo_tour || "").trim());
 }
 
 function getModalCopy(mode, t, clientName) {
