@@ -9,6 +9,7 @@ import { longDate } from "@/lib/format/dates";
 import { statusLabel } from "@/lib/format/status";
 import { collectAllSales, filterSales } from "@/lib/sales/collect";
 import { useDbStore } from "@/stores/db-store";
+import { shallow } from "zustand/shallow";
 
 const STATUS_OPTIONS = [
   { value: "", key: "salesHistory.filters.allStatuses" },
@@ -35,7 +36,7 @@ function saleMeta(sale, t) {
 export function SalesHistoryPage() {
   const { t, lang } = useI18n();
   const { fmt, fmtN } = useMoney();
-  const db = useDbStore((s) => s.db);
+  const db = useDbStore((s) => s.db, shallow);
   const [searchParams] = useSearchParams();
   const [viewSaleId, setViewSaleId] = useState(null);
   const { canAccessSalesHistory, canViewSaleModal, canViewSaleDetail } = useUserFeatures();

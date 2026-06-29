@@ -11,6 +11,7 @@ import { calKey } from "@/lib/format/dates";
 import { EMPTY_CAL_MONTH } from "@/lib/store-empty.js";
 import { useAppStore } from "@/stores/app-store";
 import { useDbStore } from "@/stores/db-store";
+import { shallow } from "zustand/shallow";
 
 export function GoalsPage() {
   const { t, months } = useI18n();
@@ -23,12 +24,12 @@ export function GoalsPage() {
   const [showTarget, setShowTarget] = useState(true);
   const [showReal, setShowReal] = useState(true);
   const monthKey = calKey(calYear, calMonth);
-  const data = useDbStore((s) => s.db.cal[monthKey] ?? EMPTY_CAL_MONTH);
-  const goalVol = useDbStore((s) => s.db.goals[monthKey]?.vol ?? 0);
-  const goalTours = useDbStore((s) => s.db.goals[monthKey]?.tours ?? 0);
-  const goalVentas = useDbStore((s) => s.db.goals[monthKey]?.ventas ?? 0);
-  const clients = useDbStore((s) => s.db.clients);
-  const tourTypes = useDbStore((s) => s.db.settings?.tourTypes ?? ["Q", "NQ", "CT", "Member"]);
+  const data = useDbStore((s) => s.db.cal[monthKey] ?? EMPTY_CAL_MONTH, shallow);
+  const goalVol = useDbStore((s) => s.db.goals[monthKey]?.vol ?? 0, shallow);
+  const goalTours = useDbStore((s) => s.db.goals[monthKey]?.tours ?? 0, shallow);
+  const goalVentas = useDbStore((s) => s.db.goals[monthKey]?.ventas ?? 0, shallow);
+  const clients = useDbStore((s) => s.db.clients, shallow);
+  const tourTypes = useDbStore((s) => s.db.settings?.tourTypes ?? ["Q", "NQ", "CT", "Member"], shallow);
   const goal = useMemo(
     () => normalizeGoal({ vol: goalVol, tours: goalTours, ventas: goalVentas }),
     [goalVol, goalTours, goalVentas],

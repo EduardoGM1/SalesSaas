@@ -250,7 +250,7 @@ export const useDbStore = create<DbState>((set, get) => ({
     const c = get().db.clients[id];
     if (!c) return undefined;
     if (c.id && c.prospectId && c.prospectCode) return c;
-    return ensureProspectIdentity({ ...c });
+    return ensureProspectIdentity(c);
   },
 
   saveClient: (client) => {

@@ -5,6 +5,7 @@ import { selectOnFocus } from "@/lib/focus-select.js";
 import { isSaleFormValid } from "@/lib/sales/form-valid";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { useDbStore } from "@/stores/db-store";
+import { shallow } from "zustand/shallow";
 
 const STATUS_OPTIONS = [
   { value: "", key: "status.empty" },
@@ -53,7 +54,7 @@ function getModalCopy(mode, t, clientName) {
 }
 
 function ProspectFields({ form, onChange, t, showStatusFields }) {
-  const tourTypes = useDbStore((s) => s.db.settings?.tourTypes) ?? DEFAULT_TOUR_TYPES;
+  const tourTypes = useDbStore((s) => s.db.settings?.tourTypes ?? DEFAULT_TOUR_TYPES, shallow);
   return (
     <div className="prospect-grid">
       <div className="prospect-field">

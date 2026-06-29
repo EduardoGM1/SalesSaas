@@ -13,6 +13,7 @@ import { calKey } from "@/lib/format/dates";
 import { EMPTY_CAL_MONTH } from "@/lib/store-empty.js";
 import { useAppStore } from "@/stores/app-store";
 import { useDbStore } from "@/stores/db-store";
+import { shallow } from "zustand/shallow";
 import { EntryDialog } from "./entry-dialog";
 import { SaleDetailModal } from "@/components/sales/sale-detail-modal.jsx";
 import { useUserFeatures } from "@/hooks/use-user-features.js";
@@ -31,8 +32,8 @@ export function CalendarPage() {
   const calPrev = useAppStore((s) => s.calPrev);
   const calNext = useAppStore((s) => s.calNext);
   const deleteCalEntry = useDbStore((s) => s.deleteCalEntry);
-  const db = useDbStore((s) => s.db);
-  const data = useDbStore((s) => s.db.cal[calKey(calYear, calMonth)] ?? EMPTY_CAL_MONTH);
+  const db = useDbStore((s) => s.db, shallow);
+  const data = useDbStore((s) => s.db.cal[calKey(calYear, calMonth)] ?? EMPTY_CAL_MONTH, shallow);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({ venta: true });
   const [viewSaleId, setViewSaleId] = useState<string | null>(null);

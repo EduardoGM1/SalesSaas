@@ -11,6 +11,7 @@ import { useI18n } from "@/hooks/use-i18n.js";
 import { useMoney } from "@/hooks/use-money.js";
 import { useToolSession } from "@/hooks/use-tool-session.js";
 import { useDbStore } from "@/stores/db-store";
+import { shallow } from "zustand/shallow";
 
 const EMPTY_FIELDS = { vv: "", vc: "", va: "", vi: "" };
 
@@ -23,7 +24,7 @@ export function VacacionesPage({ clientId, shared }: VacacionesPageProps) {
   const { t } = useI18n();
   const { ready, readOnly, backHref, getBucket, saveBucket, isFileMode, isShared } = useToolSession({ clientId, shared });
   const { fmt, fmtN } = useMoney();
-  const moneySettings = useDbStore((s) => s.db.settings);
+  const moneySettings = useDbStore((s) => s.db.settings, shallow);
   const [fields, setFields] = useState({ ...EMPTY_FIELDS });
   const [saved, setSaved] = useState(false);
   const [saveToolOpen, setSaveToolOpen] = useState(false);

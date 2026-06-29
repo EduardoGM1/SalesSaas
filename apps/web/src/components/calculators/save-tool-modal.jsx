@@ -10,6 +10,7 @@ import { parseMoney } from "@/lib/format/money";
 import { createEmptyClient, useDbStore } from "@/stores/db-store";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { selectOnFocus } from "@/lib/focus-select.js";
+import { shallow } from "zustand/shallow";
 
 type Tool = "survey" | "vacaciones" | "worksheet";
 
@@ -43,7 +44,7 @@ interface SaveToolModalProps {
 export function SaveToolModal({ open, onOpenChange, tool }: SaveToolModalProps) {
   const navigate = useNavigate();
   const { t } = useI18n();
-  const db = useDbStore((s) => s.db);
+  const db = useDbStore((s) => s.db, shallow);
   const getToolBucket = useDbStore((s) => s.getToolBucket);
   const saveClient = useDbStore((s) => s.saveClient);
   const saveToolBucket = useDbStore((s) => s.saveToolBucket);

@@ -12,6 +12,7 @@ import { selectOnFocus } from "@/lib/focus-select.js";
 import { EMPTY_CAL_MONTH } from "@/lib/store-empty.js";
 import { useAppStore } from "@/stores/app-store";
 import { useDbStore } from "@/stores/db-store";
+import { shallow } from "zustand/shallow";
 
 export function MetasPage() {
   const { t, months } = useI18n();
@@ -29,9 +30,9 @@ export function MetasPage() {
   const [ventas, setVentas] = useState("");
   const [saved, setSaved] = useState(false);
 
-  const goalVol = useDbStore((s) => s.db.goals[monthKey]?.vol ?? 0);
-  const goalTours = useDbStore((s) => s.db.goals[monthKey]?.tours ?? 0);
-  const goalVentas = useDbStore((s) => s.db.goals[monthKey]?.ventas ?? 0);
+  const goalVol = useDbStore((s) => s.db.goals[monthKey]?.vol ?? 0, shallow);
+  const goalTours = useDbStore((s) => s.db.goals[monthKey]?.tours ?? 0, shallow);
+  const goalVentas = useDbStore((s) => s.db.goals[monthKey]?.ventas ?? 0, shallow);
 
   useEffect(() => {
     setVol(goalVol ? fmtN(goalVol) : "");
@@ -39,7 +40,7 @@ export function MetasPage() {
     setVentas(goalVentas ? String(goalVentas) : "");
   }, [monthKey, goalVol, goalTours, goalVentas, fmtN]);
 
-  const data = useDbStore((s) => s.db.cal[monthKey] ?? EMPTY_CAL_MONTH);
+  const data = useDbStore((s) => s.db.cal[monthKey] ?? EMPTY_CAL_MONTH, shallow);
   const kpis = useMemo(() => computeMetasKpis(
     calYear, calMonth, data,
     Number(onlyDigits(vol)) || 0,

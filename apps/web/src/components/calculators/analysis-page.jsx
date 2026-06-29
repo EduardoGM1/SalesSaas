@@ -9,6 +9,7 @@ import { useI18n } from "@/hooks/use-i18n.js";
 import { useMoney } from "@/hooks/use-money.js";
 import { useToolSession } from "@/hooks/use-tool-session.js";
 import { useDbStore } from "@/stores/db-store";
+import { shallow } from "zustand/shallow";
 
 const ROW_KEYS = [
   "tools.survey.pattern.current",
@@ -20,7 +21,7 @@ const ROW_KEYS = [
 export function AnalysisPage({ clientId, shared }: { clientId?; shared? }) {
   const { t } = useI18n();
   const { fmt, fmtD } = useMoney();
-  const moneySettings = useDbStore((s) => s.db.settings);
+  const moneySettings = useDbStore((s) => s.db.settings, shallow);
   const session = useToolSession({ clientId, shared });
   const { ready, backHref, readOnly, isShared, getBucket, prospect } = session;
 

@@ -13,6 +13,7 @@ import { useI18n } from "@/hooks/use-i18n.js";
 import { useMoney } from "@/hooks/use-money.js";
 import { useToolSession } from "@/hooks/use-tool-session.js";
 import { useDbStore } from "@/stores/db-store";
+import { shallow } from "zustand/shallow";
 
 const HIST = ["sh1", "sh2", "sh3"];
 const FUT = ["sf1", "sf2", "sf3"];
@@ -39,7 +40,7 @@ export function SurveyPage({ clientId, shared }: SurveyPageProps) {
   const { ready, readOnly, backHref, getBucket, saveBucket, syncProspectFields, isFileMode, isShared, prospect } = session;
   const saveClient = useDbStore((s) => s.saveClient);
   const getClient = useDbStore((s) => s.getClient);
-  const moneySettings = useDbStore((s) => s.db.settings);
+  const moneySettings = useDbStore((s) => s.db.settings, shallow);
   const { fmt, fmtD } = useMoney();
 
   const [data, setData] = useState<Record<string, string>>({ ...EMPTY_DATA });

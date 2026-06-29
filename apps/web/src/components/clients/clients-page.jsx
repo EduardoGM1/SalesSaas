@@ -14,13 +14,14 @@ import { selectOnFocus } from "@/lib/focus-select.js";
 import { useDbStore } from "@/stores/db-store";
 import { useAppStore } from "@/stores/app-store";
 import { useClientActions } from "@/hooks/use-client-actions.js";
+import { shallow } from "zustand/shallow";
 
 export function ClientsPage() {
   const { t, lang } = useI18n();
   const navigate = useNavigate();
   const hydrated = useAppStore((s) => s.hydrated);
   const { searchClients, createProspect, removeClient } = useClientActions();
-  const db = useDbStore((s) => s.db);
+  const db = useDbStore((s) => s.db, shallow);
   const [open, setOpen] = useState(false);
   const [name, setname] = useState("");
   const [tourCuantificable, setTourCuantificable] = useState(true);

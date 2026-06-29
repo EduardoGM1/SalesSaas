@@ -9,6 +9,7 @@ import { useI18n } from "@/hooks/use-i18n.js";
 import { useMoney } from "@/hooks/use-money.js";
 import { useDbStore } from "@/stores/db-store";
 import { findSaleById } from "@/lib/sales/collect";
+import { shallow } from "zustand/shallow";
 
 const SURVEY_ROW_KEYS = [
   "tools.survey.pattern.current",
@@ -40,7 +41,7 @@ function ToolSection({ title, children, empty }) {
 export function SaleDetailModal({ open, onOpenChange, saleId, showTools = true }) {
   const { t, lang } = useI18n();
   const { fmt, fmtD, fmtN } = useMoney();
-  const db = useDbStore((s) => s.db);
+  const db = useDbStore((s) => s.db, shallow);
   const sale = useMemo(() => (saleId ? findSaleById(db, saleId) : undefined), [db, saleId]);
 
   const snapshot = sale?.snapshot;

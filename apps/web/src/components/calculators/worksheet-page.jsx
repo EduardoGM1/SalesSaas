@@ -15,6 +15,7 @@ import { useI18n } from "@/hooks/use-i18n.js";
 import { useMoney } from "@/hooks/use-money.js";
 import { useToolSession } from "@/hooks/use-tool-session.js";
 import { useDbStore } from "@/stores/db-store";
+import { shallow } from "zustand/shallow";
 
 const EMPTY_FIELDS = { wv: "", we: "", wcc: "", wob: "" };
 
@@ -27,8 +28,8 @@ export function WorksheetPage({ clientId, shared }: WorksheetPageProps) {
   const { t } = useI18n();
   const { ready, readOnly, backHref, getBucket, saveBucket, isFileMode, isShared } = useToolSession({ clientId, shared });
   const { fmt } = useMoney();
-  const moneySettings = useDbStore((s) => s.db.settings);
-  const db = useDbStore((s) => s.db);
+  const moneySettings = useDbStore((s) => s.db.settings, shallow);
+  const db = useDbStore((s) => s.db, shallow);
   const [fields, setFields] = useState({ ...EMPTY_FIELDS });
   const [configOpen, setConfigOpen] = useState(false);
   const [config, setConfig] = useState<Record<string, string>>({ ...WS_DEFAULTS });
