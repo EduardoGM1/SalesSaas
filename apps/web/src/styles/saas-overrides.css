@@ -2293,13 +2293,37 @@ body,
     padding: 4px 12px 2px;
   }
 
-  .topbar-desktop-actions {
-    display: none !important;
+  .topbar-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    width: 100%;
   }
 
   .topbar .tb-left,
   .topbar .tb-right {
-    width: 100%;
+    width: auto;
+  }
+
+  .topbar .tb-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    flex: 1;
+  }
+
+  .topbar .tb-right {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
+  .topbar-desktop-actions {
+    display: none !important;
   }
 
   .mobile-menu-btn--admin {
