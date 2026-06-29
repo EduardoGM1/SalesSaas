@@ -2293,6 +2293,10 @@ body,
     padding: 4px 12px 2px;
   }
 
+  /* Compact mobile header: show logo in the top mobile row and hide duplicate in tb-right */
+  .topbar-mobile-brand .topbar-brand { display: flex; align-items: center; }
+  .topbar-mobile-brand .topbar-brand img { height: 26px; width: auto; }
+
   .topbar-desktop-actions {
     display: none !important;
   }
@@ -2310,6 +2314,13 @@ body,
     display: flex;
     flex-shrink: 0;
   }
+
+  /* Hide the desktop-positioned logo on mobile to avoid duplicate visuals */
+  .topbar .tb-right .topbar-brand { display: none !important; }
+
+  /* Slightly more compact spacing for mobile topbar rows */
+  .topbar { padding-bottom: 6px; }
+  .topbar .tb-left { align-items: center; }
 
   .mobile-top-avatar-inner {
     width: 34px;
