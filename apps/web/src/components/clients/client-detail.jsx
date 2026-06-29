@@ -18,6 +18,7 @@ import { useMoney } from "@/hooks/use-money.js";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { useDbStore } from "@/stores/db-store";
 import { useAppStore } from "@/stores/app-store";
+import { shallow } from "zustand/shallow";
 import { ClientRecord } from "@/lib/storage/types";
 import { SaleRecord } from "@/lib/storage/types";
 import { useClientActions } from "@/hooks/use-client-actions.js";
@@ -42,7 +43,7 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
   const navigate = useNavigate();
   const hydrated = useAppStore((s) => s.hydrated);
   const setToolMode = useAppStore((s) => s.setToolMode);
-  const getClient = useDbStore((s) => s.getClient);
+  const localC = useDbStore((s) => s.db.clients[id], shallow);
   const completeClientExpedient = useDbStore((s) => s.completeClientExpedient);
   const { updateClient, removeClient } = useClientActions();
   const { saveSale: persistSale } = useSaleActions();
@@ -60,7 +61,6 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
   const [sharePerm, setSharePerm] = useState("owner");
   const [remoteLoading, setRemoteLoading] = useState(sharedRemote);
 
-  const localC = getClient(id);
   const c = sharedRemote ? remoteClient : localC;
   const perm = sharedRemote ? sharePerm : "owner";
   const canEdit = canEditShared(perm);

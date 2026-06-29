@@ -1,6 +1,7 @@
 import { useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useDbStore } from "@/stores/db-store";
+import { shallow } from "zustand/shallow";
 import {
   createProspectFromName,
   deleteClientWithConfirm,
@@ -10,7 +11,7 @@ import {
 
 export function useClientActions() {
   const navigate = useNavigate();
-  const clients = useDbStore((s) => s.db.clients);
+  const clients = useDbStore((s) => s.db.clients, shallow);
 
   const searchClients = useCallback((query) => filterAndSortClients(clients, query), [clients]);
 

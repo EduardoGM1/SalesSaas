@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { useDbStore } from "@/stores/db-store";
+import { shallow } from "zustand/shallow";
 import { fmt, fmtD, fmtN, fmtN2 } from "@/lib/format/money";
 
 function buildMoneySettings(settings) {
@@ -16,7 +17,7 @@ function buildMoneySettings(settings) {
 }
 
 export function useMoney() {
-  const settings = useDbStore((s) => s.db.settings);
+  const settings = useDbStore((s) => s.db.settings, shallow);
   const cfg = useMemo(() => buildMoneySettings(settings), [
     settings?.currency,
     settings?.exchangeRate,

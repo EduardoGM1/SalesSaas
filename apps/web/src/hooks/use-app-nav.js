@@ -6,6 +6,7 @@ import { hasUserFeature } from "@/lib/auth/user-features";
 import { watchSession } from "@/lib/session-api.js";
 import { messagesApi } from "@/lib/network-api.js";
 import { useDbStore } from "@/stores/db-store";
+import { shallow } from "zustand/shallow";
 import {
   getMobileBottomNavItems,
   getMobileHeaderNavItems,
@@ -14,7 +15,7 @@ import {
 
 export function useAppNav() {
   const mounted = useMounted();
-  const settings = useDbStore((s) => s.db.settings);
+  const settings = useDbStore((s) => s.db.settings, shallow);
   const cloudEnabled = mounted && isSupabaseConfigured();
   const [isAdmin, setIsAdmin] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState(null);

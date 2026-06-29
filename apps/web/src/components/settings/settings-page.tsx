@@ -19,6 +19,7 @@ import { fetchExchangeRate } from "@/lib/exchange-rate-sync.js";
 import { useAppStore } from "@/stores/app-store";
 import { collectAllSales } from "@/lib/sales/collect";
 import { useDbStore } from "@/stores/db-store";
+import { shallow } from "zustand/shallow";
 import { useSyncStore } from "@/stores/sync-store";
 import { toast } from "@/lib/toast";
 import { confirmDialog } from "@/lib/confirm";
@@ -40,7 +41,7 @@ export function SettingsPage() {
   const { t: ti } = useI18n();
   const navigate = useNavigate();
   const hydrated = useAppStore((s) => s.hydrated);
-  const db = useDbStore((s) => s.db);
+  const db = useDbStore((s) => s.db, shallow);
   const replaceDb = useDbStore((s) => s.replaceDb);
   const fileRef = useRef<HTMLInputElement>(null);
   const [email, setEmail] = useState<string | null>(null);
