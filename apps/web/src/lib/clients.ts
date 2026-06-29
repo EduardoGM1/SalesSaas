@@ -9,7 +9,7 @@ export function ensureProspectIdentity(c: ClientRecord): ClientRecord {
 }
 
 export function clientDisplayName(c: ClientRecord | undefined): string {
-  return c?.name || [c?.name1, c?.name2].filter(Boolean).join(" / ") || "Prospecto";
+  return c?.name1 || c?.name || "Prospecto";
 }
 
 export function activeClients(clients: Record<string, ClientRecord>): ClientRecord[] {

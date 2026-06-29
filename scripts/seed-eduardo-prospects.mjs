@@ -82,7 +82,7 @@ const PROSPECTS = [
     occupation1: "Empresario", occupation2: "Diseñadora de interiores",
     city: "Guadalajara", country: "México",
     phone: "+52 33 555 1002", email: "c.ruiz@email.test",
-    contract: "EDU-2026-0002", status: "procesable",
+    contract: "EDU-2026-0002", status: "venta",
     tour_date: "2026-02-14", process_date: null, process_amount: 0,
     note: "Pendiente comprobante de ingresos y referencias bancarias.",
     completed: false, quick_expedient: false,
@@ -91,7 +91,7 @@ const PROSPECTS = [
       vacaciones: vacacionesData({ vc: "5200", va: "20" }),
       worksheet: worksheetData({ wv: "32000", we: "25", wcc: "595" }),
     },
-    sales: [{ sale_date: "2026-02-14", vol: 22000, tours: 1, contract: "EDU-2026-0002", status: "procesable", note: "En revisión legal" }],
+    sales: [{ sale_date: "2026-02-14", vol: 22000, tours: 1, contract: "EDU-2026-0002", status: "venta", note: "En revisión legal" }],
   },
   {
     code: "EDU-003",
@@ -138,7 +138,7 @@ const PROSPECTS = [
     occupation1: "Software engineer", occupation2: "Marketing director",
     city: "Austin", country: "Estados Unidos",
     phone: "+1 512 555 1005", email: "mthompson@email.test",
-    contract: null, status: "no-procesable",
+    contract: null, status: "pendiente",
     tour_date: "2026-04-02", process_date: null, process_amount: 0,
     note: "Crédito no aprobado. Recontactar en 6 meses.",
     completed: false, quick_expedient: false,
@@ -146,7 +146,7 @@ const PROSPECTS = [
       survey: surveyData({ svp_name1: "Michael Thompson", svp_country: "Estados Unidos", stype: "airbnb", total: "11000" }),
       worksheet: worksheetData({ wv: "28000", we: "30", wob: "2500" }),
     },
-    sales: [{ sale_date: "2026-04-02", vol: 12000, tours: 1, contract: "EDU-2026-0005", status: "no-procesable", note: "No califica" }],
+    sales: [{ sale_date: "2026-04-02", vol: 12000, tours: 1, contract: "EDU-2026-0005", status: "pendiente", note: "No califica" }],
   },
   {
     code: "EDU-006",
@@ -226,7 +226,7 @@ const PROSPECTS = [
     occupation1: "Contador público", occupation2: "Profesora universitaria",
     city: "León", country: "México",
     phone: "+52 477 555 1010", email: "j.delgado@email.test",
-    contract: "EDU-2026-0010", status: "procesable",
+    contract: "EDU-2026-0010", status: "venta",
     tour_date: "2026-06-01", process_date: null, process_amount: 0,
     note: "Documentación casi completa. Falta acta matrimonio apostillada.",
     completed: false, quick_expedient: false,
@@ -235,7 +235,7 @@ const PROSPECTS = [
       vacaciones: vacacionesData({ vc: "4100", va: "16", vi: "8" }),
       worksheet: worksheetData({ wv: "26500", we: "26", wcc: "480", wob: "800" }),
     },
-    sales: [{ sale_date: "2026-06-01", vol: 26500, tours: 1, contract: "EDU-2026-0010", status: "procesable", note: "Pendiente acta" }],
+    sales: [{ sale_date: "2026-06-01", vol: 26500, tours: 1, contract: "EDU-2026-0010", status: "venta", note: "Pendiente acta" }],
   },
 ];
 

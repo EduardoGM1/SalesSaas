@@ -28,7 +28,8 @@ const STATUS_OPTIONS = [
 ];
 
 const emptyFields = () => ({
-  name1: "", occ1: "", name2: "", occ2: "", city: "", country: "",
+  name1: "", occ1: "", city: "", country: "",
+  tipoTour: "", tourCuantificable: true,
   contract: "", tourDate: "", status: "",
   processDate: "", processAmount: "", note: "",
 });
@@ -46,6 +47,7 @@ export function SaveToolModal({ open, onOpenChange, tool }: SaveToolModalProps) 
   const getToolBucket = useDbStore((s) => s.getToolBucket);
   const saveClient = useDbStore((s) => s.saveClient);
   const saveToolBucket = useDbStore((s) => s.saveToolBucket);
+  const tourTypes = db.settings?.tourTypes ?? ["Q", "NQ", "CT", "Member"];
 
   const [targetMode, setTargetMode] = useState<"new" | "existing">("new");
   const [existingId, setExistingId] = useState("");
@@ -69,12 +71,11 @@ export function SaveToolModal({ open, onOpenChange, tool }: SaveToolModalProps) 
     }
 
     if (!f.name1.trim()) return toast.error(translate("tools.saveModal.errorName"));
-    const c = createEmptyClient(f.name1.trim(), f.tourDate || ymdToday());
-    c.name = [f.name1, f.name2].filter(Boolean).join(" / ") || f.name1;
+    if (!f.tipoTour) return toast.error(translate("clients.missingTourType"));
+    const c = createEmptyClient(f.name1.trim(), f.tourDate || ymdToday(), f.tipoTour, f.tourCuantificable);
+    c.name = f.name1.trim();
     c.name1 = f.name1;
-    c.name2 = f.name2;
     c.occupation1 = f.occ1;
-    c.occupation2 = f.occ2;
     c.city = f.city;
     c.country = f.country;
     c.contract = f.contract;
@@ -113,10 +114,22 @@ export function SaveToolModal({ open, onOpenChange, tool }: SaveToolModalProps) 
         <div className="prospect-grid">
           <div className="prospect-field"><label>{t("exp.edit.name")}</label><input type="text" placeholder={t("tools.survey.namePlaceholder")} value={f.name1} onFocus={selectOnFocus} onChange={(e) => set("name1", e.target.value)} /></div>
           <div className="prospect-field"><label>{t("exp.edit.occ1")}</label><input type="text" placeholder={t("tools.survey.occPlaceholder")} value={f.occ1} onFocus={selectOnFocus} onChange={(e) => set("occ1", e.target.value)} /></div>
-          <div className="prospect-field"><label>{t("exp.edit.companion")}</label><input type="text" placeholder={t("tools.survey.companionPlaceholder")} value={f.name2} onFocus={selectOnFocus} onChange={(e) => set("name2", e.target.value)} /></div>
-          <div className="prospect-field"><label>{t("exp.edit.occ2")}</label><input type="text" placeholder={t("tools.survey.occ2Placeholder")} value={f.occ2} onFocus={selectOnFocus} onChange={(e) => set("occ2", e.target.value)} /></div>
           <div className="prospect-field"><label>{t("exp.edit.city")}</label><input type="text" placeholder={t("tools.survey.city")} value={f.city} onFocus={selectOnFocus} onChange={(e) => set("city", e.target.value)} /></div>
           <div className="prospect-field"><label>{t("exp.edit.country")}</label><input type="text" placeholder={t("tools.survey.country")} value={f.country} onFocus={selectOnFocus} onChange={(e) => set("country", e.target.value)} /></div>
+          <div className="prospect-field"><label>{t("clients.tourType")}</label>
+            <select value={f.tipoTour} onChange={(e) => set("tipoTour", e.target.value)}>
+              <option value="">{t("clients.tourTypePlaceholder")}</option>
+              {tourTypes.map((type) => (
+                <option key={type} value={type}>{type}</option>
+              ))}
+            </select>
+          </div>
+          <div className="prospect-field"><label>{t("clients.isTourQuantifiable")}</label>
+            <div className="seg newclient-seg" role="group" aria-label={t("clients.isTourQuantifiable")}>
+              <button type="button" className={`seg-btn${f.tourCuantificable ? " on" : ""}`} onClick={() => set("tourCuantificable", true)}>{t("clients.yes")}</button>
+              <button type="button" className={`seg-btn${!f.tourCuantificable ? " on" : ""}`} onClick={() => set("tourCuantificable", false)}>{t("clients.no")}</button>
+            </div>
+          </div>
           <div className="prospect-field"><label>{t("exp.edit.contract")}</label><input type="text" placeholder={t("exp.sale.contractPlaceholder")} value={f.contract} onFocus={selectOnFocus} onChange={(e) => set("contract", e.target.value)} /></div>
           <div className="prospect-field"><label>{t("exp.edit.tourDate")}</label><input type="date" value={f.tourDate} onFocus={selectOnFocus} onChange={(e) => set("tourDate", e.target.value)} /></div>
           <div className="prospect-field"><label>{t("exp.edit.status")}</label>

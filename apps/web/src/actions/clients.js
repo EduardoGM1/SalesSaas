@@ -21,7 +21,7 @@ export function filterAndSortClients(clients, query) {
         const dt = date ? new Date(`${date}T00:00:00`) : null;
         const monthName = dt && !Number.isNaN(dt.getTime()) ? getMonths(lang)[dt.getMonth()] : "";
         const text = [
-          clientDisplayName(c), c.name, c.name1, c.name2, c.occupation1, c.occupation2,
+          clientDisplayName(c), c.name, c.name1, c.occupation1,
           c.contract, c.prospectCode, c.city, c.country, c.status, statusLabel(c.status, lang),
           c.tipo_tour, String(c.tour_cuantificable ?? ""),
           date, date ? longDate(date, lang) : "", monthName, dt ? String(dt.getMonth() + 1) : "", dt ? String(dt.getFullYear()) : "",
@@ -54,7 +54,9 @@ export function saveClientEdit(client, form) {
   const updated = ensureProspectIdentity({
     ...client,
     ...form,
-    name: [form.name1, form.name2].filter(Boolean).join(" / ") || form.name1 || client.name,
+    name: form.name1 || form.name || client.name,
+    name2: "",
+    occupation2: "",
   });
   useDbStore.getState().saveClient(updated);
   return updated;

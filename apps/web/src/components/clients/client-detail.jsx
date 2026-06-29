@@ -329,7 +329,7 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
               </div>
               <div className="ps-grid-row ps-grid-row--pair">
                 {psCell("👤", t("exp.prospect.name"), psValue(c.name1 || c.name, true))}
-                {psCell("👥", t("exp.prospect.companion"), psValue(c.name2))}
+                {psCell("🏷", t("exp.prospect.tourType"), psValue(c.tipo_tour, true))}
               </div>
               <div className="ps-grid-row ps-grid-row--full">
                 {psCell("📍", t("exp.prospect.location"), psValue(cityCountry))}
@@ -338,8 +338,7 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
                 {psCell("▣", t("exp.prospect.contract"), psValue(c.contract))}
                 {psCell("◉", t("exp.prospect.status"), <span className="ps-pill">{statusLabel(c.status || "", lang)}</span>)}
               </div>
-              <div className="ps-grid-row ps-grid-row--pair">
-                {psCell("🏷", t("exp.prospect.tourType"), psValue(c.tipo_tour, true))}
+              <div className="ps-grid-row ps-grid-row--full">
                 {psCell("📊", t("exp.prospect.quantifiable"), psValue(c.tour_cuantificable !== false ? t("clients.yes") : t("clients.no"), true))}
               </div>
             </div>

@@ -27,7 +27,7 @@ import { PwaInstallSettings } from "@/components/settings/pwa-install-settings.j
 
 const LIVE_PREVIEW_KEYS = new Set(["language", "currency", "exchangeRate", "exchangeMode"]);
 
-type SettingsSection = "user" | "worksheet" | "money" | "language" | "apis" | "backup" | "account" | "notifications" | "pwa" | null;
+type SettingsSection = "user" | "worksheet" | "tourTypes" | "money" | "language" | "apis" | "backup" | "account" | "notifications" | "pwa" | null;
 
 const CURRENCY_LABEL: Record<string, string> = {
   USD: "USD - US Dollar",
@@ -234,12 +234,6 @@ export function SettingsPage() {
                       <div><div className="settings-label">{ti("settings.user.avatarUrl")}</div><div className="settings-help">{ti("settings.user.avatarUrlHelp")}</div></div>
                       <input type="url" value={avatarUrl} onFocus={selectOnFocus} onChange={(e) => setAvatarUrl(e.target.value)} placeholder="https://..." style={{ width: "100%" }} />
                     </div>
-                  )}
-                  {isSupabaseConfigured() && (
-                    <form onSubmit={saveProfile} className="settings-row">
-                      <div><div className="settings-label">Teléfono</div><div className="settings-help">Dato opcional del perfil de cuenta.</div></div>
-                      <input type="tel" value={phone} onFocus={selectOnFocus} onChange={(e) => setPhone(e.target.value)} placeholder="+52 ..." autoComplete="tel" />
-                    </form>
                   )}
                   {isSupabaseConfigured() && !canSeeTechnical && (
                     <div className="btn-row" style={{ marginTop: 8 }}>

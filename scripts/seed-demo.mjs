@@ -318,7 +318,7 @@ const VENDORS = [
         phone: "+52 33 555 0202",
         email: "c.ruiz@email.test",
         contract: "MG-2026-0188",
-        status: "procesable",
+        status: "venta",
         tour_date: "2026-02-08",
         process_date: null,
         process_amount: 0,
@@ -367,7 +367,7 @@ const VENDORS = [
     sales: [
       { prospect_code: "DEMO-MG-001", sale_date: "2026-01-15", vol: 28500, tours: 1, contract: "MG-2026-0142", status: "venta", process_date: "2026-01-20", note: "Cierre en sala" },
       { prospect_code: "DEMO-MG-001", sale_date: "2026-02-10", vol: 4200, tours: 0, contract: "MG-2026-0142-A", status: "procesado", note: "Upgrade habitación" },
-      { prospect_code: "DEMO-MG-002", sale_date: "2026-02-08", vol: 22000, tours: 1, contract: "MG-2026-0188", status: "procesable", note: "En revisión legal" },
+      { prospect_code: "DEMO-MG-002", sale_date: "2026-02-08", vol: 22000, tours: 1, contract: "MG-2026-0188", status: "venta", note: "En revisión legal" },
       { prospect_code: "DEMO-MG-003", sale_date: "2026-03-22", vol: 18500, tours: 1, contract: "MG-2026-0201", status: "bback", note: "Primera presentación" },
       { prospect_code: "DEMO-MG-001", sale_date: "2026-05-05", vol: 9800, tours: 0, contract: "MG-2026-0142-B", status: "cerrado", note: "Referido adicional" },
     ],
@@ -445,7 +445,7 @@ const VENDORS = [
         phone: "+1 512 555 2202",
         email: "mthompson@email.test",
         contract: null,
-        status: "no-procesable",
+        status: "pendiente",
         tour_date: "2026-04-10",
         process_date: null,
         process_amount: 0,
@@ -460,7 +460,7 @@ const VENDORS = [
     sales: [
       { prospect_code: "DEMO-CL-001", sale_date: "2026-02-20", vol: 35000, tours: 1, contract: "CL-2026-0099", status: "venta", process_date: "2026-02-25" },
       { prospect_code: "DEMO-CL-001", sale_date: "2026-04-02", vol: 5500, tours: 0, contract: "CL-2026-0099-A", status: "procesado", note: "Puntos extra" },
-      { prospect_code: "DEMO-CL-002", sale_date: "2026-04-10", vol: 12000, tours: 1, contract: "CL-2026-0155", status: "no-procesable", note: "No califica" },
+      { prospect_code: "DEMO-CL-002", sale_date: "2026-04-10", vol: 12000, tours: 1, contract: "CL-2026-0155", status: "pendiente", note: "No califica" },
     ],
     calendar: [
       { type: "venta", entry_date: "2026-02-20", prospect_code: "DEMO-CL-001", vol: 35000, tours: 1, sale_key: "DEMO-CL-001:2026-02-20" },

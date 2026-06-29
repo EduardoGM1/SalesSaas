@@ -795,7 +795,12 @@ textarea::placeholder{
 .validation-alert{white-space:pre-line;}
 .newclient-field{margin:14px 0 18px;}
 .newclient-field label{font-size:11px;color:var(--muted);font-weight:700;letter-spacing:.5px;text-transform:uppercase;display:block;margin-bottom:6px;}
-.newclient-field input{width:100%;}
+.newclient-field input,.newclient-field select{width:100%;}
+.newclient-seg{width:100%;justify-content:stretch;background:#eef3fb;border-color:#d6e0ef;padding:3px;gap:0;}
+.newclient-seg .seg-btn{flex:1;text-align:center;border-radius:0;padding:9px 10px;color:var(--muted);}
+.newclient-seg .seg-btn:not(:last-child){border-right:1px solid rgba(107,126,168,.28);}
+.newclient-seg .seg-btn.on{border-radius:7px;background:#fff;color:var(--blue);box-shadow:0 1px 4px rgba(15,32,68,.12);}
+.newclient-seg .seg-btn.on:not(:last-child){border-right:none;}
 .readonly-soft input[readonly]{color:var(--text2);background:var(--surface2)!important;border-color:var(--border2)!important;box-shadow:none!important;cursor:default;}
 /* React app aliases */
 .sales-page { display: block; flex: 1; animation: pageIn 0.18s ease; }

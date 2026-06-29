@@ -217,13 +217,22 @@ export function ClientsPage() {
         </div>
         <div className="newclient-field">
           <label>{t("clients.isTourQuantifiable")}</label>
-          <select
-            value={tourCuantificable ? "yes" : "no"}
-            onChange={(e) => setTourCuantificable(e.target.value === "yes")}
-          >
-            <option value="yes">{t("clients.yes")}</option>
-            <option value="no">{t("clients.no")}</option>
-          </select>
+          <div className="seg newclient-seg" role="group" aria-label={t("clients.isTourQuantifiable")}>
+            <button
+              type="button"
+              className={`seg-btn${tourCuantificable ? " on" : ""}`}
+              onClick={() => setTourCuantificable(true)}
+            >
+              {t("clients.yes")}
+            </button>
+            <button
+              type="button"
+              className={`seg-btn${!tourCuantificable ? " on" : ""}`}
+              onClick={() => setTourCuantificable(false)}
+            >
+              {t("clients.no")}
+            </button>
+          </div>
         </div>
         <div className={`newclient-field required-field${missingTipoTour ? " field-missing" : ""}`}>
           <label className="required-label">

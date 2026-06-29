@@ -5,7 +5,6 @@ import { selectOnFocus } from "@/lib/focus-select.js";
 import { isSaleFormValid } from "@/lib/sales/form-valid";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { useDbStore } from "@/stores/db-store";
-import { shallow } from "zustand/shallow";
 
 const STATUS_OPTIONS = [
   { value: "", key: "status.empty" },
@@ -53,7 +52,7 @@ function getModalCopy(mode, t, clientName) {
 }
 
 function ProspectFields({ form, onChange, t, showStatusFields }) {
-  const tourTypes = useDbStore((s) => s.db.settings?.tourTypes, shallow) ?? DEFAULT_TOUR_TYPES;
+  const tourTypes = useDbStore((s) => s.db.settings?.tourTypes) ?? DEFAULT_TOUR_TYPES;
   return (
     <div className="prospect-grid">
       <div className="prospect-field">
@@ -61,8 +60,6 @@ function ProspectFields({ form, onChange, t, showStatusFields }) {
         <input type="text" placeholder={t("tools.survey.namePlaceholder")} value={form.name1 || ""} onFocus={selectOnFocus} onChange={(e) => onChange({ ...form, name1: e.target.value })} />
       </div>
       <div className="prospect-field"><label>{t("exp.edit.occ1")}</label><input type="text" placeholder={t("tools.survey.occPlaceholder")} value={form.occupation1 || ""} onFocus={selectOnFocus} onChange={(e) => onChange({ ...form, occupation1: e.target.value })} /></div>
-      <div className="prospect-field"><label>{t("exp.edit.companion")}</label><input type="text" placeholder={t("tools.survey.companionPlaceholder")} value={form.name2 || ""} onFocus={selectOnFocus} onChange={(e) => onChange({ ...form, name2: e.target.value })} /></div>
-      <div className="prospect-field"><label>{t("exp.edit.occ2")}</label><input type="text" placeholder={t("tools.survey.occ2Placeholder")} value={form.occupation2 || ""} onFocus={selectOnFocus} onChange={(e) => onChange({ ...form, occupation2: e.target.value })} /></div>
       <CountryCitySelects
         country={form.country || ""}
         city={form.city || ""}
