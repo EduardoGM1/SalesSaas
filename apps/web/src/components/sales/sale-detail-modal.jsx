@@ -60,7 +60,7 @@ export function SaleDetailModal({ open, onOpenChange, saleId, showTools = true }
   const pending = sale.status === "pendiente" || sale.processing === "pendiente";
   const fileLabel = sale.clientName || sale.prospectCode || t("salesHistory.archivedFile");
   const summary = snapshot?.prospectSummary || {};
-  const displayName = summary.name || [summary.name1, summary.name2].filter(Boolean).join(" / ") || fileLabel;
+  const displayName = summary.name1 || summary.name || fileLabel;
 
   const surveyRows = surveyHasData(survey) ? [
     { label: t(SURVEY_ROW_KEYS[0]), vac: String(surveyResult.current.vac), night: fmtD(surveyResult.current.night), dp: fmt(surveyResult.current.dp), mi: fmt(surveyResult.current.mi) },
@@ -95,13 +95,11 @@ export function SaleDetailModal({ open, onOpenChange, saleId, showTools = true }
 
         {showTools && (
           <>
-            <ToolSection title={t("saleDetail.prospectTitle")} empty={!summary.name1 && !summary.city && !summary.phone}>
+            <ToolSection title={t("saleDetail.prospectTitle")} empty={!summary.name1 && !summary.name && !summary.city && !summary.country}>
               <div className="prospect-summary-list">
                 <DetailRow label={t("exp.prospect.name")} value={displayName} />
                 <DetailRow label={t("exp.prospect.id")} value={summary.prospectCode || sale.prospectCode} />
                 <DetailRow label={t("exp.prospect.location")} value={[summary.city, summary.country].filter(Boolean).join(" / ")} />
-                <DetailRow label={t("exp.prospect.phone")} value={summary.phone} />
-                <DetailRow label={t("exp.prospect.email")} value={summary.email} />
                 <DetailRow label={t("saleDetail.tourDate")} value={summary.tourDate ? longDate(summary.tourDate, lang) : undefined} />
               </div>
             </ToolSection>

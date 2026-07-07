@@ -45,6 +45,14 @@ export function createProspectFromName(name, tipoTour, tourCuantificable) {
     toast.error(translate("toast.client.missingName"));
     return { ok: false, reason: "missing_name" };
   }
+  if (/\s/.test(trimmed)) {
+    toast.error(translate("toast.client.singleNameOnly"));
+    return { ok: false, reason: "invalid_name" };
+  }
+  if (!tipoTour) {
+    toast.error(translate("toast.client.missingTourType"));
+    return { ok: false, reason: "missing_tour_type" };
+  }
   const client = createEmptyClient(trimmed, undefined, tipoTour, tourCuantificable);
   useDbStore.getState().saveClient(client);
   return { ok: true, client };

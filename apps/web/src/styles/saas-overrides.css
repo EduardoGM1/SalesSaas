@@ -2462,8 +2462,45 @@ body,
   }
 
   .client-survey-crow {
-    flex-direction: column;
-    gap: 6px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .client-survey-crow .client-survey-cfield {
+    min-width: 0;
+  }
+
+  .newclient-field {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 10px 0 12px;
+  }
+
+  .newclient-field label {
+    margin-bottom: 0;
+    min-width: 88px;
+    flex-shrink: 0;
+    font-size: 10px;
+  }
+
+  .newclient-field input,
+  .newclient-field select,
+  .newclient-field .newclient-seg {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .newclient-field .field-inline-error {
+    flex-basis: 100%;
+    margin-left: 98px;
+    font-size: 11px;
+    color: var(--danger);
+  }
+
+  .newclient-field.required-field {
+    flex-wrap: wrap;
   }
 
   .client-survey-cfield {

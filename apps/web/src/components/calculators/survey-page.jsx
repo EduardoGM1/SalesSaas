@@ -136,8 +136,8 @@ export function SurveyPage({ clientId, shared }: SurveyPageProps) {
     if (readOnly) return;
     const errors: Record<string, string> = {};
     const name = data.svp_name1?.trim() || "";
-    if (!name) errors.svp_name1 = "Campo requerido";
-    else if (name.includes(" ")) errors.svp_name1 = "Solo un nombre (sin espacios)";
+    if (!name) errors.svp_name1 = t("tools.survey.validationRequired");
+    else if (name.includes(" ")) errors.svp_name1 = t("tools.survey.validationSingleName");
     setValidationErrors(errors);
     if (Object.keys(errors).length) return;
     await saveBucket("survey", { ...data, stype: sType, futureType });

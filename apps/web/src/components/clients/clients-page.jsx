@@ -28,6 +28,7 @@ export function ClientsPage() {
   const [tourCuantificable, setTourCuantificable] = useState(true);
   const [tipoTour, setTipoTour] = useState("");
   const [missingName, setMissingName] = useState(false);
+  const [invalidName, setInvalidName] = useState(false);
   const [missingTipoTour, setMissingTipoTour] = useState(false);
   const [query, setQuery] = useState("");
   const [shareClient, setShareClient] = useState(null);
@@ -39,6 +40,7 @@ export function ClientsPage() {
   useEffect(() => {
     if (!open) return;
     setMissingName(false);
+    setInvalidName(false);
     setMissingTipoTour(false);
     const timer = window.setTimeout(() => nameRef.current?.focus(), 300);
     return () => window.clearTimeout(timer);
@@ -55,14 +57,22 @@ export function ClientsPage() {
       setTourCuantificable(true);
       setTipoTour("");
       setMissingName(false);
+      setInvalidName(false);
       setMissingTipoTour(false);
     }
   };
 
   const handleCreate = () => {
     let hasError = false;
-    if (!name.trim()) {
+    const trimmed = name.trim();
+    if (!trimmed) {
       setMissingName(true);
+      setInvalidName(false);
+      nameRef.current?.focus();
+      hasError = true;
+    } else if (/\s/.test(trimmed)) {
+      setInvalidName(true);
+      setMissingName(false);
       nameRef.current?.focus();
       hasError = true;
     }
@@ -75,7 +85,14 @@ export function ClientsPage() {
     if (!result.ok) {
       if (result.reason === "missing_name") {
         setMissingName(true);
+        setInvalidName(false);
         nameRef.current?.focus();
+      } else if (result.reason === "invalid_name") {
+        setInvalidName(true);
+        setMissingName(false);
+        nameRef.current?.focus();
+      } else if (result.reason === "missing_tour_type") {
+        setMissingTipoTour(true);
       }
       return;
     }
@@ -198,7 +215,7 @@ export function ClientsPage() {
         title={t("clients.modalTitle")}
         sub={t("clients.modalSub")}
       >
-        <div className={`newclient-field required-field${missingName ? " field-missing" : ""}`}>
+        <div className={`newclient-field required-field${missingName || invalidName ? " field-missing" : ""}`}>
           <label className="required-label">
             {t("clients.name")}
             <span className="req-star">*</span>
@@ -208,14 +225,16 @@ export function ClientsPage() {
             id="nc-name"
             type="text"
             value={name}
-            placeholder={t("clients.name")}
+            placeholder={t("clients.namePlaceholder")}
             onFocus={selectOnFocus}
             onChange={(e) => {
               setname(e.target.value);
               if (e.target.value.trim()) setMissingName(false);
+              if (!/\s/.test(e.target.value.trim())) setInvalidName(false);
             }}
             onKeyDown={(e) => { if (e.key === "Enter") handleCreate(); }}
           />
+          {invalidName && <div className="field-inline-error">{t("clients.singleNameOnly")}</div>}
         </div>
         <div className="newclient-field">
           <label>{t("clients.isTourQuantifiable")}</label>
