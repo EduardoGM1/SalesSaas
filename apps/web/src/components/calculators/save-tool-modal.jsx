@@ -8,6 +8,7 @@ import { activeClients, clientDisplayName } from "@/lib/clients";
 import { ymdToday } from "@/lib/format/dates";
 import { parseMoney } from "@/lib/format/money";
 import { createEmptyClient, useDbStore } from "@/stores/db-store";
+import { DEFAULT_TOUR_TYPES } from "@/lib/store-empty.js";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { selectOnFocus } from "@/lib/focus-select.js";
 import { shallow } from "zustand/shallow";
@@ -48,7 +49,7 @@ export function SaveToolModal({ open, onOpenChange, tool }: SaveToolModalProps) 
   const getToolBucket = useDbStore((s) => s.getToolBucket);
   const saveClient = useDbStore((s) => s.saveClient);
   const saveToolBucket = useDbStore((s) => s.saveToolBucket);
-  const tourTypes = db.settings?.tourTypes ?? ["Q", "NQ", "CT", "Member"];
+  const tourTypes = db.settings?.tourTypes ?? DEFAULT_TOUR_TYPES;
 
   const [targetMode, setTargetMode] = useState<"new" | "existing">("new");
   const [existingId, setExistingId] = useState("");

@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { clientDisplayName, ensureProspectIdentity } from "@/lib/clients";
 import { calKey } from "@/lib/format/dates";
 import { generateActivityId, generateClientId, generateEntryId, generateProspectCode, generateSaleId } from "@/lib/ids";
+import { EMPTY_TOOL_BUCKET } from "@/lib/store-empty.js";
 import { withSaleSnapshot } from "@/lib/sales/snapshot";
 import { loadDatabase, saveDatabase } from "@/lib/storage/local-storage-adapter";
 import {
@@ -247,10 +248,7 @@ export const useDbStore = create<DbState>((set, get) => ({
   },
 
   getClient: (id) => {
-    const c = get().db.clients[id];
-    if (!c) return undefined;
-    if (c.id && c.prospectId && c.prospectCode) return c;
-    return ensureProspectIdentity(c);
+    return get().db.clients[id];
   },
 
   saveClient: (client) => {
@@ -298,13 +296,11 @@ export const useDbStore = create<DbState>((set, get) => ({
     const db = get().db;
     if (mode === "client" && clientId) {
       const c = db.clients[clientId];
-      if (!c) return {};
-      if (!c.data) c.data = {};
-      if (!c.data[tool as keyof typeof c.data]) c.data[tool as keyof typeof c.data] = {};
-      return (c.data[tool as keyof typeof c.data] as Record<string, string | number>) || {};
+      if (!c?.data) return EMPTY_TOOL_BUCKET;
+      const bucket = c.data[tool as keyof typeof c.data];
+      return (bucket as Record<string, string | number>) || EMPTY_TOOL_BUCKET;
     }
-    if (!db.libre[tool]) db.libre[tool] = {};
-    return db.libre[tool];
+    return db.libre[tool] || EMPTY_TOOL_BUCKET;
   },
 
   saveToolBucket: (tool, mode, data, clientId) => {

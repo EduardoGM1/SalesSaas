@@ -8,7 +8,7 @@ import { getDashboardWeeks, normalizeGoal, workingDaysRemaining } from "@/lib/ca
 import { useI18n } from "@/hooks/use-i18n.js";
 import { useMoney } from "@/hooks/use-money.js";
 import { calKey } from "@/lib/format/dates";
-import { EMPTY_CAL_MONTH } from "@/lib/store-empty.js";
+import { DEFAULT_TOUR_TYPES, EMPTY_CAL_MONTH } from "@/lib/store-empty.js";
 import { useAppStore } from "@/stores/app-store";
 import { useDbStore } from "@/stores/db-store";
 import { shallow } from "zustand/shallow";
@@ -29,7 +29,7 @@ export function GoalsPage() {
   const goalTours = useDbStore((s) => s.db.goals[monthKey]?.tours ?? 0, shallow);
   const goalVentas = useDbStore((s) => s.db.goals[monthKey]?.ventas ?? 0, shallow);
   const clients = useDbStore((s) => s.db.clients, shallow);
-  const tourTypes = useDbStore((s) => s.db.settings?.tourTypes ?? ["Q", "NQ", "CT", "Member"], shallow);
+  const tourTypes = useDbStore((s) => s.db.settings?.tourTypes ?? DEFAULT_TOUR_TYPES, shallow);
   const goal = useMemo(
     () => normalizeGoal({ vol: goalVol, tours: goalTours, ventas: goalVentas }),
     [goalVol, goalTours, goalVentas],

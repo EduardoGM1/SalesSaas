@@ -14,7 +14,6 @@ export function clientDisplayName(c: ClientRecord | undefined): string {
 
 export function activeClients(clients: Record<string, ClientRecord>): ClientRecord[] {
   return Object.values(clients)
-    .map(ensureProspectIdentity)
     .filter((c) => !["cerrado", "perdido"].includes(c.status || ""))
     .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
     .slice(0, 10);

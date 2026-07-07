@@ -86,7 +86,9 @@ export function SettingsPage() {
   }, []);
 
   useEffect(() => {
-    setSettings(db.settings || {});
+    const incoming = db.settings;
+    if (!incoming) return;
+    setSettings((prev) => (prev === incoming ? prev : incoming));
   }, [db.settings]);
 
   const clientCount = Object.keys(db.clients).length;

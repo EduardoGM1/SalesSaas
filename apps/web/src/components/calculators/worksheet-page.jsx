@@ -29,7 +29,7 @@ export function WorksheetPage({ clientId, shared }: WorksheetPageProps) {
   const { ready, readOnly, backHref, getBucket, saveBucket, isFileMode, isShared } = useToolSession({ clientId, shared });
   const { fmt } = useMoney();
   const moneySettings = useDbStore((s) => s.db.settings, shallow);
-  const db = useDbStore((s) => s.db, shallow);
+  const worksheetConfig = useDbStore((s) => s.db.settings?.worksheetConfig, shallow);
   const [fields, setFields] = useState({ ...EMPTY_FIELDS });
   const [configOpen, setConfigOpen] = useState(false);
   const [config, setConfig] = useState<Record<string, string>>({ ...WS_DEFAULTS });
@@ -39,14 +39,23 @@ export function WorksheetPage({ clientId, shared }: WorksheetPageProps) {
   useEffect(() => {
     if (!ready) return;
     const b = getBucket("worksheet");
-    const globalCfg = db.settings?.worksheetConfig || {};
+    const globalCfg = worksheetConfig || {};
     const cfg = ensureWSConfig({ ...globalCfg, ...b });
-    setConfig(Object.fromEntries(WS_CONFIG_IDS.map((k) => [k, String(cfg[k] ?? WS_DEFAULTS[k])])));
-    setFields({
-      wv: String(b.wv ?? ""), we: String(b.we ?? ""),
-      wcc: String(b.wcc ?? ""), wob: String(b.wob ?? ""),
+    setConfig((prev) => {
+      const next = Object.fromEntries(WS_CONFIG_IDS.map((k) => [k, String(cfg[k] ?? WS_DEFAULTS[k])]));
+      const keys = Object.keys(next);
+      if (keys.every((k) => prev[k] === next[k])) return prev;
+      return next;
     });
-  }, [ready, clientId, getBucket, db.settings?.worksheetConfig, shared?.prospectId]);
+    setFields((prev) => {
+      const next = {
+        wv: String(b.wv ?? ""), we: String(b.we ?? ""),
+        wcc: String(b.wcc ?? ""), wob: String(b.wob ?? ""),
+      };
+      if (prev.wv === next.wv && prev.we === next.we && prev.wcc === next.wcc && prev.wob === next.wob) return prev;
+      return next;
+    });
+  }, [ready, clientId, getBucket, worksheetConfig, shared?.prospectId]);
 
   const handleClear = async () => {
     if (readOnly) return;

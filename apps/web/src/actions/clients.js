@@ -14,7 +14,7 @@ export function filterAndSortClients(clients, query) {
   const lang = getLang(useDbStore.getState().db.settings);
   const normalizedQuery = normalizeSearch(query).trim();
   const terms = normalizedQuery.split(/\s+/).filter(Boolean);
-  const allClients = Object.values(clients).map(ensureProspectIdentity);
+  const allClients = Object.values(clients);
   const filtered = terms.length
     ? allClients.filter((c) => {
         const date = c.tourDate || c.createdYmd || "";

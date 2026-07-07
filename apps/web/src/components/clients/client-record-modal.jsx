@@ -4,6 +4,7 @@ import { CountryCitySelects } from "@/components/clients/country-city-selects.js
 import { selectOnFocus } from "@/lib/focus-select.js";
 import { isSaleFormValid } from "@/lib/sales/form-valid";
 import { useI18n } from "@/hooks/use-i18n.js";
+import { DEFAULT_TOUR_TYPES } from "@/lib/store-empty.js";
 import { useDbStore } from "@/stores/db-store";
 import { shallow } from "zustand/shallow";
 
@@ -20,8 +21,6 @@ const SALE_STATUS_OPTIONS = [
   { value: "pendiente", key: "exp.sale.statusNotProcessable" },
   { value: "cerrado", key: "exp.sale.statusProcessed" },
 ];
-
-const DEFAULT_TOUR_TYPES = ["Q", "NQ", "CT", "Member"];
 
 function isProspectFormValid(form) {
   return Boolean(String(form?.name1 || form?.name || "").trim())

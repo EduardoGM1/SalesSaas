@@ -21,6 +21,10 @@ export async function refreshAutoExchangeRate(currency = "USD") {
   try {
     const { rate } = await fetchExchangeRate(currency);
     const current = useDbStore.getState().db;
+    const prevRate = Number(current.settings?.exchangeRate);
+    if (Number.isFinite(prevRate) && prevRate === rate) {
+      return { ok: true, rate, skipped: true };
+    }
     useDbStore.getState().replaceDb({
       ...current,
       settings: { ...current.settings, exchangeRate: rate },

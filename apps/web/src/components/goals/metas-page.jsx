@@ -4,7 +4,7 @@ import { Calendar, Info } from "lucide-react";
 import { Topbar } from "@/components/layout/topbar";
 import { PageBack } from "@/components/layout/page-back";
 import { computeMetasKpis } from "@/lib/calculations/calendar";
-import { onlyDigits } from "@/lib/format/money";
+import { fmtN, onlyDigits } from "@/lib/format/money";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { useMoney } from "@/hooks/use-money.js";
 import { calKey } from "@/lib/format/dates";
@@ -16,7 +16,7 @@ import { shallow } from "zustand/shallow";
 
 export function MetasPage() {
   const { t, months } = useI18n();
-  const { fmt, fmtN, settings: moneySettings } = useMoney();
+  const { fmt, settings: moneySettings } = useMoney();
   const hydrated = useAppStore((s) => s.hydrated);
   const calYear = useAppStore((s) => s.calYear);
   const calMonth = useAppStore((s) => s.calMonth);
@@ -35,10 +35,13 @@ export function MetasPage() {
   const goalVentas = useDbStore((s) => s.db.goals[monthKey]?.ventas ?? 0, shallow);
 
   useEffect(() => {
-    setVol(goalVol ? fmtN(goalVol) : "");
-    setTours(goalTours ? String(goalTours) : "");
-    setVentas(goalVentas ? String(goalVentas) : "");
-  }, [monthKey, goalVol, goalTours, goalVentas, fmtN]);
+    const nextVol = goalVol ? fmtN(goalVol, moneySettings) : "";
+    const nextTours = goalTours ? String(goalTours) : "";
+    const nextVentas = goalVentas ? String(goalVentas) : "";
+    setVol((prev) => (prev === nextVol ? prev : nextVol));
+    setTours((prev) => (prev === nextTours ? prev : nextTours));
+    setVentas((prev) => (prev === nextVentas ? prev : nextVentas));
+  }, [monthKey, goalVol, goalTours, goalVentas, moneySettings.language, moneySettings.currency, moneySettings.exchangeRate]);
 
   const data = useDbStore((s) => s.db.cal[monthKey] ?? EMPTY_CAL_MONTH, shallow);
   const kpis = useMemo(() => computeMetasKpis(

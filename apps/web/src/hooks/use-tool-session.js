@@ -1,5 +1,6 @@
 import { useCallback, useMemo } from "react";
 import { useDbStore } from "@/stores/db-store";
+import { shallow } from "zustand/shallow";
 import { useToolBucketReady } from "@/hooks/use-tool-bucket-ready";
 import { useSharedToolSession } from "@/hooks/use-shared-tool-session";
 import { resolveToolBackHref } from "@/lib/calculator-nav.js";
@@ -11,6 +12,7 @@ export function useToolSession({ clientId, shared }) {
   const useShared = !!shared?.prospectId;
   const sharedSession = useSharedToolSession(shared?.prospectId, shared?.contactId);
   const localReady = useToolBucketReady(useShared ? undefined : clientId);
+  const localClient = useDbStore((s) => (clientId ? s.db.clients[clientId] : undefined), shallow);
   const getToolBucket = useDbStore((s) => s.getToolBucket);
   const saveToolBucket = useDbStore((s) => s.saveToolBucket);
   const getClient = useDbStore((s) => s.getClient);
@@ -71,7 +73,7 @@ export function useToolSession({ clientId, shared }) {
     isShared: useShared,
     isFileMode: useShared || !!clientId,
     prospectId: useShared ? shared.prospectId : clientId,
-    prospect: useShared ? sharedSession.prospect : (clientId ? getClient(clientId) : undefined),
+    prospect: useShared ? sharedSession.prospect : localClient,
   }), [
     ready,
     mode,
@@ -85,6 +87,6 @@ export function useToolSession({ clientId, shared }) {
     clientId,
     shared?.prospectId,
     sharedSession.prospect,
-    getClient,
+    localClient,
   ]);
 }

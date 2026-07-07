@@ -37,7 +37,7 @@ interface SurveyPageProps {
 export function SurveyPage({ clientId, shared }: SurveyPageProps) {
   const { t } = useI18n();
   const session = useToolSession({ clientId, shared });
-  const { ready, readOnly, backHref, getBucket, saveBucket, syncProspectFields, isFileMode, isShared, prospect } = session;
+  const { ready, readOnly, backHref, getBucket, saveBucket, syncProspectFields, isFileMode, isShared, prospectId } = session;
   const saveClient = useDbStore((s) => s.saveClient);
   const getClient = useDbStore((s) => s.getClient);
   const moneySettings = useDbStore((s) => s.db.settings, shallow);
@@ -59,19 +59,29 @@ export function SurveyPage({ clientId, shared }: SurveyPageProps) {
       if (bucket.stype) setSType(String(bucket.stype));
       if (bucket.futureType) setFutureType(bucket.futureType === "dream" ? "dream" : "real");
     }
-    if (isFileMode && prospect) {
-      const c = prospect;
+    if (isFileMode && clientId) {
+      const c = getClient(clientId);
       if (c) {
         loaded.svp_name1 = loaded.svp_name1 || c.name1 || c.name || "";
         loaded.svp_country = loaded.svp_country || c.country || "";
         loaded.svp_occ1 = loaded.svp_occ1 || c.occupation1 || "";
         loaded.svp_city = loaded.svp_city || c.city || "";
       }
+    } else if (isFileMode && isShared && session.prospect) {
+      const c = session.prospect;
+      loaded.svp_name1 = loaded.svp_name1 || c.name1 || c.name || "";
+      loaded.svp_country = loaded.svp_country || c.country || "";
+      loaded.svp_occ1 = loaded.svp_occ1 || c.occupation1 || "";
+      loaded.svp_city = loaded.svp_city || c.city || "";
     }
-    setData(loaded);
-  }, [ready, clientId, isFileMode, getBucket, prospect, shared?.prospectId]);
+    setData((prev) => {
+      const keys = Object.keys(loaded);
+      if (keys.every((k) => prev[k] === loaded[k])) return prev;
+      return loaded;
+    });
+  }, [ready, clientId, isFileMode, isShared, getBucket, getClient, prospectId, shared?.prospectId, session.prospect?.id]);
 
-  const client = isFileMode ? prospect : undefined;
+  const client = isFileMode ? (isShared ? session.prospect : (clientId ? getClient(clientId) : undefined)) : undefined;
   const countries = Object.keys(COUNTRY_CITY);
   const cities = COUNTRY_CITY[data.svp_country || ""] || ["Otro"];
 

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { sharingApi } from "@/lib/network-api.js";
 import { prospectRowToClient, canEditShared } from "@/lib/shared-prospect";
+import { EMPTY_TOOL_BUCKET } from "@/lib/store-empty.js";
 
 export function useSharedToolSession(prospectId, contactId) {
   const [loading, setLoading] = useState(true);
@@ -31,7 +32,7 @@ export function useSharedToolSession(prospectId, contactId) {
     ? `/red/contacto/${contactId}/expediente/${prospectId}`
     : `/network`;
 
-  const getToolData = useCallback((tool) => tools[tool] || {}, [tools]);
+  const getToolData = useCallback((tool) => tools[tool] || EMPTY_TOOL_BUCKET, [tools]);
 
   const saveTool = useCallback(async (tool, data) => {
     const saved = await sharingApi.saveTool(prospectId, tool, data);
