@@ -25,8 +25,7 @@ import { toast } from "@/lib/toast";
 import { confirmDialog } from "@/lib/confirm";
 import { NotificationsSettings } from "@/components/settings/notifications-settings.jsx";
 import { PwaInstallSettings } from "@/components/settings/pwa-install-settings.jsx";
-
-const LIVE_PREVIEW_KEYS = new Set(["language", "currency", "exchangeRate", "exchangeMode"]);
+import { livePreviewSettingsEqual } from "@/lib/settings-sync.js";
 
 type SettingsSection = "user" | "worksheet" | "tourTypes" | "money" | "language" | "apis" | "backup" | "account" | "notifications" | "pwa" | null;
 
@@ -60,6 +59,7 @@ export function SettingsPage() {
   const [fxDate, setFxDate] = useState(null);
   const syncStatus = useSyncStore((s) => s.status);
   const syncError = useSyncStore((s) => s.lastError);
+  const skipDbToLocalSyncRef = useRef(false);
 
   useEffect(() => {
     if (!isSupabaseConfigured()) return;
@@ -88,8 +88,33 @@ export function SettingsPage() {
   useEffect(() => {
     const incoming = db.settings;
     if (!incoming) return;
-    setSettings((prev) => (prev === incoming ? prev : incoming));
+    if (skipDbToLocalSyncRef.current) {
+      skipDbToLocalSyncRef.current = false;
+      return;
+    }
+    setSettings((prev) => {
+      if (prev === incoming) return prev;
+      if (livePreviewSettingsEqual(prev, incoming)
+        && prev.worksheetConfig === incoming.worksheetConfig
+        && prev.tourTypes === incoming.tourTypes
+        && prev.notifications === incoming.notifications) {
+        return prev;
+      }
+      return { ...incoming };
+    });
   }, [db.settings]);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    const currentDb = useDbStore.getState().db;
+    if (livePreviewSettingsEqual(settings, currentDb.settings)) return;
+    skipDbToLocalSyncRef.current = true;
+    replaceDb({
+      ...currentDb,
+      settings: { ...currentDb.settings, ...settings },
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hydrated, settings.language, settings.currency, settings.exchangeRate, settings.exchangeMode]);
 
   const clientCount = Object.keys(db.clients).length;
   const allSales = collectAllSales(db);
@@ -126,12 +151,8 @@ export function SettingsPage() {
 
   const setSetting = <K extends keyof UserSettings>(key: K, value: UserSettings[K]) => {
     setSettings((current) => {
-      const next = { ...current, [key]: value };
-      if (LIVE_PREVIEW_KEYS.has(key)) {
-        const currentDb = useDbStore.getState().db;
-        replaceDb({ ...currentDb, settings: { ...currentDb.settings, ...next } });
-      }
-      return next;
+      if (Object.is(current[key], value)) return current;
+      return { ...current, [key]: value };
     });
   };
 
@@ -140,7 +161,10 @@ export function SettingsPage() {
     setFxError(null);
     try {
       const { rate, date } = await fetchExchangeRate(currency);
-      setSetting("exchangeRate", rate);
+      const currentRate = Number(settings.exchangeRate);
+      if (!Number.isFinite(currentRate) || currentRate !== rate) {
+        setSetting("exchangeRate", rate);
+      }
       setFxDate(date ?? new Date().toISOString().slice(0, 10));
     } catch (err) {
       setFxError(err instanceof Error ? err.message : "Error al actualizar.");

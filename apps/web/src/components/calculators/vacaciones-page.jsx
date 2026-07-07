@@ -32,13 +32,14 @@ export function VacacionesPage({ clientId, shared }: VacacionesPageProps) {
   useEffect(() => {
     if (!ready) return;
     const b = getBucket("vacaciones");
-    if (Object.keys(b).length) {
-      setFields({
+    const next = Object.keys(b).length
+      ? {
         vv: String(b.vv ?? ""), vc: String(b.vc ?? ""), va: String(b.va ?? ""), vi: String(b.vi ?? ""),
-      });
-    } else {
-      setFields({ ...EMPTY_FIELDS });
-    }
+      }
+      : { ...EMPTY_FIELDS };
+    setFields((prev) => (
+      prev.vv === next.vv && prev.vc === next.vc && prev.va === next.va && prev.vi === next.vi ? prev : next
+    ));
   }, [ready, clientId, getBucket, shared?.prospectId]);
 
   const handleClear = async () => {

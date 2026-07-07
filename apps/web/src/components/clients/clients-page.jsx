@@ -11,6 +11,7 @@ import { clientDisplayName } from "@/lib/clients";
 import { shortDate } from "@/lib/format/dates";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { selectOnFocus } from "@/lib/focus-select.js";
+import { DEFAULT_TOUR_TYPES } from "@/lib/store-empty.js";
 import { useDbStore } from "@/stores/db-store";
 import { useAppStore } from "@/stores/app-store";
 import { useClientActions } from "@/hooks/use-client-actions.js";
@@ -33,7 +34,7 @@ export function ClientsPage() {
   const nameRef = useRef<HTMLInputElement>(null);
   const canShare = isSupabaseConfigured();
 
-  const tourTypes = db.settings?.tourTypes ?? ["Q", "NQ", "CT", "Member"];
+  const tourTypes = db.settings?.tourTypes ?? DEFAULT_TOUR_TYPES;
 
   useEffect(() => {
     if (!open) return;

@@ -8,6 +8,7 @@ import { computeSurvey, surveyHasData } from "@/lib/calculations/survey";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { useMoney } from "@/hooks/use-money.js";
 import { useToolSession } from "@/hooks/use-tool-session.js";
+import { EMPTY_TOOL_BUCKET } from "@/lib/store-empty.js";
 import { useDbStore } from "@/stores/db-store";
 import { shallow } from "zustand/shallow";
 
@@ -26,12 +27,12 @@ export function AnalysisPage({ clientId, shared }: { clientId?; shared? }) {
   const { ready, backHref, readOnly, isShared, getBucket, prospect } = session;
 
   const survey = useMemo(() => {
-    if (!ready) return {};
+    if (!ready) return EMPTY_TOOL_BUCKET;
     if (isShared) return getBucket("survey") as Record<string, string>;
     const bucket = getBucket("survey");
     if (Object.keys(bucket).length) return bucket as Record<string, string>;
-    return (prospect?.data?.survey || {}) as Record<string, string>;
-  }, [ready, isShared, getBucket, prospect, shared?.prospectId]);
+    return (prospect?.data?.survey || EMPTY_TOOL_BUCKET) as Record<string, string>;
+  }, [ready, isShared, getBucket, prospect?.id, shared?.prospectId]);
 
   const c = prospect;
   const result = useMemo(

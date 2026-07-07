@@ -34,6 +34,8 @@ export function MetasPage() {
   const goalTours = useDbStore((s) => s.db.goals[monthKey]?.tours ?? 0, shallow);
   const goalVentas = useDbStore((s) => s.db.goals[monthKey]?.ventas ?? 0, shallow);
 
+  const goalsSeed = `${monthKey}|${goalVol}|${goalTours}|${goalVentas}|${moneySettings.language}|${moneySettings.currency}|${moneySettings.exchangeRate}`;
+
   useEffect(() => {
     const nextVol = goalVol ? fmtN(goalVol, moneySettings) : "";
     const nextTours = goalTours ? String(goalTours) : "";
@@ -41,7 +43,7 @@ export function MetasPage() {
     setVol((prev) => (prev === nextVol ? prev : nextVol));
     setTours((prev) => (prev === nextTours ? prev : nextTours));
     setVentas((prev) => (prev === nextVentas ? prev : nextVentas));
-  }, [monthKey, goalVol, goalTours, goalVentas, moneySettings.language, moneySettings.currency, moneySettings.exchangeRate]);
+  }, [goalsSeed]);
 
   const data = useDbStore((s) => s.db.cal[monthKey] ?? EMPTY_CAL_MONTH, shallow);
   const kpis = useMemo(() => computeMetasKpis(
