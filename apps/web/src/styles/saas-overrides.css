@@ -2229,6 +2229,16 @@ body,
   display: none;
 }
 
+.topbar-mobile-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+  gap: 12px;
+}
+
 /* ===== MOBILE APP NAV (≤768px) ===== */
 .mobile-top-avatar,
 .topbar-mobile-actions,
@@ -2280,34 +2290,85 @@ body,
     display: none !important;
   }
 
-  /* Topbar mobile: two-row layout */
+  .mobile-menu-btn--admin {
+    display: none !important;
+  }
+
+  /* Topbar mobile: logo arriba + fila única (avatar, título, 3 acciones) */
   .topbar {
     flex-direction: column;
     gap: 0;
     padding: 0;
+    align-items: stretch;
   }
 
   .topbar-mobile-brand {
     display: flex;
     justify-content: flex-end;
-    padding: 4px 12px 2px;
+    align-items: center;
+    padding: 6px 12px 4px;
+    border-bottom: 1px solid var(--border);
+    background: var(--white);
   }
 
-  /* Compact mobile header: show logo in the top mobile row and hide duplicate in tb-right */
-  .topbar-mobile-brand .topbar-brand { display: flex; align-items: center; }
-  .topbar-mobile-brand .topbar-brand img { height: 26px; width: auto; }
+  .topbar-mobile-brand .topbar-brand {
+    display: flex;
+    align-items: center;
+    border: none;
+    background: transparent;
+    box-shadow: none;
+    width: auto;
+    height: auto;
+    padding: 0;
+  }
+
+  .topbar-mobile-brand .topbar-brand img {
+    height: 24px;
+    width: auto;
+  }
+
+  .topbar-mobile-main {
+    padding: 8px 10px 8px 12px;
+    gap: 8px;
+    align-items: center;
+  }
 
   .topbar-desktop-actions {
     display: none !important;
   }
 
-  .topbar .tb-left,
-  .topbar .tb-right {
-    width: 100%;
+  .topbar .tb-left {
+    flex: 1;
+    min-width: 0;
+    gap: 10px;
+    align-items: center;
   }
 
-  .mobile-menu-btn--admin {
-    display: none !important;
+  .topbar .tb-page-copy {
+    min-width: 0;
+    flex: 1;
+  }
+
+  .topbar .tb-page-title {
+    font-size: 15px;
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .topbar .tb-page-sub {
+    font-size: 11px;
+    line-height: 1.25;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .topbar .tb-right {
+    width: auto;
+    flex-shrink: 0;
+    gap: 4px;
   }
 
   .mobile-top-avatar {
@@ -2318,17 +2379,15 @@ body,
   /* Hide the desktop-positioned logo on mobile to avoid duplicate visuals */
   .topbar .tb-right .topbar-brand { display: none !important; }
 
-  /* Slightly more compact spacing for mobile topbar rows */
-  .topbar { padding-bottom: 6px; }
-  .topbar .tb-left { align-items: center; }
+  .topbar { padding-bottom: 0; }
 
   .mobile-top-avatar-inner {
-    width: 34px;
-    height: 34px;
-    border-radius: 10px;
+    width: 32px;
+    height: 32px;
+    border-radius: 9px;
     background: var(--blue);
     color: #fff;
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 800;
     display: flex;
     align-items: center;
@@ -2345,8 +2404,29 @@ body,
   .topbar-mobile-actions {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 4px;
     flex-shrink: 0;
+  }
+
+  .topbar-mobile-actions .top-settings-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    flex-shrink: 0;
+  }
+
+  .topbar-mobile-actions .top-settings-btn svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  .topbar-action-badge {
+    top: -3px;
+    right: -3px;
+    min-width: 15px;
+    height: 15px;
+    font-size: 8px;
+    line-height: 15px;
   }
 
   .top-settings-btn--desktop {

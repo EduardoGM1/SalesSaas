@@ -1,4 +1,4 @@
-import { Link, useNavigate, useLocation } from "react-router-dom";
+import { Link } from "react-router-dom";
 import Image from "@/components/ui/safe-image.jsx";
 import { ArrowLeft, Menu, Settings } from "lucide-react";
 import { useI18n } from "@/hooks/use-i18n.js";
@@ -55,30 +55,32 @@ export function Topbar({ title, subtitle, showMonthNav, admin }) {
   return (
     <header className="topbar">
       <div className="topbar-mobile-brand">{saletseLogo}</div>
-      <div className="tb-left">
-        <MobileTopAvatar />
-        <button type="button" className="mobile-menu-btn mobile-menu-btn--legacy" onClick={toggleSidebar} aria-label={t("common.menu")}>
-          <Menu size={18} />
-        </button>
-        <div>
-          <div className="tb-page-title">{title}</div>
-          <div className="tb-page-sub">{subtitle}</div>
-        </div>
-      </div>
-      <div className="tb-right">
-        {showMonthNav && (
-          <div className="tb-month-nav">
-            <button type="button" className="tb-nav-btn" onClick={calPrev} aria-label={t("common.previousMonth")}>‹</button>
-            <div className="tb-month-label">{months[calMonth]} {calYear}</div>
-            <button type="button" className="tb-nav-btn" onClick={calNext} aria-label={t("common.nextMonth")}>›</button>
+      <div className="topbar-mobile-main">
+        <div className="tb-left">
+          <MobileTopAvatar />
+          <button type="button" className="mobile-menu-btn mobile-menu-btn--legacy" onClick={toggleSidebar} aria-label={t("common.menu")}>
+            <Menu size={18} />
+          </button>
+          <div className="tb-page-copy">
+            <div className="tb-page-title">{title}</div>
+            <div className="tb-page-sub">{subtitle}</div>
           </div>
-        )}
-        <DesktopTopNavActions />
-        {saletseLogo}
-        <MobileTopNavActions />
-        <Link to="/settings" className="top-settings-btn top-settings-btn--desktop" title={t("common.settings")} aria-label={t("common.settings")}>
-          <Settings size={17} />
-        </Link>
+        </div>
+        <div className="tb-right">
+          {showMonthNav && (
+            <div className="tb-month-nav">
+              <button type="button" className="tb-nav-btn" onClick={calPrev} aria-label={t("common.previousMonth")}>‹</button>
+              <div className="tb-month-label">{months[calMonth]} {calYear}</div>
+              <button type="button" className="tb-nav-btn" onClick={calNext} aria-label={t("common.nextMonth")}>›</button>
+            </div>
+          )}
+          <DesktopTopNavActions />
+          {saletseLogo}
+          <MobileTopNavActions />
+          <Link to="/settings" className="top-settings-btn top-settings-btn--desktop" title={t("common.settings")} aria-label={t("common.settings")}>
+            <Settings size={17} />
+          </Link>
+        </div>
       </div>
     </header>
   );

@@ -32,7 +32,12 @@ export function MobileTopNavActions() {
           </Link>
         );
       })}
-      <Link to="/settings" className="top-settings-btn" title={t("common.settings")} aria-label={t("common.settings")}>
+      <Link
+        to="/settings"
+        className={cn("top-settings-btn", pathname.startsWith("/settings") && "active")}
+        title={t("common.settings")}
+        aria-label={t("common.settings")}
+      >
         <Settings size={17} />
       </Link>
     </div>
