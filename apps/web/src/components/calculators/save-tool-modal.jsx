@@ -54,26 +54,48 @@ export function SaveToolModal({ open, onOpenChange, tool }: SaveToolModalProps) 
   const [targetMode, setTargetMode] = useState<"new" | "existing">("new");
   const [existingId, setExistingId] = useState("");
   const [f, setF] = useState(emptyFields());
+  const [missingName, setMissingName] = useState(false);
+  const [missingTipoTour, setMissingTipoTour] = useState(false);
+  const [missingProspect, setMissingProspect] = useState(false);
 
   const clients = activeClients(db.clients);
 
   useEffect(() => {
-    if (open) { setTargetMode("new"); setExistingId(""); setF(emptyFields()); }
+    if (open) {
+      setTargetMode("new");
+      setExistingId("");
+      setF(emptyFields());
+      setMissingName(false);
+      setMissingTipoTour(false);
+      setMissingProspect(false);
+    }
   }, [open]);
 
   const handleSave = () => {
     const src = { ...getToolBucket(tool, "libre") };
 
     if (targetMode === "existing") {
-      if (!existingId || !db.clients[existingId]) return toast.error(translate("tools.saveModal.errorProspect"));
+      if (!existingId || !db.clients[existingId]) {
+        setMissingProspect(true);
+        return;
+      }
+      setMissingProspect(false);
       saveToolBucket(tool, "client", src, existingId);
       onOpenChange(false);
       navigate(`/clients/${existingId}`);
       return;
     }
 
-    if (!f.name1.trim()) return toast.error(translate("tools.saveModal.errorName"));
-    if (!f.tipoTour) return toast.error(translate("clients.missingTourType"));
+    let hasError = false;
+    if (!f.name1.trim()) {
+      setMissingName(true);
+      hasError = true;
+    }
+    if (!f.tipoTour) {
+      setMissingTipoTour(true);
+      hasError = true;
+    }
+    if (hasError) return;
     const c = createEmptyClient(f.name1.trim(), f.tourDate || ymdToday(), f.tipoTour, f.tourCuantificable);
     c.name = f.name1.trim();
     c.name1 = f.name1;
@@ -101,9 +123,12 @@ export function SaveToolModal({ open, onOpenChange, tool }: SaveToolModalProps) 
       </div>
 
       {targetMode === "existing" && (
-        <div style={{ marginBottom: 16 }}>
-          <label className="field-label">{t("tools.saveModal.selectProspect")}</label>
-          <select value={existingId} onChange={(e) => setExistingId(e.target.value)}>
+        <div className={`required-field${missingProspect ? " field-missing" : ""}`} style={{ marginBottom: 16 }}>
+          <label className="field-label field-required">{t("tools.saveModal.selectProspect")}</label>
+          <select value={existingId} onChange={(e) => {
+            setExistingId(e.target.value);
+            if (e.target.value) setMissingProspect(false);
+          }}>
             <option value="">{clients.length ? t("tools.saveModal.selectProspect") : t("clients.emptyAll")}</option>
             {clients.map((c) => (
               <option key={c.id} value={c.id}>{clientDisplayName(c)}{c.contract ? ` · ${c.contract}` : ""}</option>
@@ -114,12 +139,22 @@ export function SaveToolModal({ open, onOpenChange, tool }: SaveToolModalProps) 
 
       {targetMode === "new" && (
         <div className="prospect-grid">
-          <div className="prospect-field"><label>{t("exp.edit.name")}</label><input type="text" placeholder={t("tools.survey.namePlaceholder")} value={f.name1} onFocus={selectOnFocus} onChange={(e) => set("name1", e.target.value)} /></div>
+          <div className={`prospect-field required-field${missingName ? " field-missing" : ""}`}>
+            <label className="field-required">{t("exp.edit.name")}</label>
+            <input type="text" placeholder={t("tools.survey.namePlaceholder")} value={f.name1} onFocus={selectOnFocus} onChange={(e) => {
+              set("name1", e.target.value);
+              if (e.target.value.trim()) setMissingName(false);
+            }} />
+          </div>
           <div className="prospect-field"><label>{t("exp.edit.occ1")}</label><input type="text" placeholder={t("tools.survey.occPlaceholder")} value={f.occ1} onFocus={selectOnFocus} onChange={(e) => set("occ1", e.target.value)} /></div>
           <div className="prospect-field"><label>{t("exp.edit.city")}</label><input type="text" placeholder={t("tools.survey.city")} value={f.city} onFocus={selectOnFocus} onChange={(e) => set("city", e.target.value)} /></div>
           <div className="prospect-field"><label>{t("exp.edit.country")}</label><input type="text" placeholder={t("tools.survey.country")} value={f.country} onFocus={selectOnFocus} onChange={(e) => set("country", e.target.value)} /></div>
-          <div className="prospect-field"><label>{t("clients.tourType")}</label>
-            <select value={f.tipoTour} onChange={(e) => set("tipoTour", e.target.value)}>
+          <div className={`prospect-field required-field${missingTipoTour ? " field-missing" : ""}`}>
+            <label className="field-required">{t("clients.tourType")}</label>
+            <select value={f.tipoTour} onChange={(e) => {
+              set("tipoTour", e.target.value);
+              if (e.target.value) setMissingTipoTour(false);
+            }}>
               <option value="">{t("clients.tourTypePlaceholder")}</option>
               {tourTypes.map((type) => (
                 <option key={type} value={type}>{type}</option>

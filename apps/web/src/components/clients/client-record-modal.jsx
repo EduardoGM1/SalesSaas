@@ -1,12 +1,18 @@
 
+import { useEffect, useState } from "react";
 import { SalesModal } from "@/components/ui/sales-modal";
 import { CountryCitySelects } from "@/components/clients/country-city-selects.jsx";
 import { selectOnFocus } from "@/lib/focus-select.js";
-import { isSaleFormValid } from "@/lib/sales/form-valid";
+import { isSaleFormValid, resolveSaleProcessDate } from "@/lib/sales/form-valid";
+import { parseMoney } from "@/lib/format/money";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { DEFAULT_TOUR_TYPES } from "@/lib/store-empty.js";
 import { useDbStore } from "@/stores/db-store";
 import { shallow } from "zustand/shallow";
+
+function requiredFieldClass(showErrors, isMissing) {
+  return `prospect-field required-field${showErrors && isMissing ? " field-missing" : ""}`;
+}
 
 const STATUS_OPTIONS = [
   { value: "", key: "status.empty" },
@@ -52,11 +58,13 @@ function getModalCopy(mode, t, clientName) {
   };
 }
 
-function ProspectFields({ form, onChange, t, showStatusFields }) {
+function ProspectFields({ form, onChange, t, showStatusFields, showErrors }) {
   const tourTypes = useDbStore((s) => s.db.settings?.tourTypes ?? DEFAULT_TOUR_TYPES, shallow);
+  const missingName = !String(form?.name1 || form?.name || "").trim();
+  const missingTipoTour = !String(form?.tipo_tour || "").trim();
   return (
     <div className="prospect-grid">
-      <div className="prospect-field">
+      <div className={requiredFieldClass(showErrors, missingName)}>
         <label className="field-required">{t("exp.edit.name")}</label>
         <input type="text" placeholder={t("tools.survey.namePlaceholder")} value={form.name1 || ""} onFocus={selectOnFocus} onChange={(e) => onChange({ ...form, name1: e.target.value })} />
       </div>
@@ -66,7 +74,8 @@ function ProspectFields({ form, onChange, t, showStatusFields }) {
         city={form.city || ""}
         onChange={(patch) => onChange({ ...form, ...patch })}
       />
-      <div className="prospect-field"><label>{t("clients.tourType")}</label>
+      <div className={requiredFieldClass(showErrors, missingTipoTour)}>
+        <label className="field-required">{t("clients.tourType")}</label>
         <select value={form.tipo_tour || ""} onChange={(e) => onChange({ ...form, tipo_tour: e.target.value })}>
           <option value="">{t("clients.tourTypePlaceholder")}</option>
           {tourTypes.map((type) => (
@@ -99,15 +108,19 @@ function ProspectFields({ form, onChange, t, showStatusFields }) {
   );
 }
 
-function SaleFields({ saleForm, onChange, t }) {
+function SaleFields({ saleForm, onChange, t, showErrors }) {
+  const missingDate = !String(saleForm.date || "").trim();
+  const missingVolume = parseMoney(String(saleForm.vol ?? "")) <= 0;
+  const missingContract = !String(saleForm.contract ?? "").trim();
+  const missingProcessDate = saleForm.status === "pendiente" && !resolveSaleProcessDate(saleForm);
   return (
     <div className="prospect-grid">
-      <div className="prospect-field">
+      <div className={requiredFieldClass(showErrors, missingDate)}>
         <label className="field-required">{t("exp.sale.date")}</label>
         <input type="date" value={saleForm.date} onFocus={selectOnFocus} onChange={(e) => onChange({ ...saleForm, date: e.target.value })} />
       </div>
       <div className="prospect-geo-row">
-        <div className="prospect-field">
+        <div className={requiredFieldClass(showErrors, missingVolume)}>
           <label className="field-required">{t("exp.sale.volume")}</label>
           <div className="mfield"><span className="mpfx">$</span><input type="text" placeholder="0" value={saleForm.vol} onFocus={selectOnFocus} onChange={(e) => onChange({ ...saleForm, vol: e.target.value })} /></div>
         </div>
@@ -117,7 +130,7 @@ function SaleFields({ saleForm, onChange, t }) {
         </div>
       </div>
       <div className="prospect-geo-row">
-        <div className="prospect-field">
+        <div className={requiredFieldClass(showErrors, missingContract)}>
           <label className="field-required">{t("exp.sale.contract")}</label>
           <input type="text" placeholder={t("exp.sale.contractPlaceholder")} value={saleForm.contract} onFocus={selectOnFocus} onChange={(e) => onChange({ ...saleForm, contract: e.target.value })} />
         </div>
@@ -139,7 +152,7 @@ function SaleFields({ saleForm, onChange, t }) {
       </div>
       {saleForm.status === "pendiente" && (
         <>
-          <div className="prospect-field">
+          <div className={requiredFieldClass(showErrors, missingProcessDate)}>
             <label className="field-required">{t("exp.sale.processDate")}</label>
             <input type="date" value={saleForm.processDate} onFocus={selectOnFocus} onChange={(e) => onChange({ ...saleForm, processDate: e.target.value })} />
           </div>
@@ -171,11 +184,25 @@ export function ClientRecordModal({
   onCancel,
 }) {
   const { t } = useI18n();
+  const [showErrors, setShowErrors] = useState(false);
   const copy = getModalCopy(mode, t, clientName);
   const showSale = mode === "sale-new" || mode === "sale-edit";
   const canSave = mode === "edit-data"
     ? isProspectFormValid(prospectForm)
     : isProspectFormValid(prospectForm) && isSaleFormValid(saleForm);
+
+  useEffect(() => {
+    if (!open) setShowErrors(false);
+  }, [open]);
+
+  const handleSaveClick = () => {
+    if (!canSave) {
+      setShowErrors(true);
+      return;
+    }
+    setShowErrors(false);
+    onSave();
+  };
 
   return (
     <SalesModal
@@ -194,19 +221,20 @@ export function ClientRecordModal({
           onChange={onProspectChange}
           t={t}
           showStatusFields={mode === "edit-data"}
+          showErrors={showErrors}
         />
         {showSale && (
           <>
             <hr className="form-section-divider" />
             <div className="form-section-label">{t("exp.form.sectionSale")}</div>
-            <SaleFields saleForm={saleForm} onChange={onSaleChange} t={t} />
+            <SaleFields saleForm={saleForm} onChange={onSaleChange} t={t} showErrors={showErrors} />
           </>
         )}
       </div>
       <div className="ethic-box" style={{ marginTop: 16 }}>{copy.ethic}</div>
       <div className="btn-row">
         <button type="button" className="btn btn-ghost" onClick={onCancel}>{t("common.cancel")}</button>
-        <button type="button" className="btn btn-primary" disabled={!canSave} onClick={onSave}>{copy.saveLabel}</button>
+        <button type="button" className="btn btn-primary" onClick={handleSaveClick}>{copy.saveLabel}</button>
       </div>
     </SalesModal>
   );

@@ -784,14 +784,13 @@ textarea::placeholder{
   --req-red-border:rgba(239,143,143,.48);
   --req-red-focus:rgba(239,143,143,.18);
 }
-.required-label{color:var(--req-red-strong)!important;}
+.required-label{color:var(--muted);font-weight:700;}
+.required-field.field-missing .required-label{color:var(--req-red-strong)!important;}
+.required-field.field-missing label{color:var(--req-red-strong)!important;}
 .req-star{color:var(--req-red-strong);font-weight:850;margin-left:3px;}
-.required-field input,.required-field select,.required-field textarea{border-color:var(--req-red-border)!important;background:var(--req-red-bg)!important;}
-.required-field .mfield{border-color:var(--req-red-border)!important;background:var(--req-red-bg)!important;}
-.required-field .mfield input{background:transparent!important;border-color:transparent!important;}
-.field-missing input,.field-missing select,.field-missing textarea{border-color:var(--req-red-strong)!important;box-shadow:0 0 0 3px var(--req-red-focus)!important;background:#fffdfd!important;}
-.field-missing .mfield{border-color:var(--req-red-strong)!important;box-shadow:0 0 0 3px var(--req-red-focus)!important;background:#fffdfd!important;}
-.field-missing .mfield input{background:transparent!important;border-color:transparent!important;box-shadow:none!important;}
+.required-field.field-missing input,.required-field.field-missing select,.required-field.field-missing textarea,.field-missing input,.field-missing select,.field-missing textarea{border-color:var(--req-red-strong)!important;box-shadow:0 0 0 3px var(--req-red-focus)!important;background:#fffdfd!important;}
+.required-field.field-missing .mfield,.field-missing .mfield{border-color:var(--req-red-strong)!important;box-shadow:0 0 0 3px var(--req-red-focus)!important;background:#fffdfd!important;}
+.required-field.field-missing .mfield input,.field-missing .mfield input{background:transparent!important;border-color:transparent!important;box-shadow:none!important;}
 .validation-alert{white-space:pre-line;}
 .newclient-field{margin:14px 0 18px;}
 .newclient-field label{font-size:11px;color:var(--muted);font-weight:700;letter-spacing:.5px;text-transform:uppercase;display:block;margin-bottom:6px;}
