@@ -8,6 +8,7 @@ import { LoginPage } from "@/pages/LoginPage.jsx";
 import { RegisterPage } from "@/pages/RegisterPage.jsx";
 import { ForgotPasswordPage } from "@/pages/ForgotPasswordPage.jsx";
 import { ResetPasswordPage } from "@/pages/ResetPasswordPage.jsx";
+import { AuthCallbackPage } from "@/pages/AuthCallbackPage.jsx";
 import { CalendarPage } from "@/components/calendar/calendar-page.jsx";
 import { GoalsPage } from "@/components/goals/goals-page.jsx";
 import { MetasPage } from "@/components/goals/metas-page.jsx";
@@ -83,6 +84,7 @@ function ContactRoute() {
 export function AppRoutes() {
   return (
     <Routes>
+      <Route path="/auth/callback" element={<AuthCallbackPage />} />
       <Route element={<AuthLayout />}>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />

@@ -88,6 +88,10 @@ export default defineConfig({
       "/auth": {
         target: process.env.VITE_API_PROXY ?? "http://localhost:4000",
         changeOrigin: true,
+        bypass(req) {
+          const path = req.url?.split("?")[0] ?? "";
+          if (path === "/auth/callback") return false;
+        },
       },
     },
   },

@@ -118,21 +118,63 @@ router.post("/reset-password", async (req, res) => {
   }
 });
 
+router.post("/exchange-code", async (req, res) => {
+  if (!isSupabaseConfigured()) return apiError(res, "Supabase no configurado.", 503);
+  const code = String(req.body?.code ?? "").trim();
+  if (!code) return apiError(res, "Enlace inválido o expirado.", 400);
+  try {
+    const sb = createCookieSupabaseClient(req, res);
+    const { error } = await sb.auth.exchangeCodeForSession(code);
+    if (error) return apiError(res, traducirError(error.message), 400);
+    json(res, { ok: true });
+  } catch (err) {
+    console.error("[auth/exchange-code]", err);
+    return apiError(res, traducirError(err instanceof Error ? err.message : "Error de autenticación."), 503);
+  }
+});
+
+router.post("/verify-token", async (req, res) => {
+  if (!isSupabaseConfigured()) return apiError(res, "Supabase no configurado.", 503);
+  const token_hash = String(req.body?.token_hash ?? "").trim();
+  const type = String(req.body?.type ?? "").trim();
+  if (!token_hash || !type) return apiError(res, "Enlace inválido o expirado.", 400);
+  try {
+    const sb = createCookieSupabaseClient(req, res);
+    const { error } = await sb.auth.verifyOtp({ token_hash, type });
+    if (error) return apiError(res, traducirError(error.message), 400);
+    json(res, { ok: true });
+  } catch (err) {
+    console.error("[auth/verify-token]", err);
+    return apiError(res, traducirError(err instanceof Error ? err.message : "Error de autenticación."), 503);
+  }
+});
+
+router.post("/set-session", async (req, res) => {
+  if (!isSupabaseConfigured()) return apiError(res, "Supabase no configurado.", 503);
+  const access_token = String(req.body?.access_token ?? "").trim();
+  const refresh_token = String(req.body?.refresh_token ?? "").trim();
+  if (!access_token || !refresh_token) return apiError(res, "Sesión inválida.", 400);
+  try {
+    const sb = createCookieSupabaseClient(req, res);
+    const { error } = await sb.auth.setSession({ access_token, refresh_token });
+    if (error) return apiError(res, traducirError(error.message), 400);
+    json(res, { ok: true });
+  } catch (err) {
+    console.error("[auth/set-session]", err);
+    return apiError(res, traducirError(err instanceof Error ? err.message : "Error de autenticación."), 503);
+  }
+});
+
 router.get("/callback", async (req, res) => {
   const origin = resolveWebOrigin(req, req.query.redirect_origin);
-  if (!isSupabaseConfigured()) return res.redirect(`${origin}/login?error=auth`);
-  const code = req.query.code;
   const next = req.query.next ?? "/";
-  if (code) {
-    try {
-      const sb = createCookieSupabaseClient(req, res);
-      const { error } = await sb.auth.exchangeCodeForSession(String(code));
-      if (!error) return res.redirect(`${origin}${next}`);
-    } catch (err) {
-      console.error("[auth/callback]", err);
-    }
+  const qs = new URLSearchParams();
+  if (next && next !== "/") qs.set("next", String(next));
+  for (const key of ["code", "token_hash", "type", "error", "error_description"]) {
+    if (req.query[key]) qs.set(key, String(req.query[key]));
   }
-  res.redirect(`${origin}/login?error=auth`);
+  const suffix = qs.toString() ? `?${qs.toString()}` : "";
+  return res.redirect(`${origin}/auth/callback${suffix}`);
 });
 
 export default router;

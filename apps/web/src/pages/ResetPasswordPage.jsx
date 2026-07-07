@@ -1,6 +1,7 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { Home } from "lucide-react";
+import { isSupabaseConfigured } from "@/lib/supabase/config.js";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { selectOnFocus } from "@/lib/focus-select.js";
 
@@ -9,6 +10,16 @@ export function ResetPasswordPage() {
   const navigate = useNavigate();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState(null);
+  const [sessionState, setSessionState] = useState(
+    isSupabaseConfigured() ? "loading" : "ready",
+  );
+
+  useEffect(() => {
+    if (!isSupabaseConfigured()) return;
+    fetch("/api/v1/auth/session", { credentials: "include" })
+      .then((r) => setSessionState(r.ok ? "ready" : "missing"))
+      .catch(() => setSessionState("missing"));
+  }, []);
 
   const onSubmit = async (e) => {
     e.preventDefault();
@@ -41,6 +52,16 @@ export function ResetPasswordPage() {
       <div className="auth-title">{t("auth.reset.title")}</div>
       <div className="auth-sub">{t("auth.reset.sub")}</div>
       {error && <div className="auth-error">{error}</div>}
+      {sessionState === "loading" && (
+        <div className="auth-sub">{t("auth.callback.pending")}</div>
+      )}
+      {sessionState === "missing" && (
+        <>
+          <div className="auth-error">{t("auth.reset.sessionExpired")}</div>
+          <div className="auth-foot"><Link to="/forgot-password">{t("auth.reset.requestNew")}</Link></div>
+        </>
+      )}
+      {sessionState === "ready" && (
       <form onSubmit={onSubmit}>
         <div className="auth-field">
           <label className="field-label">{t("auth.reset.new")}</label>
@@ -54,6 +75,7 @@ export function ResetPasswordPage() {
           {pending ? t("auth.reset.pending") : t("auth.reset.submit")}
         </button>
       </form>
+      )}
     </div>
   );
 }

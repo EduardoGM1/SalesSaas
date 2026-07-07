@@ -39,8 +39,11 @@ npx supabase db push
 2. (Opcional) **Google**: pega `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` y
    añade la URL de callback que indique Supabase en Google Cloud Console.
 3. **Authentication → URL Configuration**:
-   - Site URL: `http://localhost:3000` (y luego el dominio de producción).
-   - Redirect URLs: `http://localhost:3000/auth/callback`.
+   - Site URL: tu dominio de producción (ej. `https://sales-saas-api.vercel.app`).
+   - Redirect URLs (añadir todas las que uses):
+     - `http://localhost:5173/auth/callback`
+     - `https://sales-saas-api.vercel.app/auth/callback`
+   - El enlace de recuperación de contraseña redirige a `/auth/callback?next=/reset-password`.
 
 ## 4b. Realtime Presence (estado en línea en Red)
 
