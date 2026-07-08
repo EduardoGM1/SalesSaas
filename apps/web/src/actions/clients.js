@@ -58,15 +58,31 @@ export function createProspectFromName(name, tipoTour, tourCuantificable) {
   return { ok: true, client };
 }
 
+function syncSurveyProspectFields(client) {
+  const survey = { ...(client.data?.survey || {}) };
+  survey.svp_name1 = client.name1 || client.name || "";
+  survey.svp_country = client.country || "";
+  survey.svp_city = client.city || "";
+  survey.svp_occ1 = client.occupation1 || "";
+  return {
+    ...client,
+    data: {
+      ...(client.data || {}),
+      survey: { ...survey },
+    },
+  };
+}
+
 export function saveClientEdit(client, form) {
-  const updated = ensureProspectIdentity({
+  const updated = syncSurveyProspectFields(ensureProspectIdentity({
     ...client,
     ...form,
     name: form.name1 || form.name || client.name,
     name2: "",
     occupation2: "",
-  });
+  }));
   useDbStore.getState().saveClient(updated);
+  toast.success(translate("exp.edit.save"));
   return updated;
 }
 

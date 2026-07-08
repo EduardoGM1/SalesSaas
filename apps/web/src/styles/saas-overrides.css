@@ -2041,6 +2041,12 @@ body,
   margin-top: 0;
 }
 
+.tools-hub-cta {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 12px;
+}
+
 /* ===== DASHBOARD PAGE ===== */
 .dash-page-nav {
   margin-bottom: 8px;
@@ -3660,5 +3666,153 @@ body,
   .pwa-install-overlay {
     align-items: center;
     padding: 24px;
+  }
+}
+
+/* ===== Collapsible sections (accordion móvil) ===== */
+.collapsible-section {
+  overflow: hidden;
+}
+
+.collapsible-section-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  padding: 0;
+  margin: 0;
+  border: none;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.collapsible-section-titles {
+  flex: 1;
+  min-width: 0;
+}
+
+.collapsible-section-sub {
+  margin-top: 4px;
+  font-size: 11px;
+  line-height: 1.35;
+  color: var(--muted);
+}
+
+.collapsible-section-chevron {
+  flex-shrink: 0;
+  color: var(--muted2);
+  transition: transform 0.18s ease;
+}
+
+.collapsible-section-chevron.is-open {
+  transform: rotate(180deg);
+}
+
+.collapsible-section.is-collapsed .collapsible-section-body {
+  display: none;
+}
+
+.collapsible-section.collapsible-section--mobile-only.is-collapsed .collapsible-section-body {
+  display: none;
+}
+
+.dash-graph-head--body {
+  margin-bottom: 10px;
+}
+
+.dash-chart-toggles--desktop {
+  display: flex;
+}
+
+@media (max-width: 768px) {
+  .dash-chart-toggles--desktop {
+    display: none;
+  }
+
+  .collapsible-section.collapsible-section--mobile-only .collapsible-section-head {
+    padding: 0;
+  }
+
+  .collapsible-section.dash-graph-card,
+  .collapsible-section.dash-table-card,
+  .collapsible-section.exp-collapsible-card {
+    padding: 14px 12px;
+  }
+
+  .collapsible-section.exp-collapsible-card .collapsible-section-sub {
+    font-size: 11px;
+  }
+
+  .prospect-summary-card .prospect-summary-head--actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 10px;
+  }
+
+  .metas-page .metas-kpi-grid--projected {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .metas-page .metas-kpi-grid--projected .vbox {
+    min-width: 0;
+  }
+
+  .metas-page .metas-kpi-grid--projected .vbox-sub {
+    font-size: 10px;
+    line-height: 1.25;
+  }
+
+  .prospect-geo-row {
+    grid-template-columns: 1fr !important;
+  }
+
+  .tools-hub-page .page-toolbar {
+    margin-bottom: 8px;
+  }
+
+  .tools-hub-page .tools-hub-cta {
+    margin-top: 14px;
+    padding-right: 2px;
+  }
+}
+
+@media (min-width: 769px) {
+  .collapsible-section.collapsible-section--mobile-only .collapsible-section-head {
+    pointer-events: none;
+    cursor: default;
+  }
+
+  .collapsible-section.collapsible-section--mobile-only .collapsible-section-chevron {
+    display: none;
+  }
+
+  .collapsible-section.collapsible-section--mobile-only.is-collapsed .collapsible-section-body {
+    display: block;
+  }
+
+  .collapsible-section.exp-collapsible-card {
+    display: block;
+  }
+
+  .collapsible-section.exp-collapsible-card .collapsible-section-head {
+    margin-bottom: 10px;
+  }
+
+  .collapsible-section.exp-collapsible-card .collapsible-section-sub {
+    display: block;
+    margin-top: 4px;
+  }
+
+  .prospect-summary-card.collapsible-section .prospect-summary-head--actions {
+    float: right;
+    margin: -2px 0 8px;
+  }
+
+  .dash-chart-toggles--body {
+    display: none;
   }
 }

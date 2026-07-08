@@ -32,12 +32,12 @@ export function computeSurvey(d: SurveyData, sType = "hotel"): SurveyCalcResult 
   const validHist = histRows.filter((r) => r.year > 0 && (r.amt > 0 || r.nights > 0 || r.dest));
   const histYears = Array.from(new Set(validHist.map((r) => r.year)));
   const histYearCount = histYears.length || 0;
-  const histNights = validHist.reduce((a, r) => a + r.nights, 0);
-  const histSpend = validHist.reduce((a, r) => a + r.amt, 0);
-  const histCostRows = validHist.filter((r) => r.amt > 0);
+  const histNights = histRows.reduce((a, r) => a + (r.nights > 0 ? r.nights : 0), 0);
+  const histSpend = histRows.reduce((a, r) => a + (r.amt > 0 ? r.amt : 0), 0);
+  const histCostRows = histRows.filter((r) => r.amt > 0);
   const histAvg = histCostRows.length ? histCostRows.reduce((a, r) => a + r.amt, 0) / histCostRows.length : 0;
   const histVacYear = histYearCount ? validHist.length / histYearCount : 0;
-  const histNightYear = histYearCount ? histNights / histYearCount : 0;
+  const histNightYear = histYearCount ? validHist.reduce((a, r) => a + r.nights, 0) / histYearCount : 0;
 
   const futRows = [1, 2, 3].map((i) => ({
     dest: String(d[`sf${i}c`] || "").trim(),

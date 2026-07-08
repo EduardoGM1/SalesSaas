@@ -159,7 +159,12 @@ export function MetasPage() {
             <div className="card metas-kpi-card">
               <div className="card-heading">{t("metas.kpisProjected")}</div>
               <div className="card-sub">{t("metas.kpisSub")}</div>
-              <div className="g2 metas-kpi-grid">
+              <div className="g2 metas-kpi-grid metas-kpi-grid--projected">
+                <div className="vbox yellow">
+                  <div className="vbox-val">{kpis.cierre.toFixed(2)}%</div>
+                  <div className="vbox-label">{t("goals.closeRate")}</div>
+                  <div className="vbox-sub">{t("metas.closeRateSub")}</div>
+                </div>
                 <div className="vbox blue">
                   <div className="vbox-val">{fmt(kpis.vprom)}</div>
                   <div className="vbox-label">{t("goals.avgSale")}</div>
@@ -169,11 +174,6 @@ export function MetasPage() {
                   <div className="vbox-val">{fmt(kpis.efic)}</div>
                   <div className="vbox-label">{t("goals.efficiency")}</div>
                   <div className="vbox-sub">{t("metas.efficiencySub")}</div>
-                </div>
-                <div className="vbox yellow">
-                  <div className="vbox-val">{kpis.cierre.toFixed(2)}%</div>
-                  <div className="vbox-label">{t("goals.closeRate")}</div>
-                  <div className="vbox-sub">{t("metas.closeRateSub")}</div>
                 </div>
                 <div className="vbox blue">
                   <div className="vbox-val">{fmt(kpis.prod)}</div>

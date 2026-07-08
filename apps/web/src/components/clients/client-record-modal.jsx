@@ -209,7 +209,7 @@ export function ClientRecordModal({
       open={open}
       onOpenChange={onOpenChange}
       title={copy.title}
-      sub={copy.sub}
+      sub={mode === "edit-data" ? undefined : copy.sub}
       popupId="m-client-record"
       maxWidth={760}
       modalClassName="modal-wide"
@@ -231,7 +231,9 @@ export function ClientRecordModal({
           </>
         )}
       </div>
-      <div className="ethic-box" style={{ marginTop: 16 }}>{copy.ethic}</div>
+      {mode !== "edit-data" && (
+        <div className="ethic-box" style={{ marginTop: 16 }}>{copy.ethic}</div>
+      )}
       <div className="btn-row">
         <button type="button" className="btn btn-ghost" onClick={onCancel}>{t("common.cancel")}</button>
         <button type="button" className="btn btn-primary" onClick={handleSaveClick}>{copy.saveLabel}</button>

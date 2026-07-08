@@ -1,9 +1,9 @@
 
 import { Link, useNavigate } from "react-router-dom";
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { Eye, Share2, Trash2 } from "lucide-react";
-import { SalesModal } from "@/components/ui/sales-modal";
 import { ShareProspectModal } from "@/components/network/share-prospect-modal.jsx";
+import { NewClientModal } from "@/components/clients/new-client-modal.jsx";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { Topbar } from "@/components/layout/topbar";
 import { PageBack } from "@/components/layout/page-back";
@@ -11,93 +11,22 @@ import { clientDisplayName } from "@/lib/clients";
 import { shortDate } from "@/lib/format/dates";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { selectOnFocus } from "@/lib/focus-select.js";
-import { DEFAULT_TOUR_TYPES } from "@/lib/store-empty.js";
-import { useDbStore } from "@/stores/db-store";
 import { useAppStore } from "@/stores/app-store";
 import { useClientActions } from "@/hooks/use-client-actions.js";
-import { shallow } from "zustand/shallow";
 
 export function ClientsPage() {
   const { t, lang } = useI18n();
   const navigate = useNavigate();
   const hydrated = useAppStore((s) => s.hydrated);
-  const { searchClients, createProspect, removeClient } = useClientActions();
-  const db = useDbStore((s) => s.db, shallow);
+  const { searchClients, removeClient } = useClientActions();
   const [open, setOpen] = useState(false);
-  const [name, setname] = useState("");
-  const [tourCuantificable, setTourCuantificable] = useState(true);
-  const [tipoTour, setTipoTour] = useState("");
-  const [missingName, setMissingName] = useState(false);
-  const [invalidName, setInvalidName] = useState(false);
-  const [missingTipoTour, setMissingTipoTour] = useState(false);
   const [query, setQuery] = useState("");
   const [shareClient, setShareClient] = useState(null);
-  const nameRef = useRef<HTMLInputElement>(null);
   const canShare = isSupabaseConfigured();
-
-  const tourTypes = db.settings?.tourTypes ?? DEFAULT_TOUR_TYPES;
-
-  useEffect(() => {
-    if (!open) return;
-    setMissingName(false);
-    setInvalidName(false);
-    setMissingTipoTour(false);
-    const timer = window.setTimeout(() => nameRef.current?.focus(), 300);
-    return () => window.clearTimeout(timer);
-  }, [open]);
 
   const allClients = searchClients("");
   const sorted = searchClients(query);
   const hasSearch = query.trim().length > 0;
-
-  const handleOpenChange = (next) => {
-    setOpen(next);
-    if (!next) {
-      setname("");
-      setTourCuantificable(true);
-      setTipoTour("");
-      setMissingName(false);
-      setInvalidName(false);
-      setMissingTipoTour(false);
-    }
-  };
-
-  const handleCreate = () => {
-    let hasError = false;
-    const trimmed = name.trim();
-    if (!trimmed) {
-      setMissingName(true);
-      setInvalidName(false);
-      nameRef.current?.focus();
-      hasError = true;
-    } else if (/\s/.test(trimmed)) {
-      setInvalidName(true);
-      setMissingName(false);
-      nameRef.current?.focus();
-      hasError = true;
-    }
-    if (!tipoTour) {
-      setMissingTipoTour(true);
-      hasError = true;
-    }
-    if (hasError) return;
-    const result = createProspect(name.trim(), tipoTour, tourCuantificable);
-    if (!result.ok) {
-      if (result.reason === "missing_name") {
-        setMissingName(true);
-        setInvalidName(false);
-        nameRef.current?.focus();
-      } else if (result.reason === "invalid_name") {
-        setInvalidName(true);
-        setMissingName(false);
-        nameRef.current?.focus();
-      } else if (result.reason === "missing_tour_type") {
-        setMissingTipoTour(true);
-      }
-      return;
-    }
-    handleOpenChange(false);
-  };
 
   if (!hydrated) return <Topbar title={t("page.clients.title")} subtitle={t("common.loading")} />;
 
@@ -113,7 +42,7 @@ export function ClientsPage() {
       <div className="sales-page clients-page">
         <div className="page-toolbar page-toolbar--between">
           <PageBack inline />
-          <button type="button" className="btn btn-primary btn-sm" onClick={() => handleOpenChange(true)}>{t("clients.new")}</button>
+          <button type="button" className="btn btn-primary btn-sm" onClick={() => setOpen(true)}>{t("clients.new")}</button>
         </div>
 
         <div className="client-search-card">
@@ -209,75 +138,11 @@ export function ClientsPage() {
         />
       )}
 
-      <SalesModal
+      <NewClientModal
         open={open}
-        onOpenChange={handleOpenChange}
-        title={t("clients.modalTitle")}
-        sub={t("clients.modalSub")}
-      >
-        <div className={`newclient-field required-field${missingName || invalidName ? " field-missing" : ""}`}>
-          <label className="required-label">
-            {t("clients.name")}
-            <span className="req-star">*</span>
-          </label>
-          <input
-            ref={nameRef}
-            id="nc-name"
-            type="text"
-            value={name}
-            placeholder={t("clients.namePlaceholder")}
-            onFocus={selectOnFocus}
-            onChange={(e) => {
-              setname(e.target.value);
-              if (e.target.value.trim()) setMissingName(false);
-              if (!/\s/.test(e.target.value.trim())) setInvalidName(false);
-            }}
-            onKeyDown={(e) => { if (e.key === "Enter") handleCreate(); }}
-          />
-          {invalidName && <div className="field-inline-error">{t("clients.singleNameOnly")}</div>}
-        </div>
-        <div className="newclient-field">
-          <label>{t("clients.isTourQuantifiable")}</label>
-          <div className="seg newclient-seg" role="group" aria-label={t("clients.isTourQuantifiable")}>
-            <button
-              type="button"
-              className={`seg-btn${tourCuantificable ? " on" : ""}`}
-              onClick={() => setTourCuantificable(true)}
-            >
-              {t("clients.yes")}
-            </button>
-            <button
-              type="button"
-              className={`seg-btn${!tourCuantificable ? " on" : ""}`}
-              onClick={() => setTourCuantificable(false)}
-            >
-              {t("clients.no")}
-            </button>
-          </div>
-        </div>
-        <div className={`newclient-field required-field${missingTipoTour ? " field-missing" : ""}`}>
-          <label className="required-label">
-            {t("clients.tourType")}
-            <span className="req-star">*</span>
-          </label>
-          <select
-            value={tipoTour}
-            onChange={(e) => {
-              setTipoTour(e.target.value);
-              if (e.target.value) setMissingTipoTour(false);
-            }}
-          >
-            <option value="">{t("clients.tourTypePlaceholder")}</option>
-            {tourTypes.map((type) => (
-              <option key={type} value={type}>{type}</option>
-            ))}
-          </select>
-        </div>
-        <div className="btn-row" style={{ marginTop: 20 }}>
-          <button type="button" className="btn btn-ghost" onClick={() => handleOpenChange(false)}>{t("common.cancel")}</button>
-          <button type="button" className="btn btn-primary" onClick={handleCreate}>{t("clients.createExpediente")}</button>
-        </div>
-      </SalesModal>
+        onOpenChange={setOpen}
+        onCreated={(client) => navigate(`/clients/${client.id}`)}
+      />
     </>
   );
 }

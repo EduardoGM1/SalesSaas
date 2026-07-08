@@ -4,6 +4,7 @@ import { BarChart3, Calendar, List, Tag, Target, TrendingUp } from "lucide-react
 import { Topbar } from "@/components/layout/topbar";
 import { PageBack } from "@/components/layout/page-back";
 import { DashboardChart } from "@/components/goals/dashboard-chart";
+import { CollapsibleSection } from "@/components/ui/collapsible-section.jsx";
 import { getDashboardWeeks, normalizeGoal, workingDaysRemaining } from "@/lib/calculations/calendar";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { useMoney } from "@/hooks/use-money.js";
@@ -105,11 +106,29 @@ export function GoalsPage() {
     </div>
   ));
 
+  const chartBody = (
+    <>
+      <div className="dash-graph-head dash-graph-head--body">
+        <div className="dash-chart-toggles">
+          <label className="dash-chart-toggle">
+            <input type="checkbox" checked={showTarget} onChange={(e) => setShowTarget(e.target.checked)} />
+            <span className="legend-line" /> {t("goals.showTarget")}
+          </label>
+          <label className="dash-chart-toggle">
+            <input type="checkbox" checked={showReal} onChange={(e) => setShowReal(e.target.checked)} />
+            <span className="legend-box" /> {t("goals.showReal")}
+          </label>
+        </div>
+      </div>
+      <DashboardChart weeks={weeks} showTarget={showTarget} showReal={showReal} />
+    </>
+  );
+
   const chartBlock = (
     <div className="dash-graph-card">
       <div className="dash-graph-head">
         <div className="dash-card-title"><Target size={18} color="#2563eb" /> {t("goals.targetVsReal")}</div>
-        <div className="dash-chart-toggles">
+        <div className="dash-chart-toggles dash-chart-toggles--desktop">
           <label className="dash-chart-toggle">
             <input type="checkbox" checked={showTarget} onChange={(e) => setShowTarget(e.target.checked)} />
             <span className="legend-line" /> {t("goals.showTarget")}
@@ -124,53 +143,95 @@ export function GoalsPage() {
     </div>
   );
 
+  const chartBlockMobile = (
+    <CollapsibleSection
+      mobileOnly
+      defaultOpen={false}
+      className="dash-graph-card"
+      title={<div className="dash-card-title"><Target size={18} color="#2563eb" /> {t("goals.targetVsReal")}</div>}
+      bodyClassName="dash-graph-card-body"
+    >
+      {chartBody}
+    </CollapsibleSection>
+  );
+
+  const weeklyTableBody = (
+    <table className="dash-week-prod-table">
+      <thead><tr><th>{t("goals.weekNum")}</th><th>{t("goals.objective")}</th><th>{t("goals.real")}</th></tr></thead>
+      <tbody>
+        {weeks.map((w) => (
+          <tr key={w.weekNo}><td>{w.weekNo}</td><td>{fmt(w.obj)}</td><td>{fmt(w.real)}</td></tr>
+        ))}
+      </tbody>
+    </table>
+  );
+
   const weeklyTable = (
     <div className="dash-table-card">
       <div className="dash-card-title"><Calendar size={18} color="#2563eb" /> {t("goals.weeklyProduction")}</div>
-      <table className="dash-week-prod-table">
-        <thead><tr><th>{t("goals.weekNum")}</th><th>{t("goals.objective")}</th><th>{t("goals.real")}</th></tr></thead>
-        <tbody>
-          {weeks.map((w) => (
-            <tr key={w.weekNo}><td>{w.weekNo}</td><td>{fmt(w.obj)}</td><td>{fmt(w.real)}</td></tr>
-          ))}
-        </tbody>
-      </table>
+      {weeklyTableBody}
     </div>
   );
 
+  const weeklyTableMobile = (
+    <CollapsibleSection
+      mobileOnly
+      defaultOpen={false}
+      className="dash-table-card"
+      title={<div className="dash-card-title"><Calendar size={18} color="#2563eb" /> {t("goals.weeklyProduction")}</div>}
+    >
+      {weeklyTableBody}
+    </CollapsibleSection>
+  );
+
   const tourTypeEntries = tourTypes.map((type) => [type, tourSummary[type] ?? { yes: 0, no: 0 }] as [string, { yes: number; no: number }] );
+  const tourTypeTableBody = (
+    <table className="dash-tour-summary-table">
+      <thead>
+        <tr>
+          <th>{t("goals.tourTypeCol")}</th>
+          <th colSpan={2} style={{ textAlign: "center" }}>{t("goals.quantifiable")}</th>
+          <th>{t("goals.total")}</th>
+        </tr>
+        <tr className="dash-ts-subhead">
+          <th></th>
+          <th>{t("goals.yesShort")}</th>
+          <th>{t("goals.noShort")}</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {tourTypeEntries.map(([type, counts]) => {
+          const total = counts.yes + counts.no;
+          return (
+            <tr key={type}>
+              <td className="dash-ts-type">{type}</td>
+              <td className="dash-ts-yes">{counts.yes}</td>
+              <td className="dash-ts-no">{counts.no}</td>
+              <td className="dash-ts-total">{total}</td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
+  );
+
   const tourTypeBlock = tourTypeEntries.length > 0 ? (
     <div className="dash-table-card">
       <div className="dash-card-title"><List size={18} color="#2563eb" /> {t("goals.tourTypeSummary")}</div>
-      <table className="dash-tour-summary-table">
-        <thead>
-          <tr>
-            <th>{t("goals.tourTypeCol")}</th>
-            <th colSpan={2} style={{ textAlign: "center" }}>{t("goals.quantifiable")}</th>
-            <th>{t("goals.total")}</th>
-          </tr>
-          <tr className="dash-ts-subhead">
-            <th></th>
-            <th>{t("goals.yesShort")}</th>
-            <th>{t("goals.noShort")}</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          {tourTypeEntries.map(([type, counts]) => {
-            const total = counts.yes + counts.no;
-            return (
-              <tr key={type}>
-                <td className="dash-ts-type">{type}</td>
-                <td className="dash-ts-yes">{counts.yes}</td>
-                <td className="dash-ts-no">{counts.no}</td>
-                <td className="dash-ts-total">{total}</td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+      {tourTypeTableBody}
     </div>
+  ) : null;
+
+  const tourTypeBlockMobile = tourTypeEntries.length > 0 ? (
+    <CollapsibleSection
+      mobileOnly
+      defaultOpen={false}
+      className="dash-table-card"
+      title={<div className="dash-card-title"><List size={18} color="#2563eb" /> {t("goals.tourTypeSummary")}</div>}
+    >
+      {tourTypeTableBody}
+    </CollapsibleSection>
   ) : null;
 
   return (
@@ -227,9 +288,9 @@ export function GoalsPage() {
               </div>
             </div>
           </div>
-          {chartBlock}
-          {weeklyTable}
-          {tourTypeBlock}
+          {chartBlockMobile}
+          {weeklyTableMobile}
+          {tourTypeBlockMobile}
         </div>
 
         <div className="dash-desktop-layout">

@@ -5,6 +5,7 @@ import {  useNavigate  } from "react-router-dom";
 import { FileText, Palmtree, DollarSign, MessageSquare } from "lucide-react";
 import { SalesModal } from "@/components/ui/sales-modal";
 import { ClientRecordModal } from "@/components/clients/client-record-modal.jsx";
+import { CollapsibleSection } from "@/components/ui/collapsible-section.jsx";
 import { ShareProspectModal } from "@/components/network/share-prospect-modal.jsx";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { sharingApi } from "@/lib/network-api.js";
@@ -313,12 +314,15 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
             </div>
           </div>
 
-          <div className="card exp-side-card prospect-summary-card">
-            <div className="prospect-summary-head">
-              <div>
-                <div className="prospect-summary-title">{t("exp.prospect.title")}</div>
-                <div className="prospect-summary-sub">{t("exp.prospect.sub")}</div>
-              </div>
+          <CollapsibleSection
+            mobileOnly
+            defaultOpen
+            className="card exp-side-card prospect-summary-card exp-collapsible-card"
+            title={<div className="prospect-summary-title">{t("exp.prospect.title")}</div>}
+            subtitle={t("exp.prospect.sub")}
+            bodyClassName="prospect-summary-body"
+          >
+            <div className="prospect-summary-head prospect-summary-head--actions">
               {canEdit && (
                 <button type="button" className="btn btn-ghost btn-sm" onClick={openEdit}>{t("exp.prospect.edit")}</button>
               )}
@@ -342,12 +346,17 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
                 {psCell("📊", t("exp.prospect.quantifiable"), psValue(c.tour_cuantificable !== false ? t("clients.yes") : t("clients.no"), true))}
               </div>
             </div>
-          </div>
+          </CollapsibleSection>
         </div>
 
-        <div className="card activity-card" id="client-sales-card">
-          <div className="card-heading">{t("exp.sales.title")}</div>
-          <div className="card-sub">{t("exp.sales.sub")}</div>
+        <CollapsibleSection
+          mobileOnly
+          defaultOpen={false}
+          className="card activity-card exp-collapsible-card"
+          id="client-sales-card"
+          title={<div className="card-heading">{t("exp.sales.title")}</div>}
+          subtitle={t("exp.sales.sub")}
+        >
           <div className="activity-list" id="client-sales-list">
             {!sales.length ? <div className="activity-empty">{t("exp.sales.empty")}</div> : (
               sales.map((sale) => {
@@ -377,11 +386,15 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
               })
             )}
           </div>
-        </div>
+        </CollapsibleSection>
 
-        <div className="card activity-card">
-          <div className="card-heading">{t("exp.activity.title")}</div>
-          <div className="card-sub">{t("exp.activity.sub")}</div>
+        <CollapsibleSection
+          mobileOnly
+          defaultOpen={false}
+          className="card activity-card exp-collapsible-card"
+          title={<div className="card-heading">{t("exp.activity.title")}</div>}
+          subtitle={t("exp.activity.sub")}
+        >
           <div className="activity-list" id="client-activity-list">
             {!activityItems.length ? <div className="activity-empty">{t("exp.activity.empty")}</div> : (
               activityItems.map((a) => (
@@ -396,7 +409,7 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
               ))
             )}
           </div>
-        </div>
+        </CollapsibleSection>
       </div>
 
       <ClientRecordModal

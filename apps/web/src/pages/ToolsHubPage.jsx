@@ -1,13 +1,16 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { DollarSign, FileText, Palmtree } from "lucide-react";
 import { Topbar } from "@/components/layout/topbar.jsx";
 import { PageBack } from "@/components/layout/page-back.jsx";
+import { NewClientModal } from "@/components/clients/new-client-modal.jsx";
 import { useAppStore } from "@/stores/app-store.js";
 import { useI18n } from "@/hooks/use-i18n.js";
 
 export function ToolsHubPage() {
   const setToolMode = useAppStore((s) => s.setToolMode);
   const { t } = useI18n();
+  const [newClientOpen, setNewClientOpen] = useState(false);
 
   const TOOLS = [
     { href: "/tools/survey", labelKey: "tools.survey", descKey: "tools.surveyDesc", icon: FileText, tone: "blue" },
@@ -18,8 +21,10 @@ export function ToolsHubPage() {
   return (
     <>
       <Topbar title={t("page.tools.title")} subtitle={t("page.tools.subtitle")} />
-      <div className="sales-page">
-        <PageBack inline />
+      <div className="sales-page tools-hub-page">
+        <div className="page-toolbar">
+          <PageBack inline />
+        </div>
         <div className="exp-tool-list tools-hub-list">
           {TOOLS.map((tool) => {
             const Icon = tool.icon;
@@ -35,7 +40,13 @@ export function ToolsHubPage() {
             );
           })}
         </div>
+        <div className="tools-hub-cta">
+          <button type="button" className="btn btn-primary btn-sm" onClick={() => setNewClientOpen(true)}>
+            {t("clients.new")}
+          </button>
+        </div>
       </div>
+      <NewClientModal open={newClientOpen} onOpenChange={setNewClientOpen} />
     </>
   );
 }
