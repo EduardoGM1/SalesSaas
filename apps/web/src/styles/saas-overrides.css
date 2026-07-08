@@ -2548,13 +2548,16 @@ body,
   }
 
   .client-survey-crow {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: 100%;
   }
 
   .client-survey-crow .client-survey-cfield {
+    width: 100%;
     min-width: 0;
+    flex: none;
   }
 
   .newclient-field {
@@ -2603,6 +2606,10 @@ body,
     min-height: 44px;
     padding: 8px 10px;
     font-size: 16px;
+    min-width: 0;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
   }
 
   .client-survey-name-error {
