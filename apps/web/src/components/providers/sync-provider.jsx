@@ -71,8 +71,25 @@ export function SyncProvider({ children }) {
       try {
         cloudDb = await pullViaApi();
       } catch (err) {
-        useSyncStore.getState().setStatus("offline", err instanceof Error ? err.message : undefined);
         enabledRef.current = true;
+        const canPushLocal =
+          (account === userId || !account) && !isEmptyDb(localDb);
+        if (canPushLocal) {
+          try {
+            const { db: norm } = normalizeIds(localDb);
+            await reconcileViaApi(norm);
+            localStorage.setItem(ACCOUNT_KEY, userId);
+            useSyncStore.getState().setSynced();
+            return;
+          } catch (syncErr) {
+            useSyncStore.getState().setStatus(
+              "error",
+              syncErr instanceof Error ? syncErr.message : String(syncErr),
+            );
+            return;
+          }
+        }
+        useSyncStore.getState().setStatus("offline", err instanceof Error ? err.message : undefined);
         return;
       }
 
