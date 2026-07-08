@@ -27,7 +27,8 @@
     "verify": "node scripts/verify-smoke.mjs",
     "verify:api": "npm run verify -w @salesapp/api",
     "test:e2e": "playwright test",
-    "test:e2e:ui": "playwright test --ui"
+    "test:e2e:ui": "playwright test --ui",
+    "test:video-pdf": "node scripts/test-survey-calc.mjs && playwright test e2e/video-corrections.spec.js"
   },
   "devDependencies": {
     "@playwright/test": "^1.52.0",

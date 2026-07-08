@@ -24,12 +24,22 @@ export default defineConfig({
           url: `http://localhost:${apiPort}/health`,
           reuseExistingServer: !process.env.CI,
           timeout: 120000,
+          env: {
+            ...process.env,
+            NEXT_PUBLIC_SUPABASE_URL: "",
+            NEXT_PUBLIC_SUPABASE_ANON_KEY: "",
+          },
         },
         {
           command: "npm run dev:web",
           url: baseURL,
           reuseExistingServer: !process.env.CI,
           timeout: 120000,
+          env: {
+            ...process.env,
+            VITE_SUPABASE_URL: "",
+            VITE_SUPABASE_ANON_KEY: "",
+          },
         },
       ],
 });
