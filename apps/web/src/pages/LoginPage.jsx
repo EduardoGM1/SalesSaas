@@ -69,7 +69,7 @@ export function LoginPage() {
           label={t("auth.login.email")}
           name="email"
           type="email"
-          placeholder={t("auth.common.emailPlaceholder")}
+          placeholder={t("auth.login.emailPlaceholder")}
           required
           autoComplete="email"
           icon={Mail}

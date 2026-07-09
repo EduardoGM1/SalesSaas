@@ -1,11 +1,15 @@
 import { Link, Outlet, useLocation } from "react-router-dom";
 import {
   ArrowRight,
-  BarChart3,
-  Check,
+  ChevronDown,
+  FileText,
+  FolderOpen,
   Globe,
-  Lock,
+  LineChart,
+  MessageCircle,
+  Shield,
   Smartphone,
+  TrendingUp,
   Users,
   Zap,
 } from "lucide-react";
@@ -19,11 +23,24 @@ const NAV_LINKS = [
   { key: "auth.landing.nav.contact", href: "#" },
 ];
 
+const PILL_ITEMS = [
+  { key: "auth.landing.pill.prospects", icon: Users },
+  { key: "auth.landing.pill.followups", icon: MessageCircle },
+  { key: "auth.landing.pill.production", icon: TrendingUp },
+];
+
 const TRUST_ITEMS = [
-  { key: "auth.landing.trust.secure", icon: Lock },
+  { key: "auth.landing.trust.secure", icon: Shield },
   { key: "auth.landing.trust.access", icon: Smartphone },
   { key: "auth.landing.trust.teams", icon: Users },
   { key: "auth.landing.trust.start", icon: Zap },
+];
+
+const TEAM_AVATARS = [
+  { bg: "#dbeafe", initials: "AC" },
+  { bg: "#fce7f3", initials: "MR" },
+  { bg: "#dcfce7", initials: "JL" },
+  { bg: "#fef3c7", initials: "SK" },
 ];
 
 export function AuthLandingShell() {
@@ -41,34 +58,33 @@ export function AuthLandingShell() {
     <div className="auth-landing">
       <header className="auth-landing-header">
         <Link to="/register" className="auth-landing-brand">
-          <img src="/icon.svg" alt="" className="auth-landing-brand-icon" />
+          <img src="/saletse-mark.svg" alt="" className="auth-landing-brand-icon" />
           <span>Saletse</span>
         </Link>
+
         <nav className="auth-landing-nav" aria-label={t("auth.landing.nav.aria")}>
           {NAV_LINKS.map((item) => (
             <a key={item.key} href={item.href} className="auth-landing-nav-link">{t(item.key)}</a>
           ))}
         </nav>
+
         <div className="auth-landing-header-actions">
           <label className="auth-landing-lang">
-            <Globe size={16} aria-hidden />
+            <Globe size={15} aria-hidden />
             <select
               value={lang}
               onChange={(e) => setLang(e.target.value)}
               aria-label={t("settings.language.visual")}
             >
-              <option value="es">Español</option>
               <option value="en">English</option>
+              <option value="es">Español</option>
             </select>
+            <ChevronDown size={14} aria-hidden />
           </label>
           {isLogin ? (
-            <Link to="/register" className="btn btn-ghost btn-sm auth-landing-header-cta">
-              {t("auth.login.createAccount")}
-            </Link>
+            <Link to="/register" className="auth-landing-header-link">{t("auth.login.createAccount")}</Link>
           ) : (
-            <Link to="/login" className="btn btn-ghost btn-sm auth-landing-header-cta">
-              {t("auth.register.signIn")}
-            </Link>
+            <Link to="/login" className="auth-landing-header-link">{t("auth.register.signIn")}</Link>
           )}
         </div>
       </header>
@@ -77,54 +93,136 @@ export function AuthLandingShell() {
         <section className="auth-landing-hero" aria-label={t("auth.landing.hero.aria")}>
           <h1 className="auth-landing-headline">{t("auth.landing.hero.title")}</h1>
           <p className="auth-landing-lead">{t("auth.landing.hero.sub")}</p>
+
           <div className="auth-landing-pills">
-            <span>{t("auth.landing.pill.prospects")}</span>
-            <span>{t("auth.landing.pill.followups")}</span>
-            <span>{t("auth.landing.pill.production")}</span>
+            {PILL_ITEMS.map((item) => {
+              const Icon = item.icon;
+              return (
+                <span key={item.key} className="auth-landing-pill">
+                  <Icon size={15} aria-hidden />
+                  {t(item.key)}
+                </span>
+              );
+            })}
           </div>
 
           <div className="auth-landing-flow">
-            <div className="auth-landing-flow-card">
-              <div className="auth-landing-flow-label">{t("auth.landing.flow.client")}</div>
-              <div className="auth-landing-flow-name">Daniel Carter</div>
-              <div className="auth-landing-flow-meta">🇺🇸 · {t("auth.landing.flow.active")}</div>
-            </div>
+            <article className="auth-landing-flow-card">
+              <div className="auth-landing-flow-head">
+                <span className="auth-landing-flow-icon"><FolderOpen size={15} /></span>
+                <span className="auth-landing-flow-num">1</span>
+                <span className="auth-landing-flow-title">{t("auth.landing.flow.client")}</span>
+              </div>
+              <div className="auth-landing-flow-line">
+                <span>{t("auth.landing.flow.nameLabel")}</span>
+                <strong>Daniel Carter</strong>
+              </div>
+              <div className="auth-landing-flow-line">
+                <span>{t("auth.landing.flow.nationalityLabel")}</span>
+                <strong>{t("auth.landing.flow.nationalityValue")}</strong>
+              </div>
+              <div className="auth-landing-flow-line auth-landing-flow-line--status">
+                <span>{t("auth.landing.flow.statusLabel")}</span>
+                <span className="auth-landing-status-pill">{t("auth.landing.flow.active")}</span>
+              </div>
+            </article>
+
             <div className="auth-landing-flow-arrow" aria-hidden>
-              <ArrowRight size={20} />
+              <ArrowRight size={18} />
             </div>
-            <div className="auth-landing-flow-card auth-landing-flow-card--accent">
-              <div className="auth-landing-flow-label">{t("auth.landing.flow.vacation")}</div>
-              <div className="auth-landing-flow-stat">$151,050</div>
-              <div className="auth-landing-flow-meta">{t("auth.landing.flow.inflation")}</div>
-            </div>
+
+            <article className="auth-landing-flow-card">
+              <div className="auth-landing-flow-head">
+                <span className="auth-landing-flow-icon"><LineChart size={15} /></span>
+                <span className="auth-landing-flow-num">2</span>
+                <span className="auth-landing-flow-title">{t("auth.landing.flow.vacation")}</span>
+              </div>
+              <div className="auth-landing-flow-line">
+                <span>{t("auth.landing.flow.currentYearLabel")}</span>
+                <strong>$7,000/{t("auth.landing.flow.yearUnit")}</strong>
+              </div>
+              <div className="auth-landing-flow-line">
+                <span>{t("auth.landing.flow.futureYearLabel")}</span>
+                <strong className="auth-landing-flow-blue">$14,552/{t("auth.landing.flow.yearUnit")}</strong>
+              </div>
+              <div className="auth-landing-flow-total">
+                <span>{t("auth.landing.flow.inflation")}</span>
+                <strong>$151,050</strong>
+              </div>
+            </article>
+
             <div className="auth-landing-flow-arrow" aria-hidden>
-              <ArrowRight size={20} />
+              <ArrowRight size={18} />
             </div>
-            <div className="auth-landing-flow-card">
-              <div className="auth-landing-flow-label">{t("auth.landing.flow.worksheet")}</div>
-              <div className="auth-landing-flow-row"><span>{t("auth.landing.flow.down")}</span><strong>$4,950</strong></div>
-              <div className="auth-landing-flow-row"><span>{t("auth.landing.flow.monthly")}</span><strong>$495</strong></div>
-            </div>
+
+            <article className="auth-landing-flow-card">
+              <div className="auth-landing-flow-head">
+                <span className="auth-landing-flow-icon"><FileText size={15} /></span>
+                <span className="auth-landing-flow-num">3</span>
+                <span className="auth-landing-flow-title">{t("auth.landing.flow.worksheet")}</span>
+              </div>
+              <div className="auth-landing-flow-line">
+                <span>{t("auth.landing.flow.down")}</span>
+                <strong>$25,000</strong>
+              </div>
+              <div className="auth-landing-flow-line">
+                <span>{t("auth.landing.flow.monthly")}</span>
+                <strong>$1,250</strong>
+              </div>
+              <div className="auth-landing-flow-line">
+                <span>{t("auth.landing.flow.term")}</span>
+                <strong>15 {t("auth.landing.flow.years")}</strong>
+              </div>
+              <div className="auth-landing-flow-line">
+                <span>{t("auth.landing.flow.closing")}</span>
+                <strong>{t("auth.landing.flow.closingValue")}</strong>
+              </div>
+            </article>
           </div>
 
           <div className="auth-landing-highlights">
-            <div className="auth-landing-highlight">
-              <div className="auth-landing-highlight-art auth-landing-highlight-art--talk" />
-              <div className="auth-landing-highlight-title">{t("auth.landing.highlight.talk")}</div>
-              <div className="auth-landing-highlight-sub">{t("auth.landing.highlight.talkSub")}</div>
-            </div>
-            <div className="auth-landing-highlight">
-              <div className="auth-landing-highlight-art auth-landing-highlight-art--work" />
-              <div className="auth-landing-highlight-title">{t("auth.landing.highlight.work")}</div>
-              <div className="auth-landing-highlight-sub">{t("auth.landing.highlight.workSub")}</div>
-            </div>
-            <div className="auth-landing-highlight">
-              <div className="auth-landing-highlight-art auth-landing-highlight-art--team">
-                <BarChart3 size={28} color="#2563eb" />
+            <article className="auth-landing-highlight">
+              <img
+                src="/landing-conversations.jpg"
+                alt=""
+                className="auth-landing-highlight-img"
+              />
+              <div className="auth-landing-highlight-body">
+                <div className="auth-landing-highlight-title">{t("auth.landing.highlight.talk")}</div>
+                <div className="auth-landing-highlight-sub">{t("auth.landing.highlight.talkSub")}</div>
               </div>
-              <div className="auth-landing-highlight-title">{t("auth.landing.highlight.team")}</div>
-              <div className="auth-landing-highlight-sub">{t("auth.landing.highlight.teamSub")}</div>
-            </div>
+            </article>
+
+            <article className="auth-landing-highlight">
+              <img
+                src="/landing-work-smarter.jpg"
+                alt=""
+                className="auth-landing-highlight-img"
+              />
+              <div className="auth-landing-highlight-body">
+                <div className="auth-landing-highlight-title">{t("auth.landing.highlight.work")}</div>
+                <div className="auth-landing-highlight-sub">{t("auth.landing.highlight.workSub")}</div>
+              </div>
+            </article>
+
+            <article className="auth-landing-highlight auth-landing-highlight--team">
+              <div className="auth-landing-highlight-body">
+                <div className="auth-landing-highlight-title">{t("auth.landing.highlight.team")}</div>
+                <div className="auth-landing-highlight-sub">{t("auth.landing.highlight.teamSub")}</div>
+                <div className="auth-landing-avatars" aria-hidden>
+                  {TEAM_AVATARS.map((avatar) => (
+                    <span
+                      key={avatar.initials}
+                      className="auth-landing-avatar"
+                      style={{ background: avatar.bg }}
+                    >
+                      {avatar.initials}
+                    </span>
+                  ))}
+                  <span className="auth-landing-avatar auth-landing-avatar--more">+2</span>
+                </div>
+              </div>
+            </article>
           </div>
         </section>
 

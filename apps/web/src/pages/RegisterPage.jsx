@@ -62,7 +62,7 @@ export function RegisterPage() {
             label={t("auth.register.email")}
             name="email"
             type="email"
-            placeholder={t("auth.common.emailPlaceholder")}
+            placeholder={t("auth.register.emailPlaceholder")}
             required
             autoComplete="email"
             icon={Mail}
@@ -81,7 +81,7 @@ export function RegisterPage() {
             {pending ? t("auth.register.pending") : t("auth.register.submit")}
           </button>
           <div className="auth-landing-trustline">
-            <Check size={16} aria-hidden />
+            <Check size={15} strokeWidth={3} aria-hidden />
             <span>{t("auth.register.noCard")}</span>
           </div>
         </form>
