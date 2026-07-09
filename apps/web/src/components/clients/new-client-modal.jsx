@@ -97,6 +97,7 @@ export function NewClientModal({ open, onOpenChange, onCreated }) {
           ref={nameRef}
           id="nc-name"
           type="text"
+          inputMode="text"
           value={name}
           placeholder={t("clients.namePlaceholder")}
           onFocus={selectOnFocus}

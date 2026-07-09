@@ -14,13 +14,9 @@ import {
 export const NAV_GROUPS = [
   [
     { href: "/", label: "Agenda", icon: Calendar },
-    { href: "/goals", label: "Dashboard", icon: BarChart3 },
     { href: "/metas", label: "Metas", icon: Target },
-  ],
-  [
     { href: "/clients", label: "Clientes", icon: Users },
-  ],
-  [
+    { href: "/goals", label: "Dashboard", icon: BarChart3 },
     { href: "/tools", label: "Herramientas", icon: Wrench },
     { href: "/sales", label: "Ventas", icon: Receipt, feature: "sales:history" },
   ],
@@ -71,7 +67,7 @@ export function itemVisible(item, { cloudEnabled, isAdmin, canFeature }) {
 
 export function getSidebarNavGroups(options) {
   return NAV_GROUPS.map((group) =>
-    group.filter((item) => itemVisible(item, options)),
+    group.filter((item) => itemVisible(item, options) && !item.mobileHeader),
   ).filter((group) => group.length > 0);
 }
 

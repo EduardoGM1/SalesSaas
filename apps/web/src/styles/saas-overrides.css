@@ -1627,6 +1627,85 @@ body,
   text-align: center;
 }
 
+.vacation-results-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.vacation-results-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.vacation-results-heading {
+  margin-bottom: 0 !important;
+}
+
+.vacation-compare-grid--compact {
+  gap: 10px;
+}
+
+.vacation-vbox-compact {
+  padding: 14px 12px !important;
+  min-height: 108px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.vacation-vbox-kicker {
+  font-size: 10px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.vacation-vbox-val-sm {
+  font-size: 18px !important;
+  line-height: 1.2;
+}
+
+.vacation-vbox-val-lg {
+  font-size: 28px !important;
+  letter-spacing: -1px;
+}
+
+.vacation-vbox-meta,
+.vacation-vbox-compact .vbox-sub {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 6px;
+}
+
+.vacation-compare-arrow--inflation {
+  color: var(--blue);
+  font-size: 28px;
+  font-weight: 600;
+}
+
+.vacation-results-compact {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.vacation-vbox-compact--total {
+  text-align: center;
+}
+
+.entry-type-seg--wrap {
+  flex-wrap: wrap;
+}
+
+.entry-type-seg--wrap .seg-btn {
+  flex: 1 1 auto;
+  min-width: max(88px, calc(33% - 8px));
+}
+
 .table-scroll {
   width: 100%;
   max-width: 100%;
@@ -2051,6 +2130,16 @@ body,
 
   .vacation-compare-arrow {
     display: none;
+  }
+
+  .vacation-compare-arrow--inflation {
+    display: block;
+    transform: rotate(90deg);
+    margin: 2px auto;
+  }
+
+  .vacation-results-compact {
+    grid-template-columns: 1fr;
   }
 
   .tool-card {

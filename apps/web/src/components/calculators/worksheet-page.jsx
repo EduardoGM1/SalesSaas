@@ -85,7 +85,7 @@ export function WorksheetPage({ clientId, shared }: WorksheetPageProps) {
 
   const moneyField = (key: keyof typeof fields) => (
     <div className="mfield"><span className="mpfx">$</span>
-      <input type="text" value={fields[key]} onFocus={selectOnFocus} onChange={(e) => setFields({ ...fields, [key]: e.target.value })} onBlur={(e) => setFields({ ...fields, [key]: formatMoneyValue(e.target.value) })} />
+      <input type="text" inputMode="decimal" value={fields[key]} onFocus={selectOnFocus} onChange={(e) => setFields({ ...fields, [key]: e.target.value })} onBlur={(e) => setFields({ ...fields, [key]: formatMoneyValue(e.target.value) })} />
     </div>
   );
 
@@ -114,7 +114,7 @@ export function WorksheetPage({ clientId, shared }: WorksheetPageProps) {
               <div className="frow tool-frow">
                 <div className="flabel">{t("tools.worksheet.downPct")}</div>
                 <div className="frow-inline">
-                  <input type="number" className="tool-num-input" min={0} max={100} value={fields.we} onFocus={selectOnFocus} onChange={(e) => setFields({ ...fields, we: e.target.value })} />
+                  <input type="number" inputMode="numeric" className="tool-num-input" min={0} max={100} value={fields.we} onFocus={selectOnFocus} onChange={(e) => setFields({ ...fields, we: e.target.value })} />
                   <span className="frow-suffix">%</span>
                 </div>
               </div>
@@ -181,10 +181,10 @@ export function WorksheetPage({ clientId, shared }: WorksheetPageProps) {
               </div>
               <div className="opt-body">
                 <div className="opt-field"><label>{t("tools.worksheet.months")}</label>
-                  <input type="number" min={1} value={config[`wo${n}m`]} onFocus={selectOnFocus} onChange={(e) => setConfig({ ...config, [`wo${n}m`]: e.target.value })} />
+                  <input type="number" inputMode="numeric" min={1} value={config[`wo${n}m`]} onFocus={selectOnFocus} onChange={(e) => setConfig({ ...config, [`wo${n}m`]: e.target.value })} />
                 </div>
                 <div className="opt-field"><label>{t("tools.worksheet.annualRate")}</label>
-                  <input type="number" min={0} step={0.01} value={config[`wo${n}r`]} onFocus={selectOnFocus} onChange={(e) => setConfig({ ...config, [`wo${n}r`]: e.target.value })} />
+                  <input type="number" inputMode="decimal" min={0} step={0.01} value={config[`wo${n}r`]} onFocus={selectOnFocus} onChange={(e) => setConfig({ ...config, [`wo${n}r`]: e.target.value })} />
                 </div>
               </div>
             </div>

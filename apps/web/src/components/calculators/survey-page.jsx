@@ -178,7 +178,7 @@ export function SurveyPage({ clientId, shared }: SurveyPageProps) {
           <div className="client-survey-compact">
             <div className="client-survey-cfield">
               <label>{t("tools.survey.name")}</label>
-              <input type="text" id="svp-name1" placeholder="Ej: Michell" value={data.svp_name1 || ""} onFocus={selectOnFocus} onChange={(e) => update("svp_name1", e.target.value)} className={validationErrors.svp_name1 ? "input-error" : ""} />
+              <input type="text" inputMode="text" id="svp-name1" placeholder="Ej: Michell" value={data.svp_name1 || ""} onFocus={selectOnFocus} onChange={(e) => update("svp_name1", e.target.value)} className={validationErrors.svp_name1 ? "input-error" : ""} />
             </div>
             {validationErrors.svp_name1 && <div className="client-survey-name-error">{validationErrors.svp_name1}</div>}
             <div className="client-survey-crow">
@@ -209,7 +209,7 @@ export function SurveyPage({ clientId, shared }: SurveyPageProps) {
             </div>
             <div className="client-survey-cfield">
               <label>{t("tools.survey.occupation")}</label>
-              <input type="text" id="svp-occ1" placeholder={t("tools.survey.occPlaceholder")} value={data.svp_occ1 || ""} onFocus={selectOnFocus} onChange={(e) => update("svp_occ1", e.target.value)} />
+              <input type="text" inputMode="text" id="svp-occ1" placeholder={t("tools.survey.occPlaceholder")} value={data.svp_occ1 || ""} onFocus={selectOnFocus} onChange={(e) => update("svp_occ1", e.target.value)} />
             </div>
           </div>
         </div>
@@ -221,7 +221,7 @@ export function SurveyPage({ clientId, shared }: SurveyPageProps) {
             <div className="tool-calc-fields">
               <div className="frow frow-first tool-frow">
                 <div className="flabel">{t("tools.survey.nights")}</div>
-                <input type="number" className="input-compact tool-num-input" id="sv-nights" min={1} value={data.nights} onFocus={selectOnFocus} onChange={(e) => update("nights", e.target.value)} />
+                <input type="number" inputMode="numeric" className="input-compact tool-num-input" id="sv-nights" min={1} value={data.nights} onFocus={selectOnFocus} onChange={(e) => update("nights", e.target.value)} />
               </div>
               <div className="frow tool-frow">
                 <div className="flabel">{t("tools.survey.expenseType")}</div>
@@ -234,14 +234,14 @@ export function SurveyPage({ clientId, shared }: SurveyPageProps) {
                 <div className="flabel">{t("tools.survey.totalPaid")}</div>
                 <div className="mfield">
                   <span className="mpfx">$</span>
-                  <input type="text" id="sv-total" value={data.total} onFocus={selectOnFocus} onChange={(e) => update("total", e.target.value)} onBlur={(e) => update("total", formatMoneyValue(e.target.value))} />
+                  <input type="text" inputMode="decimal" id="sv-total" value={data.total} onFocus={selectOnFocus} onChange={(e) => update("total", e.target.value)} onBlur={(e) => update("total", formatMoneyValue(e.target.value))} />
                 </div>
               </div>
               <div id="sv-split" style={{ display: sType === "paquete" ? "block" : "none" }}>
                 <div className="frow tool-frow">
                   <div className="flabel">{t("tools.survey.hotelPct")}</div>
                   <div className="frow-inline">
-                    <input type="number" className="input-compact tool-num-input" id="sv-hpct" min={1} max={99} value={data.hpct} onFocus={selectOnFocus} onChange={(e) => update("hpct", e.target.value)} />
+                    <input type="number" inputMode="numeric" className="input-compact tool-num-input" id="sv-hpct" min={1} max={99} value={data.hpct} onFocus={selectOnFocus} onChange={(e) => update("hpct", e.target.value)} />
                     <span className="frow-suffix">%</span>
                   </div>
                 </div>
@@ -276,12 +276,12 @@ export function SurveyPage({ clientId, shared }: SurveyPageProps) {
               <tbody>
                 {HIST.map((p) => (
                   <tr key={p}>
-                    <td><input type="text" value={data[`${p}c`]} onFocus={selectOnFocus} onChange={(e) => update(`${p}c`, e.target.value)} /></td>
-                    <td className="nc"><input type="number" value={data[`${p}y`]} onFocus={selectOnFocus} onChange={(e) => update(`${p}y`, e.target.value)} /></td>
-                    <td className="nc"><input type="number" value={data[`${p}n`]} onFocus={selectOnFocus} onChange={(e) => update(`${p}n`, e.target.value)} /></td>
+                    <td><input type="text" inputMode="text" value={data[`${p}c`]} onFocus={selectOnFocus} onChange={(e) => update(`${p}c`, e.target.value)} /></td>
+                    <td className="nc"><input type="number" inputMode="numeric" value={data[`${p}y`]} onFocus={selectOnFocus} onChange={(e) => update(`${p}y`, e.target.value)} /></td>
+                    <td className="nc"><input type="number" inputMode="numeric" value={data[`${p}n`]} onFocus={selectOnFocus} onChange={(e) => update(`${p}n`, e.target.value)} /></td>
                     <td className="mc">
                       <div className="mfield"><span className="mpfx">$</span>
-                        <input type="text" value={data[`${p}a`]} onFocus={selectOnFocus} onChange={(e) => update(`${p}a`, e.target.value)} onBlur={(e) => update(`${p}a`, formatMoneyValue(e.target.value))} />
+                        <input type="text" inputMode="decimal" value={data[`${p}a`]} onFocus={selectOnFocus} onChange={(e) => update(`${p}a`, e.target.value)} onBlur={(e) => update(`${p}a`, formatMoneyValue(e.target.value))} />
                       </div>
                     </td>
                   </tr>
@@ -329,12 +329,12 @@ export function SurveyPage({ clientId, shared }: SurveyPageProps) {
               <tbody>
                 {FUT.map((p) => (
                   <tr key={p}>
-                    <td><input type="text" value={data[`${p}c`]} onFocus={selectOnFocus} onChange={(e) => update(`${p}c`, e.target.value)} /></td>
-                    <td className="nc"><input type="number" value={data[`${p}y`]} onFocus={selectOnFocus} onChange={(e) => update(`${p}y`, e.target.value)} /></td>
-                    <td className="nc"><input type="number" value={data[`${p}n`]} onFocus={selectOnFocus} onChange={(e) => update(`${p}n`, e.target.value)} /></td>
+                    <td><input type="text" inputMode="text" value={data[`${p}c`]} onFocus={selectOnFocus} onChange={(e) => update(`${p}c`, e.target.value)} /></td>
+                    <td className="nc"><input type="number" inputMode="numeric" value={data[`${p}y`]} onFocus={selectOnFocus} onChange={(e) => update(`${p}y`, e.target.value)} /></td>
+                    <td className="nc"><input type="number" inputMode="numeric" value={data[`${p}n`]} onFocus={selectOnFocus} onChange={(e) => update(`${p}n`, e.target.value)} /></td>
                     <td className="mc">
                       <div className="mfield"><span className="mpfx">$</span>
-                        <input type="text" placeholder="0" value={data[`${p}a`]} onFocus={selectOnFocus} onChange={(e) => update(`${p}a`, e.target.value)} onBlur={(e) => update(`${p}a`, formatMoneyValue(e.target.value))} />
+                        <input type="text" inputMode="decimal" placeholder="0" value={data[`${p}a`]} onFocus={selectOnFocus} onChange={(e) => update(`${p}a`, e.target.value)} onBlur={(e) => update(`${p}a`, formatMoneyValue(e.target.value))} />
                       </div>
                     </td>
                   </tr>

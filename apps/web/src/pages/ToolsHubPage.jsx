@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { DollarSign, FileText, Palmtree } from "lucide-react";
 import { Topbar } from "@/components/layout/topbar.jsx";
 import { PageBack } from "@/components/layout/page-back.jsx";
@@ -8,6 +8,7 @@ import { useAppStore } from "@/stores/app-store.js";
 import { useI18n } from "@/hooks/use-i18n.js";
 
 export function ToolsHubPage() {
+  const navigate = useNavigate();
   const setToolMode = useAppStore((s) => s.setToolMode);
   const { t } = useI18n();
   const [newClientOpen, setNewClientOpen] = useState(false);
@@ -46,7 +47,11 @@ export function ToolsHubPage() {
           </button>
         </div>
       </div>
-      <NewClientModal open={newClientOpen} onOpenChange={setNewClientOpen} />
+      <NewClientModal
+        open={newClientOpen}
+        onOpenChange={setNewClientOpen}
+        onCreated={(client) => navigate(`/clients/${client.id}`)}
+      />
     </>
   );
 }

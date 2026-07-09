@@ -81,18 +81,18 @@ export function VacacionesPage({ clientId, shared }: VacacionesPageProps) {
             <div className="tool-calc-fields">
               <div className="frow frow-first tool-frow">
                 <div className="flabel">{t("tools.vacation.tripsPerYear")}</div>
-                <input type="number" className="tool-num-input" min={1} value={fields.vv} onFocus={selectOnFocus} onChange={(e) => setFields({ ...fields, vv: e.target.value })} />
+                <input type="number" inputMode="numeric" className="tool-num-input" min={1} value={fields.vv} onFocus={selectOnFocus} onChange={(e) => setFields({ ...fields, vv: e.target.value })} />
               </div>
               <div className="frow tool-frow">
                 <div className="flabel">{t("tools.vacation.costPerTrip")}</div>
                 <div className="mfield">
                   <span className="mpfx">$</span>
-                  <input type="text" value={fields.vc} onFocus={selectOnFocus} onChange={(e) => setFields({ ...fields, vc: e.target.value })} onBlur={(e) => setFields({ ...fields, vc: formatMoneyValue(e.target.value) })} />
+                  <input type="text" inputMode="decimal" value={fields.vc} onFocus={selectOnFocus} onChange={(e) => setFields({ ...fields, vc: e.target.value })} onBlur={(e) => setFields({ ...fields, vc: formatMoneyValue(e.target.value) })} />
                 </div>
               </div>
               <div className="frow tool-frow">
                 <div className="flabel">{t("tools.vacation.yearsProject")}</div>
-                <input type="number" className="tool-num-input" min={1} max={60} value={fields.va} onFocus={selectOnFocus} onChange={(e) => setFields({ ...fields, va: e.target.value })} />
+                <input type="number" inputMode="numeric" className="tool-num-input" min={1} max={60} value={fields.va} onFocus={selectOnFocus} onChange={(e) => setFields({ ...fields, va: e.target.value })} />
               </div>
               <div className="frow tool-frow tool-frow--range">
                 <div className="flabel">{t("tools.vacation.inflation")} — <strong style={{ color: "var(--blue)" }}>{(r.inf * 100).toFixed(1)}%</strong></div>
@@ -101,34 +101,37 @@ export function VacacionesPage({ clientId, shared }: VacacionesPageProps) {
             </div>
           </div>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-            <div className="card">
-              <div className="card-heading" style={{ marginBottom: 16 }}>{t("tools.vacation.futureTitle")}</div>
-              <div className="vacation-compare-grid">
-                <div className="vbox blue">
-                  <div style={{ fontSize: 10, color: "var(--muted)", textTransform: "uppercase", letterSpacing: ".8px", fontWeight: 700, marginBottom: 8 }}>{t("tools.vacation.currentYear")}</div>
-                  <div className="vbox-val">{t("tools.vacation.perYear", { cost: fmt(r.ga) })}</div>
-                  <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 6 }}>{t("tools.vacation.tripsLine", { cost: fmtN(r.costo), trips: r.viajes })}</div>
+          <div className="vacation-results-stack">
+            <div className="card vacation-results-card">
+              <div className="card-heading vacation-results-heading">{t("tools.vacation.futureTitle")}</div>
+              <div className="vacation-compare-grid vacation-compare-grid--compact">
+                <div className="vbox blue vacation-vbox-compact">
+                  <div className="vacation-vbox-kicker">{t("tools.vacation.currentYear")}</div>
+                  <div className="vbox-val vacation-vbox-val-sm">{t("tools.vacation.perYear", { cost: fmt(r.ga) })}</div>
+                  <div className="vacation-vbox-meta">{t("tools.vacation.tripsLine", { cost: fmtN(r.costo), trips: r.viajes })}</div>
                 </div>
-                <div className="vacation-compare-arrow" aria-hidden="true">→</div>
-                <div className="vbox yellow">
-                  <div style={{ fontSize: 10, color: "var(--muted)", textTransform: "uppercase", letterSpacing: ".8px", fontWeight: 700, marginBottom: 8 }}>{t("tools.vacation.futureYear", { year: r.futAno })}</div>
-                  <div className="vbox-val">{t("tools.vacation.perYear", { cost: fmt(r.cf) })}</div>
-                  <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 6 }}>{t("tools.vacation.inflationAccum")}</div>
+                <div className="vacation-compare-arrow vacation-compare-arrow--inflation" aria-hidden="true" title={t("tools.vacation.inflationAccum")}>→</div>
+                <div className="vbox yellow vacation-vbox-compact">
+                  <div className="vacation-vbox-kicker">{t("tools.vacation.futureYear", { year: r.futAno })}</div>
+                  <div className="vbox-val vacation-vbox-val-sm">{t("tools.vacation.perYear", { cost: fmt(r.cf) })}</div>
+                  <div className="vacation-vbox-meta">{t("tools.vacation.inflationAccum")}</div>
                 </div>
               </div>
-            </div>
-
-            <div className="card">
-              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                <div className="vbox yellow" style={{ textAlign: "center", padding: 20 }}>
-                  <div className="vbox-val" style={{ fontSize: 36, letterSpacing: "-2px" }}>{fmt(r.tc)}</div>
-                  <div className="vbox-label" style={{ fontSize: 12, marginTop: 8 }}>{t("tools.vacation.totalInflation")}</div>
+              <div className="vacation-results-compact">
+                <div className="vbox yellow vacation-vbox-compact vacation-vbox-compact--total">
+                  <div className="vbox-val vacation-vbox-val-lg">{fmt(r.tc)}</div>
+                  <div className="vbox-label">{t("tools.vacation.totalInflation")}</div>
                   <div className="vbox-sub">{t("tools.vacation.totalInflationSub", { years: r.anios })}</div>
                 </div>
-                <div className="g2">
-                  <div className="vbox blue"><div className="vbox-val">{fmt(r.ts)}</div><div className="vbox-label">{t("tools.vacation.withoutInflation")}</div><div className="vbox-sub">{t("tools.vacation.noInflationLine", { cost: fmtN(r.ga), years: r.anios })}</div></div>
-                  <div className="vbox red"><div className="vbox-val">{fmt(Math.max(0, r.tc - r.ts))}</div><div className="vbox-label">{t("tools.vacation.inflationImpact")}</div><div className="vbox-sub">{t("tools.vacation.inflationExtra")}</div></div>
+                <div className="vbox blue vacation-vbox-compact">
+                  <div className="vbox-val vacation-vbox-val-sm">{fmt(r.ts)}</div>
+                  <div className="vbox-label">{t("tools.vacation.withoutInflation")}</div>
+                  <div className="vbox-sub">{t("tools.vacation.noInflationLine", { cost: fmtN(r.ga), years: r.anios })}</div>
+                </div>
+                <div className="vbox red vacation-vbox-compact">
+                  <div className="vbox-val vacation-vbox-val-sm">{fmt(Math.max(0, r.tc - r.ts))}</div>
+                  <div className="vbox-label">{t("tools.vacation.inflationImpact")}</div>
+                  <div className="vbox-sub">{t("tools.vacation.inflationExtra")}</div>
                 </div>
               </div>
             </div>

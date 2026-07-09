@@ -52,7 +52,7 @@ export function CalendarPage() {
     setDialogOpen(true);
   };
 
-  const renderGroup = (type: CalEntry["t"], label, dotClass, items: CalEntry[]) => {
+  const renderGroup = (type: string, label, dotClass, items: CalEntry[]) => {
     if (!items.length) return null;
     const open = openGroups[type] ?? false;
     const totalVol = items.reduce((a, e) => a + (e.vol || 0), 0);
@@ -169,7 +169,8 @@ export function CalendarPage() {
             {selDay && entries.length > 0 && (
               <div>
                 {renderGroup("venta", t("cal.sales"), "sale", entries.filter((e) => isActiveAgendaSale(db, e)))}
-                {renderGroup("nota", t("cal.notes"), "note", entries.filter((e) => e.t === "nota"))}
+                {renderGroup("no-tour", t("cal.noTour"), "note", entries.filter((e) => e.t === "nota" && e.kind === "no-tour"))}
+                {renderGroup("nota", t("cal.notes"), "note", entries.filter((e) => e.t === "nota" && e.kind !== "no-tour"))}
                 {renderGroup("follow", t("cal.followups"), "follow", entries.filter((e) => e.t === "follow"))}
                 {renderGroup("descanso", t("cal.rest"), "descanso", entries.filter((e) => e.t === "descanso"))}
               </div>

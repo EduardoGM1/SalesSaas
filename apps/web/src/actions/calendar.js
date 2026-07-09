@@ -59,3 +59,15 @@ export function saveAgendaDayOff({ year, month, day }) {
   store.addCalEntry(year, month, day, { t: "descanso", ts: Date.now(), note: "Día de descanso" });
   return { ok: true };
 }
+
+export function saveAgendaNoTour({ year, month, day, note }) {
+  const store = useDbStore.getState();
+  store.addCalEntry(year, month, day, {
+    t: "nota",
+    kind: "no-tour",
+    ts: Date.now(),
+    note: note?.trim() || translate("entry.noTour.defaultNote"),
+    source: "no-tour",
+  });
+  return { ok: true };
+}

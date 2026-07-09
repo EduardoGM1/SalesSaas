@@ -6,7 +6,7 @@ import { useCalendarActions } from "@/hooks/use-calendar-actions.js";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { selectOnFocus } from "@/lib/focus-select.js";
 
-type EType = "venta" | "follow" | "notaCliente" | "notaUsuario" | "descanso";
+type EType = "venta" | "follow" | "notaCliente" | "notaUsuario" | "descanso" | "noTour";
 
 interface EntryDialogProps {
   open: boolean;
@@ -22,12 +22,13 @@ const TYPE_TAB_KEYS: [EType, string][] = [
   ["notaCliente", "entry.tab.clientNote"],
   ["notaUsuario", "entry.tab.userNote"],
   ["descanso", "entry.tab.dayOff"],
+  ["noTour", "entry.tab.noTour"],
 ];
 
 export function EntryDialog({ open, onOpenChange, year, month, day }: EntryDialogProps) {
   const navigate = useNavigate();
   const { t, months, weekdays } = useI18n();
-  const { saveUserNote, saveDayOff } = useCalendarActions();
+  const { saveUserNote, saveDayOff, saveNoTour } = useCalendarActions();
 
   const [eType, setEType] = useState<EType>("venta");
   const [nota, setNota] = useState("");
@@ -92,6 +93,12 @@ export function EntryDialog({ open, onOpenChange, year, month, day }: EntryDialo
     if (eType === "descanso") {
       saveDayOff({ year, month, day });
       close(false);
+      return;
+    }
+
+    if (eType === "noTour") {
+      saveNoTour({ year, month, day, note: nota });
+      close(false);
     }
   };
 
@@ -105,7 +112,7 @@ export function EntryDialog({ open, onOpenChange, year, month, day }: EntryDialo
     >
       <div style={{ marginBottom: 16 }}>
         <div className="entry-type-label">{t("entry.prompt")}</div>
-        <div className="seg entry-type-seg">
+        <div className="seg entry-type-seg entry-type-seg--wrap">
           {TYPE_TAB_KEYS.map(([typeKey, labelKey]) => (
             <button
               key={typeKey}
@@ -122,6 +129,23 @@ export function EntryDialog({ open, onOpenChange, year, month, day }: EntryDialo
       {eType === "descanso" && (
         <div id="ef-descanso">
           <div className="hint">{t("entry.dayOff.hint")}</div>
+        </div>
+      )}
+
+      {eType === "noTour" && (
+        <div id="ef-no-tour">
+          <div className="hint">{t("entry.noTour.hint")}</div>
+          <label style={{ fontSize: 11, color: "var(--muted)", fontWeight: 700, letterSpacing: ".5px", textTransform: "uppercase", display: "block", margin: "12px 0 6px" }}>
+            {t("entry.noTour.label")}
+          </label>
+          <textarea
+            rows={3}
+            style={{ width: "100%" }}
+            value={nota}
+            onFocus={selectOnFocus}
+            onChange={(e) => setNota(e.target.value)}
+            placeholder={t("entry.noTour.placeholder")}
+          />
         </div>
       )}
 
