@@ -57,9 +57,8 @@ export function AuthLandingShell() {
   return (
     <div className="auth-landing">
       <header className="auth-landing-header">
-        <Link to="/register" className="auth-landing-brand">
-          <img src="/saletse-mark.svg" alt="" className="auth-landing-brand-icon" />
-          <span>Saletse</span>
+        <Link to="/register" className="auth-landing-brand" aria-label="Saletse">
+          <img src="/saletse-logo.png" alt="Saletse" className="auth-landing-brand-logo" />
         </Link>
 
         <nav className="auth-landing-nav" aria-label={t("auth.landing.nav.aria")}>
