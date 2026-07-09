@@ -236,7 +236,9 @@ export async function getCalendarEntries(sb, filters = {}) {
   const sellers = await loadSellers(sb);
   let q = sb
     .from("calendar_entries")
-    .select("id, entry_date, type, note, vol, user_id, prospects(name, name1, prospect_code)")
+    .select(
+      "id, entry_date, type, note, vol, tours, contract, user_id, kind, processing, process_date, completed, client_name, status, source, prospects(name, name1, prospect_code)"
+    )
     .order("entry_date", { ascending: false })
     .limit(500);
   if (filters.userId) q = q.eq("user_id", filters.userId);
@@ -247,10 +249,61 @@ export async function getCalendarEntries(sb, filters = {}) {
     id: e.id,
     entry_date: e.entry_date,
     type: e.type,
+    kind: e.kind ?? null,
     note: e.note,
     vol: e.vol != null ? num(e.vol) : null,
+    tours: e.tours != null ? num(e.tours) : null,
+    contract: e.contract ?? null,
+    processing: e.processing ?? null,
+    process_date: e.process_date ?? null,
+    completed: !!e.completed,
+    client_name: e.client_name ?? null,
+    status: e.status ?? null,
+    source: e.source ?? null,
     seller: sellers.get(e.user_id)?.name ?? "—",
     prospect: asProspect(e.prospects),
+  }));
+}
+
+export async function getProspects(sb, filters = {}) {
+  const sellers = await loadSellers(sb);
+  let q = sb
+    .from("prospects")
+    .select(
+      "id, user_id, prospect_code, name, name1, name2, city, country, status, tour_date, tipo_tour, tour_cuantificable, completed, created_at"
+    )
+    .order("created_at", { ascending: false })
+    .limit(500);
+  if (filters.userId) q = q.eq("user_id", filters.userId);
+  if (filters.from) q = q.gte("tour_date", filters.from);
+  if (filters.to) q = q.lte("tour_date", filters.to);
+  if (filters.status) q = q.eq("status", filters.status);
+  if (filters.tipoTour) q = q.eq("tipo_tour", filters.tipoTour);
+  if (filters.q) {
+    const term = filters.q.replace(/[%_]/g, "");
+    if (term) {
+      q = q.or(
+        `name.ilike.%${term}%,name1.ilike.%${term}%,prospect_code.ilike.%${term}%,city.ilike.%${term}%`
+      );
+    }
+  }
+  const { data } = await q;
+  return (data ?? []).map((p) => ({
+    id: p.id,
+    user_id: p.user_id,
+    prospect_code: p.prospect_code,
+    name: p.name ?? null,
+    name1: p.name1 ?? null,
+    name2: p.name2 ?? null,
+    city: p.city ?? null,
+    country: p.country ?? null,
+    status: p.status ?? null,
+    tour_date: p.tour_date ?? null,
+    tipo_tour: p.tipo_tour ?? null,
+    tour_cuantificable: p.tour_cuantificable ?? null,
+    completed: !!p.completed,
+    created_at: p.created_at ?? null,
+    seller: sellers.get(p.user_id)?.name ?? "—",
   }));
 }
 

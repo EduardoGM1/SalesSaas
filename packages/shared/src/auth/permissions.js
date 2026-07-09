@@ -7,6 +7,7 @@ const DELEGATABLE_ADMIN_PERMISSIONS = [
   { key: "sales:read", label: "Ver ventas globales" },
   { key: "sales:export", label: "Exportar ventas (CSV)" },
   { key: "agenda:read", label: "Ver agenda global" },
+  { key: "prospects:read", label: "Ver expedientes globales" },
   { key: "goals:read", label: "Ver metas globales" },
   { key: "activity:read", label: "Ver actividad global" },
   { key: "worksheets:read", label: "Ver worksheets" }
@@ -47,6 +48,7 @@ const ADMIN_NAV_PERMISSIONS = {
   "/admin/users": "users:read",
   "/admin/sales": "sales:read",
   "/admin/agenda": "agenda:read",
+  "/admin/prospects": "prospects:read",
   "/admin/goals": "goals:read",
   "/admin/activity": "activity:read",
   "/admin/worksheets": "worksheets:read"
@@ -63,6 +65,7 @@ function canAccessAdminPath(profile, pathname) {
   if (pathname.startsWith("/admin/activity")) return hasPermission(profile, "activity:read");
   if (pathname.startsWith("/admin/goals")) return hasPermission(profile, "goals:read");
   if (pathname.startsWith("/admin/agenda")) return hasPermission(profile, "agenda:read");
+  if (pathname.startsWith("/admin/prospects")) return hasPermission(profile, "prospects:read");
   if (pathname.startsWith("/admin/sales")) return hasPermission(profile, "sales:read");
   if (pathname === "/admin") return hasPermission(profile, "dashboard:read");
   return isSuperAdmin(profile);

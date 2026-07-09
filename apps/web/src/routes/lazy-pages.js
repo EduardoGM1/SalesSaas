@@ -11,6 +11,7 @@ export const AdminOverviewPage = named(() => import("@/pages/admin/AdminOverview
 export const AdminUsersPage = named(() => import("@/pages/admin/AdminUsersPage.jsx"), "AdminUsersPage");
 export const AdminSalesPage = named(() => import("@/pages/admin/AdminSalesPage.jsx"), "AdminSalesPage");
 export const AdminAgendaPage = named(() => import("@/pages/admin/AdminAgendaPage.jsx"), "AdminAgendaPage");
+export const AdminProspectsPage = named(() => import("@/pages/admin/AdminProspectsPage.jsx"), "AdminProspectsPage");
 export const AdminGoalsPage = named(() => import("@/pages/admin/AdminGoalsPage.jsx"), "AdminGoalsPage");
 export const AdminActivityPage = named(() => import("@/pages/admin/AdminActivityPage.jsx"), "AdminActivityPage");
 export const AdminWorksheetsPage = named(() => import("@/pages/admin/AdminWorksheetsPage.jsx"), "AdminWorksheetsPage");

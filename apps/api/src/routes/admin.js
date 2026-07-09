@@ -16,6 +16,7 @@ import {
   getWorksheets,
   getWorksheetDetail,
   getCalendarEntries,
+  getProspects,
   getGoals,
   getActivities,
   getSellerOptions,
@@ -132,6 +133,14 @@ router.get("/calendar", async (req, res) => {
   if (!a) return;
   const filters = parseAdminFilters(req.query);
   const data = await getCalendarEntries(a.supabase, filters);
+  json(res, { data });
+});
+
+router.get("/prospects", async (req, res) => {
+  const a = await adminAuth(req, res, "prospects:read");
+  if (!a) return;
+  const filters = parseAdminFilters(req.query);
+  const data = await getProspects(a.supabase, filters);
   json(res, { data });
 });
 

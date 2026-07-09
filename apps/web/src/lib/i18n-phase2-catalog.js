@@ -250,6 +250,11 @@ export const ES_PHASE2 = {
   "admin.agenda.type.note": "Nota",
   "admin.agenda.type.follow": "Follow-up",
   "admin.agenda.type.rest": "Descanso",
+  "admin.agenda.type.noTour": "Sin tour",
+  "admin.agenda.processing": "Procesamiento",
+  "admin.agenda.processing.pending": "Pendiente",
+  "admin.agenda.processing.ok": "Procesable",
+  "admin.agenda.completed": "Completado",
 };
 
 export const EN_PHASE2 = {
@@ -503,4 +508,9 @@ export const EN_PHASE2 = {
   "admin.agenda.type.note": "Note",
   "admin.agenda.type.follow": "Follow-up",
   "admin.agenda.type.rest": "Day off",
+  "admin.agenda.type.noTour": "No tour",
+  "admin.agenda.processing": "Processing",
+  "admin.agenda.processing.pending": "Pending",
+  "admin.agenda.processing.ok": "Processable",
+  "admin.agenda.completed": "Completed",
 };

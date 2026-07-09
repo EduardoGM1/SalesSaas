@@ -9,6 +9,7 @@ import {
   NavIconSales,
   NavIconUsers,
   NavIconWorksheets,
+  NavIconProspects,
 } from "@/components/admin/admin-nav-icons";
 
 export const ADMIN_TABS = [
@@ -16,6 +17,7 @@ export const ADMIN_TABS = [
   { href: "/admin/users", labelKey: "admin.tab.users", icon: NavIconUsers },
   { href: "/admin/sales", labelKey: "admin.tab.sales", icon: NavIconSales },
   { href: "/admin/agenda", labelKey: "admin.tab.agenda", icon: NavIconCalendar },
+  { href: "/admin/prospects", labelKey: "admin.tab.prospects", icon: NavIconProspects },
   { href: "/admin/goals", labelKey: "admin.tab.goals", icon: NavIconGoals },
   { href: "/admin/activity", labelKey: "admin.tab.activity", icon: NavIconActivity },
   { href: "/admin/worksheets", labelKey: "admin.tab.worksheets", icon: NavIconWorksheets },

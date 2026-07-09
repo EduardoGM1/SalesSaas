@@ -10,6 +10,7 @@ export const DELEGATABLE_ADMIN_PERMISSIONS = [
   { key: "sales:read", labelKey: "admin.perm.salesRead" },
   { key: "sales:export", labelKey: "admin.perm.salesExport" },
   { key: "agenda:read", labelKey: "admin.perm.agendaRead" },
+  { key: "prospects:read", labelKey: "admin.perm.prospectsRead" },
   { key: "goals:read", labelKey: "admin.perm.goalsRead" },
   { key: "activity:read", labelKey: "admin.perm.activityRead" },
   { key: "worksheets:read", labelKey: "admin.perm.worksheetsRead" },
@@ -72,6 +73,7 @@ export const ADMIN_NAV_PERMISSIONS: Record<string, AdminPermission> = {
   "/admin/users": "users:read",
   "/admin/sales": "sales:read",
   "/admin/agenda": "agenda:read",
+  "/admin/prospects": "prospects:read",
   "/admin/goals": "goals:read",
   "/admin/activity": "activity:read",
   "/admin/worksheets": "worksheets:read",
@@ -89,6 +91,7 @@ export function canAccessAdminPath(profile: AdminAccessProfile, pathname: string
   if (pathname.startsWith("/admin/activity")) return hasPermission(profile, "activity:read");
   if (pathname.startsWith("/admin/goals")) return hasPermission(profile, "goals:read");
   if (pathname.startsWith("/admin/agenda")) return hasPermission(profile, "agenda:read");
+  if (pathname.startsWith("/admin/prospects")) return hasPermission(profile, "prospects:read");
   if (pathname.startsWith("/admin/sales")) return hasPermission(profile, "sales:read");
   if (pathname === "/admin") return hasPermission(profile, "dashboard:read");
   return isSuperAdmin(profile);

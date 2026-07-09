@@ -30,6 +30,7 @@ import {
   AdminUsersPage,
   AdminSalesPage,
   AdminAgendaPage,
+  AdminProspectsPage,
   AdminGoalsPage,
   AdminActivityPage,
   AdminWorksheetsPage,
@@ -121,6 +122,7 @@ export function AppRoutes() {
           <Route path="users" element={<Lazy><AdminUsersPage /></Lazy>} />
           <Route path="sales" element={<Lazy><AdminSalesPage /></Lazy>} />
           <Route path="agenda" element={<Lazy><AdminAgendaPage /></Lazy>} />
+          <Route path="prospects" element={<Lazy><AdminProspectsPage /></Lazy>} />
           <Route path="goals" element={<Lazy><AdminGoalsPage /></Lazy>} />
           <Route path="activity" element={<Lazy><AdminActivityPage /></Lazy>} />
           <Route path="worksheets" element={<Lazy><AdminWorksheetsPage /></Lazy>} />

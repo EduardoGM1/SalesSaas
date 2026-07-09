@@ -3,6 +3,8 @@ export interface AdminFilters {
   to?: string;
   userId?: string;
   status?: string;
+  q?: string;
+  tipoTour?: string;
 }
 
 export function parseAdminFilters(
@@ -17,6 +19,8 @@ export function parseAdminFilters(
     to: pick("to"),
     userId: pick("user"),
     status: pick("status"),
+    q: pick("q"),
+    tipoTour: pick("tipoTour"),
   };
 }
 
@@ -70,6 +74,8 @@ export function filtersToSearchParams(f: AdminFilters): string {
   if (f.to) p.set("to", f.to);
   if (f.userId) p.set("user", f.userId);
   if (f.status) p.set("status", f.status);
+  if (f.q) p.set("q", f.q);
+  if (f.tipoTour) p.set("tipoTour", f.tipoTour);
   const s = p.toString();
   return s ? `?${s}` : "";
 }

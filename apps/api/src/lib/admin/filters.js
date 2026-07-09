@@ -8,6 +8,8 @@ export function parseAdminFilters(sp = {}) {
     to: pick("to"),
     userId: pick("user"),
     status: pick("status"),
+    q: pick("q"),
+    tipoTour: pick("tipoTour"),
   };
 }
 
