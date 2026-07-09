@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { Home } from "lucide-react";
+import { Lock, Mail } from "lucide-react";
 import { isSupabaseConfigured } from "@/lib/supabase/config.js";
 import { notifyAuthChanged } from "@/lib/session-api.js";
 import { useI18n } from "@/hooks/use-i18n.js";
-import { selectOnFocus } from "@/lib/focus-select.js";
+import { AuthField } from "@/components/auth/auth-field.jsx";
 
 const QUERY_KEYS = {
   auth: "auth.login.errorAuth",
@@ -60,24 +60,39 @@ export function LoginPage() {
   };
 
   return (
-    <div className="auth-card">
-      <div className="auth-logo"><Home size={22} /></div>
-      <div className="auth-title">{t("auth.login.title")}</div>
-      <div className="auth-sub">{t("auth.login.sub")}</div>
+    <>
+      <div className="auth-title auth-landing-title">{t("auth.login.title")}</div>
+      <div className="auth-sub auth-landing-subtitle">{t("auth.login.sub")}</div>
       {error && <div className="auth-error">{error}</div>}
       <form onSubmit={onSubmit}>
-        <div className="auth-field">
-          <label className="field-label">{t("auth.login.email")}</label>
-          <input className="auth-input" type="email" name="email" required autoComplete="email" onFocus={selectOnFocus} />
+        <AuthField
+          label={t("auth.login.email")}
+          name="email"
+          type="email"
+          placeholder={t("auth.common.emailPlaceholder")}
+          required
+          autoComplete="email"
+          icon={Mail}
+        />
+        <AuthField
+          label={t("auth.login.password")}
+          name="password"
+          placeholder={t("auth.register.passwordPlaceholder")}
+          required
+          autoComplete="current-password"
+          icon={Lock}
+          showToggle
+        />
+        <div className="auth-field-foot auth-landing-forgot">
+          <Link to="/forgot-password">{t("auth.login.forgot")}</Link>
         </div>
-        <div className="auth-field">
-          <label className="field-label">{t("auth.login.password")}</label>
-          <input className="auth-input" type="password" name="password" required autoComplete="current-password" onFocus={selectOnFocus} />
-          <div className="auth-field-foot"><Link to="/forgot-password">{t("auth.login.forgot")}</Link></div>
-        </div>
-        <button type="submit" className="btn btn-primary btn-full" disabled={pending}>{pending ? t("auth.login.pending") : t("auth.login.submit")}</button>
+        <button type="submit" className="btn btn-primary btn-full auth-landing-submit" disabled={pending}>
+          {pending ? t("auth.login.pending") : t("auth.login.submit")}
+        </button>
       </form>
-      <div className="auth-foot">{t("auth.login.noAccount")} <Link to="/register">{t("auth.login.createAccount")}</Link></div>
-    </div>
+      <div className="auth-foot auth-landing-foot">
+        {t("auth.login.noAccount")} <Link to="/register">{t("auth.login.createAccount")}</Link>
+      </div>
+    </>
   );
 }

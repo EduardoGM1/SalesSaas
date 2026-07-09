@@ -1,5 +1,5 @@
-import { Outlet } from "react-router-dom";
+import { AuthLandingShell } from "@/components/auth/auth-landing-shell.jsx";
 
 export function AuthLayout() {
-  return <div className="auth-wrap"><Outlet /></div>;
+  return <AuthLandingShell />;
 }

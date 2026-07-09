@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Home } from "lucide-react";
+import { Mail } from "lucide-react";
 import { useI18n } from "@/hooks/use-i18n.js";
-import { selectOnFocus } from "@/lib/focus-select.js";
+import { AuthField } from "@/components/auth/auth-field.jsx";
 
 export function ForgotPasswordPage() {
   const { t } = useI18n();
@@ -36,24 +36,28 @@ export function ForgotPasswordPage() {
   };
 
   return (
-    <div className="auth-card">
-      <div className="auth-logo"><Home size={22} /></div>
-      <div className="auth-title">{t("auth.forgot.title")}</div>
-      <div className="auth-sub">{t("auth.forgot.sub")}</div>
+    <>
+      <div className="auth-title auth-landing-title">{t("auth.forgot.title")}</div>
+      <div className="auth-sub auth-landing-subtitle">{t("auth.forgot.sub")}</div>
       {error && <div className="auth-error">{error}</div>}
       {message && <div className="auth-ok">{message}</div>}
       {!message && (
         <form onSubmit={onSubmit}>
-          <div className="auth-field">
-            <label className="field-label">{t("auth.login.email")}</label>
-            <input className="auth-input" type="email" name="email" placeholder={t("auth.common.emailPlaceholder")} required autoComplete="email" onFocus={selectOnFocus} />
-          </div>
-          <button type="submit" className="btn btn-primary btn-full" disabled={pending}>
+          <AuthField
+            label={t("auth.login.email")}
+            name="email"
+            type="email"
+            placeholder={t("auth.common.emailPlaceholder")}
+            required
+            autoComplete="email"
+            icon={Mail}
+          />
+          <button type="submit" className="btn btn-primary btn-full auth-landing-submit" disabled={pending}>
             {pending ? t("auth.forgot.pending") : t("auth.forgot.submit")}
           </button>
         </form>
       )}
-      <div className="auth-foot"><Link to="/login">{t("auth.forgot.back")}</Link></div>
-    </div>
+      <div className="auth-foot auth-landing-foot"><Link to="/login">{t("auth.forgot.back")}</Link></div>
+    </>
   );
 }

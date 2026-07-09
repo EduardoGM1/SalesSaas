@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Home } from "lucide-react";
+import { Lock } from "lucide-react";
 import { isSupabaseConfigured } from "@/lib/supabase/config.js";
 import { useI18n } from "@/hooks/use-i18n.js";
-import { selectOnFocus } from "@/lib/focus-select.js";
+import { AuthField } from "@/components/auth/auth-field.jsx";
 
 export function ResetPasswordPage() {
   const { t } = useI18n();
@@ -47,10 +47,9 @@ export function ResetPasswordPage() {
   };
 
   return (
-    <div className="auth-card">
-      <div className="auth-logo"><Home size={22} /></div>
-      <div className="auth-title">{t("auth.reset.title")}</div>
-      <div className="auth-sub">{t("auth.reset.sub")}</div>
+    <>
+      <div className="auth-title auth-landing-title">{t("auth.reset.title")}</div>
+      <div className="auth-sub auth-landing-subtitle">{t("auth.reset.sub")}</div>
       {error && <div className="auth-error">{error}</div>}
       {sessionState === "loading" && (
         <div className="auth-sub">{t("auth.callback.pending")}</div>
@@ -58,24 +57,36 @@ export function ResetPasswordPage() {
       {sessionState === "missing" && (
         <>
           <div className="auth-error">{t("auth.reset.sessionExpired")}</div>
-          <div className="auth-foot"><Link to="/forgot-password">{t("auth.reset.requestNew")}</Link></div>
+          <div className="auth-foot auth-landing-foot"><Link to="/forgot-password">{t("auth.reset.requestNew")}</Link></div>
         </>
       )}
       {sessionState === "ready" && (
-      <form onSubmit={onSubmit}>
-        <div className="auth-field">
-          <label className="field-label">{t("auth.reset.new")}</label>
-          <input className="auth-input" type="password" name="password" placeholder={t("auth.register.passwordPlaceholder")} required autoComplete="new-password" minLength={6} onFocus={selectOnFocus} />
-        </div>
-        <div className="auth-field">
-          <label className="field-label">{t("auth.reset.confirm")}</label>
-          <input className="auth-input" type="password" name="confirm" placeholder={t("auth.reset.confirmPlaceholder")} required autoComplete="new-password" minLength={6} onFocus={selectOnFocus} />
-        </div>
-        <button type="submit" className="btn btn-primary btn-full" disabled={pending}>
-          {pending ? t("auth.reset.pending") : t("auth.reset.submit")}
-        </button>
-      </form>
+        <form onSubmit={onSubmit}>
+          <AuthField
+            label={t("auth.reset.new")}
+            name="password"
+            placeholder={t("auth.register.passwordPlaceholder")}
+            required
+            autoComplete="new-password"
+            minLength={6}
+            icon={Lock}
+            showToggle
+          />
+          <AuthField
+            label={t("auth.reset.confirm")}
+            name="confirm"
+            placeholder={t("auth.reset.confirmPlaceholder")}
+            required
+            autoComplete="new-password"
+            minLength={6}
+            icon={Lock}
+            showToggle
+          />
+          <button type="submit" className="btn btn-primary btn-full auth-landing-submit" disabled={pending}>
+            {pending ? t("auth.reset.pending") : t("auth.reset.submit")}
+          </button>
+        </form>
       )}
-    </div>
+    </>
   );
 }
