@@ -14,7 +14,7 @@ import { useToolSession } from "@/hooks/use-tool-session.js";
 import { useDbStore } from "@/stores/db-store";
 import { shallow } from "zustand/shallow";
 
-const EMPTY_FIELDS = { vv: "", vc: "", va: "", vi: "" };
+const DEFAULT_FIELDS = { vv: "", vc: "", va: "", vi: "8" };
 
 interface VacacionesPageProps {
   clientId?;
@@ -26,7 +26,7 @@ export function VacacionesPage({ clientId, shared }: VacacionesPageProps) {
   const { ready, readOnly, backHref, getBucket, saveBucket, isFileMode, isShared } = useToolSession({ clientId, shared });
   const { fmt, fmtN } = useMoney();
   const moneySettings = useDbStore((s) => s.db.settings, shallow);
-  const [fields, setFields] = useState({ ...EMPTY_FIELDS });
+  const [fields, setFields] = useState({ ...DEFAULT_FIELDS });
   const [saved, setSaved] = useState(false);
   const [saveToolOpen, setSaveToolOpen] = useState(false);
 
@@ -35,9 +35,12 @@ export function VacacionesPage({ clientId, shared }: VacacionesPageProps) {
     const b = getBucket("vacaciones");
     const next = Object.keys(b).length
       ? {
-        vv: String(b.vv ?? ""), vc: String(b.vc ?? ""), va: String(b.va ?? ""), vi: String(b.vi ?? ""),
+        vv: String(b.vv ?? ""),
+        vc: String(b.vc ?? ""),
+        va: String(b.va ?? ""),
+        vi: b.vi === undefined || b.vi === null || String(b.vi) === "" ? "8" : String(b.vi),
       }
-      : { ...EMPTY_FIELDS };
+      : { ...DEFAULT_FIELDS };
     setFields((prev) => (
       prev.vv === next.vv && prev.vc === next.vc && prev.va === next.va && prev.vi === next.vi ? prev : next
     ));
@@ -45,8 +48,8 @@ export function VacacionesPage({ clientId, shared }: VacacionesPageProps) {
 
   const handleClear = async () => {
     if (readOnly) return;
-    setFields({ ...EMPTY_FIELDS });
-    if (ready) await saveBucket("vacaciones", { ...EMPTY_FIELDS });
+    setFields({ ...DEFAULT_FIELDS });
+    if (ready) await saveBucket("vacaciones", { ...DEFAULT_FIELDS });
   };
 
   const r = useMemo(
@@ -55,6 +58,7 @@ export function VacacionesPage({ clientId, shared }: VacacionesPageProps) {
   );
 
   const currentYear = new Date().getFullYear();
+  const hasProjectionYears = String(fields.va).trim() !== "" && r.anios > 0;
   const futureYear = currentYear + r.anios;
   const inflationImpact = Math.max(0, r.tc - r.ts);
 
@@ -119,7 +123,9 @@ export function VacacionesPage({ clientId, shared }: VacacionesPageProps) {
                   </div>
                   <div className="vacation-year-arrow" aria-hidden="true" title={t("tools.vacation.inflationAccum")}>→</div>
                   <div className="vacation-year-card vacation-year-card--future">
-                    <div className="vacation-year-card-year">{futureYear}</div>
+                    {hasProjectionYears && (
+                      <div className="vacation-year-card-year">{futureYear}</div>
+                    )}
                     <div className="vacation-year-card-amount">{t("tools.vacation.perYear", { cost: fmt(r.cf) })}</div>
                     <div className="vacation-year-card-detail">{t("tools.vacation.inflationAccum")}</div>
                   </div>
