@@ -1878,6 +1878,13 @@ body,
 .vacation-calc-layout {
   gap: 16px;
   align-items: start;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 960px) {
+  .vacation-calc-layout {
+    grid-template-columns: 1fr 1fr;
+  }
 }
 
 .vacation-projection {
@@ -1888,15 +1895,79 @@ body,
   min-width: 0;
 }
 
-.vacation-compare-card {
-  position: relative;
+.vacation-results-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+}
+
+.vacation-results-heading {
+  margin-bottom: 0 !important;
+}
+
+.vacation-year-row {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  align-items: stretch;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 10px;
+  width: 100%;
+}
+
+.vacation-year-card {
   border-radius: 14px;
-  overflow: hidden;
-  border: 1px solid rgba(15, 23, 42, 0.08);
-  background: #fff;
+  padding: 16px 14px;
+  min-width: 0;
+  min-height: 108px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.vacation-year-card--current {
+  background: rgba(37, 99, 235, 0.08);
+  border: 1px solid rgba(37, 99, 235, 0.18);
+}
+
+.vacation-year-card--future {
+  background: rgba(220, 38, 38, 0.08);
+  border: 1px solid rgba(220, 38, 38, 0.18);
+}
+
+.vacation-year-card-year {
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1.2;
+  margin-bottom: 8px;
+}
+
+.vacation-year-card--current .vacation-year-card-year {
+  color: var(--blue);
+}
+
+.vacation-year-card--future .vacation-year-card-year {
+  color: var(--red);
+}
+
+.vacation-year-card-amount {
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+}
+
+.vacation-year-card--current .vacation-year-card-amount {
+  color: var(--blue);
+}
+
+.vacation-year-card--future .vacation-year-card-amount {
+  color: var(--red);
+}
+
+.vacation-year-card-detail {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 6px;
+  line-height: 1.35;
 }
 
 .vacation-panel {
@@ -2586,6 +2657,14 @@ body,
 
   .vbox-val {
     font-size: 18px;
+  }
+
+  .vacation-year-card-amount {
+    font-size: 20px;
+  }
+
+  .vacation-year-card {
+    padding: 14px 12px;
   }
 
   .vacation-panel-amount {

@@ -55,6 +55,7 @@ export function VacacionesPage({ clientId, shared }: VacacionesPageProps) {
   );
 
   const currentYear = new Date().getFullYear();
+  const futureYear = currentYear + r.anios;
   const inflationImpact = Math.max(0, r.tc - r.ts);
 
   const handleSave = async () => {
@@ -106,17 +107,20 @@ export function VacacionesPage({ clientId, shared }: VacacionesPageProps) {
           </div>
 
           <div className="vacation-projection">
-            <div className="vacation-compare-card">
-              <div className="vacation-panel vacation-panel--current">
-                <div className="vacation-panel-year">{currentYear}</div>
-                <div className="vacation-panel-amount">{t("tools.vacation.perYear", { cost: fmt(r.ga) })}</div>
-                <div className="vacation-panel-detail">{t("tools.vacation.tripsLine", { cost: fmtN(r.costo), trips: r.viajes })}</div>
-              </div>
-              <div className="vacation-compare-arrow" aria-hidden="true" title={t("tools.vacation.inflationAccum")}>→</div>
-              <div className="vacation-panel vacation-panel--future">
-                <div className="vacation-panel-year">{r.futAno}</div>
-                <div className="vacation-panel-amount">{t("tools.vacation.perYear", { cost: fmt(r.cf) })}</div>
-                <div className="vacation-panel-detail">{t("tools.vacation.inflationAccum")}</div>
+            <div className="card vacation-results-card">
+              <div className="card-heading vacation-results-heading">{t("tools.vacation.futureTitle")}</div>
+
+              <div className="vacation-year-row">
+                <div className="vacation-year-card vacation-year-card--current">
+                  <div className="vacation-year-card-year">{currentYear}</div>
+                  <div className="vacation-year-card-amount">{t("tools.vacation.perYear", { cost: fmt(r.ga) })}</div>
+                  <div className="vacation-year-card-detail">{t("tools.vacation.tripsLine", { cost: fmtN(r.costo), trips: r.viajes })}</div>
+                </div>
+                <div className="vacation-year-card vacation-year-card--future">
+                  <div className="vacation-year-card-year">{futureYear}</div>
+                  <div className="vacation-year-card-amount">{t("tools.vacation.perYear", { cost: fmt(r.cf) })}</div>
+                  <div className="vacation-year-card-detail">{t("tools.vacation.inflationAccum")}</div>
+                </div>
               </div>
             </div>
 
