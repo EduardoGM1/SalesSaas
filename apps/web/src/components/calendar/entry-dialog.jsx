@@ -18,11 +18,11 @@ interface EntryDialogProps {
 
 const TYPE_TAB_KEYS: [EType, string][] = [
   ["venta", "entry.tab.sale"],
-  ["follow", "entry.tab.follow"],
   ["notaCliente", "entry.tab.clientNote"],
+  ["noTour", "entry.tab.noTour"],
+  ["follow", "entry.tab.follow"],
   ["notaUsuario", "entry.tab.userNote"],
   ["descanso", "entry.tab.dayOff"],
-  ["noTour", "entry.tab.noTour"],
 ];
 
 export function EntryDialog({ open, onOpenChange, year, month, day }: EntryDialogProps) {
@@ -109,10 +109,11 @@ export function EntryDialog({ open, onOpenChange, year, month, day }: EntryDialo
       popupId="m-entry"
       title={title}
       sub={subtitle}
+      modalClassName="entry-modal-sticky"
     >
-      <div style={{ marginBottom: 16 }}>
+      <div className="entry-modal-sticky-head">
         <div className="entry-type-label">{t("entry.prompt")}</div>
-        <div className="seg entry-type-seg entry-type-seg--wrap">
+        <div className="seg entry-type-seg entry-type-seg--grid">
           {TYPE_TAB_KEYS.map(([typeKey, labelKey]) => (
             <button
               key={typeKey}
@@ -126,99 +127,100 @@ export function EntryDialog({ open, onOpenChange, year, month, day }: EntryDialo
         </div>
       </div>
 
-      {eType === "descanso" && (
-        <div id="ef-descanso">
-          <div className="hint">{t("entry.dayOff.hint")}</div>
-        </div>
-      )}
-
-      {eType === "noTour" && (
-        <div id="ef-no-tour">
-          <div className="hint">{t("entry.noTour.hint")}</div>
-          <label style={{ fontSize: 11, color: "var(--muted)", fontWeight: 700, letterSpacing: ".5px", textTransform: "uppercase", display: "block", margin: "12px 0 6px" }}>
-            {t("entry.noTour.label")}
-          </label>
-          <textarea
-            rows={3}
-            style={{ width: "100%" }}
-            value={nota}
-            onFocus={selectOnFocus}
-            onChange={(e) => setNota(e.target.value)}
-            placeholder={t("entry.noTour.placeholder")}
-          />
-        </div>
-      )}
-
-      {clientAction && (
-        <div id="ef-venta">
-          <div className="calendar-sale-route lean-sale-route">
-            <div className="route-hero">
-              <div className="route-copy" id="agenda-client-route-copy">{routeCopy}</div>
-            </div>
-            <div className="route-options">
-              <button type="button" className="route-card primary-route" onClick={goClientsFromAgenda}>
-                <div className="route-card-icon">＋</div>
-                <div>
-                  <div className="route-card-title">{t("entry.route.createNew.title")}</div>
-                  <div className="route-card-sub">{t("entry.route.createNew.sub")}</div>
-                </div>
-              </button>
-              <button type="button" className="route-card green" onClick={goClientsFromAgenda}>
-                <div className="route-card-icon">↗</div>
-                <div>
-                  <div className="route-card-title">{t("entry.route.existing.title")}</div>
-                  <div className="route-card-sub">{t("entry.route.existing.sub")}</div>
-                </div>
-              </button>
-            </div>
-            <div className="route-note" id="agenda-client-route-note">{routeNote}</div>
+      <div className="entry-modal-sticky-body">
+        {eType === "descanso" && (
+          <div id="ef-descanso">
+            <div className="hint">{t("entry.dayOff.hint")}</div>
           </div>
-        </div>
-      )}
-
-      {eType === "notaUsuario" && (
-        <div id="entry-reminder-wrap" className="link-box" style={{ margin: "12px 0" }}>
-          <div className="link-title">{t("entry.reminder.title")}</div>
-          <div className="prospect-grid">
-            <div className="prospect-field">
-              <label>{t("entry.reminder.date")}</label>
-              <input type="date" id="e-rem-date" value={remDate} onFocus={selectOnFocus} onChange={(e) => setRemDate(e.target.value)} />
-            </div>
-            <div className="prospect-field">
-              <label>{t("entry.reminder.timeOptional")}</label>
-              <input type="time" id="e-rem-time" value={remTime} onFocus={selectOnFocus} onChange={(e) => setRemTime(e.target.value)} />
-            </div>
-          </div>
-          <div className="route-note" style={{ marginTop: 10 }}>
-            {t("entry.reminder.hint")}
-          </div>
-        </div>
-      )}
-
-      {eType === "notaUsuario" && (
-        <div id="ef-nota">
-          <label style={{ fontSize: 11, color: "var(--muted)", fontWeight: 700, letterSpacing: ".5px", textTransform: "uppercase", display: "block", marginBottom: 6 }}>
-            {t("entry.userNote.label")}
-          </label>
-          <textarea
-            id="e-nota-t"
-            rows={4}
-            style={{ width: "100%" }}
-            value={nota}
-            onFocus={selectOnFocus}
-            onChange={(e) => setNota(e.target.value)}
-            placeholder={t("entry.userNote.placeholder")}
-          />
-        </div>
-      )}
-
-      <div className="btn-row" style={{ marginTop: 20 }}>
-        <button type="button" className="btn btn-ghost" onClick={() => close(false)}>{t("common.cancel")}</button>
-        {!clientAction && (
-          <button type="button" className="btn btn-primary" id="entry-save-btn" onClick={handleSave}>
-            {t("common.save")}
-          </button>
         )}
+
+        {eType === "noTour" && (
+          <div id="ef-no-tour">
+            <div className="hint">{t("entry.noTour.hint")}</div>
+            <label className="entry-field-label">
+              {t("entry.noTour.label")}
+            </label>
+            <textarea
+              rows={3}
+              className="entry-field-textarea"
+              value={nota}
+              onFocus={selectOnFocus}
+              onChange={(e) => setNota(e.target.value)}
+              placeholder={t("entry.noTour.placeholder")}
+            />
+          </div>
+        )}
+
+        {clientAction && (
+          <div id="ef-venta">
+            <div className="calendar-sale-route lean-sale-route">
+              <div className="route-hero">
+                <div className="route-copy" id="agenda-client-route-copy">{routeCopy}</div>
+              </div>
+              <div className="route-options">
+                <button type="button" className="route-card primary-route" onClick={goClientsFromAgenda}>
+                  <div className="route-card-icon">＋</div>
+                  <div>
+                    <div className="route-card-title">{t("entry.route.createNew.title")}</div>
+                    <div className="route-card-sub">{t("entry.route.createNew.sub")}</div>
+                  </div>
+                </button>
+                <button type="button" className="route-card green" onClick={goClientsFromAgenda}>
+                  <div className="route-card-icon">↗</div>
+                  <div>
+                    <div className="route-card-title">{t("entry.route.existing.title")}</div>
+                    <div className="route-card-sub">{t("entry.route.existing.sub")}</div>
+                  </div>
+                </button>
+              </div>
+              <div className="route-note" id="agenda-client-route-note">{routeNote}</div>
+            </div>
+          </div>
+        )}
+
+        {eType === "notaUsuario" && (
+          <>
+            <div id="entry-reminder-wrap" className="link-box entry-reminder-wrap">
+              <div className="link-title">{t("entry.reminder.title")}</div>
+              <div className="prospect-grid">
+                <div className="prospect-field">
+                  <label>{t("entry.reminder.date")}</label>
+                  <input type="date" id="e-rem-date" value={remDate} onFocus={selectOnFocus} onChange={(e) => setRemDate(e.target.value)} />
+                </div>
+                <div className="prospect-field">
+                  <label>{t("entry.reminder.timeOptional")}</label>
+                  <input type="time" id="e-rem-time" value={remTime} onFocus={selectOnFocus} onChange={(e) => setRemTime(e.target.value)} />
+                </div>
+              </div>
+              <div className="route-note entry-reminder-hint">
+                {t("entry.reminder.hint")}
+              </div>
+            </div>
+            <div id="ef-nota">
+              <label className="entry-field-label">
+                {t("entry.userNote.label")}
+              </label>
+              <textarea
+                id="e-nota-t"
+                rows={4}
+                className="entry-field-textarea"
+                value={nota}
+                onFocus={selectOnFocus}
+                onChange={(e) => setNota(e.target.value)}
+                placeholder={t("entry.userNote.placeholder")}
+              />
+            </div>
+          </>
+        )}
+
+        <div className="btn-row entry-modal-actions">
+          <button type="button" className="btn btn-ghost" onClick={() => close(false)}>{t("common.cancel")}</button>
+          {!clientAction && (
+            <button type="button" className="btn btn-primary" id="entry-save-btn" onClick={handleSave}>
+              {t("common.save")}
+            </button>
+          )}
+        </div>
       </div>
     </SalesModal>
   );

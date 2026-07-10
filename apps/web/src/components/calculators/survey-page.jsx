@@ -8,6 +8,7 @@ import { computeSurvey } from "@/lib/calculations/survey";
 import { SharedToolBanner } from "@/components/calculators/shared-tool-banner.jsx";
 import { COUNTRY_CITY, COUNTRY_FLAGS } from "@/lib/constants";
 import { selectOnFocus } from "@/lib/focus-select.js";
+import { formatDecimalInput } from "@/lib/format/numeric-input.js";
 import { formatMoneyValue } from "@/lib/format/money";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { useMoney } from "@/hooks/use-money.js";
@@ -234,7 +235,7 @@ export function SurveyPage({ clientId, shared }: SurveyPageProps) {
                 <div className="flabel">{t("tools.survey.totalPaid")}</div>
                 <div className="mfield">
                   <span className="mpfx">$</span>
-                  <input type="text" inputMode="decimal" id="sv-total" value={data.total} onFocus={selectOnFocus} onChange={(e) => update("total", e.target.value)} onBlur={(e) => update("total", formatMoneyValue(e.target.value))} />
+                  <input type="text" inputMode="decimal" id="sv-total" value={data.total} onFocus={selectOnFocus} onChange={(e) => update("total", formatDecimalInput(e.target.value))} onBlur={(e) => update("total", formatMoneyValue(e.target.value))} />
                 </div>
               </div>
               <div id="sv-split" style={{ display: sType === "paquete" ? "block" : "none" }}>
@@ -281,7 +282,7 @@ export function SurveyPage({ clientId, shared }: SurveyPageProps) {
                     <td className="nc"><input type="number" inputMode="numeric" value={data[`${p}n`]} onFocus={selectOnFocus} onChange={(e) => update(`${p}n`, e.target.value)} /></td>
                     <td className="mc">
                       <div className="mfield"><span className="mpfx">$</span>
-                        <input type="text" inputMode="decimal" value={data[`${p}a`]} onFocus={selectOnFocus} onChange={(e) => update(`${p}a`, e.target.value)} onBlur={(e) => update(`${p}a`, formatMoneyValue(e.target.value))} />
+                        <input type="text" inputMode="decimal" value={data[`${p}a`]} onFocus={selectOnFocus} onChange={(e) => update(`${p}a`, formatDecimalInput(e.target.value))} onBlur={(e) => update(`${p}a`, formatMoneyValue(e.target.value))} />
                       </div>
                     </td>
                   </tr>

@@ -6,6 +6,7 @@ import { SaveToolModal } from "@/components/calculators/save-tool-modal";
 import { SharedToolBanner } from "@/components/calculators/shared-tool-banner.jsx";
 import { computeVacaciones } from "@/lib/calculations/vacaciones";
 import { selectOnFocus } from "@/lib/focus-select.js";
+import { formatDecimalInput } from "@/lib/format/numeric-input.js";
 import { formatMoneyValue } from "@/lib/format/money";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { useMoney } from "@/hooks/use-money.js";
@@ -87,7 +88,7 @@ export function VacacionesPage({ clientId, shared }: VacacionesPageProps) {
                 <div className="flabel">{t("tools.vacation.costPerTrip")}</div>
                 <div className="mfield">
                   <span className="mpfx">$</span>
-                  <input type="text" inputMode="decimal" value={fields.vc} onFocus={selectOnFocus} onChange={(e) => setFields({ ...fields, vc: e.target.value })} onBlur={(e) => setFields({ ...fields, vc: formatMoneyValue(e.target.value) })} />
+                  <input type="text" inputMode="decimal" value={fields.vc} onFocus={selectOnFocus} onChange={(e) => setFields({ ...fields, vc: formatDecimalInput(e.target.value) })} onBlur={(e) => setFields({ ...fields, vc: formatMoneyValue(e.target.value) })} />
                 </div>
               </div>
               <div className="frow tool-frow">
@@ -117,18 +118,18 @@ export function VacacionesPage({ clientId, shared }: VacacionesPageProps) {
                   <div className="vacation-vbox-meta">{t("tools.vacation.inflationAccum")}</div>
                 </div>
               </div>
-              <div className="vacation-results-compact">
-                <div className="vbox yellow vacation-vbox-compact vacation-vbox-compact--total">
-                  <div className="vbox-val vacation-vbox-val-lg">{fmt(r.tc)}</div>
-                  <div className="vbox-label">{t("tools.vacation.totalInflation")}</div>
-                  <div className="vbox-sub">{t("tools.vacation.totalInflationSub", { years: r.anios })}</div>
-                </div>
-                <div className="vbox blue vacation-vbox-compact">
+              <div className="vbox yellow vacation-vbox-compact vacation-vbox-compact--total vacation-total-block">
+                <div className="vbox-val vacation-vbox-val-lg">{fmt(r.tc)}</div>
+                <div className="vbox-label">{t("tools.vacation.totalInflation")}</div>
+                <div className="vbox-sub">{t("tools.vacation.totalInflationSub", { years: r.anios })}</div>
+              </div>
+              <div className="vacation-bottom-pair">
+                <div className="vbox blue vacation-vbox-compact vacation-vbox-compact--square">
                   <div className="vbox-val vacation-vbox-val-sm">{fmt(r.ts)}</div>
                   <div className="vbox-label">{t("tools.vacation.withoutInflation")}</div>
                   <div className="vbox-sub">{t("tools.vacation.noInflationLine", { cost: fmtN(r.ga), years: r.anios })}</div>
                 </div>
-                <div className="vbox red vacation-vbox-compact">
+                <div className="vbox red vacation-vbox-compact vacation-vbox-compact--square">
                   <div className="vbox-val vacation-vbox-val-sm">{fmt(Math.max(0, r.tc - r.ts))}</div>
                   <div className="vbox-label">{t("tools.vacation.inflationImpact")}</div>
                   <div className="vbox-sub">{t("tools.vacation.inflationExtra")}</div>

@@ -5,6 +5,7 @@ import { Topbar } from "@/components/layout/topbar";
 import { PageBack } from "@/components/layout/page-back";
 import { computeMetasKpis } from "@/lib/calculations/calendar";
 import { fmtN, onlyDigits } from "@/lib/format/money";
+import { formatDigitsWithCommas } from "@/lib/format/numeric-input.js";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { useMoney } from "@/hooks/use-money.js";
 import { calKey } from "@/lib/format/dates";
@@ -104,7 +105,7 @@ export function MetasPage() {
               </div>
               <div className="mfield metas-vol-field">
                 <span className="mpfx">$</span>
-                <input type="text" className="metas-input" placeholder="500,000" inputMode="numeric" value={vol} onFocus={selectOnFocus} onChange={(e) => setVol(e.target.value)} onBlur={formatVol} />
+                <input type="text" className="metas-input" placeholder="500,000" inputMode="numeric" value={vol} onFocus={selectOnFocus} onChange={(e) => setVol(formatDigitsWithCommas(e.target.value, moneySettings.language === "en" ? "en-US" : "es-MX"))} onBlur={formatVol} />
               </div>
             </div>
             <div className="frow metas-frow">

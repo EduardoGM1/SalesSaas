@@ -1630,23 +1630,72 @@ div.modal-backdrop.sales-modal-overlay:not([hidden]) {
   .sales-modal-viewport:not([hidden]) { padding-top: 14px; }
 }
 
-/* Modal Agenda (#m-entry): id en popup React, equivalente al HTML */
-#m-entry.modal {
-  min-height: 560px;
+/* Modal Agenda (#m-entry): header fijo + scroll en contenido */
+#m-entry.modal.entry-modal-sticky {
+  min-height: auto;
+  max-height: min(90vh, 640px);
+  overflow: hidden;
   display: flex;
   flex-direction: column;
+}
+
+#m-entry.modal .modal-title,
+#m-entry.modal .modal-sub,
+#m-entry.modal .entry-modal-sticky-head {
+  flex-shrink: 0;
+}
+
+#m-entry.modal .entry-modal-sticky-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 #m-entry.modal #ef-venta,
 #m-entry.modal #ef-nota,
 #m-entry.modal #ef-follow,
-#m-entry.modal #ef-descanso {
-  min-height: 315px;
+#m-entry.modal #ef-descanso,
+#m-entry.modal #ef-no-tour {
+  min-height: 0;
 }
 
+#m-entry.modal .entry-field-textarea,
 #m-entry.modal textarea {
-  min-height: 150px;
+  width: 100%;
+  min-height: 120px;
   resize: vertical;
+}
+
+#m-entry.modal .entry-field-label {
+  font-size: 11px;
+  color: var(--muted);
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  display: block;
+  margin: 12px 0 6px;
+}
+
+#m-entry.modal .entry-modal-actions {
+  margin-top: 20px;
+  flex-shrink: 0;
+}
+
+.entry-type-seg--grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+  width: 100%;
+}
+
+.entry-type-seg--grid .seg-btn {
+  flex: unset;
+  min-width: 0;
+  font-size: 11px;
+  line-height: 1.15;
+  padding: 10px 6px;
+  white-space: normal;
 }
 
 #m-entry.modal .seg,
@@ -1894,6 +1943,127 @@ body,
 .entry-type-seg--wrap .seg-btn {
   flex: 1 1 auto;
   min-width: max(88px, calc(33% - 8px));
+}
+
+.settings-hub-signout {
+  margin-top: 0;
+  margin-bottom: 14px;
+}
+
+.settings-hub-signout--top {
+  padding: 0 0 4px;
+  border-top: none;
+}
+
+.settings-signout-btn {
+  width: 100%;
+  justify-content: center;
+}
+
+.settings-row--worksheet {
+  align-items: start;
+}
+
+.settings-mini-grid--labeled {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  width: 100%;
+  max-width: 100%;
+}
+
+.settings-mini-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.settings-mini-label {
+  font-size: 10px;
+  color: var(--muted);
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.settings-mini-field input {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  text-align: center;
+  padding: 10px 8px;
+}
+
+.settings-pct-field {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.settings-pct-field input {
+  flex: 1;
+  min-width: 0;
+}
+
+.settings-pct-suffix {
+  color: var(--muted);
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.vacation-total-block {
+  width: 100%;
+}
+
+.vacation-bottom-pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.vacation-vbox-compact--square {
+  min-height: 112px;
+  aspect-ratio: 1 / 1;
+  max-height: 160px;
+}
+
+.client-survey-compact .client-survey-cfield label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.client-survey-compact .client-survey-cfield input,
+.client-survey-compact .client-survey-cfield select {
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.prospect-field input:focus::placeholder,
+.prospect-field textarea:focus::placeholder {
+  opacity: 0;
+}
+
+.worksheet-opt-body {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.worksheet-opt-body .opt-field {
+  min-width: 0;
+}
+
+.worksheet-opt-body .opt-field input {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .table-scroll {

@@ -11,6 +11,7 @@ import { WS_CONFIG_IDS, WS_DEFAULTS } from "@/lib/constants";
 import { computeWorksheet, ensureWSConfig } from "@/lib/calculations/worksheet";
 import { selectOnFocus } from "@/lib/focus-select.js";
 import { formatMoneyValue } from "@/lib/format/money";
+import { formatDecimalInput } from "@/lib/format/numeric-input.js";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { useMoney } from "@/hooks/use-money.js";
 import { useToolSession } from "@/hooks/use-tool-session.js";
@@ -85,7 +86,7 @@ export function WorksheetPage({ clientId, shared }: WorksheetPageProps) {
 
   const moneyField = (key: keyof typeof fields) => (
     <div className="mfield"><span className="mpfx">$</span>
-      <input type="text" inputMode="decimal" value={fields[key]} onFocus={selectOnFocus} onChange={(e) => setFields({ ...fields, [key]: e.target.value })} onBlur={(e) => setFields({ ...fields, [key]: formatMoneyValue(e.target.value) })} />
+      <input type="text" inputMode="decimal" value={fields[key]} onFocus={selectOnFocus} onChange={(e) => setFields({ ...fields, [key]: formatDecimalInput(e.target.value) })} onBlur={(e) => setFields({ ...fields, [key]: formatMoneyValue(e.target.value) })} />
     </div>
   );
 
@@ -179,12 +180,17 @@ export function WorksheetPage({ clientId, shared }: WorksheetPageProps) {
               <div className="opt-head">
                 <div><div className="opt-tag">{t("tools.worksheet.optionN", { n })}</div><div className="opt-info">{t("tools.worksheet.configSub")}</div></div>
               </div>
-              <div className="opt-body">
-                <div className="opt-field"><label>{t("tools.worksheet.months")}</label>
-                  <input type="number" inputMode="numeric" min={1} value={config[`wo${n}m`]} onFocus={selectOnFocus} onChange={(e) => setConfig({ ...config, [`wo${n}m`]: e.target.value })} />
+              <div className="opt-body worksheet-opt-body">
+                <div className="opt-field">
+                  <label>{t("tools.worksheet.months")}</label>
+                  <input type="text" inputMode="numeric" value={config[`wo${n}m`]} onFocus={selectOnFocus} onChange={(e) => setConfig({ ...config, [`wo${n}m`]: e.target.value.replace(/[^\d]/g, "") })} />
                 </div>
-                <div className="opt-field"><label>{t("tools.worksheet.annualRate")}</label>
-                  <input type="number" inputMode="decimal" min={0} step={0.01} value={config[`wo${n}r`]} onFocus={selectOnFocus} onChange={(e) => setConfig({ ...config, [`wo${n}r`]: e.target.value })} />
+                <div className="opt-field">
+                  <label>{t("tools.worksheet.annualRate")}</label>
+                  <span className="settings-pct-field">
+                    <input type="text" inputMode="decimal" value={config[`wo${n}r`]} onFocus={selectOnFocus} onChange={(e) => setConfig({ ...config, [`wo${n}r`]: e.target.value.replace(/[^\d.]/g, "") })} />
+                    <span className="settings-pct-suffix">%</span>
+                  </span>
                 </div>
               </div>
             </div>

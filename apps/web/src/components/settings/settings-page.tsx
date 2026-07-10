@@ -239,6 +239,28 @@ export function SettingsPage() {
             {profilePending ? ti("settings.saving") : ti("settings.save")}
           </button>
         </div>
+        {!activeSection && isSupabaseConfigured() && (
+          <div className="settings-hub-signout settings-hub-signout--top">
+            <button
+              type="button"
+              className="btn btn-ghost settings-signout-btn"
+              disabled={signOutPending}
+              onClick={async () => {
+                setSignOutPending(true);
+                try {
+                  await signOut();
+                  navigate("/login", { replace: true });
+                } catch {
+                  toast.error(ti("toast.settings.signOutFail"));
+                } finally {
+                  setSignOutPending(false);
+                }
+              }}
+            >
+              <LogOut size={15} /> {signOutPending ? ti("settings.account.signingOut") : ti("settings.account.signOut")}
+            </button>
+          </div>
+        )}
 
         {!activeSection ? renderHub() : (
           <div className="settings-detail">
@@ -262,28 +284,6 @@ export function SettingsPage() {
                       <input type="url" value={avatarUrl} onFocus={selectOnFocus} onChange={(e) => setAvatarUrl(e.target.value)} placeholder="https://..." style={{ width: "100%" }} />
                     </div>
                   )}
-                  {isSupabaseConfigured() && !canSeeTechnical && (
-                    <div className="btn-row" style={{ marginTop: 8 }}>
-                      <button
-                        type="button"
-                        className="btn btn-ghost"
-                        disabled={signOutPending}
-                        onClick={async () => {
-                          setSignOutPending(true);
-                          try {
-                            await signOut();
-                            navigate("/login", { replace: true });
-                          } catch {
-                            toast.error(ti("toast.settings.signOutFail"));
-                          } finally {
-                            setSignOutPending(false);
-                          }
-                        }}
-                      >
-                        <LogOut size={15} /> {signOutPending ? ti("settings.account.signingOut") : ti("settings.account.signOut")}
-                      </button>
-                    </div>
-                  )}
                 </div>
               </div>
             )}
@@ -293,15 +293,43 @@ export function SettingsPage() {
                 <div className="settings-card">
                   <div className="card-heading">Worksheet</div>
                   <div className="card-sub">Opciones de financiamiento existentes. También se mantienen como atajo dentro de Worksheet.</div>
-                  {[1, 2, 3].map((n) => (
-                    <div key={n} className="settings-row">
-                      <div><div className="settings-label">Opción {n}</div><div className="settings-help">Meses e interés anual.</div></div>
-                      <div className="settings-mini-grid">
-                        <input type="number" min={1} value={settings.worksheetConfig?.[`wo${n}m`] || WS_DEFAULTS[`wo${n}m`]} onChange={(e) => setWorksheetSetting(`wo${n}m`, e.target.value)} />
-                        <input type="number" min={0} step={0.01} value={settings.worksheetConfig?.[`wo${n}r`] || WS_DEFAULTS[`wo${n}r`]} onChange={(e) => setWorksheetSetting(`wo${n}r`, e.target.value)} />
+                  {[1, 2, 3].map((n) => {
+                    const monthsKey = `wo${n}m`;
+                    const rateKey = `wo${n}r`;
+                    const monthsVal = settings.worksheetConfig?.[monthsKey] || WS_DEFAULTS[monthsKey];
+                    const rateVal = settings.worksheetConfig?.[rateKey] || WS_DEFAULTS[rateKey];
+                    return (
+                      <div key={n} className="settings-row settings-row--worksheet">
+                        <div><div className="settings-label">Opción {n}</div></div>
+                        <div className="settings-mini-grid settings-mini-grid--labeled">
+                          <label className="settings-mini-field">
+                            <span className="settings-mini-label">Meses</span>
+                            <input
+                              type="text"
+                              inputMode="numeric"
+                              min={1}
+                              value={monthsVal}
+                              onFocus={selectOnFocus}
+                              onChange={(e) => setWorksheetSetting(monthsKey, e.target.value.replace(/[^\d]/g, ""))}
+                            />
+                          </label>
+                          <label className="settings-mini-field">
+                            <span className="settings-mini-label">Interés</span>
+                            <span className="settings-pct-field">
+                              <input
+                                type="text"
+                                inputMode="decimal"
+                                value={rateVal}
+                                onFocus={selectOnFocus}
+                                onChange={(e) => setWorksheetSetting(rateKey, e.target.value.replace(/[^\d.]/g, ""))}
+                              />
+                              <span className="settings-pct-suffix">%</span>
+                            </span>
+                          </label>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                   <div className="hint" style={{ marginTop: 14 }}><strong>Nota:</strong> esta configuración usa la misma fuente que el engrane local de Worksheet.</div>
                 </div>
               </div>
@@ -509,29 +537,6 @@ export function SettingsPage() {
                   {profileMsg && <div className="auth-ok" style={{ marginBottom: 12 }}>{profileMsg}</div>}
                   <div className="ethic-box" style={{ marginBottom: 16 }}>
                     <strong>Código ético:</strong> la información personal de los expedientes es temporal. Exporta un respaldo antes de borrar.
-                  </div>
-                  <div className="btn-row" style={{ marginTop: 0 }}>
-                    
-                    {isSupabaseConfigured() && (
-                      <button
-                        type="button"
-                        className="btn btn-ghost"
-                        disabled={signOutPending}
-                        onClick={async () => {
-                          setSignOutPending(true);
-                          try {
-                            await signOut();
-                            navigate("/login", { replace: true });
-                          } catch {
-                            toast.error(ti("toast.settings.signOutFail"));
-                          } finally {
-                            setSignOutPending(false);
-                          }
-                        }}
-                      >
-                        <LogOut size={15} /> {signOutPending ? ti("settings.account.signingOut") : ti("settings.account.signOut")}
-                      </button>
-                    )}
                   </div>
                 </div>
               </div>
