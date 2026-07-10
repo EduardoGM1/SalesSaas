@@ -634,14 +634,15 @@ textarea::placeholder{
 .modal .btn-row{
   flex-shrink:0;
 }
-#m-entry .modal{
-  min-height:560px;
+#m-entry.modal{
+  min-height:580px;
 }
-#m-entry #ef-venta,
-#m-entry #ef-nota,
-#m-entry #ef-follow,
-#m-entry #ef-descanso{
-  min-height:315px;
+#m-entry.modal #ef-venta,
+#m-entry.modal #ef-nota,
+#m-entry.modal #ef-follow,
+#m-entry.modal #ef-descanso,
+#m-entry.modal #ef-no-tour{
+  min-height:320px;
   transition:opacity .16s ease;
 }
 #m-entry textarea{
@@ -684,7 +685,7 @@ textarea::placeholder{
 }
 @media(max-height:760px){
   .modal-backdrop.show{padding-top:14px;}
-  #m-entry .modal,#m-save-tool .modal,#m-edit-prospect .modal,#m-client-sale .modal,#m-ws-config .modal{min-height:auto;}
+  #m-save-tool .modal,#m-edit-prospect .modal,#m-client-sale .modal,#m-ws-config .modal{min-height:auto;}
 }
 
 

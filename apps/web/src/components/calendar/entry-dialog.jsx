@@ -128,6 +128,7 @@ export function EntryDialog({ open, onOpenChange, year, month, day }: EntryDialo
       </div>
 
       <div className="entry-modal-sticky-body">
+        <div className="entry-modal-sticky-content">
         {eType === "descanso" && (
           <div id="ef-descanso">
             <div className="hint">{t("entry.dayOff.hint")}</div>
@@ -212,6 +213,8 @@ export function EntryDialog({ open, onOpenChange, year, month, day }: EntryDialo
             </div>
           </>
         )}
+
+        </div>
 
         <div className="btn-row entry-modal-actions">
           <button type="button" className="btn btn-ghost" onClick={() => close(false)}>{t("common.cancel")}</button>
