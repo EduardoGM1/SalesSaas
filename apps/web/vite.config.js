@@ -20,6 +20,7 @@ export default defineConfig({
     }),
     VitePWA({
       registerType: "autoUpdate",
+      injectRegister: false,
       includeAssets: ["icon.svg", "icon-maskable.svg", "favicon.png", "apple-touch-icon.png"],
       manifest: {
         name: "Sales Timeshare",
@@ -42,8 +43,19 @@ export default defineConfig({
       },
       workbox: {
         navigateFallback: "/index.html",
+        navigateFallbackDenylist: [/^\/api/, /^\/auth/],
+        cleanupOutdatedCaches: true,
         globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
         runtimeCaching: [
+          {
+            urlPattern: ({ request }) => request.mode === "navigate",
+            handler: "NetworkFirst",
+            options: {
+              cacheName: "html-navigate",
+              networkTimeoutSeconds: 3,
+              expiration: { maxEntries: 8, maxAgeSeconds: 60 * 60 * 24 },
+            },
+          },
           {
             urlPattern: ({ url }) => url.pathname.startsWith("/api/"),
             handler: "NetworkFirst",
