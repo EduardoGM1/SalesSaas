@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { SalesModal } from "@/components/ui/sales-modal";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { selectOnFocus } from "@/lib/focus-select.js";
+import { formatSingleNameInput, isValidSingleName, SINGLE_NAME_MAX_LENGTH } from "@/lib/format/single-name-input.js";
 import { DEFAULT_TOUR_TYPES } from "@/lib/store-empty.js";
 import { useDbStore } from "@/stores/db-store";
 import { createProspectFromName } from "@/actions/clients.js";
@@ -49,7 +50,7 @@ export function NewClientModal({ open, onOpenChange, onCreated }) {
       setInvalidName(false);
       nameRef.current?.focus();
       hasError = true;
-    } else if (/\s/.test(trimmed)) {
+    } else if (/\s/.test(trimmed) || trimmed.length > SINGLE_NAME_MAX_LENGTH || !/^[\p{L}\p{M}]+$/u.test(trimmed)) {
       setInvalidName(true);
       setMissingName(false);
       nameRef.current?.focus();
@@ -98,15 +99,23 @@ export function NewClientModal({ open, onOpenChange, onCreated }) {
           id="nc-name"
           type="text"
           inputMode="text"
+          autoComplete="off"
+          autoCorrect="off"
+          spellCheck={false}
+          maxLength={SINGLE_NAME_MAX_LENGTH}
           value={name}
           placeholder={t("clients.namePlaceholder")}
           onFocus={selectOnFocus}
           onChange={(e) => {
-            setName(e.target.value);
-            if (e.target.value.trim()) setMissingName(false);
-            if (!/\s/.test(e.target.value.trim())) setInvalidName(false);
+            const next = formatSingleNameInput(e.target.value);
+            setName(next);
+            if (next) setMissingName(false);
+            if (isValidSingleName(next)) setInvalidName(false);
           }}
-          onKeyDown={(e) => { if (e.key === "Enter") handleCreate(); }}
+          onKeyDown={(e) => {
+            if (e.key === " ") e.preventDefault();
+            if (e.key === "Enter") handleCreate();
+          }}
         />
         {invalidName && <div className="field-inline-error">{t("clients.singleNameOnly")}</div>}
       </div>

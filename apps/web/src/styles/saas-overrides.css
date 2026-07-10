@@ -1883,7 +1883,65 @@ body,
 
 @media (min-width: 960px) {
   .vacation-calc-layout {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: minmax(280px, 1fr) minmax(360px, 1.15fr);
+    align-items: stretch;
+  }
+
+  .tool-calc-page .vacation-projection {
+    height: 100%;
+  }
+
+  .tool-calc-page .vacation-results-card {
+    height: 100%;
+    min-height: 100%;
+    box-sizing: border-box;
+  }
+
+  .tool-calc-page .vacation-results-grid {
+    flex: 1;
+    gap: 14px;
+  }
+
+  .tool-calc-page .vacation-year-row {
+    gap: 12px;
+  }
+
+  .tool-calc-page .vacation-year-arrow {
+    display: flex;
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 1;
+    width: 30px;
+    height: 30px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    background: #fff;
+    color: var(--muted2);
+    font-size: 16px;
+    line-height: 1;
+    box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.96);
+    pointer-events: none;
+  }
+
+  .tool-calc-page .vacation-year-card {
+    min-height: 118px;
+  }
+
+  .tool-calc-page .vacation-total-card {
+    flex-shrink: 0;
+  }
+
+  .tool-calc-page .vacation-split-row {
+    gap: 12px;
+    margin-top: auto;
+  }
+
+  .tool-calc-page .vacation-panel--base,
+  .tool-calc-page .vacation-panel--impact {
+    min-height: 118px;
   }
 }
 
@@ -1900,17 +1958,32 @@ body,
   flex-direction: column;
   gap: 12px;
   padding: 16px;
+  width: 100%;
+  min-width: 0;
 }
 
 .vacation-results-heading {
   margin-bottom: 0 !important;
 }
 
+.vacation-results-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  min-width: 0;
+}
+
 .vacation-year-row {
+  position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 10px;
   width: 100%;
+}
+
+.vacation-year-arrow {
+  display: none;
 }
 
 .vacation-year-card {

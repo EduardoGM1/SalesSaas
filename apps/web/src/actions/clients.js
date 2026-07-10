@@ -1,6 +1,7 @@
 import { clientDisplayName, ensureProspectIdentity } from "@/lib/clients";
 import { getLang, getMonths, translate } from "@/lib/i18n.js";
 import { longDate } from "@/lib/format/dates";
+import { isValidSingleName } from "@/lib/format/single-name-input.js";
 import { statusLabel } from "@/lib/format/status";
 import { createEmptyClient, useDbStore } from "@/stores/db-store";
 import { toast } from "@/lib/toast";
@@ -45,7 +46,7 @@ export function createProspectFromName(name, tipoTour, tourCuantificable) {
     toast.error(translate("toast.client.missingName"));
     return { ok: false, reason: "missing_name" };
   }
-  if (/\s/.test(trimmed)) {
+  if (!isValidSingleName(trimmed)) {
     toast.error(translate("toast.client.singleNameOnly"));
     return { ok: false, reason: "invalid_name" };
   }
