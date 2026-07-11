@@ -13,7 +13,7 @@ export function CountryCitySelects({
 }) {
   const { t } = useI18n();
   const countries = Object.keys(COUNTRY_CITY);
-  const cities = COUNTRY_CITY[country || ""] || ["Otro"];
+  const cities = country ? (COUNTRY_CITY[country] || ["Otro"]) : [];
 
   return (
     <div className="prospect-geo-row">

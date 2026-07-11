@@ -10,6 +10,7 @@ import { COUNTRY_CITY, COUNTRY_FLAGS } from "@/lib/constants";
 import { selectOnFocus } from "@/lib/focus-select.js";
 import { formatDecimalInput } from "@/lib/format/numeric-input.js";
 import { formatMoneyValue } from "@/lib/format/money";
+import { formatSingleNameInput, isValidSingleName, SINGLE_NAME_MAX_LENGTH } from "@/lib/format/single-name-input.js";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { useMoney } from "@/hooks/use-money.js";
 import { useToolSession } from "@/hooks/use-tool-session.js";
@@ -84,7 +85,7 @@ export function SurveyPage({ clientId, shared }: SurveyPageProps) {
 
   const client = isFileMode ? (isShared ? session.prospect : (clientId ? getClient(clientId) : undefined)) : undefined;
   const countries = Object.keys(COUNTRY_CITY);
-  const cities = COUNTRY_CITY[data.svp_country || ""] || ["Otro"];
+  const cities = data.svp_country ? (COUNTRY_CITY[data.svp_country] || ["Otro"]) : [];
 
   const result = useMemo(
     () => computeSurvey(data, sType),
@@ -138,7 +139,7 @@ export function SurveyPage({ clientId, shared }: SurveyPageProps) {
     const errors: Record<string, string> = {};
     const name = data.svp_name1?.trim() || "";
     if (!name) errors.svp_name1 = t("tools.survey.validationRequired");
-    else if (name.includes(" ")) errors.svp_name1 = t("tools.survey.validationSingleName");
+    else if (!isValidSingleName(name)) errors.svp_name1 = t("tools.survey.validationSingleName");
     setValidationErrors(errors);
     if (Object.keys(errors).length) return;
     await saveBucket("survey", { ...data, stype: sType, futureType });
@@ -179,7 +180,21 @@ export function SurveyPage({ clientId, shared }: SurveyPageProps) {
           <div className="client-survey-compact">
             <div className="client-survey-cfield">
               <label>{t("tools.survey.name")}</label>
-              <input type="text" inputMode="text" id="svp-name1" placeholder="Ej: Michell" value={data.svp_name1 || ""} onFocus={selectOnFocus} onChange={(e) => update("svp_name1", e.target.value)} className={validationErrors.svp_name1 ? "input-error" : ""} />
+              <input
+                type="text"
+                inputMode="text"
+                id="svp-name1"
+                autoComplete="off"
+                autoCorrect="off"
+                spellCheck={false}
+                maxLength={SINGLE_NAME_MAX_LENGTH}
+                placeholder={t("tools.survey.namePlaceholder")}
+                value={data.svp_name1 || ""}
+                onFocus={selectOnFocus}
+                onChange={(e) => update("svp_name1", formatSingleNameInput(e.target.value))}
+                onKeyDown={(e) => { if (e.key === " ") e.preventDefault(); }}
+                className={validationErrors.svp_name1 ? "input-error" : ""}
+              />
             </div>
             {validationErrors.svp_name1 && <div className="client-survey-name-error">{validationErrors.svp_name1}</div>}
             <div className="client-survey-crow">
@@ -197,7 +212,7 @@ export function SurveyPage({ clientId, shared }: SurveyPageProps) {
               </div>
               <div className="client-survey-cfield">
                 <label>{t("tools.survey.city")}</label>
-                <select id="svp-city" value={data.svp_city || ""} onFocus={selectOnFocus} onChange={(e) => update("svp_city", e.target.value)}>
+                <select id="svp-city" value={data.svp_city || ""} onFocus={selectOnFocus} onChange={(e) => update("svp_city", e.target.value)} disabled={!data.svp_country}>
                   <option value="">{t("tools.survey.selectCity")}</option>
                   {cities.map((city) => (
                     <option key={city} value={city}>{city}</option>
