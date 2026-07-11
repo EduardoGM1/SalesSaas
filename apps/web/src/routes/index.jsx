@@ -10,7 +10,6 @@ import { ForgotPasswordPage } from "@/pages/ForgotPasswordPage.jsx";
 import { ResetPasswordPage } from "@/pages/ResetPasswordPage.jsx";
 import { AuthCallbackPage } from "@/pages/AuthCallbackPage.jsx";
 import { CalendarPage } from "@/components/calendar/calendar-page.jsx";
-import { GoalsPage } from "@/components/goals/goals-page.jsx";
 import { MetasPage } from "@/components/goals/metas-page.jsx";
 import { ClientsPage } from "@/components/clients/clients-page.jsx";
 import { ClientDetail } from "@/components/clients/client-detail.jsx";
@@ -94,7 +93,7 @@ export function AppRoutes() {
       </Route>
       <Route element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
         <Route index element={<CalendarPage />} />
-        <Route path="goals" element={<GoalsPage />} />
+        <Route path="goals" element={<Navigate to="/" replace />} />
         <Route path="metas" element={<MetasPage />} />
         <Route path="sales" element={<SalesHistoryPage />} />
         <Route path="clients" element={<ClientsPage />} />
