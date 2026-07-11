@@ -18,11 +18,11 @@ interface EntryDialogProps {
 
 const TYPE_TAB_KEYS: [EType, string][] = [
   ["venta", "entry.tab.sale"],
-  ["notaCliente", "entry.tab.clientNote"],
-  ["noTour", "entry.tab.noTour"],
   ["follow", "entry.tab.follow"],
+  ["notaCliente", "entry.tab.clientNote"],
   ["notaUsuario", "entry.tab.userNote"],
   ["descanso", "entry.tab.dayOff"],
+  ["noTour", "entry.tab.noTour"],
 ];
 
 export function EntryDialog({ open, onOpenChange, year, month, day }: EntryDialogProps) {

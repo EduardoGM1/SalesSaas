@@ -343,10 +343,8 @@ export function SettingsPage() {
                   {[1, 2, 3, 4].map((n) => {
                     const idx = n - 1;
                     return (
-                      <div key={n} className="settings-row">
-                        <div>
-                          <div className="settings-label">{ti(`settings.tourTypes.label${n}`)}</div>
-                        </div>
+                      <div key={n} className="settings-row settings-row--tour-type">
+                        <div className="settings-label">{ti(`settings.tourTypes.label${n}`)}</div>
                         <input
                           type="text"
                           value={(settings.tourTypes ?? ["Q", "NQ", "CT", "Member"])[idx] || ""}
@@ -356,7 +354,6 @@ export function SettingsPage() {
                             list[idx] = e.target.value;
                             setSetting("tourTypes", list);
                           }}
-                          style={{ width: "100%" }}
                         />
                       </div>
                     );

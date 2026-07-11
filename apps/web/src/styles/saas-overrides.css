@@ -928,6 +928,77 @@ div.modal-backdrop.sales-modal-overlay:not([hidden]) {
   margin-bottom: 14px;
 }
 
+/* Nueva venta / expediente: label izquierda + input derecha, compacto */
+#m-client-record.modal .client-record-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+#m-client-record.modal .form-section-label {
+  margin: 4px 0 8px;
+}
+
+#m-client-record.modal .form-section-divider {
+  margin: 12px 0 10px;
+}
+
+#m-client-record.modal .prospect-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+#m-client-record.modal .prospect-geo-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+#m-client-record.modal .prospect-field {
+  display: grid;
+  grid-template-columns: minmax(108px, 40%) minmax(0, 1fr);
+  gap: 8px 12px;
+  align-items: center;
+}
+
+#m-client-record.modal .prospect-field label {
+  margin-bottom: 0;
+  line-height: 1.25;
+}
+
+#m-client-record.modal .prospect-field input,
+#m-client-record.modal .prospect-field select,
+#m-client-record.modal .prospect-field .mfield input {
+  text-align: center;
+}
+
+#m-client-record.modal .prospect-field .field-inline-error {
+  grid-column: 1 / -1;
+  margin-top: 0;
+  font-size: 11px;
+}
+
+#m-client-record.modal .prospect-field.full,
+#m-client-record.modal .prospect-field.sale-followup-field {
+  grid-template-columns: 1fr;
+  align-items: start;
+}
+
+#m-client-record.modal .prospect-field.full label,
+#m-client-record.modal .prospect-field.sale-followup-field label:first-child {
+  margin-bottom: 6px;
+}
+
+#m-client-record.modal .ethic-box {
+  margin-top: 12px !important;
+  padding: 10px 12px;
+}
+
+#m-client-record.modal .btn-row {
+  margin-top: 12px;
+}
+
 .field-required::after {
   content: " *";
   color: #dc2626;
@@ -1695,17 +1766,17 @@ div.modal-backdrop.sales-modal-overlay:not([hidden]) {
 
 .entry-type-seg--grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 4px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
   width: 100%;
 }
 
 .entry-type-seg--grid .seg-btn {
   flex: unset;
   min-width: 0;
-  font-size: 11px;
-  line-height: 1.15;
-  padding: 10px 6px;
+  font-size: 12px;
+  line-height: 1.2;
+  padding: 12px 8px;
   white-space: normal;
 }
 
@@ -1919,8 +1990,9 @@ body,
     justify-content: center;
     border-radius: 999px;
     background: #fff;
-    color: var(--muted2);
-    font-size: 16px;
+    color: var(--blue);
+    font-size: 18px;
+    font-weight: 600;
     line-height: 1;
     box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.96);
     pointer-events: none;
@@ -1994,6 +2066,7 @@ body,
   display: flex;
   flex-direction: column;
   justify-content: center;
+  text-align: center;
 }
 
 .vacation-year-card--current {
@@ -2170,6 +2243,7 @@ body,
   border-radius: 14px;
   border: 1px solid rgba(15, 23, 42, 0.06);
   min-height: 108px;
+  text-align: center;
 }
 
 .vacation-split-amount {
@@ -2227,6 +2301,33 @@ body,
 
 .settings-row--worksheet {
   align-items: start;
+}
+
+.settings-row--tour-type {
+  grid-template-columns: minmax(110px, auto) minmax(0, 1fr);
+  gap: 10px 12px;
+  align-items: center;
+  padding: 8px 0;
+}
+
+.settings-row--tour-type .settings-label {
+  margin: 0;
+  white-space: nowrap;
+}
+
+.settings-row--tour-type input {
+  width: 100%;
+  text-align: center;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+@media (max-width: 900px) {
+  .settings-row--tour-type {
+    grid-template-columns: minmax(100px, 42%) minmax(0, 1fr);
+    gap: 8px 10px;
+    padding: 7px 0;
+  }
 }
 
 .settings-mini-grid--labeled {

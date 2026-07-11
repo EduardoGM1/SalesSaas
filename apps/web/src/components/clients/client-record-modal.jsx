@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { SalesModal } from "@/components/ui/sales-modal";
 import { CountryCitySelects } from "@/components/clients/country-city-selects.jsx";
 import { selectOnFocus } from "@/lib/focus-select.js";
+import { formatSingleNameInput, isValidSingleName, SINGLE_NAME_MAX_LENGTH } from "@/lib/format/single-name-input.js";
 import { isSaleFormValid, resolveSaleProcessDate } from "@/lib/sales/form-valid";
 import { parseMoney } from "@/lib/format/money";
 import { useI18n } from "@/hooks/use-i18n.js";
@@ -29,8 +30,8 @@ const SALE_STATUS_OPTIONS = [
 ];
 
 function isProspectFormValid(form) {
-  return Boolean(String(form?.name1 || form?.name || "").trim())
-    && Boolean(String(form?.tipo_tour || "").trim());
+  const name = String(form?.name1 || form?.name || "").trim();
+  return isValidSingleName(name) && Boolean(String(form?.tipo_tour || "").trim());
 }
 
 function getModalCopy(mode, t, clientName) {
@@ -60,13 +61,28 @@ function getModalCopy(mode, t, clientName) {
 
 function ProspectFields({ form, onChange, t, showStatusFields, showErrors }) {
   const tourTypes = useDbStore((s) => s.db.settings?.tourTypes ?? DEFAULT_TOUR_TYPES, shallow);
-  const missingName = !String(form?.name1 || form?.name || "").trim();
+  const nameValue = String(form?.name1 || form?.name || "");
+  const missingName = !isValidSingleName(nameValue);
   const missingTipoTour = !String(form?.tipo_tour || "").trim();
   return (
     <div className="prospect-grid">
       <div className={requiredFieldClass(showErrors, missingName)}>
         <label className="field-required">{t("exp.edit.name")}</label>
-        <input type="text" placeholder={t("tools.survey.namePlaceholder")} value={form.name1 || ""} onFocus={selectOnFocus} onChange={(e) => onChange({ ...form, name1: e.target.value })} />
+        <input
+          type="text"
+          autoComplete="off"
+          autoCorrect="off"
+          spellCheck={false}
+          maxLength={SINGLE_NAME_MAX_LENGTH}
+          placeholder={t("tools.survey.namePlaceholder")}
+          value={form.name1 || ""}
+          onFocus={selectOnFocus}
+          onChange={(e) => onChange({ ...form, name1: formatSingleNameInput(e.target.value) })}
+          onKeyDown={(e) => { if (e.key === " ") e.preventDefault(); }}
+        />
+        {showErrors && missingName ? (
+          <div className="field-inline-error">{t("clients.singleNameOnly")}</div>
+        ) : null}
       </div>
       <div className="prospect-field"><label>{t("exp.edit.occ1")}</label><input type="text" placeholder={t("tools.survey.occPlaceholder")} value={form.occupation1 || ""} onFocus={selectOnFocus} onChange={(e) => onChange({ ...form, occupation1: e.target.value })} /></div>
       <CountryCitySelects
