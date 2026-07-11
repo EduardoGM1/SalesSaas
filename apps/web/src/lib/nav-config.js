@@ -16,7 +16,7 @@ export const NAV_GROUPS = [
     { href: "/", label: "Agenda", icon: Calendar },
     { href: "/metas", label: "Metas", icon: Target },
     { href: "/clients", label: "Clientes", icon: Users },
-    { href: "/goals", label: "Dashboard", icon: BarChart3 },
+    { href: "/goals", label: "Dashboard", icon: BarChart3, menuHidden: true },
     { href: "/tools", label: "Herramientas", icon: Wrench },
     { href: "/sales", label: "Ventas", icon: Receipt, feature: "sales:history" },
   ],
@@ -59,6 +59,7 @@ export function isNavItemActive(pathname, href) {
 }
 
 export function itemVisible(item, { cloudEnabled, isAdmin, canFeature }) {
+  if (item.menuHidden) return false;
   if (item.adminOnly && !isAdmin) return false;
   if (item.cloudOnly && !cloudEnabled) return false;
   if (item.feature && !canFeature(item.feature)) return false;
