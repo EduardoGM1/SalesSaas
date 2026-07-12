@@ -1819,20 +1819,56 @@ div.modal-backdrop.sales-modal-overlay:not([hidden]) {
   min-height: 48px;
 }
 
-.entry-type-seg--grid {
+.entry-type-seg.entry-type-seg--grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 6px;
+  gap: 4px 0;
   width: 100%;
+  padding: 6px;
+  border-radius: 12px;
+  background: #e7edf5;
+  border: 1px solid #d4deeb;
+  position: relative;
+  overflow: hidden;
+}
+
+.entry-type-seg.entry-type-seg--grid::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 10px;
+  bottom: 10px;
+  width: 1px;
+  background: rgba(107, 126, 168, 0.28);
+  transform: translateX(-50%);
+  pointer-events: none;
+  z-index: 0;
 }
 
 .entry-type-seg--grid .seg-btn {
   flex: unset;
   min-width: 0;
+  width: 100%;
   font-size: 12px;
-  line-height: 1.2;
-  padding: 12px 8px;
+  font-weight: 600;
+  line-height: 1.25;
+  padding: 14px 10px;
   white-space: normal;
+  text-align: center;
+  justify-content: center;
+  border-radius: 8px;
+  border-right: none !important;
+  color: var(--muted);
+  background: transparent;
+  position: relative;
+  z-index: 1;
+}
+
+.entry-type-seg--grid .seg-btn.on {
+  background: #fff;
+  color: var(--text);
+  box-shadow: 0 1px 3px rgba(15, 32, 68, 0.12);
+  border-radius: 8px;
 }
 
 #m-entry.modal .seg,
