@@ -111,8 +111,8 @@ export async function signOut() {
 export function watchSession(onSession, { intervalMs } = {}) {
   ensureAuthSyncBridge();
   const standalone = typeof window !== "undefined" && isStandaloneApp();
-  // PWA móvil: revalidar más seguido mientras la app está abierta.
-  const pollMs = intervalMs ?? (standalone ? 20000 : 60000);
+  // Poll de respaldo: Realtime avisa al instante; esto cubre si el canal falla.
+  const pollMs = intervalMs ?? (standalone ? 8000 : 15000);
   let active = true;
   let inFlight = false;
   let pending = false;

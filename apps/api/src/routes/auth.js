@@ -73,7 +73,16 @@ router.post("/signout", async (req, res) => {
   if (!isSupabaseConfigured()) return json(res, { ok: true });
   try {
     const sb = createCookieSupabaseClient(req, res);
-    // global: invalida refresh tokens en todos los clientes (web + PWA).
+    const { data: { user } } = await sb.auth.getUser();
+    // Marcar revocación ANTES de signOut: invalida JWT aún no expirados en otros dispositivos.
+    if (user?.id) {
+      const { error: revokeErr } = await sb
+        .from("profiles")
+        .update({ auth_revoked_at: new Date().toISOString() })
+        .eq("id", user.id);
+      if (revokeErr) console.warn("[auth/signout] auth_revoked_at:", revokeErr.message);
+    }
+    // global: revoca refresh tokens en todos los clientes (web + PWA).
     await sb.auth.signOut({ scope: "global" });
     json(res, { ok: true });
   } catch (err) {
