@@ -110,30 +110,31 @@ export async function clearLocalSession(options = {}) {
 
 export async function signOut() {
   ensureAuthSyncBridge();
+  const t0 = Date.now();
   try {
     markPresenceOffline();
   } catch {
     // ignore
   }
 
-  // 1) Avisar a otros dispositivos EN TIEMPO REAL (antes de perder auth en Realtime).
-  try {
-    const sync = await import("@/lib/session-cross-device.js");
-    await sync.broadcastRemoteSignedOut();
-  } catch {
-    // ignore — auth_revoked_at + push siguen como respaldo
-  }
+  const syncMod = import("@/lib/session-cross-device.js");
 
-  // 2) Revocar en servidor (auth_revoked_at + refresh tokens + push).
-  try {
-    await fetch("/auth/signout", { method: "POST", credentials: "include", cache: "no-store" });
-  } catch {
-    // Limpiar estado local aunque falle la red.
-  }
+  // Broadcast + revoke en PARALELO (no esperar Auth antes de avisar a otros).
+  const broadcastP = syncMod
+    .then((sync) => sync.broadcastRemoteSignedOut())
+    .catch(() => ({ ok: false }));
 
-  // 3) Cerrar canal local y sesión del browser client.
+  const serverP = fetch("/auth/signout", {
+    method: "POST",
+    credentials: "include",
+    cache: "no-store",
+  }).catch(() => null);
+
+  await Promise.all([broadcastP, serverP]);
+  console.info(`[session-sync] +${Date.now() - t0}ms signOut:broadcast+server`);
+
   try {
-    const sync = await import("@/lib/session-cross-device.js");
+    const sync = await syncMod;
     await sync.detachSessionSync();
   } catch {
     // ignore
@@ -146,6 +147,7 @@ export async function signOut() {
   primeRealtimeAuth(null);
   clearAdminSessionCache();
   notifyAuthChanged();
+  console.info(`[session-sync] +${Date.now() - t0}ms signOut:done`);
 }
 
 /**
@@ -155,8 +157,8 @@ export async function signOut() {
 export function watchSession(onSession, { intervalMs } = {}) {
   ensureAuthSyncBridge();
   const standalone = typeof window !== "undefined" && isStandaloneApp();
-  // Poll de respaldo: Realtime avisa al instante; esto cubre si el canal falla.
-  const pollMs = intervalMs ?? (standalone ? 8000 : 15000);
+  // Respaldo corto: el camino feliz es Broadcast (<1s). Poll solo si Realtime falla.
+  const pollMs = intervalMs ?? (standalone ? 3000 : 4000);
   let active = true;
   let inFlight = false;
   let pending = false;
