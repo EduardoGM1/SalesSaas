@@ -1,4 +1,3 @@
-
 import { useMemo, useState } from "react";
 import { BarChart3, Calendar, List, Tag, Target, TrendingUp } from "lucide-react";
 import { Topbar } from "@/components/layout/topbar";
@@ -54,6 +53,7 @@ export function GoalsPage() {
     return map;
   }, [clients, tourTypes]);
 
+  /** Totals from Ventas Tours (countable sales / tours in month). */
   const totals = weeks.reduce((a, w) => ({
     obj: a.obj + (w.obj || 0), real: a.real + (w.real || 0),
     tours: a.tours + (w.tours || 0), sales: a.sales + (w.sales || 0),
@@ -62,6 +62,7 @@ export function GoalsPage() {
   const vfalt = Math.max(0, goal.vol - totals.real);
   const drest = workingDaysRemaining(calYear, calMonth, data);
   const prod = drest > 0 ? vfalt / drest : 0;
+  // KPIs based on Ventas Tours counts
   const vprom = totals.sales > 0 ? totals.real / totals.sales : 0;
   const efic = totals.tours > 0 ? totals.real / totals.tours : 0;
   const cierre = totals.tours > 0 ? (totals.sales / totals.tours) * 100 : 0;
@@ -72,31 +73,7 @@ export function GoalsPage() {
     [t("goals.dailyProductionNeeded"), fmt(prod), "yellow"],
   ];
 
-  const desktopRows = [
-    ...volumeRows,
-    [t("goals.toursAccumulated"), fmtN(totals.tours), "blue"],
-    [t("goals.salesAccumulated"), fmtN(totals.sales), "blue"],
-    [t("goals.avgSale"), fmt(vprom), "teal"],
-    [t("goals.closeRate"), `${cierre.toFixed(1)}%`, "purple"],
-    [t("goals.efficiency"), fmt(efic), "purple"],
-  ];
-
   if (!hydrated) return <Topbar title={t("page.dashboard.title")} subtitle={t("common.loading")} />;
-
-  const periodBadges = (
-    <div className="dash-period-badges">
-      <div className="dash-period-badge">
-        <Calendar size={15} aria-hidden="true" />
-        <span className="dash-period-badge-label">{t("metas.year")}</span>
-        <span className="dash-period-badge-val">{calYear}</span>
-      </div>
-      <div className="dash-period-badge">
-        <Calendar size={15} aria-hidden="true" />
-        <span className="dash-period-badge-label">{t("metas.month")}</span>
-        <span className="dash-period-badge-val">{months[calMonth]}</span>
-      </div>
-    </div>
-  );
 
   const dataRows = (rows) => rows.map(([label, value, color]) => (
     <div key={label} className="dash-data-row">
@@ -106,53 +83,83 @@ export function GoalsPage() {
     </div>
   ));
 
-  const chartBody = (
-    <>
-      <div className="dash-graph-head dash-graph-head--body">
-        <div className="dash-chart-toggles">
-          <label className="dash-chart-toggle">
-            <input type="checkbox" checked={showTarget} onChange={(e) => setShowTarget(e.target.checked)} />
-            <span className="legend-line" /> {t("goals.showTarget")}
-          </label>
-          <label className="dash-chart-toggle">
-            <input type="checkbox" checked={showReal} onChange={(e) => setShowReal(e.target.checked)} />
-            <span className="legend-box" /> {t("goals.showReal")}
-          </label>
+  const renderProductionStack = () => (
+    <div className="dash-prod-stack">
+      <div className="dash-data-card dash-main-card">
+        <div className="dash-card-head">
+          <div className="dash-card-title"><BarChart3 size={18} color="#2563eb" /> {t("goals.data")}</div>
+          <div className="dash-period-badges">
+            <div className="dash-period-badge">
+              <Calendar size={15} aria-hidden="true" />
+              <span className="dash-period-badge-label">{t("metas.year")}</span>
+              <span className="dash-period-badge-val">{calYear}</span>
+            </div>
+            <div className="dash-period-badge">
+              <Calendar size={15} aria-hidden="true" />
+              <span className="dash-period-badge-label">{t("metas.month")}</span>
+              <span className="dash-period-badge-val">{months[calMonth]}</span>
+            </div>
+          </div>
+        </div>
+        <div className="dash-data-list">
+          {dataRows(volumeRows)}
+        </div>
+        <div className="dash-section-divider">{t("goals.accumulated")}</div>
+        <div className="dash-stat-grid dash-stat-grid--2">
+          <div className="dash-stat-card">
+            <span className="dash-stat-label">{t("metas.tours")}</span>
+            <span className="dash-stat-val">{fmtN(totals.tours)}</span>
+          </div>
+          <div className="dash-stat-card">
+            <span className="dash-stat-label">{t("metas.sales")}</span>
+            <span className="dash-stat-val">{fmtN(totals.sales)}</span>
+          </div>
         </div>
       </div>
-      <DashboardChart weeks={weeks} showTarget={showTarget} showReal={showReal} />
-    </>
-  );
 
-  const chartBlock = (
-    <div className="dash-graph-card">
-      <div className="dash-graph-head">
-        <div className="dash-card-title"><Target size={18} color="#2563eb" /> {t("goals.targetVsReal")}</div>
-        <div className="dash-chart-toggles dash-chart-toggles--desktop">
-          <label className="dash-chart-toggle">
-            <input type="checkbox" checked={showTarget} onChange={(e) => setShowTarget(e.target.checked)} />
-            <span className="legend-line" /> {t("goals.showTarget")}
-          </label>
-          <label className="dash-chart-toggle">
-            <input type="checkbox" checked={showReal} onChange={(e) => setShowReal(e.target.checked)} />
-            <span className="legend-box" /> {t("goals.showReal")}
-          </label>
+      <CollapsibleSection
+        defaultOpen={false}
+        className="dash-graph-card dash-chart-collapsible"
+        title={<div className="dash-card-title"><Target size={18} color="#2563eb" /> {t("goals.targetVsReal")}</div>}
+        subtitle={t("goals.chartHint")}
+        bodyClassName="dash-graph-card-body"
+      >
+        <div className="dash-graph-head dash-graph-head--body">
+          <div className="dash-chart-toggles">
+            <label className="dash-chart-toggle">
+              <input type="checkbox" checked={showTarget} onChange={(e) => setShowTarget(e.target.checked)} />
+              <span className="legend-line" /> {t("goals.showTarget")}
+            </label>
+            <label className="dash-chart-toggle">
+              <input type="checkbox" checked={showReal} onChange={(e) => setShowReal(e.target.checked)} />
+              <span className="legend-box" /> {t("goals.showReal")}
+            </label>
+          </div>
+        </div>
+        <DashboardChart weeks={weeks} showTarget={showTarget} showReal={showReal} />
+      </CollapsibleSection>
+
+      <div className="dash-data-card dash-kpis-card">
+        <div className="dash-card-title"><TrendingUp size={18} color="#2563eb" /> {t("goals.kpisSection")}</div>
+        <div className="dash-stat-grid dash-stat-grid--3">
+          <div className="dash-kpi-mini">
+            <Tag size={14} aria-hidden="true" />
+            <span className="dash-kpi-mini-label">{t("goals.avgSale")}</span>
+            <span className="dash-kpi-mini-val">{fmt(vprom)}</span>
+          </div>
+          <div className="dash-kpi-mini">
+            <Target size={14} aria-hidden="true" />
+            <span className="dash-kpi-mini-label">{t("goals.closeRate")}</span>
+            <span className="dash-kpi-mini-val">{cierre.toFixed(0)}%</span>
+          </div>
+          <div className="dash-kpi-mini">
+            <TrendingUp size={14} aria-hidden="true" />
+            <span className="dash-kpi-mini-label">{t("goals.efficiency")}</span>
+            <span className="dash-kpi-mini-val">{fmt(efic)}</span>
+          </div>
         </div>
       </div>
-      <DashboardChart weeks={weeks} showTarget={showTarget} showReal={showReal} />
     </div>
-  );
-
-  const chartBlockMobile = (
-    <CollapsibleSection
-      mobileOnly
-      defaultOpen={false}
-      className="dash-graph-card"
-      title={<div className="dash-card-title"><Target size={18} color="#2563eb" /> {t("goals.targetVsReal")}</div>}
-      bodyClassName="dash-graph-card-body"
-    >
-      {chartBody}
-    </CollapsibleSection>
   );
 
   const weeklyTableBody = (
@@ -248,61 +255,13 @@ export function GoalsPage() {
         </div>
 
         <div className="dash-mobile-layout">
-          <div className="dash-data-card dash-main-card">
-            <div className="dash-card-head">
-              <div className="dash-card-title"><BarChart3 size={18} color="#2563eb" /> {t("goals.data")}</div>
-              {periodBadges}
-            </div>
-            <div className="dash-data-list">
-              {dataRows(volumeRows)}
-            </div>
-
-            <div className="dash-section-divider">{t("goals.accumulated")}</div>
-            <div className="dash-stat-grid dash-stat-grid--2">
-              <div className="dash-stat-card">
-                <span className="dash-stat-label">{t("metas.tours")}</span>
-                <span className="dash-stat-val">{fmtN(totals.tours)}</span>
-              </div>
-              <div className="dash-stat-card">
-                <span className="dash-stat-label">{t("metas.sales")}</span>
-                <span className="dash-stat-val">{fmtN(totals.sales)}</span>
-              </div>
-            </div>
-
-            <div className="dash-section-divider">{t("goals.kpisSection")}</div>
-            <div className="dash-stat-grid dash-stat-grid--3">
-              <div className="dash-kpi-mini">
-                <Tag size={14} aria-hidden="true" />
-                <span className="dash-kpi-mini-label">{t("goals.avgSale")}</span>
-                <span className="dash-kpi-mini-val">{fmt(vprom)}</span>
-              </div>
-              <div className="dash-kpi-mini">
-                <Target size={14} aria-hidden="true" />
-                <span className="dash-kpi-mini-label">{t("goals.closeRate")}</span>
-                <span className="dash-kpi-mini-val">{cierre.toFixed(0)}%</span>
-              </div>
-              <div className="dash-kpi-mini">
-                <TrendingUp size={14} aria-hidden="true" />
-                <span className="dash-kpi-mini-label">{t("goals.efficiency")}</span>
-                <span className="dash-kpi-mini-val">{fmt(efic)}</span>
-              </div>
-            </div>
-          </div>
-          {chartBlockMobile}
+          {renderProductionStack()}
           {weeklyTableMobile}
           {tourTypeBlockMobile}
         </div>
 
         <div className="dash-desktop-layout">
-          <div className="dash-top-grid">
-            <div className="dash-data-card">
-              <div className="dash-card-title"><BarChart3 size={18} color="#2563eb" /> {t("goals.data")}</div>
-              <div className="dash-data-list">
-                {dataRows(desktopRows)}
-              </div>
-            </div>
-            {chartBlock}
-          </div>
+          {renderProductionStack()}
           <div className="dash-bottom-grid">
             {weeklyTable}
             {tourTypeBlock}

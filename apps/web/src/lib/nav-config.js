@@ -1,4 +1,5 @@
 import {
+  BarChart3,
   Calendar,
   MessageSquareText,
   Receipt,
@@ -15,6 +16,7 @@ export const NAV_GROUPS = [
     { href: "/", label: "Agenda", icon: Calendar },
     { href: "/metas", label: "Metas", icon: Target },
     { href: "/clients", label: "Clientes", icon: Users },
+    { href: "/goals", label: "Dashboard", icon: BarChart3 },
     { href: "/tools", label: "Herramientas", icon: Wrench },
     { href: "/sales", label: "Ventas", icon: Receipt, feature: "sales:history" },
   ],

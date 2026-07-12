@@ -2375,6 +2375,13 @@ body,
   min-width: max(88px, calc(33% - 8px));
 }
 
+.settings-hub-divider {
+  height: 1px;
+  margin: 6px 4px;
+  background: var(--border);
+  border: 0;
+}
+
 .settings-hub-signout {
   margin-top: 0;
   margin-bottom: 14px;
@@ -3407,6 +3414,38 @@ body,
 }
 
 .dash-graph-head .dash-card-title {
+  margin-bottom: 0;
+}
+
+/* Dashboard: Datos → Real vs Plan (toggle) → KPIs */
+.dash-prod-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.dash-kpis-card .dash-card-title {
+  margin-bottom: 12px;
+}
+
+.dash-chart-collapsible .collapsible-section-sub {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 2px;
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.dash-chart-collapsible .collapsible-section-head {
+  margin-bottom: 0;
+}
+
+.dash-chart-collapsible:not(.is-collapsed) .collapsible-section-head {
+  margin-bottom: 12px;
+}
+
+.dash-chart-collapsible .dash-card-title {
   margin-bottom: 0;
 }
 

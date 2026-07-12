@@ -196,30 +196,37 @@ export function SettingsPage() {
     <div className="settings-hub">
       <div className="exp-tool-list">
         <SettingsEntry icon={<User size={18} />} tone="blue" title={ti("settings.hub.user")} desc={ti("settings.hub.userDesc")} onClick={() => setActiveSection("user")} />
-        <SettingsEntry icon={<WalletCards size={18} />} tone="purple" title={ti("settings.hub.worksheet")} desc={ti("settings.hub.worksheetDesc")} onClick={() => setActiveSection("worksheet")} />
-        <SettingsEntry icon={<Tag size={18} />} tone="teal" title={ti("settings.hub.tourTypes")} desc={ti("settings.hub.tourTypesDesc")} onClick={() => setActiveSection("tourTypes")} />
-        <SettingsEntry icon={<DollarSign size={18} />} tone="green" title={ti("settings.hub.money")} desc={ti("settings.hub.moneyDesc")} onClick={() => setActiveSection("money")} />
         <SettingsEntry icon={<Globe2 size={18} />} tone="blue" title={ti("settings.hub.language")} desc={ti("settings.hub.languageDesc")} onClick={() => setActiveSection("language")} />
-        {canSeeTechnical && (
-          <SettingsEntry icon={<Code2 size={18} />} tone="green" title={ti("settings.hub.apis")} desc={ti("settings.hub.apisDesc")} onClick={() => setActiveSection("apis")} />
-        )}
-        {canSeeTechnical && (
-          <SettingsEntry icon={<Database size={18} />} tone="teal" title={ti("settings.hub.backup")} desc={ti("settings.hub.backupDesc")} onClick={() => setActiveSection("backup")} />
-        )}
-        {shouldShowPwaInstallInSettings() && (
-          <SettingsEntry
-            icon={<Smartphone size={18} />}
-            tone="blue"
-            title={isStandaloneApp() ? ti("settings.hub.pwaInstalled") : ti("settings.hub.pwa")}
-            desc={isStandaloneApp() ? ti("settings.hub.pwaInstalledDesc") : ti("settings.hub.pwaDesc")}
-            onClick={() => setActiveSection("pwa")}
-          />
-        )}
         {isSupabaseConfigured() && (
           <SettingsEntry icon={<Bell size={18} />} tone="green" title={ti("settings.hub.notifications")} desc={ti("settings.hub.notificationsDesc")} onClick={() => setActiveSection("notifications")} />
         )}
+
+        <div className="settings-hub-divider" role="separator" aria-hidden="true" />
+
+        <SettingsEntry icon={<Tag size={18} />} tone="teal" title={ti("settings.hub.tourTypes")} desc={ti("settings.hub.tourTypesDesc")} onClick={() => setActiveSection("tourTypes")} />
+        <SettingsEntry icon={<DollarSign size={18} />} tone="green" title={ti("settings.hub.money")} desc={ti("settings.hub.moneyDesc")} onClick={() => setActiveSection("money")} />
+        <SettingsEntry icon={<WalletCards size={18} />} tone="purple" title={ti("settings.hub.worksheet")} desc={ti("settings.hub.worksheetDesc")} onClick={() => setActiveSection("worksheet")} />
+
+        {shouldShowPwaInstallInSettings() && (
+          <>
+            <div className="settings-hub-divider" role="separator" aria-hidden="true" />
+            <SettingsEntry
+              icon={<Smartphone size={18} />}
+              tone="blue"
+              title={isStandaloneApp() ? ti("settings.hub.pwaInstalled") : ti("settings.hub.pwa")}
+              desc={isStandaloneApp() ? ti("settings.hub.pwaInstalledDesc") : ti("settings.hub.pwaDesc")}
+              onClick={() => setActiveSection("pwa")}
+            />
+          </>
+        )}
+
         {canSeeTechnical && (
-          <SettingsEntry icon={<ShieldAlert size={18} />} tone="purple" title={ti("settings.hub.session")} desc={isSupabaseConfigured() ? (email ? ti("settings.hub.accountSession", { email }) : ti("settings.hub.accountActive")) : ti("settings.hub.accountLocal")} onClick={() => setActiveSection("account")} />
+          <>
+            <div className="settings-hub-divider" role="separator" aria-hidden="true" />
+            <SettingsEntry icon={<Code2 size={18} />} tone="green" title={ti("settings.hub.apis")} desc={ti("settings.hub.apisDesc")} onClick={() => setActiveSection("apis")} />
+            <SettingsEntry icon={<Database size={18} />} tone="teal" title={ti("settings.hub.backup")} desc={ti("settings.hub.backupDesc")} onClick={() => setActiveSection("backup")} />
+            <SettingsEntry icon={<ShieldAlert size={18} />} tone="purple" title={ti("settings.hub.session")} desc={isSupabaseConfigured() ? (email ? ti("settings.hub.accountSession", { email }) : ti("settings.hub.accountActive")) : ti("settings.hub.accountLocal")} onClick={() => setActiveSection("account")} />
+          </>
         )}
       </div>
     </div>

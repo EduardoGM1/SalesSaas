@@ -103,7 +103,7 @@ export function getDashboardWeeks(
       const ymd = `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
       monthSales.filter((sale) => sale.day === d).forEach((sale) => {
         if (!isSaleCountable(sale)) return;
-        week.tours += sale.tours || 0;
+        week.tours += sale.tours || 1;
         week.real += sale.vol || 0;
         week.sales++;
         week.saleItems.push({
