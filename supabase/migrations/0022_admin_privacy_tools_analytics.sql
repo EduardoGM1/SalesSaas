@@ -197,17 +197,21 @@ begin
 
   return query
   select
-    p.id as user_id,
-    coalesce(pr.c, 0)::int as prospects,
-    coalesce(sa.c, 0)::int as sales,
-    coalesce(sa.v, 0) as volume
+    p.id,
+    coalesce(pr.c, 0)::int,
+    coalesce(sa.c, 0)::int,
+    coalesce(sa.v, 0)
   from public.profiles p
   left join (
-    select user_id, count(*)::int as c from public.prospects group by user_id
-  ) pr on pr.user_id = p.id
+    select prx.user_id as seller_id, count(*)::int as c
+    from public.prospects prx
+    group by prx.user_id
+  ) pr on pr.seller_id = p.id
   left join (
-    select user_id, count(*)::int as c, coalesce(sum(vol), 0) as v from public.sales group by user_id
-  ) sa on sa.user_id = p.id;
+    select sx.user_id as seller_id, count(*)::int as c, coalesce(sum(sx.vol), 0) as v
+    from public.sales sx
+    group by sx.user_id
+  ) sa on sa.seller_id = p.id;
 end;
 $$;
 
@@ -245,7 +249,11 @@ begin
       and (p_user_id is null or tc.user_id = p_user_id)
   ),
   tools as (
-    select unnest(array['survey', 'vacaciones', 'worksheet']) as tool
+    select unnest(array[
+      'survey'::public.tool_type,
+      'vacaciones'::public.tool_type,
+      'worksheet'::public.tool_type
+    ]) as tool
   ),
   agg as (
     select
@@ -259,12 +267,12 @@ begin
   )
   select coalesce(jsonb_agg(
     jsonb_build_object(
-      'tool', t.tool,
+      'tool', t.tool::text,
       'saves', coalesce(a.saves, 0),
       'uniqueUsers', coalesce(a.unique_users, 0),
       'libre', coalesce(a.libre, 0),
       'linked', coalesce(a.linked, 0)
-    ) order by t.tool
+    ) order by t.tool::text
   ), '[]'::jsonb)
   into v_by_tool
   from tools t
@@ -283,9 +291,9 @@ begin
       'user_id', tc.user_id,
       'name', coalesce(nullif(p.full_name, ''), nullif(p.email, ''), 'Usuario'),
       'total', count(*)::int,
-      'survey', count(*) filter (where tc.tool = 'survey'),
-      'vacaciones', count(*) filter (where tc.tool = 'vacaciones'),
-      'worksheet', count(*) filter (where tc.tool = 'worksheet')
+      'survey', count(*) filter (where tc.tool = 'survey'::public.tool_type),
+      'vacaciones', count(*) filter (where tc.tool = 'vacaciones'::public.tool_type),
+      'worksheet', count(*) filter (where tc.tool = 'worksheet'::public.tool_type)
     ) as row_data,
     count(*)::int as total
     from public.tool_calculations tc
@@ -296,7 +304,7 @@ begin
     group by tc.user_id, p.full_name, p.email
     order by count(*) desc
     limit 10
-  ) t;
+  ) ranked;
 
   with months as (
     select to_char(d, 'YYYY-MM') as month_key, d
@@ -316,9 +324,18 @@ begin
   select coalesce(jsonb_agg(
     jsonb_build_object(
       'month', m.month_key,
-      'survey', coalesce((select saves from agg a where a.month_key = m.month_key and a.tool = 'survey'), 0),
-      'vacaciones', coalesce((select saves from agg a where a.month_key = m.month_key and a.tool = 'vacaciones'), 0),
-      'worksheet', coalesce((select saves from agg a where a.month_key = m.month_key and a.tool = 'worksheet'), 0)
+      'survey', coalesce((
+        select a.saves from agg a
+        where a.month_key = m.month_key and a.tool = 'survey'::public.tool_type
+      ), 0),
+      'vacaciones', coalesce((
+        select a.saves from agg a
+        where a.month_key = m.month_key and a.tool = 'vacaciones'::public.tool_type
+      ), 0),
+      'worksheet', coalesce((
+        select a.saves from agg a
+        where a.month_key = m.month_key and a.tool = 'worksheet'::public.tool_type
+      ), 0)
     ) order by m.d
   ), '[]'::jsonb)
   into v_trend
