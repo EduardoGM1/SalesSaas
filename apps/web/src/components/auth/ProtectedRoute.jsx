@@ -13,7 +13,7 @@ export function ProtectedRoute({ children }) {
       return;
     }
     ensureAuthSyncBridge();
-    // Revalida al montar, al volver visible/focus, cada 60s y cuando otra ventana (web↔PWA) cierra sesión.
+    // Revalida al montar, al reabrir la PWA (auth:resume), al focus y cada ~20s en standalone.
     return watchSession((session) => {
       setState({ loading: false, ok: !!session?.user });
     });
