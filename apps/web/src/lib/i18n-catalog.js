@@ -653,7 +653,7 @@ export const EN_EXT = {
   "admin.viewAll": "View all →",
   "admin.sales.emptyFiltered": "No sales match these filters.",
   "toast.client.missingName": "Required field missing: Name",
-  "toast.client.singleNameOnly": "Single name only, no spaces, max 15 characters (e.g. Michell).",
+  "toast.client.singleNameOnly": "Use only one reference first name, without last names or spaces.",
   "toast.client.missingTourType": "Select a tour type.",
   "toast.client.deleted": "File deleted.",
   "toast.client.deleteConfirm": "Delete the file for {name}? This cannot be undone.",

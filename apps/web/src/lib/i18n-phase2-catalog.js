@@ -272,7 +272,7 @@ export const EN_PHASE2 = {
   "tools.survey.occupation": "Occupation",
   "tools.survey.namePlaceholder": "e.g. Michell",
   "tools.survey.validationRequired": "Required field",
-  "tools.survey.validationSingleName": "Single name only, no spaces or last names (max 15)",
+  "tools.survey.validationSingleName": "Use only one reference first name, without last names or spaces.",
   "tools.survey.companionPlaceholder": "Name",
   "tools.survey.occPlaceholder": "Client occupation",
   "tools.survey.occ2Placeholder": "Occupation",
