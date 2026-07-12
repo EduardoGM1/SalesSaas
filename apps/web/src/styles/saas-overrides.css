@@ -3270,8 +3270,8 @@ body,
 }
 
 .dash-month-nav {
-  width: 50%;
-  max-width: 50%;
+  width: 80%;
+  max-width: 80%;
   margin-bottom: 12px;
   box-sizing: border-box;
 }
