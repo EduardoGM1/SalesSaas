@@ -73,7 +73,8 @@ router.post("/signout", async (req, res) => {
   if (!isSupabaseConfigured()) return json(res, { ok: true });
   try {
     const sb = createCookieSupabaseClient(req, res);
-    await sb.auth.signOut();
+    // global: invalida refresh tokens en todos los clientes (web + PWA).
+    await sb.auth.signOut({ scope: "global" });
     json(res, { ok: true });
   } catch (err) {
     console.error("[auth/signout]", err);

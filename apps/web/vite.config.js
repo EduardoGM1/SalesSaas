@@ -57,6 +57,11 @@ export default defineConfig({
             },
           },
           {
+            urlPattern: ({ url }) =>
+              url.pathname.startsWith("/api/v1/auth/") || url.pathname.startsWith("/auth/"),
+            handler: "NetworkOnly",
+          },
+          {
             urlPattern: ({ url }) => url.pathname.startsWith("/api/"),
             handler: "NetworkFirst",
             options: { cacheName: "api-cache", networkTimeoutSeconds: 10 },

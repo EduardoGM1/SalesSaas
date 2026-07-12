@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { isSupabaseConfigured } from "@/lib/supabase/config.js";
+import { ensureAuthSyncBridge, watchSession } from "@/lib/session-api.js";
 
 export function ProtectedRoute({ children }) {
   const location = useLocation();
@@ -11,24 +12,11 @@ export function ProtectedRoute({ children }) {
       setState({ loading: false, ok: true });
       return;
     }
-    let active = true;
-    const checkSession = () => {
-      setState((prev) => ({ ...prev, loading: true }));
-      fetch("/api/v1/auth/session", { credentials: "include" })
-        .then((r) => {
-          if (active) setState({ loading: false, ok: r.ok });
-        })
-        .catch(() => {
-          if (active) setState({ loading: false, ok: false });
-        });
-    };
-    checkSession();
-    const onAuthChanged = () => checkSession();
-    window.addEventListener("auth:changed", onAuthChanged);
-    return () => {
-      active = false;
-      window.removeEventListener("auth:changed", onAuthChanged);
-    };
+    ensureAuthSyncBridge();
+    // Revalida al montar, al volver visible/focus, cada 60s y cuando otra ventana (web↔PWA) cierra sesión.
+    return watchSession((session) => {
+      setState({ loading: false, ok: !!session?.user });
+    });
   }, []);
 
   if (state.loading) return <div className="sales-page">Cargando sesión…</div>;
