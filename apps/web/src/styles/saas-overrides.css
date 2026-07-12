@@ -3249,6 +3249,21 @@ body,
   margin-top: 12px;
 }
 
+@media (min-width: 769px) {
+  .tools-hub-page .tools-hub-list,
+  .tools-hub-page .tools-hub-cta {
+    width: 80%;
+    max-width: 80%;
+    box-sizing: border-box;
+  }
+
+  .survey-calc-page {
+    width: 80%;
+    max-width: 80%;
+    box-sizing: border-box;
+  }
+}
+
 /* ===== DASHBOARD PAGE ===== */
 .dash-page-nav {
   margin-bottom: 8px;

@@ -163,7 +163,7 @@ export function SurveyPage({ clientId, shared }: SurveyPageProps) {
   return (
     <>
       <Topbar title={t("tools.survey")} subtitle={isFileMode ? t("tools.sub.surveyClient") : t("tools.sub.free")} />
-      <div className="sales-page tool-calc-page">
+      <div className="sales-page tool-calc-page survey-calc-page">
         <div className="page-toolbar page-toolbar--between">
           <PageBack inline href={backHref} />
           {!readOnly && (
