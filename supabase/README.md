@@ -137,10 +137,14 @@ VITE_ONESIGNAL_APP_ID=tu-app-id
 
 Ya tienes la migración **0025** (`auth_revoked_at`). El logout:
 
-1. Marca `profiles.auth_revoked_at`
-2. Revoca refresh tokens (`signOut` global)
-3. Avisa por Realtime (app abierta) y por OneSignal (app en background)
-4. La API rechaza JWT emitidos antes de `auth_revoked_at`
+1. Emite Broadcast Realtime `SIGNED_OUT` en canal `user-session:{user_id}` (móvil ↔ desktop, simétrico)
+2. Marca `profiles.auth_revoked_at`
+3. Revoca refresh tokens (`signOut` global)
+4. Avisa por OneSignal si la app está en background
+5. La API rechaza JWT emitidos antes de `auth_revoked_at`
+
+El cliente se suscribe en `initSessionSync()` (`apps/web/src/lib/session-cross-device.js`):
+hidrata sesión browser (cookies → `setSession`), escucha Broadcast + `postgres_changes`, y se desuscribe al logout.
 
 ### Ajuste recomendado en Supabase Dashboard (JWT corto)
 
@@ -156,7 +160,8 @@ Con 15 min + `auth_revoked_at`, aunque falle Realtime/push, el token viejo deja 
 | Capa | Qué cubre |
 |------|-----------|
 | `auth_revoked_at` + API | Seguridad real |
-| Realtime | PWA/web abiertas |
+| Broadcast `user-session:{id}` | Tiempo real móvil ↔ desktop |
+| Realtime postgres_changes | Respaldo del Broadcast |
 | Push `session_revoked` | PWA en background |
 | JWT 15 min | Tope de exposición residual |
 

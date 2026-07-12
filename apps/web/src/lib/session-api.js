@@ -87,9 +87,17 @@ export function notifyAuthChanged() {
 
 /**
  * Limpia sesión solo en este dispositivo (tras revoke global en servidor).
- * Usado por Realtime, push session_revoked y guards locales.
+ * Usado por Realtime Broadcast, postgres_changes, push y guards locales.
+ * @param {{ notify?: boolean }} [options]
  */
-export async function clearLocalSession() {
+export async function clearLocalSession(options = {}) {
+  const notify = options.notify !== false;
+  try {
+    const sync = await import("@/lib/session-cross-device.js");
+    await sync.detachSessionSync();
+  } catch {
+    // ignore
+  }
   try {
     await createClient().auth.signOut({ scope: "local" });
   } catch {
@@ -97,19 +105,40 @@ export async function clearLocalSession() {
   }
   primeRealtimeAuth(null);
   clearAdminSessionCache();
-  notifyAuthChanged();
+  if (notify) notifyAuthChanged();
 }
 
 export async function signOut() {
   ensureAuthSyncBridge();
   try {
     markPresenceOffline();
+  } catch {
+    // ignore
+  }
+
+  // 1) Avisar a otros dispositivos EN TIEMPO REAL (antes de perder auth en Realtime).
+  try {
+    const sync = await import("@/lib/session-cross-device.js");
+    await sync.broadcastRemoteSignedOut();
+  } catch {
+    // ignore — auth_revoked_at + push siguen como respaldo
+  }
+
+  // 2) Revocar en servidor (auth_revoked_at + refresh tokens + push).
+  try {
     await fetch("/auth/signout", { method: "POST", credentials: "include", cache: "no-store" });
   } catch {
     // Limpiar estado local aunque falle la red.
   }
+
+  // 3) Cerrar canal local y sesión del browser client.
   try {
-    // Revoca refresh tokens y limpia cookies/sesión del cliente browser (Realtime, OneSignal).
+    const sync = await import("@/lib/session-cross-device.js");
+    await sync.detachSessionSync();
+  } catch {
+    // ignore
+  }
+  try {
     await createClient().auth.signOut({ scope: "global" });
   } catch {
     // ignore
