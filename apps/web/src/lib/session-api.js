@@ -85,6 +85,21 @@ export function notifyAuthChanged() {
   window.dispatchEvent(new Event("auth:changed"));
 }
 
+/**
+ * Limpia sesión solo en este dispositivo (tras revoke global en servidor).
+ * Usado por Realtime, push session_revoked y guards locales.
+ */
+export async function clearLocalSession() {
+  try {
+    await createClient().auth.signOut({ scope: "local" });
+  } catch {
+    // ignore
+  }
+  primeRealtimeAuth(null);
+  clearAdminSessionCache();
+  notifyAuthChanged();
+}
+
 export async function signOut() {
   ensureAuthSyncBridge();
   try {

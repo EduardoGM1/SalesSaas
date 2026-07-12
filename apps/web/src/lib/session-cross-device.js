@@ -1,13 +1,11 @@
-import { clearAdminSessionCache } from "@/hooks/use-admin-session.js";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
-import { createClient, primeRealtimeAuth } from "@/lib/supabase/client";
+import { createClient } from "@/lib/supabase/client";
 import { removeChannelSafe } from "@/lib/presence/realtime.js";
-import { notifyAuthChanged } from "@/lib/session-api.js";
+import { clearLocalSession } from "@/lib/session-api.js";
 
 let guardReady = false;
 let channel = null;
 let tokenIatMs = 0;
-let userId = null;
 let attaching = false;
 
 function readJwtIatMs(token) {
@@ -31,18 +29,6 @@ function isTokenRevokedBy(revokedAtIso) {
   return tokenIatMs + 2000 < revokedAt;
 }
 
-/** Limpia sesión local sin volver a llamar signOut global (ya revocado en servidor). */
-async function forceLocalLogout() {
-  try {
-    await createClient().auth.signOut({ scope: "local" });
-  } catch {
-    // ignore
-  }
-  primeRealtimeAuth(null);
-  clearAdminSessionCache();
-  notifyAuthChanged();
-}
-
 async function detachChannel() {
   const sb = createClient();
   const ch = channel;
@@ -57,16 +43,13 @@ async function attachGuard() {
     const supabase = createClient();
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.user?.id || !session.access_token) {
-      userId = null;
       tokenIatMs = 0;
       await detachChannel();
       return;
     }
 
     const nextUserId = session.user.id;
-    const nextIat = readJwtIatMs(session.access_token);
-    tokenIatMs = nextIat;
-    userId = nextUserId;
+    tokenIatMs = readJwtIatMs(session.access_token);
 
     // Comprobación inmediata por si el logout ocurrió mientras la app estaba abierta.
     try {
@@ -76,7 +59,7 @@ async function attachGuard() {
         .eq("id", nextUserId)
         .maybeSingle();
       if (isTokenRevokedBy(data?.auth_revoked_at)) {
-        await forceLocalLogout();
+        await clearLocalSession();
         return;
       }
     } catch {
@@ -96,7 +79,7 @@ async function attachGuard() {
         },
         (payload) => {
           if (isTokenRevokedBy(payload.new?.auth_revoked_at)) {
-            forceLocalLogout();
+            clearLocalSession();
           }
         },
       )

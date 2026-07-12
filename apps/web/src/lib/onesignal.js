@@ -2,7 +2,8 @@ import { notificationsApi } from "@/lib/notifications-api.js";
 import { createClient } from "@/lib/supabase/client";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { isIosDevice, isStandaloneApp } from "@/lib/pwa-install.js";
-import { resolvePushPathFromPayload } from "@salesapp/shared/push/notification-targets.js";
+import { PushType, resolvePushPathFromPayload } from "@salesapp/shared/push/notification-targets.js";
+import { clearLocalSession } from "@/lib/session-api.js";
 
 const SDK_URL = "https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js";
 const SW_PATH = "onesignal/OneSignalSDKWorker.js";
@@ -329,10 +330,28 @@ export async function setupPushNotificationHandlers({ onNavigate } = {}) {
   notificationHandlersAttached = true;
 
   OneSignal.Notifications.addEventListener("foregroundWillDisplay", (event) => {
+    const data = event.notification?.additionalData || {};
+    if (data.type === PushType.SESSION_REVOKED) {
+      // No molestar con banner: cerrar sesión local al instante.
+      try {
+        event.preventDefault();
+      } catch {
+        // SDK antiguo sin preventDefault.
+      }
+      clearLocalSession();
+      return;
+    }
     event.notification.display();
   });
 
   OneSignal.Notifications.addEventListener("click", (event) => {
+    const data = event.notification?.additionalData || {};
+    if (data.type === PushType.SESSION_REVOKED) {
+      clearLocalSession().finally(() => {
+        navigateToPushTarget(event.notification, onNavigate);
+      });
+      return;
+    }
     navigateToPushTarget(event.notification, onNavigate);
   });
 }

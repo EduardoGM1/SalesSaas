@@ -4,6 +4,8 @@ export const PushType = {
   CONNECTION_REQUEST: "connection_request",
   CONNECTION_ACCEPTED: "connection_accepted",
   SHARED_PROSPECT: "shared_prospect",
+  /** Logout en otro dispositivo: forzar cierre local / ir a login. */
+  SESSION_REVOKED: "session_revoked",
 };
 
 export function networkPath() {
@@ -51,6 +53,8 @@ export function resolvePushPathFromPayload(payload = {}) {
   }
 
   switch (payload.type) {
+    case PushType.SESSION_REVOKED:
+      return "/login";
     case PushType.CONNECTION_REQUEST:
       return networkPath();
     case PushType.CONNECTION_ACCEPTED:

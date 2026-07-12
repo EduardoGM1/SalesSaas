@@ -3,6 +3,7 @@ import { isSupabaseConfigured } from "@salesapp/shared/supabase/config.js";
 import { apiError, json } from "../lib/http.js";
 import { resolveWebOrigin } from "../lib/origins.js";
 import { createCookieSupabaseClient } from "../lib/supabase-server.js";
+import { notifySessionRevoked } from "../services/push-notifications-service.js";
 
 const router = Router();
 
@@ -81,6 +82,10 @@ router.post("/signout", async (req, res) => {
         .update({ auth_revoked_at: new Date().toISOString() })
         .eq("id", user.id);
       if (revokeErr) console.warn("[auth/signout] auth_revoked_at:", revokeErr.message);
+      // Despierta PWA en background (iOS/Android) cuando Realtime está dormido.
+      notifySessionRevoked(user.id).catch((err) => {
+        console.warn("[auth/signout] push session_revoked:", err?.message || err);
+      });
     }
     // global: revoca refresh tokens en todos los clientes (web + PWA).
     await sb.auth.signOut({ scope: "global" });

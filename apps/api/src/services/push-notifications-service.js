@@ -227,6 +227,27 @@ export async function notifyConnectionAccepted(requesterId, { peerId, peerName }
   });
 }
 
+/**
+ * Aviso de seguridad: sesión cerrada en otro dispositivo.
+ * No respeta prefs de usuario (debe llegar aunque estén silenciadas otras notifs).
+ */
+export async function notifySessionRevoked(userId) {
+  if (!userId || !isPushConfigured()) return { ok: false, reason: "not_configured" };
+  const serviceSb = createServiceSupabaseClient();
+  if (!serviceSb) return { ok: false, reason: "no_service_role" };
+
+  const origin = primaryWebOrigin();
+  const path = "/login";
+  return sendToUser(serviceSb, userId, {
+    title: "Sesión cerrada",
+    body: "Tu cuenta se cerró en otro dispositivo. Vuelve a iniciar sesión si fuiste tú.",
+    url: pushUrl(origin, path),
+    path,
+    type: PushType.SESSION_REVOKED,
+    tag: `session-revoked-${userId}`,
+  });
+}
+
 // Compatibilidad con rutas antiguas (VAPID / web-push).
 export async function savePushSubscription() {
   return { ok: true };

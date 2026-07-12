@@ -129,9 +129,36 @@ VITE_ONESIGNAL_APP_ID=tu-app-id
 
 1. **Configuración → Notificaciones → Activar notificaciones**.
 2. En iPhone: instala la PWA en la pantalla de inicio (iOS 16.4+) y abre desde el icono.
-3. Eventos con push: mensaje nuevo, solicitud de contacto, solicitud aceptada.
+3. Eventos con push: mensaje nuevo, solicitud de contacto, solicitud aceptada, **sesión cerrada en otro dispositivo**.
 
 > La tabla `push_subscriptions` (migración 0020) ya no se usa; OneSignal gestiona los dispositivos vinculados por `external_id` (UUID de Supabase).
+
+## 4d. Sesión multi-dispositivo (logout global)
+
+Ya tienes la migración **0025** (`auth_revoked_at`). El logout:
+
+1. Marca `profiles.auth_revoked_at`
+2. Revoca refresh tokens (`signOut` global)
+3. Avisa por Realtime (app abierta) y por OneSignal (app en background)
+4. La API rechaza JWT emitidos antes de `auth_revoked_at`
+
+### Ajuste recomendado en Supabase Dashboard (JWT corto)
+
+El access token de Supabase **no se invalida** hasta `exp`. Acorta la ventana residual:
+
+1. Abre [Supabase Dashboard](https://supabase.com/dashboard) → tu proyecto  
+2. **Authentication → Settings** (o **Configuration → Auth**)  
+3. **JWT expiry** → `900` (15 minutos)  
+4. Guarda
+
+Con 15 min + `auth_revoked_at`, aunque falle Realtime/push, el token viejo deja de servir pronto. No uses valores extremos (&lt; 5 min) en móvil: más refrescos y más fallos con red inestable.
+
+| Capa | Qué cubre |
+|------|-----------|
+| `auth_revoked_at` + API | Seguridad real |
+| Realtime | PWA/web abiertas |
+| Push `session_revoked` | PWA en background |
+| JWT 15 min | Tope de exposición residual |
 
 ## 5. Siguientes pasos (los implemento yo con las credenciales)
 
