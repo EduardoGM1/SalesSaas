@@ -7,6 +7,14 @@ export function isSaleCountable(sale: Pick<SaleRecord, "status" | "processing"> 
     && String(sale.processing || "venta") !== "pendiente";
 }
 
+/**
+ * Tours del Dashboard: cuenta todos los tours cuantificables del mes,
+ * incluyendo estado "pendiente". El volumen/ventas siguen usando isSaleCountable.
+ */
+export function isSaleTourCountable(sale: { tourCuantificable?: boolean }): boolean {
+  return sale.tourCuantificable !== false;
+}
+
 export function findActiveClientSale(
   db: AppDatabase,
   saleId: string,

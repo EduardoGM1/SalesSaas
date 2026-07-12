@@ -1,6 +1,6 @@
 import { MONTHS } from "@/lib/constants";
 import { getISOWeek } from "@/lib/format/dates";
-import { collectSalesForMonth, isSaleCountable } from "@/lib/sales/agenda-sales";
+import { collectSalesForMonth, isSaleCountable, isSaleTourCountable } from "@/lib/sales/agenda-sales";
 import { CalMonth, ClientRecord, GoalMonth } from "@/lib/storage/types";
 
 export function isCalendarSaleCountable(entry: { t?: string; status?: string; processing?: string; completed?: boolean }): boolean {
@@ -102,8 +102,10 @@ export function getDashboardWeeks(
     g.days.forEach((d) => {
       const ymd = `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
       monthSales.filter((sale) => sale.day === d).forEach((sale) => {
+        if (isSaleTourCountable(sale)) {
+          week.tours += sale.tours || 1;
+        }
         if (!isSaleCountable(sale)) return;
-        week.tours += sale.tours || 1;
         week.real += sale.vol || 0;
         week.sales++;
         week.saleItems.push({
