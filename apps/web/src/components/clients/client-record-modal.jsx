@@ -117,7 +117,7 @@ function ProspectFields({ form, onChange, t, showStatusFields, showErrors }) {
             </select>
           </div>
           <div className="prospect-field"><label>{t("exp.edit.processDate")}</label><input type="date" value={form.processDate || ""} onFocus={selectOnFocus} onChange={(e) => onChange({ ...form, processDate: e.target.value })} /></div>
-          <div className="prospect-field full"><label>{t("exp.edit.note")}</label><textarea rows={3} placeholder={t("exp.edit.notePlaceholder")} value={form.note || ""} onFocus={selectOnFocus} onChange={(e) => onChange({ ...form, note: e.target.value })} /></div>
+          <div className="prospect-field full"><label>{t("exp.edit.note")}</label><textarea rows={2} placeholder={t("exp.edit.notePlaceholder")} value={form.note || ""} onFocus={selectOnFocus} onChange={(e) => onChange({ ...form, note: e.target.value })} /></div>
         </>
       ) : null}
     </div>
@@ -181,7 +181,7 @@ function SaleFields({ saleForm, onChange, t, showErrors }) {
           </div>
         </>
       )}
-      <div className="prospect-field full"><label>{t("exp.sale.notes")}</label><textarea rows={3} placeholder={t("exp.sale.notesPlaceholder")} value={saleForm.note} onFocus={selectOnFocus} onChange={(e) => onChange({ ...saleForm, note: e.target.value })} /></div>
+      <div className="prospect-field full"><label>{t("exp.sale.notes")}</label><textarea rows={2} placeholder={t("exp.sale.notesPlaceholder")} value={saleForm.note} onFocus={selectOnFocus} onChange={(e) => onChange({ ...saleForm, note: e.target.value })} /></div>
     </div>
   );
 }

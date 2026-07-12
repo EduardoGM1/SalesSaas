@@ -928,7 +928,7 @@ div.modal-backdrop.sales-modal-overlay:not([hidden]) {
   margin-bottom: 14px;
 }
 
-/* Nueva venta / expediente: label izquierda + input derecha, compacto */
+/* Nueva venta / expediente: label izquierda + input derecha, compacto y alineado */
 #m-client-record.modal .client-record-form {
   display: flex;
   flex-direction: column;
@@ -936,67 +936,122 @@ div.modal-backdrop.sales-modal-overlay:not([hidden]) {
 }
 
 #m-client-record.modal .form-section-label {
-  margin: 4px 0 8px;
+  margin: 2px 0 6px;
 }
 
 #m-client-record.modal .form-section-divider {
-  margin: 12px 0 10px;
+  margin: 10px 0 8px;
 }
 
 #m-client-record.modal .prospect-grid {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 
 #m-client-record.modal .prospect-geo-row {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 6px !important;
+  width: 100%;
+  min-width: 0;
+  grid-template-columns: none !important;
+  grid-column: auto !important;
 }
 
 #m-client-record.modal .prospect-field {
-  display: grid;
-  grid-template-columns: minmax(108px, 40%) minmax(0, 1fr);
-  gap: 8px 12px;
+  display: grid !important;
+  grid-template-columns: 11.5rem minmax(0, 1fr);
+  gap: 6px 10px;
   align-items: center;
+  width: 100%;
+  min-width: 0;
 }
 
 #m-client-record.modal .prospect-field label {
-  margin-bottom: 0;
-  line-height: 1.25;
+  margin-bottom: 0 !important;
+  line-height: 1.2;
+  white-space: normal;
 }
 
 #m-client-record.modal .prospect-field input,
 #m-client-record.modal .prospect-field select,
+#m-client-record.modal .prospect-field textarea,
 #m-client-record.modal .prospect-field .mfield input {
+  width: 100%;
   text-align: center;
+  box-sizing: border-box;
+}
+
+#m-client-record.modal .prospect-field .mfield {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  box-sizing: border-box;
+}
+
+#m-client-record.modal .prospect-field .mfield .mpfx {
+  flex-shrink: 0;
+}
+
+#m-client-record.modal .prospect-field .mfield input {
+  flex: 1;
+  min-width: 0;
 }
 
 #m-client-record.modal .prospect-field .field-inline-error {
   grid-column: 1 / -1;
   margin-top: 0;
   font-size: 11px;
+  text-align: left;
 }
 
 #m-client-record.modal .prospect-field.full,
 #m-client-record.modal .prospect-field.sale-followup-field {
-  grid-template-columns: 1fr;
+  grid-template-columns: 1fr !important;
   align-items: start;
 }
 
 #m-client-record.modal .prospect-field.full label,
 #m-client-record.modal .prospect-field.sale-followup-field label:first-child {
-  margin-bottom: 6px;
+  margin-bottom: 4px !important;
+}
+
+#m-client-record.modal .prospect-field.full textarea {
+  min-height: 64px;
+  text-align: left;
 }
 
 #m-client-record.modal .ethic-box {
-  margin-top: 12px !important;
-  padding: 10px 12px;
+  margin-top: 10px !important;
+  padding: 8px 10px;
+  font-size: 11px;
+  line-height: 1.35;
 }
 
 #m-client-record.modal .btn-row {
-  margin-top: 12px;
+  margin-top: 10px;
+}
+
+@media (max-width: 760px) {
+  #m-client-record.modal .prospect-field {
+    grid-template-columns: minmax(104px, 38%) minmax(0, 1fr) !important;
+    gap: 4px 8px;
+  }
+
+  #m-client-record.modal .prospect-grid,
+  #m-client-record.modal .prospect-geo-row {
+    gap: 5px !important;
+  }
+
+  #m-client-record.modal .prospect-field input,
+  #m-client-record.modal .prospect-field select {
+    padding-top: 8px;
+    padding-bottom: 8px;
+    font-size: 13px;
+  }
 }
 
 .field-required::after {
