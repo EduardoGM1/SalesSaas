@@ -5,6 +5,7 @@ import { PageBack } from "@/components/layout/page-back";
 import { DashboardChart } from "@/components/goals/dashboard-chart";
 import { CollapsibleSection } from "@/components/ui/collapsible-section.jsx";
 import { getDashboardWeeks, normalizeGoal, workingDaysRemaining } from "@/lib/calculations/calendar";
+import { productionTourSaleCounts } from "@/lib/calculations/tour-summary";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { useMoney } from "@/hooks/use-money.js";
 import { calKey } from "@/lib/format/dates";
@@ -39,30 +40,28 @@ export function GoalsPage() {
     [calYear, calMonth, data, goal, clients],
   );
 
-  const tourSummary = useMemo(() => {
-    const map: Record<string, { yes: number; no: number }> = {};
-    tourTypes.forEach((type) => {
-      map[type] = { yes: 0, no: 0 };
-    });
-    Object.values(clients).forEach((c) => {
-      if (!c.tipo_tour) return;
-      if (!map[c.tipo_tour]) map[c.tipo_tour] = { yes: 0, no: 0 };
-      if (c.tour_cuantificable !== false) map[c.tipo_tour].yes++;
-      else map[c.tipo_tour].no++;
-    });
-    return map;
-  }, [clients, tourTypes]);
+  /** Fuente única: Resumen de tipo tours + recuadros Tours/Ventas de Datos de producción. */
+  const { summary: tourSummary, tours: productionTours, sales: productionSales } = useMemo(
+    () => productionTourSaleCounts(clients, tourTypes),
+    [clients, tourTypes],
+  );
 
-  /** Totals from Ventas Tours (countable sales / tours in month). */
-  const totals = weeks.reduce((a, w) => ({
-    obj: a.obj + (w.obj || 0), real: a.real + (w.real || 0),
-    tours: a.tours + (w.tours || 0), sales: a.sales + (w.sales || 0),
-  }), { obj: 0, real: 0, tours: 0, sales: 0 });
+  /** Volumen del mes (agenda/ventas); Tours/Ventas acumulados vienen de expedientes cuantificables. */
+  const volumeTotals = weeks.reduce((a, w) => ({
+    obj: a.obj + (w.obj || 0),
+    real: a.real + (w.real || 0),
+  }), { obj: 0, real: 0 });
+
+  const totals = {
+    ...volumeTotals,
+    tours: productionTours,
+    sales: productionSales,
+  };
 
   const vfalt = Math.max(0, goal.vol - totals.real);
   const drest = workingDaysRemaining(calYear, calMonth, data);
   const prod = drest > 0 ? vfalt / drest : 0;
-  // KPIs based on Ventas Tours counts
+  // KPIs con la misma base de Tours/Ventas que Datos de producción
   const vprom = totals.sales > 0 ? totals.real / totals.sales : 0;
   const efic = totals.tours > 0 ? totals.real / totals.tours : 0;
   const cierre = totals.tours > 0 ? (totals.sales / totals.tours) * 100 : 0;
