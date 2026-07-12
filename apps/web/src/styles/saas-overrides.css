@@ -3255,7 +3255,8 @@ body,
 }
 
 .dash-month-nav {
-  width: 100%;
+  width: 50%;
+  max-width: 50%;
   margin-bottom: 12px;
   box-sizing: border-box;
 }
@@ -3264,10 +3265,14 @@ body,
   display: none;
   flex-direction: column;
   gap: 12px;
+  width: 80%;
+  max-width: 80%;
 }
 
 .dash-desktop-layout {
   display: block;
+  width: 80%;
+  max-width: 80%;
 }
 
 .dash-card-head {
@@ -4203,8 +4208,15 @@ body,
   }
 
   /* Dashboard — layout móvil como referencia */
+  .dash-page .dash-month-nav {
+    width: 100%;
+    max-width: 100%;
+  }
+
   .dash-page .dash-mobile-layout {
     display: flex;
+    width: 100%;
+    max-width: 100%;
   }
 
   .dash-page .dash-desktop-layout {
