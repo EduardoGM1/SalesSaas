@@ -305,7 +305,7 @@ export const ES_EXT = {
   "admin.viewAll": "Ver todas →",
   "admin.sales.emptyFiltered": "Sin ventas con estos filtros.",
   "toast.client.missingName": "Falta el campo obligatorio: Nombre",
-  "toast.client.singleNameOnly": "Solo un nombre, sin espacios, máximo 15 caracteres (ej: Michell).",
+  "toast.client.singleNameOnly": "Usa solo un nombre de referencia, sin apellidos ni espacios.",
   "toast.client.missingTourType": "Selecciona un tipo de tour.",
   "toast.client.deleted": "Expediente eliminado.",
   "toast.client.deleteConfirm": "¿Eliminar el expediente de {name}? Esta acción no se puede deshacer.",

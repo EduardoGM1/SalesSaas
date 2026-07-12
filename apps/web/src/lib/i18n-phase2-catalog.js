@@ -14,7 +14,7 @@ export const ES_PHASE2 = {
   "tools.survey.occupation": "Ocupación",
   "tools.survey.namePlaceholder": "Ej: Michell",
   "tools.survey.validationRequired": "Campo requerido",
-  "tools.survey.validationSingleName": "Solo un nombre, sin espacios ni apellidos (máx. 15)",
+  "tools.survey.validationSingleName": "Usa solo un nombre de referencia, sin apellidos ni espacios.",
   "tools.survey.companionPlaceholder": "Nombre",
   "tools.survey.occPlaceholder": "Ocupación cliente",
   "tools.survey.occ2Placeholder": "Ocupación",

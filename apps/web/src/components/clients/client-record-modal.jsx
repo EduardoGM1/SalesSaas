@@ -247,9 +247,7 @@ export function ClientRecordModal({
           </>
         )}
       </div>
-      {mode !== "edit-data" && (
-        <div className="ethic-box" style={{ marginTop: 16 }}>{copy.ethic}</div>
-      )}
+      <div className="ethic-box" style={{ marginTop: 12 }}>{t("exp.ethics.main")}</div>
       <div className="btn-row">
         <button type="button" className="btn btn-ghost" onClick={onCancel}>{t("common.cancel")}</button>
         <button type="button" className="btn btn-primary" onClick={handleSaveClick}>{copy.saveLabel}</button>

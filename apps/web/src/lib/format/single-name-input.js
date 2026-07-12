@@ -1,10 +1,12 @@
 export const SINGLE_NAME_MAX_LENGTH = 15;
 
-/** Una sola palabra: sin espacios, solo letras, máximo 15 caracteres. */
+/** Una sola palabra de referencia: sin espacios/apellidos, solo letras, máx. 15. */
 export function formatSingleNameInput(value) {
-  return String(value ?? "")
+  const firstWord = String(value ?? "")
     .normalize("NFC")
-    .replace(/\s+/g, "")
+    .trim()
+    .split(/\s+/)[0] || "";
+  return firstWord
     .replace(/[^\p{L}\p{M}]/gu, "")
     .slice(0, SINGLE_NAME_MAX_LENGTH);
 }
