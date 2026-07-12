@@ -4,16 +4,19 @@ const DELEGATABLE_ADMIN_PERMISSIONS = [
   { key: "users:deactivate", label: "Desactivar cuentas" },
   { key: "users:activate", label: "Activar cuentas" },
   { key: "users:export", label: "Exportar usuarios (CSV)" },
-  { key: "sales:read", label: "Ver ventas globales" },
-  { key: "sales:export", label: "Exportar ventas (CSV)" },
-  { key: "agenda:read", label: "Ver agenda global" },
-  { key: "prospects:read", label: "Ver expedientes globales" },
   { key: "goals:read", label: "Ver metas globales" },
-  { key: "activity:read", label: "Ver actividad global" },
-  { key: "worksheets:read", label: "Ver worksheets" }
+  { key: "tools:analytics", label: "Ver uso de herramientas (agregado)" }
 ];
 const SUPER_ADMIN_ONLY_PERMISSIONS = ["users:role", "users:permissions"];
 const DELEGATABLE_KEYS = new Set(DELEGATABLE_ADMIN_PERMISSIONS.map((p) => p.key));
+const LEGACY_PERMISSION_MAP = {
+  "worksheets:read": "tools:analytics",
+  "sales:read": null,
+  "sales:export": null,
+  "agenda:read": null,
+  "prospects:read": null,
+  "activity:read": null
+};
 function isSuperAdmin(profile) {
   return profile.role === "admin" && profile.is_super_admin === true;
 }
@@ -46,12 +49,8 @@ function permissionLabel(key) {
 const ADMIN_NAV_PERMISSIONS = {
   "/admin": "dashboard:read",
   "/admin/users": "users:read",
-  "/admin/sales": "sales:read",
-  "/admin/agenda": "agenda:read",
-  "/admin/prospects": "prospects:read",
   "/admin/goals": "goals:read",
-  "/admin/activity": "activity:read",
-  "/admin/worksheets": "worksheets:read"
+  "/admin/tools": "tools:analytics"
 };
 function canAccessAdminPath(profile, pathname) {
   if (!hasAnyAdminAccess(profile)) return false;
@@ -59,19 +58,25 @@ function canAccessAdminPath(profile, pathname) {
     return hasPermission(profile, "users:permissions");
   }
   if (pathname.startsWith("/admin/export/users")) return hasPermission(profile, "users:export");
-  if (pathname.startsWith("/admin/export/sales")) return hasPermission(profile, "sales:export");
   if (pathname.startsWith("/admin/users")) return hasPermission(profile, "users:read");
-  if (pathname.startsWith("/admin/worksheets")) return hasPermission(profile, "worksheets:read");
-  if (pathname.startsWith("/admin/activity")) return hasPermission(profile, "activity:read");
+  if (pathname.startsWith("/admin/tools")) return hasPermission(profile, "tools:analytics");
   if (pathname.startsWith("/admin/goals")) return hasPermission(profile, "goals:read");
-  if (pathname.startsWith("/admin/agenda")) return hasPermission(profile, "agenda:read");
-  if (pathname.startsWith("/admin/prospects")) return hasPermission(profile, "prospects:read");
-  if (pathname.startsWith("/admin/sales")) return hasPermission(profile, "sales:read");
   if (pathname === "/admin") return hasPermission(profile, "dashboard:read");
   return isSuperAdmin(profile);
 }
 function sanitizeDelegatedPermissions(perms) {
-  return perms.filter((p) => DELEGATABLE_KEYS.has(p));
+  const out = new Set();
+  for (const raw of perms) {
+    if (DELEGATABLE_KEYS.has(raw)) {
+      out.add(raw);
+      continue;
+    }
+    if (Object.prototype.hasOwnProperty.call(LEGACY_PERMISSION_MAP, raw)) {
+      const mapped = LEGACY_PERMISSION_MAP[raw];
+      if (mapped) out.add(mapped);
+    }
+  }
+  return [...out];
 }
 export {
   ADMIN_NAV_PERMISSIONS,

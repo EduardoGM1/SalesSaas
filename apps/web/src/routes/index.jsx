@@ -28,13 +28,9 @@ import {
   AnalysisPage,
   AdminOverviewPage,
   AdminUsersPage,
-  AdminSalesPage,
-  AdminAgendaPage,
-  AdminProspectsPage,
   AdminGoalsPage,
-  AdminActivityPage,
-  AdminWorksheetsPage,
-  AdminWorksheetDetailPage,
+  AdminToolsUsagePage,
+  AdminLegacyRedirect,
 } from "@/routes/lazy-pages.js";
 
 function Lazy({ children }) {
@@ -120,13 +116,14 @@ export function AppRoutes() {
         <Route path="admin" element={<AdminSection />}>
           <Route index element={<Lazy><AdminOverviewPage /></Lazy>} />
           <Route path="users" element={<Lazy><AdminUsersPage /></Lazy>} />
-          <Route path="sales" element={<Lazy><AdminSalesPage /></Lazy>} />
-          <Route path="agenda" element={<Lazy><AdminAgendaPage /></Lazy>} />
-          <Route path="prospects" element={<Lazy><AdminProspectsPage /></Lazy>} />
           <Route path="goals" element={<Lazy><AdminGoalsPage /></Lazy>} />
-          <Route path="activity" element={<Lazy><AdminActivityPage /></Lazy>} />
-          <Route path="worksheets" element={<Lazy><AdminWorksheetsPage /></Lazy>} />
-          <Route path="worksheets/:id" element={<Lazy><AdminWorksheetDetailPage /></Lazy>} />
+          <Route path="tools" element={<Lazy><AdminToolsUsagePage /></Lazy>} />
+          <Route path="sales" element={<Lazy><AdminLegacyRedirect /></Lazy>} />
+          <Route path="agenda" element={<Lazy><AdminLegacyRedirect /></Lazy>} />
+          <Route path="prospects" element={<Lazy><AdminLegacyRedirect /></Lazy>} />
+          <Route path="activity" element={<Lazy><AdminLegacyRedirect /></Lazy>} />
+          <Route path="worksheets" element={<Lazy><AdminLegacyRedirect /></Lazy>} />
+          <Route path="worksheets/:id" element={<Lazy><AdminLegacyRedirect /></Lazy>} />
         </Route>
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

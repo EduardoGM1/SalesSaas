@@ -11,34 +11,15 @@ import { parseAdminFilters, parseUserAdminFilters } from "../lib/admin/filters.j
 import { toCsv } from "../lib/admin/csv.js";
 import {
   getOverview,
-  getSales,
   getUsers,
-  getWorksheets,
-  getWorksheetDetail,
-  getCalendarEntries,
-  getProspects,
   getGoals,
-  getActivities,
   getSellerOptions,
-  prospectName,
+  getToolsUsage,
 } from "../lib/admin/data.js";
 import { parseJsonBody, runService } from "./route-utils.js";
 import * as adminUsersService from "../services/admin-users-service.js";
 
 const router = Router();
-
-const STATUS_LABELS = {
-  "": "Sin estado",
-  venta: "Venta",
-  bback: "B-back",
-  pendiente: "Pendiente",
-  perdido: "Perdido / cerrado",
-  cerrado: "Cerrado",
-};
-
-function statusLabel(s) {
-  return STATUS_LABELS[s || ""] || s || "Sin estado";
-}
 
 async function adminAuth(req, res, perm) {
   const base = await authenticateApi(req, res);
@@ -85,63 +66,42 @@ router.get("/me", async (req, res) => {
 router.get("/overview", async (req, res) => {
   const a = await adminAuth(req, res, "dashboard:read");
   if (!a) return;
-  const data = await getOverview(a.supabase);
-  json(res, { data });
+  try {
+    const data = await getOverview(a.supabase);
+    json(res, { data });
+  } catch (err) {
+    apiError(res, err instanceof Error ? err.message : "Error al cargar resumen.", 500);
+  }
 });
 
 router.get("/sellers", async (req, res) => {
-  const a = await adminAuth(req, res, "dashboard:read");
-  if (!a) return;
-  const data = await getSellerOptions(a.supabase);
-  json(res, { data });
-});
-
-router.get("/sales", async (req, res) => {
-  const a = await adminAuth(req, res, "sales:read");
-  if (!a) return;
-  const filters = parseAdminFilters(req.query);
-  const data = await getSales(a.supabase, filters);
-  json(res, { data });
+  const base = await authenticateApi(req, res);
+  if (!base.ok) return apiError(res, base.message, base.status);
+  const a = await requireApiAdmin(base, "dashboard:read");
+  if (a.ok) {
+    const data = await getSellerOptions(a.supabase);
+    return json(res, { data });
+  }
+  for (const perm of ["goals:read", "tools:analytics", "users:read"]) {
+    const alt = await requireApiAdmin(base, perm);
+    if (alt.ok) {
+      const data = await getSellerOptions(alt.supabase);
+      return json(res, { data });
+    }
+  }
+  return apiError(res, a.message || "No autorizado.", a.status || 403);
 });
 
 router.get("/users", async (req, res) => {
   const a = await adminAuth(req, res, "users:read");
   if (!a) return;
-  const filters = parseUserAdminFilters(req.query);
-  const data = await getUsers(a.supabase, filters);
-  json(res, { data });
-});
-
-router.get("/worksheets", async (req, res) => {
-  const a = await adminAuth(req, res, "worksheets:read");
-  if (!a) return;
-  const filters = parseAdminFilters(req.query);
-  const data = await getWorksheets(a.supabase, filters);
-  json(res, { data });
-});
-
-router.get("/worksheets/:id", async (req, res) => {
-  const a = await adminAuth(req, res, "worksheets:read");
-  if (!a) return;
-  const data = await getWorksheetDetail(a.supabase, req.params.id);
-  if (!data) return apiError(res, "Worksheet no encontrado.", 404);
-  json(res, { data });
-});
-
-router.get("/calendar", async (req, res) => {
-  const a = await adminAuth(req, res, "agenda:read");
-  if (!a) return;
-  const filters = parseAdminFilters(req.query);
-  const data = await getCalendarEntries(a.supabase, filters);
-  json(res, { data });
-});
-
-router.get("/prospects", async (req, res) => {
-  const a = await adminAuth(req, res, "prospects:read");
-  if (!a) return;
-  const filters = parseAdminFilters(req.query);
-  const data = await getProspects(a.supabase, filters);
-  json(res, { data });
+  try {
+    const filters = parseUserAdminFilters(req.query);
+    const data = await getUsers(a.supabase, filters);
+    json(res, { data });
+  } catch (err) {
+    apiError(res, err instanceof Error ? err.message : "Error al cargar usuarios.", 500);
+  }
 });
 
 router.get("/goals", async (req, res) => {
@@ -152,58 +112,44 @@ router.get("/goals", async (req, res) => {
   json(res, { data });
 });
 
-router.get("/activities", async (req, res) => {
-  const a = await adminAuth(req, res, "activity:read");
+router.get("/tools-usage", async (req, res) => {
+  const a = await adminAuth(req, res, "tools:analytics");
   if (!a) return;
-  const filters = parseAdminFilters(req.query);
-  const data = await getActivities(a.supabase, filters);
-  json(res, { data });
-});
-
-router.get("/export/sales", async (req, res) => {
-  const a = await adminAuth(req, res, "sales:export");
-  if (!a) return;
-  const filters = parseAdminFilters(req.query);
-  const sales = await getSales(a.supabase, filters);
-  const csv = toCsv(
-    ["Fecha", "Vendedor", "Expediente", "Folio", "Estado", "Tours", "Volumen"],
-    sales.map((s) => [
-      s.sale_date,
-      s.seller,
-      prospectName(s.prospect),
-      s.contract,
-      statusLabel(s.status ?? undefined),
-      s.tours,
-      s.vol,
-    ])
-  );
-  res.setHeader("Content-Type", "text/csv; charset=utf-8");
-  res.setHeader("Content-Disposition", `attachment; filename="ventas-${new Date().toISOString().slice(0, 10)}.csv"`);
-  res.send(csv);
+  try {
+    const filters = parseAdminFilters(req.query);
+    const data = await getToolsUsage(a.supabase, filters);
+    json(res, { data });
+  } catch (err) {
+    apiError(res, err instanceof Error ? err.message : "Error al cargar uso de herramientas.", 500);
+  }
 });
 
 router.get("/export/users", async (req, res) => {
   const a = await adminAuth(req, res, "users:export");
   if (!a) return;
-  const filters = parseUserAdminFilters(req.query);
-  const users = await getUsers(a.supabase, filters);
-  const ROLE_LABEL = { vendedor: "Vendedor", gerente: "Gerente", admin: "Admin" };
-  const csv = toCsv(
-    ["Nombre", "Correo", "Rol", "Estado", "Expedientes", "Ventas", "Volumen", "Alta"],
-    users.map((u) => [
-      u.name,
-      u.email,
-      ROLE_LABEL[u.role] ?? u.role,
-      u.is_active ? "Activa" : "Desactivada",
-      u.prospects,
-      u.sales,
-      u.volume,
-      u.created_at ? String(u.created_at).slice(0, 10) : "",
-    ])
-  );
-  res.setHeader("Content-Type", "text/csv; charset=utf-8");
-  res.setHeader("Content-Disposition", `attachment; filename="usuarios-${new Date().toISOString().slice(0, 10)}.csv"`);
-  res.send(csv);
+  try {
+    const filters = parseUserAdminFilters(req.query);
+    const users = await getUsers(a.supabase, filters);
+    const ROLE_LABEL = { vendedor: "Vendedor", gerente: "Gerente", admin: "Admin" };
+    const csv = toCsv(
+      ["Nombre", "Correo", "Rol", "Estado", "Expedientes", "Ventas", "Volumen", "Alta"],
+      users.map((u) => [
+        u.name,
+        u.email,
+        ROLE_LABEL[u.role] ?? u.role,
+        u.is_active ? "Activa" : "Desactivada",
+        u.prospects,
+        u.sales,
+        u.volume,
+        u.created_at ? String(u.created_at).slice(0, 10) : "",
+      ])
+    );
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader("Content-Disposition", `attachment; filename="usuarios-${new Date().toISOString().slice(0, 10)}.csv"`);
+    res.send(csv);
+  } catch (err) {
+    apiError(res, err instanceof Error ? err.message : "Error al exportar.", 500);
+  }
 });
 
 router.patch("/users/:id/role", async (req, res) => {

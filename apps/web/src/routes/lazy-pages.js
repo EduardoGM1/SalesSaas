@@ -7,10 +7,6 @@ export const AnalysisPage = namedLazy(() => import("@/components/calculators/ana
 
 export const AdminOverviewPage = namedLazy(() => import("@/pages/admin/AdminOverviewPage.jsx"), "AdminOverviewPage");
 export const AdminUsersPage = namedLazy(() => import("@/pages/admin/AdminUsersPage.jsx"), "AdminUsersPage");
-export const AdminSalesPage = namedLazy(() => import("@/pages/admin/AdminSalesPage.jsx"), "AdminSalesPage");
-export const AdminAgendaPage = namedLazy(() => import("@/pages/admin/AdminAgendaPage.jsx"), "AdminAgendaPage");
-export const AdminProspectsPage = namedLazy(() => import("@/pages/admin/AdminProspectsPage.jsx"), "AdminProspectsPage");
 export const AdminGoalsPage = namedLazy(() => import("@/pages/admin/AdminGoalsPage.jsx"), "AdminGoalsPage");
-export const AdminActivityPage = namedLazy(() => import("@/pages/admin/AdminActivityPage.jsx"), "AdminActivityPage");
-export const AdminWorksheetsPage = namedLazy(() => import("@/pages/admin/AdminWorksheetsPage.jsx"), "AdminWorksheetsPage");
-export const AdminWorksheetDetailPage = namedLazy(() => import("@/pages/admin/AdminWorksheetDetailPage.jsx"), "AdminWorksheetDetailPage");
+export const AdminToolsUsagePage = namedLazy(() => import("@/pages/admin/AdminToolsUsagePage.jsx"), "AdminToolsUsagePage");
+export const AdminLegacyRedirect = namedLazy(() => import("@/components/layout/admin-topbar-tabs.jsx"), "AdminLegacyRedirect");

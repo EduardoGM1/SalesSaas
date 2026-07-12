@@ -1,26 +1,18 @@
-import { Link } from "react-router-dom";
-import { ADMIN_NAV_PERMISSIONS } from "@/lib/auth/permissions";
-import { useI18n } from "@/hooks/use-i18n.js";
+import { Link, Navigate } from "react-router-dom";
 import {
-  NavIconActivity,
-  NavIconCalendar,
   NavIconDashboard,
   NavIconGoals,
-  NavIconSales,
+  NavIconTools,
   NavIconUsers,
-  NavIconWorksheets,
-  NavIconProspects,
 } from "@/components/admin/admin-nav-icons";
+import { ADMIN_NAV_PERMISSIONS } from "@/lib/auth/permissions";
+import { useI18n } from "@/hooks/use-i18n.js";
 
 export const ADMIN_TABS = [
   { href: "/admin", labelKey: "admin.tab.overview", icon: NavIconDashboard, exact: true },
   { href: "/admin/users", labelKey: "admin.tab.users", icon: NavIconUsers },
-  { href: "/admin/sales", labelKey: "admin.tab.sales", icon: NavIconSales },
-  { href: "/admin/agenda", labelKey: "admin.tab.agenda", icon: NavIconCalendar },
-  { href: "/admin/prospects", labelKey: "admin.tab.prospects", icon: NavIconProspects },
   { href: "/admin/goals", labelKey: "admin.tab.goals", icon: NavIconGoals },
-  { href: "/admin/activity", labelKey: "admin.tab.activity", icon: NavIconActivity },
-  { href: "/admin/worksheets", labelKey: "admin.tab.worksheets", icon: NavIconWorksheets },
+  { href: "/admin/tools", labelKey: "admin.tab.tools", icon: NavIconTools },
 ];
 
 function isTabActive(pathname, href, exact) {
@@ -54,4 +46,9 @@ export function AdminTopbarTabs({ permissions, pathname }) {
       })}
     </nav>
   );
+}
+
+/** Redirección de rutas CRM antiguas retiradas por privacidad. */
+export function AdminLegacyRedirect() {
+  return <Navigate to="/admin" replace />;
 }

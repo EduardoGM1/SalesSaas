@@ -84,6 +84,7 @@ export const ES_PHASE3 = {
   "admin.perm.goalsRead": "Ver metas globales",
   "admin.perm.activityRead": "Ver actividad global",
   "admin.perm.worksheetsRead": "Ver worksheets",
+  "admin.perm.toolsAnalytics": "Ver uso de herramientas (agregado)",
 };
 
 export const EN_PHASE3 = {
@@ -170,5 +171,6 @@ export const EN_PHASE3 = {
   "admin.perm.goalsRead": "View global goals",
   "admin.perm.activityRead": "View global activity",
   "admin.perm.worksheetsRead": "View worksheets",
+  "admin.perm.toolsAnalytics": "View tools usage (aggregate)",
   "admin.worksheet.months": "{n} months",
 };
