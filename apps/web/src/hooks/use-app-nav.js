@@ -4,7 +4,11 @@ import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { hasAnyAdminAccess } from "@/lib/auth/permissions";
 import { hasUserFeature } from "@/lib/auth/user-features";
 import { watchSession } from "@/lib/session-api.js";
-import { messagesApi } from "@/lib/network-api.js";
+import {
+  getUnreadMessagesCount,
+  refreshUnreadMessagesCount,
+  subscribeUnreadMessages,
+} from "@/lib/messages-unread.js";
 import { useDbStore } from "@/stores/db-store";
 import { shallow } from "zustand/shallow";
 import {
@@ -20,7 +24,7 @@ export function useAppNav() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState(null);
   const [userProfile, setUserProfile] = useState(null);
-  const [unreadMessages, setUnreadMessages] = useState(0);
+  const [unreadMessages, setUnreadMessages] = useState(() => getUnreadMessagesCount());
 
   useEffect(() => {
     if (!isSupabaseConfigured()) return;
@@ -44,13 +48,29 @@ export function useAppNav() {
   }, []);
 
   useEffect(() => {
-    if (!cloudEnabled) return;
-    const load = () => messagesApi.unreadCount()
-      .then((d) => setUnreadMessages(d?.count ?? 0))
-      .catch(() => {});
+    if (!cloudEnabled) {
+      setUnreadMessages(0);
+      return undefined;
+    }
+
+    const unsub = subscribeUnreadMessages(setUnreadMessages);
+    const load = () => {
+      refreshUnreadMessagesCount().catch(() => {});
+    };
     load();
-    const timer = window.setInterval(load, 30000);
-    return () => window.clearInterval(timer);
+    const onChanged = () => load();
+    const onFocus = () => load();
+    window.addEventListener("messages:unread-changed", onChanged);
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onFocus);
+    const timer = window.setInterval(load, 20000);
+    return () => {
+      unsub();
+      window.clearInterval(timer);
+      window.removeEventListener("messages:unread-changed", onChanged);
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onFocus);
+    };
   }, [cloudEnabled]);
 
   const navOptions = useMemo(() => ({
