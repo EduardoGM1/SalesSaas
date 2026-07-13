@@ -1,9 +1,9 @@
-
 import { useEffect, useRef } from "react";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { isEmptyDb, normalizeIds } from "@/lib/data/mappers";
 import { pullViaApi, reconcileViaApi } from "@/lib/sync-api.js";
 import { loadDatabase } from "@/lib/storage/local-storage-adapter";
+import { STORAGE_KEY } from "@/lib/storage/keys";
 import { emptyDatabase } from "@/lib/storage/types";
 import { watchSession } from "@/lib/session-api.js";
 import { useDbStore } from "@/stores/db-store";
@@ -13,6 +13,8 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 const ACCOUNT_KEY = "sts4_account";
 const DEBOUNCE_MS = 1200;
+/** Evita storms de pull al cambiar de app / foco. */
+const RESUME_PULL_COOLDOWN_MS = 45_000;
 
 export function SyncProvider({ children }) {
   const userIdRef = useRef(null);
@@ -20,6 +22,8 @@ export function SyncProvider({ children }) {
   const enabledRef = useRef(false);
   const initedForRef = useRef(null);
   const timerRef = useRef(null);
+  const lastResumePullAtRef = useRef(0);
+  const refreshInFlightRef = useRef(false);
 
   useEffect(() => {
     if (!isSupabaseConfigured()) {
@@ -28,6 +32,7 @@ export function SyncProvider({ children }) {
     }
 
     const applyRemote = (db) => {
+      if (!db || typeof db !== "object") return;
       const localSettings = useDbStore.getState().db.settings;
       suspendRef.current = true;
       useDbStore.getState().replaceDb({
@@ -46,7 +51,9 @@ export function SyncProvider({ children }) {
       }
       useSyncStore.getState().setStatus("syncing");
       try {
-        await reconcileViaApi(useDbStore.getState().db);
+        const remote = await reconcileViaApi(useDbStore.getState().db);
+        // El servidor ya reconcilió: aplicar snapshot para Dashboard/otras vistas sin F5.
+        if (remote) applyRemote(remote);
         useSyncStore.getState().setSynced();
       } catch (err) {
         useSyncStore.getState().setStatus("error", err instanceof Error ? err.message : String(err));
@@ -55,7 +62,50 @@ export function SyncProvider({ children }) {
 
     const scheduleSync = () => {
       if (timerRef.current) clearTimeout(timerRef.current);
-      timerRef.current = setTimeout(doReconcile, DEBOUNCE_MS);
+      timerRef.current = setTimeout(() => {
+        timerRef.current = null;
+        void doReconcile();
+      }, DEBOUNCE_MS);
+    };
+
+    /**
+     * Inbound refresh al volver a la app:
+     * - Si hay sync local pendiente → reconcile (no perder edits).
+     * - Si no → pull ligero desde la nube.
+     */
+    const refreshInbound = async (reason = "resume") => {
+      const uid = userIdRef.current;
+      if (!uid || !enabledRef.current || refreshInFlightRef.current) return;
+      if (typeof navigator !== "undefined" && !navigator.onLine) {
+        useSyncStore.getState().setStatus("offline");
+        return;
+      }
+
+      const now = Date.now();
+      if (now - lastResumePullAtRef.current < RESUME_PULL_COOLDOWN_MS) return;
+      lastResumePullAtRef.current = now;
+      refreshInFlightRef.current = true;
+
+      try {
+        if (timerRef.current) {
+          clearTimeout(timerRef.current);
+          timerRef.current = null;
+          await doReconcile();
+          return;
+        }
+
+        useSyncStore.getState().setStatus("syncing");
+        const cloudDb = await pullViaApi();
+        if (cloudDb) applyRemote(cloudDb);
+        useSyncStore.getState().setSynced();
+      } catch (err) {
+        useSyncStore.getState().setStatus(
+          "error",
+          err instanceof Error ? err.message : String(err),
+        );
+      } finally {
+        refreshInFlightRef.current = false;
+      }
     };
 
     const initForUser = async (userId) => {
@@ -77,7 +127,9 @@ export function SyncProvider({ children }) {
         if (canPushLocal) {
           try {
             const { db: norm } = normalizeIds(localDb);
-            await reconcileViaApi(norm);
+            const remote = await reconcileViaApi(norm);
+            if (remote) applyRemote(remote);
+            else applyRemote(norm);
             localStorage.setItem(ACCOUNT_KEY, userId);
             useSyncStore.getState().setSynced();
             return;
@@ -100,12 +152,16 @@ export function SyncProvider({ children }) {
       } else if (account === userId) {
         const { db: norm } = normalizeIds(localDb);
         applyRemote(norm);
-        if (!isEmptyDb(norm)) await reconcileViaApi(norm);
+        if (!isEmptyDb(norm)) {
+          const remote = await reconcileViaApi(norm);
+          if (remote) applyRemote(remote);
+        }
         useSyncStore.getState().setSynced();
       } else if (!account && !isEmptyDb(localDb)) {
         const { db: norm } = normalizeIds(localDb);
         applyRemote(norm);
-        await reconcileViaApi(norm);
+        const remote = await reconcileViaApi(norm);
+        if (remote) applyRemote(remote);
         localStorage.setItem(ACCOUNT_KEY, userId);
         useSyncStore.getState().setSynced();
       } else {
@@ -115,12 +171,14 @@ export function SyncProvider({ children }) {
       }
 
       enabledRef.current = true;
+      lastResumePullAtRef.current = Date.now();
     };
 
     const stopForUser = () => {
       enabledRef.current = false;
       initedForRef.current = null;
       userIdRef.current = null;
+      lastResumePullAtRef.current = 0;
       useSyncStore.getState().setStatus("disabled");
     };
 
@@ -136,13 +194,57 @@ export function SyncProvider({ children }) {
       scheduleSync();
     });
 
-    const onOnline = () => void doReconcile();
+    const onOnline = () => {
+      lastResumePullAtRef.current = 0;
+      void refreshInbound("online");
+    };
+
+    const onVisible = () => {
+      if (document.visibilityState === "visible") void refreshInbound("visibility");
+    };
+
+    const onFocus = () => {
+      void refreshInbound("focus");
+    };
+
+    /** Otra pestaña del mismo origen escribió el DB → rehidratar sin F5. */
+    const onStorage = (event) => {
+      if (event.key !== STORAGE_KEY || !event.newValue) return;
+      if (!enabledRef.current || suspendRef.current) return;
+      try {
+        const parsed = JSON.parse(event.newValue);
+        if (!parsed || typeof parsed !== "object") return;
+        const next = {
+          clients: parsed.clients ?? {},
+          libre: parsed.libre ?? {},
+          cal: parsed.cal ?? {},
+          goals: parsed.goals ?? {},
+          sales: parsed.sales ?? {},
+          userActivities: parsed.userActivities ?? [],
+          settings: parsed.settings ?? emptyDatabase().settings,
+        };
+        suspendRef.current = true;
+        useDbStore.getState().replaceDb(next);
+        suspendRef.current = false;
+      } catch {
+        // JSON inválido: ignorar.
+      }
+    };
+
     window.addEventListener("online", onOnline);
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("focus", onFocus);
+    window.addEventListener("storage", onStorage);
+    window.addEventListener("auth:resume", onFocus);
 
     return () => {
       unsubSession();
       unsub();
       window.removeEventListener("online", onOnline);
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("focus", onFocus);
+      window.removeEventListener("storage", onStorage);
+      window.removeEventListener("auth:resume", onFocus);
       if (timerRef.current) clearTimeout(timerRef.current);
     };
   }, []);
