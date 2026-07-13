@@ -49,6 +49,22 @@ export const sharingApi = {
     method: "POST",
     body: JSON.stringify({ shared_with_id: sharedWithId, permission }),
   }),
+  createInvite: (prospectId, permission = "view") => apiFetch(`/prospects/${prospectId}/share-invites`, {
+    method: "POST",
+    body: JSON.stringify({ permission }),
+  }),
+  redeemInvite: (token) => apiFetch(`/share-invites/${encodeURIComponent(token)}/redeem`, {
+    method: "POST",
+    body: JSON.stringify({}),
+  }),
+  requestPermission: (shareId, toPermission = "edit") => apiFetch(`/shares/${shareId}/permission-requests`, {
+    method: "POST",
+    body: JSON.stringify({ to_permission: toPermission }),
+  }),
+  decidePermission: (requestId, decision) => apiFetch(`/share-permission-requests/${requestId}/decide`, {
+    method: "POST",
+    body: JSON.stringify({ decision }),
+  }),
   updatePermission: (shareId, permission) => apiFetch(`/shares/${shareId}`, {
     method: "PATCH",
     body: JSON.stringify({ permission }),

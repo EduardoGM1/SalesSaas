@@ -10,6 +10,7 @@ import { ForgotPasswordPage } from "@/pages/ForgotPasswordPage.jsx";
 import { ResetPasswordPage } from "@/pages/ResetPasswordPage.jsx";
 import { AuthCallbackPage } from "@/pages/AuthCallbackPage.jsx";
 import { ExpedienteLinkPage } from "@/pages/ExpedienteLinkPage.jsx";
+import { ExpedienteInvitePage } from "@/pages/ExpedienteInvitePage.jsx";
 import { CalendarPage } from "@/components/calendar/calendar-page.jsx";
 import { GoalsPage } from "@/components/goals/goals-page.jsx";
 import { MetasPage } from "@/components/goals/metas-page.jsx";
@@ -83,6 +84,7 @@ export function AppRoutes() {
   return (
     <Routes>
       <Route path="/auth/callback" element={<AuthCallbackPage />} />
+      <Route path="/e/i/:token" element={<ExpedienteInvitePage />} />
       <Route path="/e/:prospectId" element={<ExpedienteLinkPage />} />
       <Route element={<AuthLayout />}>
         <Route path="/login" element={<LoginPage />} />

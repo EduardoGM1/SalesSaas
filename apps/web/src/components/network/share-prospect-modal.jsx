@@ -72,6 +72,8 @@ export function ShareProspectModal({ open, onOpenChange, prospectId, prospectNam
   const [loading, setLoading] = useState(false);
   const [selectedId, setSelectedId] = useState("");
   const [permission, setPermission] = useState("view");
+  const [externalPermission, setExternalPermission] = useState("view");
+  const [invitePreview, setInvitePreview] = useState("");
   const [sharingOut, setSharingOut] = useState(false);
 
   const clientForShare = useMemo(() => {
@@ -81,15 +83,11 @@ export function ShareProspectModal({ open, onOpenChange, prospectId, prospectNam
     return { id: prospectId, name: prospectName, name1: prospectName };
   }, [prospect, prospectId, prospectName]);
 
-  const externalMessage = useMemo(() => {
-    if (!prospectId || typeof window === "undefined") return "";
-    return buildExternalShareMessage({
-      client: clientForShare,
-      origin: window.location.origin,
-      t,
-      lang,
-    });
-  }, [clientForShare, prospectId, t, lang]);
+  const permLabelKey = {
+    view: "network.permView",
+    edit: "network.permEdit",
+    comment: "network.permComment",
+  };
 
   const refresh = async () => {
     if (!prospectId) return;
@@ -115,9 +113,40 @@ export function ShareProspectModal({ open, onOpenChange, prospectId, prospectNam
     } else {
       setSelectedId("");
       setPermission("view");
+      setExternalPermission("view");
+      setInvitePreview("");
       setMode("internal");
     }
   }, [open, prospectId]);
+
+  useEffect(() => {
+    if (!open || mode !== "external" || !prospectId || typeof window === "undefined") {
+      setInvitePreview("");
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const invite = await sharingApi.createInvite(prospectId, externalPermission);
+        if (cancelled) return;
+        const text = buildExternalShareMessage({
+          client: clientForShare,
+          origin: window.location.origin,
+          t,
+          lang,
+          inviteToken: invite.token,
+          permissionLabel: t(permLabelKey[externalPermission] || "network.permView"),
+        });
+        setInvitePreview(text);
+      } catch (err) {
+        if (!cancelled) {
+          setInvitePreview("");
+          toast.error(err.message);
+        }
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [open, mode, prospectId, externalPermission, clientForShare, t, lang]);
 
   const handleShare = async () => {
     if (!selectedId) return;
@@ -147,11 +176,11 @@ export function ShareProspectModal({ open, onOpenChange, prospectId, prospectNam
   };
 
   const handleExternalShare = async () => {
-    if (!externalMessage) return;
+    if (!invitePreview) return;
     setSharingOut(true);
     try {
       const result = await shareExternally({
-        text: externalMessage,
+        text: invitePreview,
         title: t("network.shareTitle"),
       });
       if (result === "shared" || result === "whatsapp") {
@@ -195,14 +224,22 @@ export function ShareProspectModal({ open, onOpenChange, prospectId, prospectNam
 
       {mode === "external" ? (
         <div className="share-external-panel">
+          <div className="prospect-field" style={{ marginBottom: 12 }}>
+            <label>{t("network.permission")}</label>
+            <select value={externalPermission} onChange={(e) => setExternalPermission(e.target.value)}>
+              {PERM_OPTIONS.map(({ value, key }) => (
+                <option key={value} value={value}>{t(key)}</option>
+              ))}
+            </select>
+          </div>
           <div className="section-label">{t("network.shareExternal.preview")}</div>
-          <pre className="share-external-preview">{externalMessage}</pre>
+          <pre className="share-external-preview">{invitePreview || t("common.loading")}</pre>
           <p className="share-external-hint">{t("network.shareExternal.hint")}</p>
           <div className="btn-row" style={{ marginTop: 0 }}>
             <button
               type="button"
               className="btn btn-primary"
-              disabled={!prospectId || sharingOut}
+              disabled={!prospectId || sharingOut || !invitePreview}
               onClick={handleExternalShare}
             >
               {sharingOut

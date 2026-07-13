@@ -1,42 +1,64 @@
-# Compartir expedientes y red social (MVP)
+# Compartir expedientes y red social
 
-## Estado actual (implementado)
+## Modelo de permisos
 
-### Base de datos (`0011` + `0012`)
-- `prospect_shares` — compartir expedientes (`view` | `edit`)
-- `user_connections` — solicitudes y contactos (`pending` | `accepted` | `blocked`)
-- `direct_messages` — mensajes entre contactos aceptados
-- RPC `search_profiles(q)` — búsqueda de usuarios activos
-- RLS: perfiles visibles para contactos/pendientes; mensajes solo entre aceptados; shares solo con contactos aceptados
+Fuente de verdad: tabla `prospect_shares` + enum `share_permission` (`view` | `edit` | `comment`).
 
-### API (`/api/v1/...`)
-| Área | Endpoints |
-|------|-----------|
-| Red | `GET /network/users/search`, `GET/POST/PATCH/DELETE /network/connections` |
-| Mensajes | `GET /messages/conversations`, `GET /messages?with=`, `POST /messages`, `PATCH /messages/read`, `GET /messages/unread-count` |
-| Compartir | `GET /shares/received`, `GET/POST /prospects/:id/shares`, `PATCH/DELETE /shares/:id`, `GET /shared-prospects/:id` |
+| Nivel | Significado |
+|-------|------------|
+| Propietario | `prospects.user_id` (no es un share) |
+| `view` | Solo lectura |
+| `comment` | Lectura + comentarios locales (según UI) |
+| `edit` | Puede editar expediente y tools compartidas |
 
-### UI
-- `/network` — buscar, solicitudes, contactos, expedientes compartidos
-- `/messages` — conversaciones y chat
-- Expediente → botón **Compartir** (requiere Supabase + sync)
-- Sidebar: Red, Mensajes (solo con nube), badge de no leídos
+Un expediente puede tener **varios receptores con distintos niveles** a la vez (`unique (prospect_id, shared_with_id)`).
 
-## Requisitos
-1. Supabase configurado + usuario autenticado
-2. Expediente sincronizado (UUID en nube) para compartir
-3. Contacto **aceptado** antes de mensajes o shares
+RLS: `prospects_select_shared`, `prospects_update_shared_edit`, políticas de `tool_calculations` y de `prospect_shares` (solo contactos aceptados para insert interno).
 
-## Próximas fases (no MVP)
-- Realtime (Supabase subscriptions) para mensajes
-- Sync de expedientes compartidos al store local
-- Organizaciones/equipos (`organizations`, `organization_members`)
-- Compartir herramientas (survey/worksheet) con RLS en `tool_calculations`
-- Notificaciones push
+## Chat como capa de negociación
 
-## Respuestas de diseño original
+WhatsApp/email son solo puente. La interacción de permisos ocurre en el chat de Saletse.
 
-1. **¿BD permite relaciones sin refactor?** Sí — tablas puente sobre `profiles`/`prospects`.
-2. **¿Qué tablas?** `user_connections`, `direct_messages`, `prospect_shares` (+ opcional org/invites).
-3. **¿Permisos?** Contactos aceptados; shares `view`/`edit`; dueño revoca.
-4. **¿Base lista?** Sí — migraciones 0011–0012; UI/API MVP activos.
+### Mensajes tipados (`direct_messages`)
+
+| `message_type` | Uso |
+|----------------|-----|
+| `text` | Chat libre (default) |
+| `access_granted` | Notificación de acceso otorgado |
+| `permission_request` | Solicitud de escalar a `edit` (Aprobar/Rechazar) |
+| `permission_response` | Resultado aprobado/rechazado |
+
+Metadata JSON: `prospect_id`, `prospect_name`, `share_id`, `permission`, `request_id`, `decision`, etc.
+
+### Solicitudes
+
+Tabla `share_permission_requests`: un único `pending` por `share_id`. El dueño decide vía `POST /share-permission-requests/:id/decide`.
+
+### Invites externos
+
+Tabla `prospect_share_invites` (`token`, `permission`, `expires_at`).
+
+- Link: `/e/i/:token`
+- Canje autenticado: asegura conexión `accepted`, upsert share, mensaje `access_granted`
+- Sin sesión: gate login/register con `?next=`
+
+## API relevante
+
+| Método | Ruta |
+|--------|------|
+| POST | `/prospects/:id/shares` → share + mensaje `access_granted` + push |
+| POST | `/prospects/:id/share-invites` |
+| POST | `/share-invites/:token/redeem` |
+| POST | `/shares/:id/permission-requests` |
+| POST | `/share-permission-requests/:id/decide` |
+| GET/POST | mensajes (`message_type` / `metadata` en respuesta) |
+
+## Extensibilidad
+
+No acoplado a roles de negocio (liner/cerrador/empresa). Futuras relaciones = nuevas filas en `prospect_shares` + mismos tipos de mensaje.
+
+## Migraciones
+
+- `0011`–`0013`: foundation shares + comment
+- `0012`: red, mensajes, RLS
+- `0027`: chat tipado, `share_permission_requests`, `prospect_share_invites`

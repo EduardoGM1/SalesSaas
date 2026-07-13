@@ -27,8 +27,9 @@ function dateLine(client, lang) {
   }
 }
 
-export function buildExternalShareUrl(origin, prospectId) {
+export function buildExternalShareUrl(origin, prospectId, inviteToken) {
   const base = String(origin || "").replace(/\/$/, "");
+  if (inviteToken) return `${base}/e/i/${encodeURIComponent(inviteToken)}`;
   return `${base}/e/${encodeURIComponent(prospectId)}`;
 }
 
@@ -36,9 +37,9 @@ export function buildExternalShareUrl(origin, prospectId) {
  * Mensaje externo (WhatsApp / Web Share) con subset seguro de campos.
  * No incluye teléfono, email, notas, montos ni herramientas.
  */
-export function buildExternalShareMessage({ client, origin, t, lang = "es" }) {
+export function buildExternalShareMessage({ client, origin, t, lang = "es", inviteToken, permissionLabel }) {
   const name = clientDisplayName(client) || client?.name || "—";
-  const url = buildExternalShareUrl(origin, client?.id);
+  const url = buildExternalShareUrl(origin, client?.id, inviteToken);
   const lines = [
     t("network.shareExternal.intro"),
     "",
@@ -48,10 +49,11 @@ export function buildExternalShareMessage({ client, origin, t, lang = "es" }) {
     `📅 ${t("network.shareExternal.date")}: ${dash(dateLine(client, lang))}`,
     `📍 ${t("network.shareExternal.location")}: ${dash(locationLine(client))}`,
     `📌 ${t("network.shareExternal.status")}: ${dash(statusLabel(client?.status, lang === "en" ? "en" : "es"))}`,
-    "",
-    t("network.shareExternal.linkLabel"),
-    url,
   ];
+  if (permissionLabel) {
+    lines.push(`🔓 ${t("network.shareExternal.access")}: ${permissionLabel}`);
+  }
+  lines.push("", t("network.shareExternal.linkLabel"), url);
   return lines.join("\n");
 }
 

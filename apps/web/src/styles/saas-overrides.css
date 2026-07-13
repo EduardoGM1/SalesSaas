@@ -1524,6 +1524,69 @@ div.modal-backdrop.sales-modal-overlay:not([hidden]) {
 
 .messages-bubble-text { font-size: 13px; line-height: 1.45; white-space: pre-wrap; }
 
+.messages-bubble--card {
+  max-width: min(340px, 92%);
+  background: #fff;
+  border: 1px solid var(--border, #e2e8f0);
+}
+
+.messages-bubble.mine.messages-bubble--card {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+}
+
+.msg-share-card {
+  text-align: left;
+  min-width: 200px;
+}
+
+.msg-share-card-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  color: #1e40af;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.msg-share-card-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: #dbeafe;
+  color: #1d4ed8;
+  flex-shrink: 0;
+}
+
+.msg-share-card-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text, #0f172a);
+}
+
+.msg-share-card-code {
+  font-size: 11px;
+  color: var(--muted, #64748b);
+  margin-top: 2px;
+}
+
+.msg-share-card-perm {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #334155;
+}
+
+.msg-share-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 12px;
+}
+
 .messages-bubble-meta {
   display: flex;
   align-items: center;

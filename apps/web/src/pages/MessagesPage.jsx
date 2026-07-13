@@ -6,6 +6,7 @@ import { Topbar } from "@/components/layout/topbar";
 import { PageBack } from "@/components/layout/page-back";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { messagesApi } from "@/lib/network-api.js";
+import { notifyUnreadMessagesChanged } from "@/lib/messages-unread.js";
 import {
   ContactPresenceStatus,
   NetworkUserAvatar,
@@ -14,6 +15,10 @@ import {
 import { useI18n } from "@/hooks/use-i18n.js";
 import { toast } from "@/lib/toast";
 import { selectOnFocus } from "@/lib/focus-select.js";
+import {
+  ProspectShareMessageCard,
+  conversationPreview,
+} from "@/components/messages/prospect-share-message-card.jsx";
 
 function formatTime(iso, lang) {
   if (!iso) return "";
@@ -75,6 +80,7 @@ export function MessagesPage() {
     const data = await messagesApi.thread(peerId);
     setMessages(data);
     await messagesApi.markRead(peerId).catch(() => {});
+    notifyUnreadMessagesChanged();
     loadConversations();
   };
 
@@ -82,6 +88,7 @@ export function MessagesPage() {
     if (!isSupabaseConfigured()) return;
     setLoading(true);
     loadConversations()
+      .then(() => notifyUnreadMessagesChanged())
       .catch((err) => toast.error(err.message))
       .finally(() => setLoading(false));
   }, []);
@@ -180,7 +187,9 @@ export function MessagesPage() {
                           <span className="messages-unread-badge">{c.unread_count}</span>
                         )}
                       </div>
-                      <div className="messages-conv-preview">{c.last_message?.body}</div>
+                      <div className="messages-conv-preview">
+                        {conversationPreview(c.last_message, t) || c.last_message?.body}
+                      </div>
                     </div>
                   </button>
                 );
@@ -205,17 +214,28 @@ export function MessagesPage() {
                   </div>
                 </div>
                 <div className="messages-thread-body" ref={threadRef}>
-                  {messages.map((m) => (
-                    <div key={m.id} className={`messages-bubble${m.mine ? " mine" : ""}`}>
-                      <div className="messages-bubble-text">{m.body}</div>
-                      <div className="messages-bubble-meta">
-                        <span className="messages-bubble-time">
-                          {formatTime(m.created_at, lang)}
-                        </span>
-                        <MessageReadStatus message={m} lang={lang} t={t} />
+                  {messages.map((m) => {
+                    const structured = m.message_type && m.message_type !== "text";
+                    return (
+                      <div key={m.id} className={`messages-bubble${m.mine ? " mine" : ""}${structured ? " messages-bubble--card" : ""}`}>
+                        {structured ? (
+                          <ProspectShareMessageCard
+                            message={m}
+                            t={t}
+                            onResolved={() => loadThread(activePeerId)}
+                          />
+                        ) : (
+                          <div className="messages-bubble-text">{m.body}</div>
+                        )}
+                        <div className="messages-bubble-meta">
+                          <span className="messages-bubble-time">
+                            {formatTime(m.created_at, lang)}
+                          </span>
+                          <MessageReadStatus message={m} lang={lang} t={t} />
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
                 <div className="messages-compose">
                   <textarea

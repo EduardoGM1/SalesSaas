@@ -1,7 +1,10 @@
+import { randomBytes } from "node:crypto";
 import { isUuid } from "@salesapp/shared/data/mappers.js";
 import { bodyToProspectPatch } from "@salesapp/shared/api/validators.js";
 import { ServiceError, assertFound } from "../lib/service-error.js";
+import { createServiceSupabaseClient } from "../lib/supabase-server.js";
 import { notifyProspectShared } from "./push-notifications-service.js";
+import { MESSAGE_TYPES, sendStructuredMessage } from "./messages-service.js";
 
 function profileName(profile) {
   return profile?.full_name?.trim() || profile?.email?.split("@")[0] || "Usuario";
@@ -26,6 +29,12 @@ function prospectDisplayName(prospect) {
 
 const VALID_PERMISSIONS = ["view", "edit", "comment"];
 
+const PERM_LABEL = {
+  view: "solo lectura",
+  edit: "edición",
+  comment: "comentario",
+};
+
 function mapShare(row, profiles, prospects) {
   const prospect = prospects.get(row.prospect_id);
   return {
@@ -40,6 +49,66 @@ function mapShare(row, profiles, prospects) {
     shared_with: profiles.get(row.shared_with_id) ?? null,
     owner: profiles.get(row.owner_id) ?? null,
   };
+}
+
+/** Asegura conexión accepted entre A y B (para redeem de invite externo). */
+async function ensureAcceptedConnection(admin, userA, userB) {
+  const { data: existing } = await admin
+    .from("user_connections")
+    .select("id, status, requester_id, addressee_id")
+    .or(`and(requester_id.eq.${userA},addressee_id.eq.${userB}),and(requester_id.eq.${userB},addressee_id.eq.${userA})`)
+    .maybeSingle();
+
+  if (existing) {
+    if (existing.status === "accepted") return existing;
+    if (existing.status === "blocked") {
+      throw new ServiceError("No se puede conectar con este usuario.", 403);
+    }
+    const { data, error } = await admin
+      .from("user_connections")
+      .update({ status: "accepted" })
+      .eq("id", existing.id)
+      .select("id, status")
+      .single();
+    if (error) throw new ServiceError(error.message, 400);
+    return data;
+  }
+
+  const { data, error } = await admin
+    .from("user_connections")
+    .insert({ requester_id: userA, addressee_id: userB, status: "accepted" })
+    .select("id, status")
+    .single();
+  if (error) throw new ServiceError(error.message, 400);
+  return data;
+}
+
+async function postAccessGrantedMessage(client, {
+  ownerId,
+  recipientId,
+  shareId,
+  prospectId,
+  prospectName,
+  prospectCode,
+  permission,
+}) {
+  const label = PERM_LABEL[permission] || permission;
+  const body = `Te compartieron el expediente «${prospectName}» con acceso de ${label}.`;
+  return sendStructuredMessage(client, {
+    senderId: ownerId,
+    recipientId,
+    body,
+    messageType: MESSAGE_TYPES.ACCESS_GRANTED,
+    metadata: {
+      prospect_id: prospectId,
+      prospect_name: prospectName,
+      prospect_code: prospectCode || null,
+      share_id: shareId,
+      permission,
+      owner_id: ownerId,
+    },
+    notify: true,
+  });
 }
 
 export async function listSharesForProspect(supabase, userId, prospectId) {
@@ -159,6 +228,21 @@ export async function createShare(supabase, userId, prospectId, { shared_with_id
     .maybeSingle();
   const prospects = new Map(prospect ? [[prospect.id, prospect]] : []);
   const mapped = mapShare(data, profiles, prospects);
+
+  try {
+    await postAccessGrantedMessage(supabase, {
+      ownerId: userId,
+      recipientId: sharedWithId,
+      shareId: data.id,
+      prospectId,
+      prospectName: mapped.prospect_name,
+      prospectCode: mapped.prospect_code,
+      permission,
+    });
+  } catch {
+    // Share ya creado; no fallar el share si el mensaje tipado falla (p. ej. migración pendiente).
+  }
+
   if (!priorShare) {
     const owner = profiles.get(userId);
     notifyProspectShared(sharedWithId, {
@@ -206,6 +290,291 @@ export async function deleteShare(supabase, userId, shareId) {
   return { ok: true };
 }
 
+export async function requestPermissionUpgrade(supabase, userId, shareId, { to_permission: toPermission = "edit" } = {}) {
+  if (!isUuid(shareId)) throw new ServiceError("Compartido inválido.");
+  if (!VALID_PERMISSIONS.includes(toPermission)) throw new ServiceError("Permiso inválido.");
+
+  const { data: share, error } = await supabase
+    .from("prospect_shares")
+    .select("id, prospect_id, owner_id, shared_with_id, permission")
+    .eq("id", shareId)
+    .eq("shared_with_id", userId)
+    .maybeSingle();
+  if (error) throw new ServiceError(error.message, 500);
+  assertFound(share, "Compartido no encontrado.");
+
+  if (share.permission === "edit") {
+    throw new ServiceError("Ya tienes acceso de edición.");
+  }
+  if (share.permission === toPermission) {
+    throw new ServiceError("Ya tienes ese nivel de acceso.");
+  }
+  if (toPermission !== "edit") {
+    throw new ServiceError("Solo se puede solicitar acceso de edición.");
+  }
+
+  const { data: prospect } = await supabase
+    .from("prospects")
+    .select("id, prospect_code, name, name1, name2")
+    .eq("id", share.prospect_id)
+    .maybeSingle();
+  const prospectName = prospectDisplayName(prospect);
+
+  const { data: reqRow, error: reqErr } = await supabase
+    .from("share_permission_requests")
+    .insert({
+      share_id: share.id,
+      prospect_id: share.prospect_id,
+      owner_id: share.owner_id,
+      requester_id: userId,
+      from_permission: share.permission,
+      to_permission: toPermission,
+      status: "pending",
+    })
+    .select("*")
+    .single();
+  if (reqErr) {
+    if (reqErr.code === "23505" || reqErr.message?.includes("share_perm_req_one_pending")) {
+      throw new ServiceError("Ya hay una solicitud pendiente para este expediente.");
+    }
+    throw new ServiceError(reqErr.message, 400);
+  }
+
+  const fromLabel = PERM_LABEL[share.permission] || share.permission;
+  const toLabel = PERM_LABEL[toPermission] || toPermission;
+  const body = `Solicité pasar de ${fromLabel} a ${toLabel} en el expediente «${prospectName}».`;
+
+  let message;
+  try {
+    message = await sendStructuredMessage(supabase, {
+      senderId: userId,
+      recipientId: share.owner_id,
+      body,
+      messageType: MESSAGE_TYPES.PERMISSION_REQUEST,
+      metadata: {
+        prospect_id: share.prospect_id,
+        prospect_name: prospectName,
+        prospect_code: prospect?.prospect_code || null,
+        share_id: share.id,
+        request_id: reqRow.id,
+        permission: share.permission,
+        requested_permission: toPermission,
+        owner_id: share.owner_id,
+        requester_id: userId,
+        status: "pending",
+      },
+      notify: true,
+    });
+    await supabase
+      .from("share_permission_requests")
+      .update({ request_message_id: message.id })
+      .eq("id", reqRow.id);
+  } catch (err) {
+    await supabase.from("share_permission_requests").delete().eq("id", reqRow.id);
+    throw err;
+  }
+
+  return {
+    request: { ...reqRow, request_message_id: message.id },
+    message,
+  };
+}
+
+export async function decidePermissionRequest(supabase, userId, requestId, { decision }) {
+  if (!isUuid(requestId)) throw new ServiceError("Solicitud inválida.");
+  if (!["approved", "rejected"].includes(decision)) throw new ServiceError("Decisión inválida.");
+
+  const { data: reqRow, error } = await supabase
+    .from("share_permission_requests")
+    .select("*")
+    .eq("id", requestId)
+    .eq("owner_id", userId)
+    .maybeSingle();
+  if (error) throw new ServiceError(error.message, 500);
+  assertFound(reqRow, "Solicitud no encontrada.");
+  if (reqRow.status !== "pending") throw new ServiceError("Esta solicitud ya fue resuelta.");
+
+  const { data: prospect } = await supabase
+    .from("prospects")
+    .select("id, prospect_code, name, name1, name2")
+    .eq("id", reqRow.prospect_id)
+    .maybeSingle();
+  const prospectName = prospectDisplayName(prospect);
+
+  if (decision === "approved") {
+    const { error: upErr } = await supabase
+      .from("prospect_shares")
+      .update({ permission: reqRow.to_permission })
+      .eq("id", reqRow.share_id)
+      .eq("owner_id", userId);
+    if (upErr) throw new ServiceError(upErr.message, 400);
+  }
+
+  const now = new Date().toISOString();
+  const { data: updated, error: stErr } = await supabase
+    .from("share_permission_requests")
+    .update({ status: decision, resolved_at: now })
+    .eq("id", requestId)
+    .eq("status", "pending")
+    .select("*")
+    .maybeSingle();
+  if (stErr) throw new ServiceError(stErr.message, 400);
+  assertFound(updated, "Solicitud no encontrada.");
+
+  const toLabel = PERM_LABEL[reqRow.to_permission] || reqRow.to_permission;
+  const body = decision === "approved"
+    ? `Aprobé el acceso de ${toLabel} para el expediente «${prospectName}».`
+    : `Rechacé la solicitud de ${toLabel} para el expediente «${prospectName}».`;
+
+  const message = await sendStructuredMessage(supabase, {
+    senderId: userId,
+    recipientId: reqRow.requester_id,
+    body,
+    messageType: MESSAGE_TYPES.PERMISSION_RESPONSE,
+    metadata: {
+      prospect_id: reqRow.prospect_id,
+      prospect_name: prospectName,
+      prospect_code: prospect?.prospect_code || null,
+      share_id: reqRow.share_id,
+      request_id: reqRow.id,
+      permission: decision === "approved" ? reqRow.to_permission : reqRow.from_permission,
+      requested_permission: reqRow.to_permission,
+      decision,
+      owner_id: userId,
+      requester_id: reqRow.requester_id,
+    },
+    notify: true,
+  });
+
+  await supabase
+    .from("share_permission_requests")
+    .update({ response_message_id: message.id })
+    .eq("id", requestId);
+
+  return { request: { ...updated, response_message_id: message.id }, message };
+}
+
+export async function createShareInvite(supabase, userId, prospectId, { permission = "view" } = {}) {
+  if (!isUuid(prospectId)) throw new ServiceError("Expediente inválido.");
+  if (!VALID_PERMISSIONS.includes(permission)) throw new ServiceError("Permiso inválido.");
+
+  const { data: owned } = await supabase
+    .from("prospects")
+    .select("id, prospect_code, name, name1, name2")
+    .eq("id", prospectId)
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (!owned) throw new ServiceError("Expediente no encontrado.", 404);
+
+  const token = randomBytes(24).toString("base64url");
+  const { data, error } = await supabase
+    .from("prospect_share_invites")
+    .insert({
+      token,
+      prospect_id: prospectId,
+      owner_id: userId,
+      permission,
+    })
+    .select("id, token, prospect_id, owner_id, permission, expires_at, created_at")
+    .single();
+  if (error) throw new ServiceError(error.message, 400);
+
+  return {
+    ...data,
+    prospect_name: prospectDisplayName(owned),
+    prospect_code: owned.prospect_code,
+    path: `/e/i/${data.token}`,
+  };
+}
+
+export async function redeemShareInvite(supabase, userId, token) {
+  const inviteToken = String(token ?? "").trim();
+  if (!inviteToken) throw new ServiceError("Token inválido.");
+
+  const admin = createServiceSupabaseClient();
+  const client = admin || supabase;
+
+  const { data: invite, error } = await client
+    .from("prospect_share_invites")
+    .select("*")
+    .eq("token", inviteToken)
+    .maybeSingle();
+  if (error) throw new ServiceError(error.message, 500);
+  assertFound(invite, "Invitación no encontrada.");
+
+  if (invite.revoked_at) throw new ServiceError("Esta invitación fue revocada.", 410);
+  if (new Date(invite.expires_at).getTime() < Date.now()) {
+    throw new ServiceError("Esta invitación expiró.", 410);
+  }
+  if (invite.owner_id === userId) {
+    throw new ServiceError("No puedes canjear tu propia invitación.");
+  }
+
+  if (admin) {
+    await ensureAcceptedConnection(admin, invite.owner_id, userId);
+  }
+
+  const writeClient = admin || supabase;
+  const { data: share, error: shareErr } = await writeClient
+    .from("prospect_shares")
+    .upsert({
+      prospect_id: invite.prospect_id,
+      owner_id: invite.owner_id,
+      shared_with_id: userId,
+      permission: invite.permission,
+    }, { onConflict: "prospect_id,shared_with_id" })
+    .select("id, prospect_id, owner_id, shared_with_id, permission, created_at")
+    .single();
+  if (shareErr) {
+    if (shareErr.message?.includes("row-level security")) {
+      throw new ServiceError("No se pudo crear el acceso. Asegúrate de estar conectado al dueño.", 403);
+    }
+    throw new ServiceError(shareErr.message, 400);
+  }
+
+  await writeClient
+    .from("prospect_share_invites")
+    .update({ redeemed_count: (invite.redeemed_count || 0) + 1 })
+    .eq("id", invite.id);
+
+  const { data: prospect } = await writeClient
+    .from("prospects")
+    .select("id, prospect_code, name, name1, name2")
+    .eq("id", invite.prospect_id)
+    .maybeSingle();
+  const prospectName = prospectDisplayName(prospect);
+
+  try {
+    await postAccessGrantedMessage(writeClient, {
+      ownerId: invite.owner_id,
+      recipientId: userId,
+      shareId: share.id,
+      prospectId: invite.prospect_id,
+      prospectName,
+      prospectCode: prospect?.prospect_code,
+      permission: invite.permission,
+    });
+  } catch {
+    // Acceso ya creado.
+  }
+
+  const profiles = await loadProfiles(writeClient, [invite.owner_id, userId]);
+  notifyProspectShared(userId, {
+    ownerId: invite.owner_id,
+    ownerName: profileName(profiles.get(invite.owner_id)),
+    prospectId: invite.prospect_id,
+    prospectName,
+  }).catch(() => {});
+
+  return {
+    share: mapShare(share, profiles, new Map(prospect ? [[prospect.id, prospect]] : [])),
+    owner_id: invite.owner_id,
+    prospect_id: invite.prospect_id,
+    permission: invite.permission,
+    path: `/red/contacto/${invite.owner_id}/expediente/${invite.prospect_id}`,
+  };
+}
+
 export async function getSharedProspect(supabase, userId, prospectId) {
   if (!isUuid(prospectId)) throw new ServiceError("Expediente inválido.");
 
@@ -222,7 +591,7 @@ export async function getSharedProspect(supabase, userId, prospectId) {
 
   const { data: share } = await supabase
     .from("prospect_shares")
-    .select("permission")
+    .select("id, permission, owner_id")
     .eq("prospect_id", prospectId)
     .eq("shared_with_id", userId)
     .maybeSingle();
@@ -236,7 +605,13 @@ export async function getSharedProspect(supabase, userId, prospectId) {
   if (error) throw new ServiceError(error.message, 500);
   assertFound(prospect, "Expediente no encontrado.");
   const tools = await loadProspectTools(supabase, prospectId);
-  return { prospect, permission: share.permission, tools };
+  return {
+    prospect,
+    permission: share.permission,
+    share_id: share.id,
+    owner_id: share.owner_id,
+    tools,
+  };
 }
 
 async function loadProspectTools(supabase, prospectId) {

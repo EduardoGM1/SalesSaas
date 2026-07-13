@@ -488,6 +488,34 @@ router.post("/prospects/:id/shares", async (req, res) => {
   await runService(res, () => sharingService.createShare(a.supabase, a.userId, req.params.id, body), { wrap: "data", successStatus: 201 });
 });
 
+router.post("/prospects/:id/share-invites", async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  const body = parseJsonBody(req, res) || {};
+  await runService(res, () => sharingService.createShareInvite(a.supabase, a.userId, req.params.id, body), { wrap: "data", successStatus: 201 });
+});
+
+router.post("/share-invites/:token/redeem", async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  await runService(res, () => sharingService.redeemShareInvite(a.supabase, a.userId, req.params.token), { wrap: "data" });
+});
+
+router.post("/shares/:id/permission-requests", async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  const body = parseJsonBody(req, res) || {};
+  await runService(res, () => sharingService.requestPermissionUpgrade(a.supabase, a.userId, req.params.id, body), { wrap: "data", successStatus: 201 });
+});
+
+router.post("/share-permission-requests/:id/decide", async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  const body = parseJsonBody(req, res);
+  if (!body) return;
+  await runService(res, () => sharingService.decidePermissionRequest(a.supabase, a.userId, req.params.id, body), { wrap: "data" });
+});
+
 router.patch("/shares/:id", async (req, res) => {
   const a = await requireAuth(req, res);
   if (!a) return;
