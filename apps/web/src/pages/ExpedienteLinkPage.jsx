@@ -4,7 +4,6 @@ import { useI18n } from "@/hooks/use-i18n.js";
 import { fetchSession } from "@/lib/session-api.js";
 import { sharingApi } from "@/lib/network-api.js";
 import { useDbStore } from "@/stores/db-store";
-import { isClientDeleted } from "@/lib/clients";
 import { isSupabaseConfigured } from "@/lib/supabase/config.js";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -28,7 +27,7 @@ export function ExpedienteLinkPage() {
 
       if (!isSupabaseConfigured()) {
         const local = useDbStore.getState().getClient(prospectId);
-        if (local && !isClientDeleted(local)) {
+        if (local) {
           navigate(`/clients/${prospectId}`, { replace: true });
           return;
         }
@@ -44,7 +43,7 @@ export function ExpedienteLinkPage() {
       }
 
       const local = useDbStore.getState().getClient(prospectId);
-      if (local && !isClientDeleted(local)) {
+      if (local) {
         navigate(`/clients/${prospectId}`, { replace: true });
         return;
       }
