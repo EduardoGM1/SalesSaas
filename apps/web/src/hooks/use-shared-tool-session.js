@@ -9,7 +9,7 @@ import { useI18n } from "@/hooks/use-i18n.js";
 export function useSharedToolSession(prospectId, contactId, section = "detail") {
   const { t } = useI18n();
   const [loading, setLoading] = useState(true);
-  const [permission, setPermission] = useState("view");
+  const [permission, setPermission] = useState(null);
   const [prospect, setProspect] = useState(null);
   const [tools, setTools] = useState({});
   const onDataChangeRef = useRef(null);
@@ -59,12 +59,12 @@ export function useSharedToolSession(prospectId, contactId, section = "detail") 
   const collab = useExpedienteCollab({
     prospectId,
     section,
-    wantEdit: canEdit && section !== "detail",
+    wantEdit: !loading && canEdit && section !== "detail",
     enabled: !!prospectId,
     onDataChange: (payload) => onDataChangeRef.current?.(payload),
   });
 
-  const readOnly = !canEdit || collab.sectionLocked;
+  const readOnly = loading || !canEdit || collab.sectionLocked;
   const backHref = contactId
     ? `/red/contacto/${contactId}/expediente/${prospectId}`
     : `/network`;

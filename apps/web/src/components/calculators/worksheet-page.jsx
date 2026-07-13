@@ -101,7 +101,7 @@ export function WorksheetPage({ clientId, shared }: WorksheetPageProps) {
           )}
         </div>
 
-        <SharedToolBanner show={isShared && readOnly && !lockedBy} lockedBy={lockedBy} peers={peers} />
+        <SharedToolBanner show={ready && isShared && readOnly && !lockedBy} lockedBy={lockedBy} peers={peers} />
 
         <fieldset className="shared-tool-fieldset" disabled={readOnly}>
         <div className="g2">

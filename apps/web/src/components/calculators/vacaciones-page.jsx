@@ -81,7 +81,7 @@ export function VacacionesPage({ clientId, shared }: VacacionesPageProps) {
           )}
         </div>
 
-        <SharedToolBanner show={isShared && readOnly && !lockedBy} lockedBy={lockedBy} peers={peers} />
+        <SharedToolBanner show={ready && isShared && readOnly && !lockedBy} lockedBy={lockedBy} peers={peers} />
 
         <fieldset className="shared-tool-fieldset" disabled={readOnly}>
         <div className="g2 vacation-calc-layout">
