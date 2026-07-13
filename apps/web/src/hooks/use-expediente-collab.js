@@ -6,6 +6,7 @@ import {
   stopExpedienteCollab,
   updateExpedienteCollabTrack,
   findSectionLocker,
+  isExpedienteUuid,
 } from "@/lib/expediente-collab.js";
 
 /**
@@ -20,9 +21,10 @@ export function useExpedienteCollab({
 }) {
   const [peers, setPeers] = useState([]);
   const [profile, setProfile] = useState(null);
+  const canCollab = enabled && isSupabaseConfigured() && isExpedienteUuid(prospectId);
 
   useEffect(() => {
-    if (!enabled || !isSupabaseConfigured()) return undefined;
+    if (!canCollab) return undefined;
     let active = true;
     fetchProfile()
       .then((p) => {
@@ -30,7 +32,7 @@ export function useExpedienteCollab({
       })
       .catch(() => {});
     return () => { active = false; };
-  }, [enabled]);
+  }, [canCollab]);
 
   const myId = profile?.id || null;
   const lockedBy = useMemo(
@@ -41,37 +43,39 @@ export function useExpedienteCollab({
   const trackState = wantEdit && !sectionLocked ? "editing" : "viewing";
 
   useEffect(() => {
-    if (!enabled || !isSupabaseConfigured() || !prospectId || !profile?.id) {
+    if (!canCollab || !profile?.id) {
       return undefined;
     }
 
+    let cancelled = false;
     startExpedienteCollab({
       prospectId,
       profile,
       section,
       state: trackState,
-      onPeers: setPeers,
+      onPeers: (list) => {
+        if (!cancelled) setPeers(list);
+      },
       onDataChange,
     }).catch(() => {});
 
     return () => {
+      cancelled = true;
       stopExpedienteCollab().catch(() => {});
     };
-  }, [enabled, prospectId, profile?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [canCollab, prospectId, profile?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    if (!enabled || !prospectId || !profile?.id) return;
+    if (!canCollab || !profile?.id) return;
     updateExpedienteCollabTrack({ section, state: trackState }).catch(() => {});
-  }, [enabled, prospectId, profile?.id, section, trackState]);
+  }, [canCollab, prospectId, profile?.id, section, trackState]);
 
   const otherPeers = useMemo(
     () => (peers || []).filter((p) => p.user_id !== myId),
     [peers, myId],
   );
 
-  const refreshPeers = useCallback(() => {
-    // presence sync pushes via onPeers; no-op helper for callers
-  }, []);
+  const refreshPeers = useCallback(() => {}, []);
 
   return {
     peers: otherPeers,

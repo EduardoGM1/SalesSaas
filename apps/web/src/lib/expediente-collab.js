@@ -1,6 +1,11 @@
 /**
- * Colaboración por expediente: Presence + Postgres Changes en un solo canal.
- * Topic: expediente:{prospectId}
+ * Colaboración por expediente:
+ * - Presence (privado): expediente:{prospectId}
+ * - Postgres Changes (público): expediente-data:{prospectId}
+ *
+ * No mezclar presence privado + postgres_changes en el mismo canal:
+ * Realtime Authorization solo aplica a Presence/Broadcast y puede dejar
+ * el canal en CHANNEL_ERROR sin avatares ni sync.
  */
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { createClient, primeRealtimeAuth } from "@/lib/supabase/client";
@@ -8,19 +13,29 @@ import { fetchRealtimeSession } from "@/lib/presence-api.js";
 import { ensureRealtimeReady, removeChannelSafe } from "@/lib/presence/realtime.js";
 
 const DEBOUNCE_MS = 300;
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-let channel = null;
+let presenceChannel = null;
+let dataChannel = null;
 let activeProspectId = null;
-let channelJoined = false;
+let presenceJoined = false;
+let dataJoined = false;
 let debounceTimer = null;
 let onPeersCb = null;
 let onDataChangeCb = null;
-let myUserId = null;
 let lastTrack = null;
 let pagehideBound = false;
 
 export function expedienteTopic(prospectId) {
   return `expediente:${prospectId}`;
+}
+
+export function expedienteDataTopic(prospectId) {
+  return `expediente-data:${prospectId}`;
+}
+
+export function isExpedienteUuid(id) {
+  return typeof id === "string" && UUID_RE.test(id);
 }
 
 async function ensureBrowserSession(supabase) {
@@ -63,7 +78,7 @@ function presenceListToPeers(ch) {
 
 function emitPeers() {
   try {
-    onPeersCb?.(presenceListToPeers(channel));
+    onPeersCb?.(presenceListToPeers(presenceChannel));
   } catch {
     /* ignore */
   }
@@ -91,30 +106,48 @@ function ensurePagehideListener() {
   window.addEventListener("pagehide", onPageHide);
 }
 
+async function subscribeChannel(ch) {
+  return new Promise((resolve) => {
+    ch.subscribe((status, err) => {
+      if (status === "SUBSCRIBED") {
+        resolve({ ok: true, status });
+        return;
+      }
+      if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+        console.warn("[expediente-collab]", status, err?.message || err || "");
+        resolve({ ok: false, status });
+      }
+    });
+  });
+}
+
 export async function stopExpedienteCollab() {
   clearTimeout(debounceTimer);
   debounceTimer = null;
   onPeersCb = null;
   onDataChangeCb = null;
   lastTrack = null;
-  myUserId = null;
   const sb = createClient();
-  const ch = channel;
-  channel = null;
+  const pCh = presenceChannel;
+  const dCh = dataChannel;
+  presenceChannel = null;
+  dataChannel = null;
   activeProspectId = null;
-  channelJoined = false;
-  if (ch) {
+  presenceJoined = false;
+  dataJoined = false;
+  if (pCh) {
     try {
-      await ch.untrack();
+      await pCh.untrack();
     } catch {
       /* ignore */
     }
-    await removeChannelSafe(sb, ch);
+    await removeChannelSafe(sb, pCh);
   }
+  if (dCh) await removeChannelSafe(sb, dCh);
 }
 
 export async function updateExpedienteCollabTrack({ section, state } = {}) {
-  if (!channel || !channelJoined || !lastTrack) return;
+  if (!presenceChannel || !presenceJoined || !lastTrack) return;
   const next = {
     ...lastTrack,
     section: section || lastTrack.section || "detail",
@@ -123,9 +156,9 @@ export async function updateExpedienteCollabTrack({ section, state } = {}) {
   };
   lastTrack = next;
   try {
-    await channel.track(next);
-  } catch {
-    /* ignore */
+    await presenceChannel.track(next);
+  } catch (err) {
+    console.warn("[expediente-collab] track:", err?.message || err);
   }
 }
 
@@ -150,12 +183,16 @@ export async function startExpedienteCollab(opts) {
   } = opts || {};
 
   if (!isSupabaseConfigured() || !prospectId || !profile?.id) return;
+  if (!isExpedienteUuid(prospectId)) {
+    console.warn("[expediente-collab] prospectId no es UUID, se omite collab:", prospectId);
+    return;
+  }
 
   onPeersCb = onPeers;
   onDataChangeCb = onDataChange;
   ensurePagehideListener();
 
-  if (channelJoined && activeProspectId === prospectId && channel) {
+  if (presenceJoined && dataJoined && activeProspectId === prospectId && presenceChannel) {
     await updateExpedienteCollabTrack({ section, state });
     emitPeers();
     return;
@@ -167,33 +204,12 @@ export async function startExpedienteCollab(opts) {
 
   const supabase = createClient();
   const session = await ensureBrowserSession(supabase);
-  if (!session?.access_token) return;
+  if (!session?.access_token) {
+    console.warn("[expediente-collab] sin sesión realtime");
+    return;
+  }
 
   await ensureRealtimeReady(supabase, session.access_token, 8_000);
-
-  myUserId = profile.id;
-  const topic = expedienteTopic(prospectId);
-  const ch = supabase.channel(topic, {
-    config: { private: true, presence: { key: profile.id } },
-  });
-
-  ch.on("presence", { event: "sync" }, () => emitPeers());
-  ch.on("presence", { event: "join" }, () => emitPeers());
-  ch.on("presence", { event: "leave" }, () => emitPeers());
-
-  ch.on(
-    "postgres_changes",
-    { event: "*", schema: "public", table: "prospects", filter: `id=eq.${prospectId}` },
-    () => scheduleDataChange({ table: "prospects", tool: null }),
-  );
-  ch.on(
-    "postgres_changes",
-    { event: "*", schema: "public", table: "tool_calculations", filter: `prospect_id=eq.${prospectId}` },
-    (payload) => {
-      const tool = payload?.new?.tool || payload?.old?.tool || null;
-      scheduleDataChange({ table: "tool_calculations", tool });
-    },
-  );
 
   const trackPayload = {
     user_id: profile.id,
@@ -204,32 +220,50 @@ export async function startExpedienteCollab(opts) {
     online_at: new Date().toISOString(),
   };
   lastTrack = trackPayload;
-
-  channel = ch;
   activeProspectId = prospectId;
 
-  await new Promise((resolve) => {
-    ch.subscribe(async (status) => {
-      if (status === "SUBSCRIBED") {
-        channelJoined = true;
-        try {
-          await ch.track(trackPayload);
-        } catch {
-          /* ignore */
-        }
-        emitPeers();
-        resolve();
-      }
-      if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
-        channelJoined = false;
-        resolve();
-      }
-    });
+  // 1) Presence privado
+  const pCh = supabase.channel(expedienteTopic(prospectId), {
+    config: { private: true, presence: { key: profile.id } },
   });
+  pCh.on("presence", { event: "sync" }, () => emitPeers());
+  pCh.on("presence", { event: "join" }, () => emitPeers());
+  pCh.on("presence", { event: "leave" }, () => emitPeers());
+  presenceChannel = pCh;
+
+  const pRes = await subscribeChannel(pCh);
+  presenceJoined = pRes.ok;
+  if (pRes.ok) {
+    try {
+      await pCh.track(trackPayload);
+    } catch (err) {
+      console.warn("[expediente-collab] track inicial:", err?.message || err);
+    }
+    emitPeers();
+  }
+
+  // 2) Postgres Changes en canal aparte (no privado)
+  const dCh = supabase.channel(expedienteDataTopic(prospectId));
+  dCh.on(
+    "postgres_changes",
+    { event: "*", schema: "public", table: "prospects", filter: `id=eq.${prospectId}` },
+    () => scheduleDataChange({ table: "prospects", tool: null }),
+  );
+  dCh.on(
+    "postgres_changes",
+    { event: "*", schema: "public", table: "tool_calculations", filter: `prospect_id=eq.${prospectId}` },
+    (payload) => {
+      const tool = payload?.new?.tool || payload?.old?.tool || null;
+      scheduleDataChange({ table: "tool_calculations", tool });
+    },
+  );
+  dataChannel = dCh;
+  const dRes = await subscribeChannel(dCh);
+  dataJoined = dRes.ok;
 }
 
 export function getExpedienteCollabPeers() {
-  return presenceListToPeers(channel);
+  return presenceListToPeers(presenceChannel);
 }
 
 export function findSectionLocker(peers, myId, section) {

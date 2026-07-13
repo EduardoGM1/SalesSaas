@@ -8,6 +8,7 @@ import { resolveToolBackHref } from "@/lib/calculator-nav.js";
 import { ensureProspectIdentity } from "@/lib/clients";
 import { sharingApi } from "@/lib/network-api.js";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
+import { isExpedienteUuid } from "@/lib/expediente-collab.js";
 import { toast } from "@/lib/toast";
 import { useI18n } from "@/hooks/use-i18n.js";
 
@@ -34,7 +35,15 @@ export function useToolSession({ clientId, shared, section }) {
   const saveClient = useDbStore((s) => s.saveClient);
 
   const mode = useShared ? "client" : localReady.mode;
-  const localProspectId = useShared ? null : (localClient?.prospectId || localClient?.id || clientId);
+  const localProspectId = useShared
+    ? null
+    : (isExpedienteUuid(localClient?.prospectId)
+      ? localClient.prospectId
+      : isExpedienteUuid(localClient?.id)
+        ? localClient.id
+        : isExpedienteUuid(clientId)
+          ? clientId
+          : null);
   const onLocalDataChangeRef = useRef(null);
 
   onLocalDataChangeRef.current = async (payload) => {
