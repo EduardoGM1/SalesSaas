@@ -2082,6 +2082,7 @@ select.collab-field-locked {
 .exp-presence-peer {
   position: relative;
   margin-left: -6px;
+  cursor: default;
 }
 
 .exp-presence-peer:first-child {
@@ -2108,15 +2109,43 @@ select.collab-field-locked {
   border: 2px solid var(--surface);
 }
 
-.exp-section-lock-banner {
-  margin-bottom: 14px;
-  padding: 10px 14px;
-  border-radius: 10px;
-  background: color-mix(in srgb, var(--yellow, #d97706) 14%, transparent);
-  border: 1px solid color-mix(in srgb, var(--yellow, #d97706) 30%, transparent);
-  color: var(--text);
-  font-size: 13px;
+.exp-presence-tooltip {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 8px);
+  transform: translateX(-50%) translateY(4px);
+  z-index: 40;
+  max-width: 220px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: var(--text, #0f172a);
+  color: var(--surface, #fff);
+  font-size: 12px;
   font-weight: 600;
+  line-height: 1.3;
+  white-space: nowrap;
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.18);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.12s ease, transform 0.12s ease, visibility 0.12s;
+}
+
+.exp-presence-tooltip::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  margin-left: -5px;
+  border: 5px solid transparent;
+  border-top-color: var(--text, #0f172a);
+}
+
+.exp-presence-peer:hover .exp-presence-tooltip,
+.exp-presence-peer:focus-visible .exp-presence-tooltip {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) translateY(0);
 }
 
 .shared-tool-fieldset {

@@ -99,11 +99,11 @@ export function useToolSession({ clientId, shared, section }) {
   const saveBucket = useCallback(async (tool, data) => {
     const pid = useShared ? shared?.prospectId : localProspectId;
     if (pid) markLocalToolSave(pid, tool);
-    await collab?.unlockField?.();
     if (useShared) {
       await sharedSession.saveTool(tool, data);
       return;
     }
+    void collab?.unlockField?.();
     saveToolBucket(tool, mode, data, clientId);
   }, [useShared, sharedSession.saveTool, saveToolBucket, mode, clientId, shared?.prospectId, localProspectId, collab]);
 

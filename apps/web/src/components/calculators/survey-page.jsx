@@ -176,7 +176,7 @@ export function SurveyPage({ clientId, shared }: SurveyPageProps) {
           )}
         </div>
 
-        <SharedToolBanner show={ready && isShared && readOnly && !lockedBy} lockedBy={lockedBy} peers={peers} />
+        <SharedToolBanner show={ready && isShared && readOnly} peers={peers} />
 
         <fieldset className="shared-tool-fieldset" disabled={readOnly}>
         <div className={`card client-survey-prospect${isFileMode ? " show" : ""}`}>

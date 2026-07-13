@@ -10,7 +10,7 @@ const SECTION_KEYS = {
 };
 
 /**
- * Ojo gris/verde + avatares. Ambos derivan de la misma lista `peers` de Presence.
+ * Ojo gris/verde + avatares. El nombre se muestra solo al hover del avatar.
  */
 export function ExpedientePresenceBar({ peers = [], className = "" }) {
   const { t } = useI18n();
@@ -33,12 +33,13 @@ export function ExpedientePresenceBar({ peers = [], className = "" }) {
           {peers.map((peer) => {
             const sectionKey = SECTION_KEYS[peer.section] || SECTION_KEYS.detail;
             const editing = peer.state === "editing";
-            const title = `${peer.name} · ${t(sectionKey)}${editing ? ` (${t("collab.editing")})` : ""}`;
+            const tip = `${peer.name} · ${t(sectionKey)}${editing ? ` (${t("collab.editing")})` : ""}`;
             return (
               <div
                 key={peer.user_id}
                 className={`exp-presence-peer${editing ? " is-editing" : ""}`}
-                title={title}
+                tabIndex={0}
+                aria-label={tip}
               >
                 <NetworkUserAvatar
                   user={{ id: peer.user_id, full_name: peer.name, avatar_url: peer.avatar_url }}
@@ -46,21 +47,14 @@ export function ExpedientePresenceBar({ peers = [], className = "" }) {
                   size="md"
                 />
                 {editing && <span className="exp-presence-edit-dot" aria-hidden="true" />}
+                <span className="exp-presence-tooltip" role="tooltip">
+                  {tip}
+                </span>
               </div>
             );
           })}
         </div>
       )}
-    </div>
-  );
-}
-
-export function ExpedienteSectionLockBanner({ lockedBy }) {
-  const { t } = useI18n();
-  if (!lockedBy) return null;
-  return (
-    <div className="exp-section-lock-banner" role="status">
-      {t("collab.sectionLocked", { name: lockedBy.name || t("collab.someone") })}
     </div>
   );
 }

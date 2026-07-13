@@ -56,7 +56,7 @@ export function AnalysisPage({ clientId, shared }: { clientId?; shared? }) {
           <PageBack inline href={backHref} />
         </div>
 
-        <SharedToolBanner show={ready && isShared && readOnly && !lockedBy} lockedBy={lockedBy} peers={peers} />
+        <SharedToolBanner show={ready && isShared && readOnly} peers={peers} />
 
         <div className="card">
           <div className="card-heading">{t("tools.survey.patternTitle")}</div>

@@ -92,7 +92,8 @@ export function useSharedToolSession(prospectId, contactId, section = "detail") 
 
   const saveTool = useCallback(async (tool, data) => {
     markLocalToolSave(prospectId, tool);
-    await collab.unlockField?.();
+    // No bloquear el guardado: el peer ve el unlock en cuanto Presence sync.
+    void collab.unlockField?.();
     const saved = await sharingApi.saveTool(prospectId, tool, data);
     bumpTools((prev) => ({ ...prev, [tool]: saved }));
     return saved;

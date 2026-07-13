@@ -8,7 +8,7 @@ import { createClient, primeRealtimeAuth } from "@/lib/supabase/client";
 import { fetchRealtimeSession } from "@/lib/presence-api.js";
 import { ensureRealtimeReady, removeChannelSafe } from "@/lib/presence/realtime.js";
 
-const DEBOUNCE_MS = 200;
+const DEBOUNCE_MS = 50;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 /** Locks de campo más viejos que esto se ignoran en clientes (desconexión / stale). */
 export const FIELD_LOCK_TTL_MS = 60_000;
@@ -19,6 +19,7 @@ let activeProspectId = null;
 let presenceJoined = false;
 let dataJoined = false;
 let debounceTimer = null;
+let pendingDataChange = null;
 let onPeersCb = null;
 let onDataChangeCb = null;
 let lastTrack = null;
@@ -90,14 +91,14 @@ function emitPeers() {
 
 function shouldEmitDataChange(payload) {
   const now = Date.now();
-  // Colapsar cualquier ráfaga del mismo tool en 2s (INSERT+UPDATE, ecos, etc.)
+  // Tras coalescer INSERT+UPDATE, evitar re-emitir el mismo tool en ~0.9s.
   const key = payload?.table === "tool_calculations" && payload?.tool
     ? `tool:${payload.tool}`
     : payload?.table === "prospects"
       ? `prospects`
       : `other:${payload?.table}:${payload?.commit_timestamp || now}`;
   const prev = recentEventKeys.get(key);
-  if (prev && now - prev < 2000) return false;
+  if (prev && now - prev < 900) return false;
   recentEventKeys.set(key, now);
   if (recentEventKeys.size > 50) {
     for (const [k, t] of recentEventKeys) {
@@ -107,8 +108,36 @@ function shouldEmitDataChange(payload) {
   return true;
 }
 
+function preferDataPayload(prev, next) {
+  if (!prev) return next;
+  if (!next) return prev;
+  const prevHas = prev.data != null && typeof prev.data === "object";
+  const nextHas = next.data != null && typeof next.data === "object";
+  if (nextHas && !prevHas) return next;
+  return next;
+}
+
+function emitPendingDataChange(payload) {
+  if (!payload) return;
+  if (!shouldEmitDataChange(payload)) {
+    console.info("[expediente-collab] postgres deduped", { tool: payload?.tool });
+    return;
+  }
+  const emitId = `${payload?.table}:${payload?.tool}:${payload?.commit_timestamp || "na"}`;
+  console.info("[expediente-collab] postgres emit→handler", {
+    emitId,
+    at: Date.now(),
+    tool: payload?.tool,
+    hasData: payload?.data != null,
+  });
+  try {
+    onDataChangeCb?.({ ...payload, eventId: emitId });
+  } catch {
+    /* ignore */
+  }
+}
+
 function scheduleDataChange(payload) {
-  // Un log por cada callback Realtime (antes de dedupe/debounce) para diagnosticar ecos.
   const eventId = `${payload?.table || "?"}:${payload?.tool || "-"}:${payload?.commit_timestamp || Date.now()}:${Math.random().toString(36).slice(2, 7)}`;
   console.info("[expediente-collab] postgres raw", {
     eventId,
@@ -117,22 +146,33 @@ function scheduleDataChange(payload) {
     tool: payload?.tool,
     eventType: payload?.eventType,
     commit_timestamp: payload?.commit_timestamp,
+    hasData: payload?.data != null,
     channel: activeProspectId ? expedienteDataTopic(activeProspectId) : null,
   });
-  if (!shouldEmitDataChange(payload)) {
-    console.info("[expediente-collab] postgres deduped", { eventId, tool: payload?.tool });
-    return;
+
+  // Coalesce INSERT+UPDATE: quedarse con el payload más completo y emitir una sola vez (~50ms).
+  if (
+    pendingDataChange
+    && payload?.table === pendingDataChange.table
+    && (payload?.tool || null) === (pendingDataChange.tool || null)
+  ) {
+    pendingDataChange = preferDataPayload(pendingDataChange, payload);
+  } else if (pendingDataChange) {
+    const flush = pendingDataChange;
+    pendingDataChange = payload;
+    clearTimeout(debounceTimer);
+    debounceTimer = null;
+    emitPendingDataChange(flush);
+  } else {
+    pendingDataChange = payload;
   }
+
   clearTimeout(debounceTimer);
   debounceTimer = setTimeout(() => {
     debounceTimer = null;
-    const emitId = `${payload?.table}:${payload?.tool}:${payload?.commit_timestamp || "na"}`;
-    console.info("[expediente-collab] postgres emit→handler", { emitId, at: Date.now(), tool: payload?.tool });
-    try {
-      onDataChangeCb?.({ ...payload, eventId: emitId });
-    } catch {
-      /* ignore */
-    }
+    const pending = pendingDataChange;
+    pendingDataChange = null;
+    emitPendingDataChange(pending);
   }, DEBOUNCE_MS);
 }
 
@@ -185,6 +225,7 @@ async function subscribeChannel(ch) {
 async function tearDownChannels() {
   clearTimeout(debounceTimer);
   debounceTimer = null;
+  pendingDataChange = null;
   clearFocusHeartbeat();
   const sb = createClient();
   const pCh = presenceChannel;
