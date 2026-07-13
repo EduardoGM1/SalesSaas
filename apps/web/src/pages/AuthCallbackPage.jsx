@@ -2,11 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { notifyAuthChanged } from "@/lib/session-api.js";
 import { useI18n } from "@/hooks/use-i18n.js";
-
-function safeNext(value) {
-  if (!value || !value.startsWith("/") || value.startsWith("//")) return "/";
-  return value;
-}
+import { safeNextPath } from "@/lib/safe-next.js";
 
 export function AuthCallbackPage() {
   const { t } = useI18n();
@@ -18,7 +14,7 @@ export function AuthCallbackPage() {
     let active = true;
 
     async function finish() {
-      const next = safeNext(searchParams.get("next"));
+      const next = safeNextPath(searchParams.get("next"));
       const code = searchParams.get("code");
       const tokenHash = searchParams.get("token_hash");
       const type = searchParams.get("type");

@@ -5,6 +5,7 @@ import { isSupabaseConfigured } from "@/lib/supabase/config.js";
 import { notifyAuthChanged } from "@/lib/session-api.js";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { AuthField } from "@/components/auth/auth-field.jsx";
+import { safeNextPath } from "@/lib/safe-next.js";
 
 const QUERY_KEYS = {
   auth: "auth.login.errorAuth",
@@ -17,16 +18,17 @@ export function LoginPage() {
   const [searchParams] = useSearchParams();
   const [pending, setPending] = useState(false);
   const errorKey = searchParams.get("error");
+  const nextPath = safeNextPath(searchParams.get("next"), "/");
   const [error, setError] = useState(errorKey ? t(QUERY_KEYS[errorKey] ?? "auth.login.errorGeneric") : null);
 
   useEffect(() => {
     if (!isSupabaseConfigured()) return;
     fetch("/api/v1/auth/session", { credentials: "include" })
       .then((r) => {
-        if (r.ok) navigate("/", { replace: true });
+        if (r.ok) navigate(nextPath, { replace: true });
       })
       .catch(() => {});
-  }, [navigate]);
+  }, [navigate, nextPath]);
 
   const onSubmit = async (e) => {
     e.preventDefault();
@@ -47,7 +49,7 @@ export function LoginPage() {
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body.error ?? t("auth.login.errorGeneric"));
       notifyAuthChanged();
-      navigate("/", { replace: true });
+      navigate(nextPath, { replace: true });
     } catch (err) {
       if (err instanceof Error && err.name === "AbortError") {
         setError(t("auth.login.errorTimeout"));
@@ -58,6 +60,8 @@ export function LoginPage() {
       setPending(false);
     }
   };
+
+  const registerHref = nextPath !== "/" ? `/register?next=${encodeURIComponent(nextPath)}` : "/register";
 
   return (
     <>
@@ -91,7 +95,7 @@ export function LoginPage() {
         </button>
       </form>
       <div className="auth-foot auth-landing-foot">
-        {t("auth.login.noAccount")} <Link to="/register">{t("auth.login.createAccount")}</Link>
+        {t("auth.login.noAccount")} <Link to={registerHref}>{t("auth.login.createAccount")}</Link>
       </div>
     </>
   );

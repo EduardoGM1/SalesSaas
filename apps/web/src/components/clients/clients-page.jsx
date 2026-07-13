@@ -110,7 +110,7 @@ export function ClientsPage() {
                             className="icon-btn"
                             title={t("clients.share")}
                             onClick={() => {
-                              setShareClient({ id: c.id, name: clientDisplayName(c) });
+                              setShareClient(c);
                             }}
                           >
                             <Share2 size={14} />
@@ -134,7 +134,8 @@ export function ClientsPage() {
           open={!!shareClient}
           onOpenChange={(open) => { if (!open) setShareClient(null); }}
           prospectId={shareClient?.id}
-          prospectName={shareClient?.name}
+          prospectName={shareClient ? clientDisplayName(shareClient) : ""}
+          prospect={shareClient}
         />
       )}
 

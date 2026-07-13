@@ -1,12 +1,15 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Check, Lock, Mail, User } from "lucide-react";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { AuthField } from "@/components/auth/auth-field.jsx";
+import { safeNextPath } from "@/lib/safe-next.js";
 
 export function RegisterPage() {
   const { t } = useI18n();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const nextPath = safeNextPath(searchParams.get("next"), "/");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState(null);
   const [message, setMessage] = useState(null);
@@ -34,6 +37,10 @@ export function RegisterPage() {
         navigate(body.redirect, { replace: true });
         return;
       }
+      if (body.session || body.user) {
+        navigate(nextPath, { replace: true });
+        return;
+      }
       setMessage(body.message ?? t("auth.register.success"));
     } catch (err) {
       setError(err instanceof Error ? err.message : t("auth.login.errorGeneric"));
@@ -41,6 +48,8 @@ export function RegisterPage() {
       setPending(false);
     }
   };
+
+  const loginHref = nextPath !== "/" ? `/login?next=${encodeURIComponent(nextPath)}` : "/login";
 
   return (
     <>
@@ -87,7 +96,7 @@ export function RegisterPage() {
         </form>
       )}
       <div className="auth-foot auth-landing-foot">
-        {t("auth.register.hasAccount")} <Link to="/login">{t("auth.register.signIn")}</Link>
+        {t("auth.register.hasAccount")} <Link to={loginHref}>{t("auth.register.signIn")}</Link>
       </div>
     </>
   );

@@ -430,6 +430,7 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
           onOpenChange={setShareOpen}
           prospectId={id}
           prospectName={clientDisplayName(c)}
+          prospect={c}
         />
       )}
 

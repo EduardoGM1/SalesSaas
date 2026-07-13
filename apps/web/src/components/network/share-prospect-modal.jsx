@@ -1,10 +1,14 @@
-
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { SalesModal } from "@/components/ui/sales-modal";
 import { networkApi, sharingApi } from "@/lib/network-api.js";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { toast } from "@/lib/toast";
 import { nudgePushPrompt } from "@/lib/push-prompt.js";
+import {
+  buildExternalShareMessage,
+  canUseWebShare,
+  shareExternally,
+} from "@/lib/share-external.js";
 
 const PERM_OPTIONS = [
   { value: "view", key: "network.permView" },
@@ -60,13 +64,32 @@ function ShareRow({ share, onPermissionChange, onRemove, t }) {
   );
 }
 
-export function ShareProspectModal({ open, onOpenChange, prospectId, prospectName }) {
-  const { t } = useI18n();
+export function ShareProspectModal({ open, onOpenChange, prospectId, prospectName, prospect }) {
+  const { t, lang } = useI18n();
+  const [mode, setMode] = useState("internal");
   const [contacts, setContacts] = useState([]);
   const [shares, setShares] = useState([]);
   const [loading, setLoading] = useState(false);
   const [selectedId, setSelectedId] = useState("");
   const [permission, setPermission] = useState("view");
+  const [sharingOut, setSharingOut] = useState(false);
+
+  const clientForShare = useMemo(() => {
+    if (prospect && typeof prospect === "object") {
+      return { ...prospect, id: prospect.id || prospectId };
+    }
+    return { id: prospectId, name: prospectName, name1: prospectName };
+  }, [prospect, prospectId, prospectName]);
+
+  const externalMessage = useMemo(() => {
+    if (!prospectId || typeof window === "undefined") return "";
+    return buildExternalShareMessage({
+      client: clientForShare,
+      origin: window.location.origin,
+      t,
+      lang,
+    });
+  }, [clientForShare, prospectId, t, lang]);
 
   const refresh = async () => {
     if (!prospectId) return;
@@ -86,10 +109,13 @@ export function ShareProspectModal({ open, onOpenChange, prospectId, prospectNam
   };
 
   useEffect(() => {
-    if (open) refresh();
-    else {
+    if (open) {
+      setMode("internal");
+      refresh();
+    } else {
       setSelectedId("");
       setPermission("view");
+      setMode("internal");
     }
   }, [open, prospectId]);
 
@@ -120,6 +146,24 @@ export function ShareProspectModal({ open, onOpenChange, prospectId, prospectNam
     }
   };
 
+  const handleExternalShare = async () => {
+    if (!externalMessage) return;
+    setSharingOut(true);
+    try {
+      const result = await shareExternally({
+        text: externalMessage,
+        title: t("network.shareTitle"),
+      });
+      if (result === "shared" || result === "whatsapp") {
+        toast.success(t("network.shareExternal.done"));
+      }
+    } catch (err) {
+      toast.error(err?.message || t("auth.login.errorGeneric"));
+    } finally {
+      setSharingOut(false);
+    }
+  };
+
   return (
     <SalesModal
       open={open}
@@ -128,61 +172,109 @@ export function ShareProspectModal({ open, onOpenChange, prospectId, prospectNam
       sub={t("network.shareSub", { name: prospectName })}
       maxWidth={600}
     >
-      {loading ? (
-        <div className="dp-empty">{t("common.loading")}</div>
-      ) : contacts.length === 0 ? (
-        <div className="ethic-box">{t("network.shareNeedContacts")}</div>
-      ) : (
-        <>
-          <div className="prospect-grid" style={{ marginBottom: 12 }}>
-            <div className="prospect-field full">
-              <label>{t("network.shareWith")}</label>
-              <select value={selectedId} onChange={(e) => setSelectedId(e.target.value)}>
-                <option value="">{t("network.selectContact")}</option>
-                {contacts
-                  .filter((c) => !shares.some((s) => s.shared_with_id === c.id))
-                  .map((c) => (
-                    <option key={c.id} value={c.id}>{displayName(c)}</option>
-                  ))}
-              </select>
-            </div>
-            <div className="prospect-field">
-              <label>{t("network.permission")}</label>
-              <select value={permission} onChange={(e) => setPermission(e.target.value)}>
-                {PERM_OPTIONS.map(({ value, key }) => (
-                  <option key={value} value={value}>{t(key)}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-          <div className="btn-row" style={{ marginTop: 0, marginBottom: 16 }}>
-            <button type="button" className="btn btn-primary btn-sm" disabled={!selectedId} onClick={handleShare}>
-              {t("network.shareAction")}
+      <div className="share-mode-tabs" role="tablist" aria-label={t("network.shareTitle")}>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={mode === "internal"}
+          className={`share-mode-tab${mode === "internal" ? " on" : ""}`}
+          onClick={() => setMode("internal")}
+        >
+          {t("network.shareModeInternal")}
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={mode === "external"}
+          className={`share-mode-tab${mode === "external" ? " on" : ""}`}
+          onClick={() => setMode("external")}
+        >
+          {t("network.shareModeExternal")}
+        </button>
+      </div>
+
+      {mode === "external" ? (
+        <div className="share-external-panel">
+          <div className="section-label">{t("network.shareExternal.preview")}</div>
+          <pre className="share-external-preview">{externalMessage}</pre>
+          <p className="share-external-hint">{t("network.shareExternal.hint")}</p>
+          <div className="btn-row" style={{ marginTop: 0 }}>
+            <button
+              type="button"
+              className="btn btn-primary"
+              disabled={!prospectId || sharingOut}
+              onClick={handleExternalShare}
+            >
+              {sharingOut
+                ? t("common.loading")
+                : canUseWebShare()
+                  ? t("network.shareExternal.action")
+                  : t("network.shareExternal.actionWhatsApp")}
+            </button>
+            <button type="button" className="btn btn-ghost" onClick={() => onOpenChange(false)}>
+              {t("common.cancel")}
             </button>
           </div>
-        </>
-      )}
-
-      {shares.length > 0 && (
+        </div>
+      ) : (
         <>
-          <div className="section-label">{t("network.currentShares")}</div>
-          <div className="share-list">
-            {shares.map((s) => (
-              <ShareRow
-                key={s.id}
-                share={s}
-                t={t}
-                onPermissionChange={handlePermissionChange}
-                onRemove={handleRemove}
-              />
-            ))}
+          {loading ? (
+            <div className="dp-empty">{t("common.loading")}</div>
+          ) : contacts.length === 0 ? (
+            <div className="ethic-box">{t("network.shareNeedContacts")}</div>
+          ) : (
+            <>
+              <div className="prospect-grid" style={{ marginBottom: 12 }}>
+                <div className="prospect-field full">
+                  <label>{t("network.shareWith")}</label>
+                  <select value={selectedId} onChange={(e) => setSelectedId(e.target.value)}>
+                    <option value="">{t("network.selectContact")}</option>
+                    {contacts
+                      .filter((c) => !shares.some((s) => s.shared_with_id === c.id))
+                      .map((c) => (
+                        <option key={c.id} value={c.id}>{displayName(c)}</option>
+                      ))}
+                  </select>
+                </div>
+                <div className="prospect-field">
+                  <label>{t("network.permission")}</label>
+                  <select value={permission} onChange={(e) => setPermission(e.target.value)}>
+                    {PERM_OPTIONS.map(({ value, key }) => (
+                      <option key={value} value={value}>{t(key)}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div className="btn-row" style={{ marginTop: 0, marginBottom: 16 }}>
+                <button type="button" className="btn btn-primary btn-sm" disabled={!selectedId} onClick={handleShare}>
+                  {t("network.shareAction")}
+                </button>
+              </div>
+            </>
+          )}
+
+          {shares.length > 0 && (
+            <>
+              <div className="section-label">{t("network.currentShares")}</div>
+              <div className="share-list">
+                {shares.map((s) => (
+                  <ShareRow
+                    key={s.id}
+                    share={s}
+                    t={t}
+                    onPermissionChange={handlePermissionChange}
+                    onRemove={handleRemove}
+                  />
+                ))}
+              </div>
+            </>
+          )}
+
+          <div className="btn-row">
+            <button type="button" className="btn btn-ghost" onClick={() => onOpenChange(false)}>{t("common.cancel")}</button>
           </div>
         </>
       )}
-
-      <div className="btn-row">
-        <button type="button" className="btn btn-ghost" onClick={() => onOpenChange(false)}>{t("common.cancel")}</button>
-      </div>
     </SalesModal>
   );
 }
