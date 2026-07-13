@@ -10,7 +10,7 @@ import { ShareProspectModal } from "@/components/network/share-prospect-modal.js
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { sharingApi } from "@/lib/network-api.js";
 import { prospectRowToClient, canEditShared, canCommentShared, canAddToWorkspace } from "@/lib/shared-prospect";
-import { useExpedienteCollab } from "@/hooks/use-expediente-collab.js";
+import { useExpedienteRealtime } from "@/hooks/use-expediente-realtime.js";
 import { ExpedientePresenceBar } from "@/components/clients/expediente-presence-bar.jsx";
 import { Topbar } from "@/components/layout/topbar";
 import { clientDisplayName, ensureProspectIdentity } from "@/lib/clients";
@@ -99,16 +99,15 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
     applySharedPayload(data);
   };
 
-  const collab = useExpedienteCollab({
+  const collab = useExpedienteRealtime({
     prospectId: id,
     section: "detail",
     wantEdit: false,
     enabled: isSupabaseConfigured() && !!id && (sharedRemote || !!localC),
-    onDataChange: (payload) => {
+    toastOnToolUpdate: false,
+    onProspectChange: () => {
       if (!sharedRemote) return;
-      if (payload?.table === "prospects") {
-        reloadRemote().catch(() => {});
-      }
+      reloadRemote().catch(() => {});
     },
   });
 

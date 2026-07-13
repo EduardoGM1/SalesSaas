@@ -1,5 +1,5 @@
 import { cloneElement, isValidElement } from "react";
-import { useFieldLock } from "@/hooks/use-expediente-collab.js";
+import { useFieldLock } from "@/hooks/use-expediente-realtime.js";
 import { useI18n } from "@/hooks/use-i18n.js";
 
 /** ID estable entre clientes: `{tool}:{fieldKey}` */

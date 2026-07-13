@@ -1,21 +1,16 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { sharingApi } from "@/lib/network-api.js";
 import { prospectRowToClient, canEditShared } from "@/lib/shared-prospect";
 import { EMPTY_TOOL_BUCKET } from "@/lib/store-empty.js";
-import { useExpedienteCollab } from "@/hooks/use-expediente-collab.js";
-import { markLocalToolSave, notifyRemoteSectionUpdated, wasLocalToolSaveRecent } from "@/lib/collab-remote-notify.js";
-import { useI18n } from "@/hooks/use-i18n.js";
+import { useExpedienteRealtime } from "@/hooks/use-expediente-realtime.js";
+import { markLocalToolSave } from "@/lib/collab-remote-notify.js";
 
 export function useSharedToolSession(prospectId, contactId, section = "detail") {
-  const { t } = useI18n();
   const [loading, setLoading] = useState(true);
   const [permission, setPermission] = useState(null);
   const [prospect, setProspect] = useState(null);
   const [tools, setTools] = useState({});
   const [toolsRevision, setToolsRevision] = useState(0);
-  const onDataChangeRef = useRef(null);
-  const sectionRef = useRef(section);
-  sectionRef.current = section;
 
   const bumpTools = useCallback((updater) => {
     setTools(updater);
@@ -52,51 +47,29 @@ export function useSharedToolSession(prospectId, contactId, section = "detail") 
 
   const canEdit = canEditShared(permission);
 
-  onDataChangeRef.current = async (payload) => {
-    try {
-      if (payload?.table === "tool_calculations" && payload.tool) {
-        // Eco del propio guardado: ya actualizamos en saveTool; no re-bump.
-        if (wasLocalToolSaveRecent(prospectId, payload.tool)) {
-          return;
-        }
-        if (payload.data != null && typeof payload.data === "object") {
-          bumpTools((prev) => ({ ...prev, [payload.tool]: payload.data }));
-        } else {
-          await reloadTool(payload.tool);
-        }
-        if (payload.tool === sectionRef.current) {
-          notifyRemoteSectionUpdated({
-            prospectId,
-            tool: payload.tool,
-            message: t("collab.remoteUpdated"),
-            eventId: payload.eventId || `${payload.tool}:${payload.commit_timestamp}`,
-            source: "shared-session",
-          });
-        }
-        return;
-      }
-      if (payload?.table === "prospects") {
-        // Solo actualizar prospecto — NO recargar tools (pisaría ediciones en curso).
-        if (payload.data && typeof payload.data === "object") {
-          setProspect(prospectRowToClient(payload.data));
-        } else {
-          const data = await sharingApi.getSharedProspect(prospectId);
-          setPermission(data.permission);
-          setProspect(prospectRowToClient(data.prospect));
-        }
-      }
-    } catch {
-      /* ignore */
-    }
-  };
-
-  const collab = useExpedienteCollab({
+  const collab = useExpedienteRealtime({
     prospectId,
     section,
     wantEdit: !loading && canEdit && section !== "detail",
     enabled: !!prospectId,
-    onDataChange: (payload) => onDataChangeRef.current?.(payload),
+    toastOnToolUpdate: true,
+    onToolChange: (payload) => {
+      if (payload?.localEcho) return;
+      if (payload?.data != null && typeof payload.data === "object") {
+        bumpTools((prev) => ({ ...prev, [payload.tool]: payload.data }));
+      } else if (payload?.tool) {
+        reloadTool(payload.tool).catch(() => {});
+      }
+    },
+    onProspectChange: (payload) => {
+      if (payload?.data && typeof payload.data === "object") {
+        setProspect(prospectRowToClient(payload.data));
+      }
+    },
   });
+
+  // Revision de form desde bump local (toast vive solo en el hook realtime)
+  const formRevision = toolsRevision;
 
   const readOnly = loading || !canEdit;
   const backHref = contactId
@@ -126,7 +99,7 @@ export function useSharedToolSession(prospectId, contactId, section = "detail") 
     reload,
     reloadTool,
     patchProspect,
-    toolsRevision,
+    toolsRevision: formRevision,
     peers: collab.peers,
     lockedBy: collab.lockedBy,
     sectionLocked: collab.sectionLocked,
@@ -144,7 +117,7 @@ export function useSharedToolSession(prospectId, contactId, section = "detail") 
     reload,
     reloadTool,
     patchProspect,
-    toolsRevision,
+    formRevision,
     collab,
   ]);
 }

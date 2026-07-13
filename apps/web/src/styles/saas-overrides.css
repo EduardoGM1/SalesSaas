@@ -1988,7 +1988,7 @@ div.modal-backdrop.sales-modal-overlay:not([hidden]) {
   font-weight: 600;
 }
 
-/* Field-level lock (Presence focused_field) */
+/* Field-level lock (Broadcast field_lock) */
 .collab-field-wrap {
   position: relative;
   flex: 1;
