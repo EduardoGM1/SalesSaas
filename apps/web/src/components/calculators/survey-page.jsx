@@ -15,7 +15,7 @@ import { useI18n } from "@/hooks/use-i18n.js";
 import { useMoney } from "@/hooks/use-money.js";
 import { useToolSession } from "@/hooks/use-tool-session.js";
 import { CollabField, collabFieldId } from "@/components/clients/collab-field.jsx";
-import { applyRemoteFormState, fieldKeyFromCollabId, resetFormBaseline } from "@/lib/collab-form-merge.js";
+import { applyRemoteFormState, fieldKeyFromCollabId, markFieldsDirty, clearDirtyFields } from "@/lib/collab-form-merge.js";
 import { useDbStore } from "@/stores/db-store";
 import { shallow } from "zustand/shallow";
 
@@ -57,7 +57,10 @@ export function SurveyPage({ clientId, shared }: SurveyPageProps) {
   const [saved, setSaved] = useState(false);
   const [saveToolOpen, setSaveToolOpen] = useState(false);
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
-  const baselineRef = useRef(null);
+  const dirtyKeysRef = useRef(new Set());
+  const hydratedRef = useRef(false);
+  const focusedKeyRef = useRef(null);
+  focusedKeyRef.current = fieldKeyFromCollabId(collab?.myFocusedField, "survey");
 
   useEffect(() => {
     if (!ready) return;
@@ -65,27 +68,38 @@ export function SurveyPage({ clientId, shared }: SurveyPageProps) {
     const loaded: Record<string, string> = { ...EMPTY_DATA };
     if (Object.keys(bucket).length) {
       Object.entries(bucket).forEach(([k, v]) => { loaded[k] = String(v); });
-      if (bucket.stype) setSType(String(bucket.stype));
-      if (bucket.futureType) setFutureType(bucket.futureType === "dream" ? "dream" : "real");
+      if (bucket.stype != null && !dirtyKeysRef.current.has("__stype")) {
+        setSType(String(bucket.stype) || "hotel");
+      }
+      if (bucket.futureType != null && !dirtyKeysRef.current.has("__futureType")) {
+        setFutureType(bucket.futureType === "dream" ? "dream" : "real");
+      }
     }
-    if (isFileMode && clientId) {
-      const c = getClient(clientId);
-      if (c) {
+    // Relleno desde prospecto SOLO en la primera hidratación (si no, pisa ediciones locales).
+    if (!hydratedRef.current) {
+      if (isFileMode && clientId) {
+        const c = getClient(clientId);
+        if (c) {
+          loaded.svp_name1 = loaded.svp_name1 || c.name1 || c.name || "";
+          loaded.svp_country = loaded.svp_country || c.country || "";
+          loaded.svp_occ1 = loaded.svp_occ1 || c.occupation1 || "";
+          loaded.svp_city = loaded.svp_city || c.city || "";
+        }
+      } else if (isFileMode && isShared && session.prospect) {
+        const c = session.prospect;
         loaded.svp_name1 = loaded.svp_name1 || c.name1 || c.name || "";
         loaded.svp_country = loaded.svp_country || c.country || "";
         loaded.svp_occ1 = loaded.svp_occ1 || c.occupation1 || "";
         loaded.svp_city = loaded.svp_city || c.city || "";
       }
-    } else if (isFileMode && isShared && session.prospect) {
-      const c = session.prospect;
-      loaded.svp_name1 = loaded.svp_name1 || c.name1 || c.name || "";
-      loaded.svp_country = loaded.svp_country || c.country || "";
-      loaded.svp_occ1 = loaded.svp_occ1 || c.occupation1 || "";
-      loaded.svp_city = loaded.svp_city || c.city || "";
     }
-    const focusedKey = fieldKeyFromCollabId(collab?.myFocusedField, "survey");
-    setData((prev) => applyRemoteFormState(prev, loaded, { baselineRef, focusedKey }));
-  }, [ready, clientId, isFileMode, isShared, getBucket, getClient, prospectId, shared?.prospectId, session.prospect?.id, toolsRevision, collab?.myFocusedField]);
+    setData((prev) => applyRemoteFormState(prev, loaded, {
+      dirtyKeys: dirtyKeysRef.current,
+      focusedKey: focusedKeyRef.current,
+      hydratedRef,
+    }));
+    // Importante: NO depender de myFocusedField — rehidratar al enfocar provocaba carreras.
+  }, [ready, clientId, isFileMode, isShared, getBucket, getClient, prospectId, shared?.prospectId, toolsRevision]);
 
   const client = isFileMode ? (isShared ? session.prospect : (clientId ? getClient(clientId) : undefined)) : undefined;
   const countries = Object.keys(COUNTRY_CITY);
@@ -123,6 +137,7 @@ export function SurveyPage({ clientId, shared }: SurveyPageProps) {
   };
 
   const update = (k, v) => {
+    markFieldsDirty(dirtyKeysRef, k === "svp_country" ? [k, "svp_city"] : k);
     setData((d) => {
       const next = { ...d, [k]: v };
       if (k === "svp_country") next.svp_city = "";
@@ -138,6 +153,8 @@ export function SurveyPage({ clientId, shared }: SurveyPageProps) {
     }
   };
 
+  const onEditStart = (key) => markFieldsDirty(dirtyKeysRef, key);
+
   const handleSave = async () => {
     if (readOnly) return;
     const errors: Record<string, string> = {};
@@ -148,7 +165,8 @@ export function SurveyPage({ clientId, shared }: SurveyPageProps) {
     if (Object.keys(errors).length) return;
     await saveBucket("survey", { ...data, stype: sType, futureType });
     if (isFileMode) await syncProspectFields(prospectPatchFromData(data));
-    resetFormBaseline(baselineRef, { ...data, stype: sType, futureType });
+    clearDirtyFields(dirtyKeysRef);
+    hydratedRef.current = true;
     if (!isFileMode) { setSaveToolOpen(true); return; }
     setSaved(true);
     setTimeout(() => setSaved(false), 1600);
@@ -160,7 +178,7 @@ export function SurveyPage({ clientId, shared }: SurveyPageProps) {
     setData(cleared);
     setSType("hotel");
     setFutureType("real");
-    resetFormBaseline(baselineRef, { ...cleared, stype: "hotel", futureType: "real" });
+    clearDirtyFields(dirtyKeysRef);
     if (ready) {
       await saveBucket("survey", { ...cleared, stype: "hotel", futureType: "real" });
     }
@@ -186,7 +204,7 @@ export function SurveyPage({ clientId, shared }: SurveyPageProps) {
           <div className="client-survey-compact">
             <div className="client-survey-cfield">
               <label>{t("tools.survey.name")}</label>
-              <CollabField collab={collab} fieldId={fid("svp_name1")} disabled={readOnly}>
+              <CollabField collab={collab} fieldId={fid("svp_name1")} dirtyKeysRef={dirtyKeysRef} disabled={readOnly}>
                 {(lp) => (
                   <input
                     type="text"
@@ -213,7 +231,7 @@ export function SurveyPage({ clientId, shared }: SurveyPageProps) {
             <div className="client-survey-crow">
               <div className="client-survey-cfield">
                 <label>{t("tools.survey.country")}</label>
-                <CollabField collab={collab} fieldId={fid("svp_country")} disabled={readOnly}>
+                <CollabField collab={collab} fieldId={fid("svp_country")} dirtyKeysRef={dirtyKeysRef} disabled={readOnly}>
                   {(lp) => (
                     <select
                       id="svp-country"
@@ -237,7 +255,7 @@ export function SurveyPage({ clientId, shared }: SurveyPageProps) {
               </div>
               <div className="client-survey-cfield">
                 <label>{t("tools.survey.city")}</label>
-                <CollabField collab={collab} fieldId={fid("svp_city")} disabled={readOnly || !data.svp_country}>
+                <CollabField collab={collab} fieldId={fid("svp_city")} dirtyKeysRef={dirtyKeysRef} disabled={readOnly || !data.svp_country}>
                   {(lp) => (
                     <select
                       id="svp-city"
@@ -262,7 +280,7 @@ export function SurveyPage({ clientId, shared }: SurveyPageProps) {
             </div>
             <div className="client-survey-cfield">
               <label>{t("tools.survey.occupation")}</label>
-              <CollabField collab={collab} fieldId={fid("svp_occ1")} disabled={readOnly}>
+              <CollabField collab={collab} fieldId={fid("svp_occ1")} dirtyKeysRef={dirtyKeysRef} disabled={readOnly}>
                 {(lp) => (
                   <input
                     type="text"
@@ -290,7 +308,7 @@ export function SurveyPage({ clientId, shared }: SurveyPageProps) {
             <div className="tool-calc-fields">
               <div className="frow frow-first tool-frow">
                 <div className="flabel">{t("tools.survey.nights")}</div>
-                <CollabField collab={collab} fieldId={fid("nights")} disabled={readOnly}>
+                <CollabField collab={collab} fieldId={fid("nights")} dirtyKeysRef={dirtyKeysRef} disabled={readOnly}>
                   {(lp) => (
                     <input type="number" inputMode="numeric" className={`input-compact tool-num-input ${lp.className || ""}`.trim()} id="sv-nights" min={1} value={data.nights} onFocus={(e) => { lp.onFocus?.(e); selectOnFocus(e); }} onBlur={lp.onBlur} disabled={lp.disabled} readOnly={lp.readOnly} onChange={(e) => update("nights", e.target.value)} />
                   )}
@@ -307,7 +325,7 @@ export function SurveyPage({ clientId, shared }: SurveyPageProps) {
                 <div className="flabel">{t("tools.survey.totalPaid")}</div>
                 <div className="mfield">
                   <span className="mpfx">$</span>
-                  <CollabField collab={collab} fieldId={fid("total")} disabled={readOnly}>
+                  <CollabField collab={collab} fieldId={fid("total")} dirtyKeysRef={dirtyKeysRef} disabled={readOnly}>
                     {(lp) => (
                       <input type="text" inputMode="decimal" id="sv-total" value={data.total} className={lp.className} onFocus={(e) => { lp.onFocus?.(e); selectOnFocus(e); }} onBlur={(e) => { lp.onBlur?.(e); update("total", formatMoneyValue(e.target.value)); }} disabled={lp.disabled} readOnly={lp.readOnly} onChange={(e) => update("total", formatDecimalInput(e.target.value))} />
                     )}
@@ -318,7 +336,7 @@ export function SurveyPage({ clientId, shared }: SurveyPageProps) {
                 <div className="frow tool-frow">
                   <div className="flabel">{t("tools.survey.hotelPct")}</div>
                   <div className="frow-inline">
-                    <CollabField collab={collab} fieldId={fid("hpct")} disabled={readOnly}>
+                    <CollabField collab={collab} fieldId={fid("hpct")} dirtyKeysRef={dirtyKeysRef} disabled={readOnly}>
                       {(lp) => (
                         <input type="number" inputMode="numeric" className={`input-compact tool-num-input ${lp.className || ""}`.trim()} id="sv-hpct" min={1} max={99} value={data.hpct} onFocus={(e) => { lp.onFocus?.(e); selectOnFocus(e); }} onBlur={lp.onBlur} disabled={lp.disabled} readOnly={lp.readOnly} onChange={(e) => update("hpct", e.target.value)} />
                       )}
@@ -358,21 +376,21 @@ export function SurveyPage({ clientId, shared }: SurveyPageProps) {
                 {HIST.map((p) => (
                   <tr key={p}>
                     <td>
-                      <CollabField collab={collab} fieldId={fid(`${p}c`)} disabled={readOnly}>
+                      <CollabField collab={collab} fieldId={fid(`${p}c`)} dirtyKeysRef={dirtyKeysRef} disabled={readOnly}>
                         {(lp) => (
                           <input type="text" inputMode="text" value={data[`${p}c`]} className={lp.className} onFocus={(e) => { lp.onFocus?.(e); selectOnFocus(e); }} onBlur={lp.onBlur} disabled={lp.disabled} readOnly={lp.readOnly} onChange={(e) => update(`${p}c`, e.target.value)} />
                         )}
                       </CollabField>
                     </td>
                     <td className="nc">
-                      <CollabField collab={collab} fieldId={fid(`${p}y`)} disabled={readOnly}>
+                      <CollabField collab={collab} fieldId={fid(`${p}y`)} dirtyKeysRef={dirtyKeysRef} disabled={readOnly}>
                         {(lp) => (
                           <input type="number" inputMode="numeric" value={data[`${p}y`]} className={lp.className} onFocus={(e) => { lp.onFocus?.(e); selectOnFocus(e); }} onBlur={lp.onBlur} disabled={lp.disabled} readOnly={lp.readOnly} onChange={(e) => update(`${p}y`, e.target.value)} />
                         )}
                       </CollabField>
                     </td>
                     <td className="nc">
-                      <CollabField collab={collab} fieldId={fid(`${p}n`)} disabled={readOnly}>
+                      <CollabField collab={collab} fieldId={fid(`${p}n`)} dirtyKeysRef={dirtyKeysRef} disabled={readOnly}>
                         {(lp) => (
                           <input type="number" inputMode="numeric" value={data[`${p}n`]} className={lp.className} onFocus={(e) => { lp.onFocus?.(e); selectOnFocus(e); }} onBlur={lp.onBlur} disabled={lp.disabled} readOnly={lp.readOnly} onChange={(e) => update(`${p}n`, e.target.value)} />
                         )}
@@ -380,7 +398,7 @@ export function SurveyPage({ clientId, shared }: SurveyPageProps) {
                     </td>
                     <td className="mc">
                       <div className="mfield"><span className="mpfx">$</span>
-                        <CollabField collab={collab} fieldId={fid(`${p}a`)} disabled={readOnly}>
+                        <CollabField collab={collab} fieldId={fid(`${p}a`)} dirtyKeysRef={dirtyKeysRef} disabled={readOnly}>
                           {(lp) => (
                             <input type="text" inputMode="decimal" value={data[`${p}a`]} className={lp.className} onFocus={(e) => { lp.onFocus?.(e); selectOnFocus(e); }} onBlur={(e) => { lp.onBlur?.(e); update(`${p}a`, formatMoneyValue(e.target.value)); }} disabled={lp.disabled} readOnly={lp.readOnly} onChange={(e) => update(`${p}a`, formatDecimalInput(e.target.value))} />
                           )}
@@ -433,21 +451,21 @@ export function SurveyPage({ clientId, shared }: SurveyPageProps) {
                 {FUT.map((p) => (
                   <tr key={p}>
                     <td>
-                      <CollabField collab={collab} fieldId={fid(`${p}c`)} disabled={readOnly}>
+                      <CollabField collab={collab} fieldId={fid(`${p}c`)} dirtyKeysRef={dirtyKeysRef} disabled={readOnly}>
                         {(lp) => (
                           <input type="text" inputMode="text" value={data[`${p}c`]} className={lp.className} onFocus={(e) => { lp.onFocus?.(e); selectOnFocus(e); }} onBlur={lp.onBlur} disabled={lp.disabled} readOnly={lp.readOnly} onChange={(e) => update(`${p}c`, e.target.value)} />
                         )}
                       </CollabField>
                     </td>
                     <td className="nc">
-                      <CollabField collab={collab} fieldId={fid(`${p}y`)} disabled={readOnly}>
+                      <CollabField collab={collab} fieldId={fid(`${p}y`)} dirtyKeysRef={dirtyKeysRef} disabled={readOnly}>
                         {(lp) => (
                           <input type="number" inputMode="numeric" value={data[`${p}y`]} className={lp.className} onFocus={(e) => { lp.onFocus?.(e); selectOnFocus(e); }} onBlur={lp.onBlur} disabled={lp.disabled} readOnly={lp.readOnly} onChange={(e) => update(`${p}y`, e.target.value)} />
                         )}
                       </CollabField>
                     </td>
                     <td className="nc">
-                      <CollabField collab={collab} fieldId={fid(`${p}n`)} disabled={readOnly}>
+                      <CollabField collab={collab} fieldId={fid(`${p}n`)} dirtyKeysRef={dirtyKeysRef} disabled={readOnly}>
                         {(lp) => (
                           <input type="number" inputMode="numeric" value={data[`${p}n`]} className={lp.className} onFocus={(e) => { lp.onFocus?.(e); selectOnFocus(e); }} onBlur={lp.onBlur} disabled={lp.disabled} readOnly={lp.readOnly} onChange={(e) => update(`${p}n`, e.target.value)} />
                         )}
@@ -455,7 +473,7 @@ export function SurveyPage({ clientId, shared }: SurveyPageProps) {
                     </td>
                     <td className="mc">
                       <div className="mfield"><span className="mpfx">$</span>
-                        <CollabField collab={collab} fieldId={fid(`${p}a`)} disabled={readOnly}>
+                        <CollabField collab={collab} fieldId={fid(`${p}a`)} dirtyKeysRef={dirtyKeysRef} disabled={readOnly}>
                           {(lp) => (
                             <input type="text" inputMode="decimal" placeholder="0" value={data[`${p}a`]} className={lp.className} onFocus={(e) => { lp.onFocus?.(e); selectOnFocus(e); }} onBlur={(e) => { lp.onBlur?.(e); update(`${p}a`, formatMoneyValue(e.target.value)); }} disabled={lp.disabled} readOnly={lp.readOnly} onChange={(e) => update(`${p}a`, e.target.value)} />
                           )}

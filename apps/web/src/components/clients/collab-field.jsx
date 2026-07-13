@@ -7,19 +7,32 @@ export function collabFieldId(tool, fieldKey) {
   return `${tool}:${fieldKey}`;
 }
 
+function fieldKeyFromId(fieldId) {
+  if (!fieldId || typeof fieldId !== "string") return null;
+  const i = fieldId.indexOf(":");
+  return i >= 0 ? fieldId.slice(i + 1) : fieldId;
+}
+
 /**
  * Envuelve un input/select con bloqueo por campo vía Presence.
- * fieldId estable entre clientes, ej. "survey:svp_name1".
+ * Si se pasa dirtyKeysRef, marca dirty al enfocar (protege contra apply remoto al Guardar).
  */
 export function CollabField({
   collab,
   fieldId,
   disabled = false,
+  dirtyKeysRef = null,
   children,
   className = "",
 }) {
   const { t } = useI18n();
-  const { locked, locker, lockProps } = useFieldLock(collab, fieldId, { disabled });
+  const { locked, locker, lockProps } = useFieldLock(collab, fieldId, {
+    disabled,
+    onEditStart: () => {
+      const key = fieldKeyFromId(fieldId);
+      if (key && dirtyKeysRef?.current) dirtyKeysRef.current.add(key);
+    },
+  });
   const hint = locked && locker
     ? t("collab.fieldLockedBy", { name: locker.name || t("collab.someone") })
     : null;

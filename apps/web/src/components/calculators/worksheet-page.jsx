@@ -16,7 +16,7 @@ import { useI18n } from "@/hooks/use-i18n.js";
 import { useMoney } from "@/hooks/use-money.js";
 import { useToolSession } from "@/hooks/use-tool-session.js";
 import { CollabField, collabFieldId } from "@/components/clients/collab-field.jsx";
-import { applyRemoteFormState, fieldKeyFromCollabId, resetFormBaseline } from "@/lib/collab-form-merge.js";
+import { applyRemoteFormState, fieldKeyFromCollabId, markFieldsDirty, clearDirtyFields } from "@/lib/collab-form-merge.js";
 import { useDbStore } from "@/stores/db-store";
 import { shallow } from "zustand/shallow";
 
@@ -40,7 +40,10 @@ export function WorksheetPage({ clientId, shared }: WorksheetPageProps) {
   const [config, setConfig] = useState<Record<string, string>>({ ...WS_DEFAULTS });
   const [saved, setSaved] = useState(false);
   const [saveToolOpen, setSaveToolOpen] = useState(false);
-  const baselineRef = useRef(null);
+  const dirtyKeysRef = useRef(new Set());
+  const hydratedRef = useRef(false);
+  const focusedKeyRef = useRef(null);
+  focusedKeyRef.current = fieldKeyFromCollabId(collab?.myFocusedField, "worksheet");
 
   useEffect(() => {
     if (!ready) return;
@@ -57,14 +60,17 @@ export function WorksheetPage({ clientId, shared }: WorksheetPageProps) {
       wv: String(b.wv ?? ""), we: String(b.we ?? ""),
       wcc: String(b.wcc ?? ""), wob: String(b.wob ?? ""),
     };
-    const focusedKey = fieldKeyFromCollabId(collab?.myFocusedField, "worksheet");
-    setFields((prev) => applyRemoteFormState(prev, next, { baselineRef, focusedKey }));
-  }, [ready, clientId, getBucket, worksheetConfig, shared?.prospectId, toolsRevision, collab?.myFocusedField]);
+    setFields((prev) => applyRemoteFormState(prev, next, {
+      dirtyKeys: dirtyKeysRef.current,
+      focusedKey: focusedKeyRef.current,
+      hydratedRef,
+    }));
+  }, [ready, clientId, getBucket, worksheetConfig, shared?.prospectId, toolsRevision]);
 
   const handleClear = async () => {
     if (readOnly) return;
     setFields({ ...EMPTY_FIELDS });
-    resetFormBaseline(baselineRef, { ...EMPTY_FIELDS });
+    clearDirtyFields(dirtyKeysRef);
     if (ready) await saveBucket("worksheet", { ...EMPTY_FIELDS, ...config });
   };
 
@@ -73,10 +79,15 @@ export function WorksheetPage({ clientId, shared }: WorksheetPageProps) {
     [fields, config, moneySettings?.currency, moneySettings?.exchangeRate, moneySettings?.language],
   );
 
+  const setField = (key, value) => {
+    markFieldsDirty(dirtyKeysRef, key);
+    setFields((prev) => ({ ...prev, [key]: value }));
+  };
+
   const saveAll = async () => {
     if (readOnly) return;
     await saveBucket("worksheet", { ...fields, ...config });
-    resetFormBaseline(baselineRef, fields);
+    clearDirtyFields(dirtyKeysRef);
     setSaved(true);
     setTimeout(() => setSaved(false), 1600);
   };
@@ -84,7 +95,7 @@ export function WorksheetPage({ clientId, shared }: WorksheetPageProps) {
   const handleSave = async () => {
     if (readOnly) return;
     await saveBucket("worksheet", { ...fields, ...config });
-    resetFormBaseline(baselineRef, fields);
+    clearDirtyFields(dirtyKeysRef);
     if (!isFileMode) { setSaveToolOpen(true); return; }
     setSaved(true);
     setTimeout(() => setSaved(false), 1600);
@@ -92,9 +103,9 @@ export function WorksheetPage({ clientId, shared }: WorksheetPageProps) {
 
   const moneyField = (key: keyof typeof fields) => (
     <div className="mfield"><span className="mpfx">$</span>
-      <CollabField collab={collab} fieldId={fid(key)} disabled={readOnly}>
+      <CollabField collab={collab} fieldId={fid(key)} dirtyKeysRef={dirtyKeysRef} disabled={readOnly}>
         {(lp) => (
-          <input type="text" inputMode="decimal" value={fields[key]} className={lp.className} onFocus={(e) => { lp.onFocus?.(e); selectOnFocus(e); }} onBlur={(e) => { lp.onBlur?.(e); setFields({ ...fields, [key]: formatMoneyValue(e.target.value) }); }} disabled={lp.disabled} readOnly={lp.readOnly} onChange={(e) => setFields({ ...fields, [key]: formatDecimalInput(e.target.value) })} />
+          <input type="text" inputMode="decimal" value={fields[key]} className={lp.className} onFocus={(e) => { lp.onFocus?.(e); selectOnFocus(e); }} onBlur={(e) => { lp.onBlur?.(e); setField(key, formatMoneyValue(e.target.value)); }} disabled={lp.disabled} readOnly={lp.readOnly} onChange={(e) => setField(key, formatDecimalInput(e.target.value))} />
         )}
       </CollabField>
     </div>
@@ -125,9 +136,9 @@ export function WorksheetPage({ clientId, shared }: WorksheetPageProps) {
               <div className="frow tool-frow">
                 <div className="flabel">{t("tools.worksheet.downPct")}</div>
                 <div className="frow-inline">
-                  <CollabField collab={collab} fieldId={fid("we")} disabled={readOnly}>
+                  <CollabField collab={collab} fieldId={fid("we")} dirtyKeysRef={dirtyKeysRef} disabled={readOnly}>
                     {(lp) => (
-                      <input type="number" inputMode="numeric" className={`tool-num-input ${lp.className || ""}`.trim()} min={0} max={100} value={fields.we} onFocus={(e) => { lp.onFocus?.(e); selectOnFocus(e); }} onBlur={lp.onBlur} disabled={lp.disabled} readOnly={lp.readOnly} onChange={(e) => setFields({ ...fields, we: e.target.value })} />
+                      <input type="number" inputMode="numeric" className={`tool-num-input ${lp.className || ""}`.trim()} min={0} max={100} value={fields.we} onFocus={(e) => { lp.onFocus?.(e); selectOnFocus(e); }} onBlur={lp.onBlur} disabled={lp.disabled} readOnly={lp.readOnly} onChange={(e) => setField("we", e.target.value)} />
                     )}
                   </CollabField>
                   <span className="frow-suffix">%</span>

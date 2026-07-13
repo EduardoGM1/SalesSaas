@@ -122,14 +122,15 @@ export function useExpedienteCollab({
 /**
  * Props de bloqueo para un input concreto (mismo Presence que avatares).
  */
-export function useFieldLock(collab, fieldId, { disabled = false } = {}) {
+export function useFieldLock(collab, fieldId, { disabled = false, onEditStart } = {}) {
   const locker = collab?.getFieldLocker?.(fieldId) || null;
   const locked = !!locker && !disabled;
 
   const onFocus = useCallback(() => {
     if (disabled || locked) return;
+    onEditStart?.();
     collab?.lockField?.(fieldId);
-  }, [collab, fieldId, disabled, locked]);
+  }, [collab, fieldId, disabled, locked, onEditStart]);
 
   const onBlur = useCallback(() => {
     if (disabled) return;

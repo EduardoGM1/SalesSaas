@@ -12,7 +12,7 @@ import { useI18n } from "@/hooks/use-i18n.js";
 import { useMoney } from "@/hooks/use-money.js";
 import { useToolSession } from "@/hooks/use-tool-session.js";
 import { CollabField, collabFieldId } from "@/components/clients/collab-field.jsx";
-import { applyRemoteFormState, fieldKeyFromCollabId, resetFormBaseline } from "@/lib/collab-form-merge.js";
+import { applyRemoteFormState, fieldKeyFromCollabId, markFieldsDirty, clearDirtyFields } from "@/lib/collab-form-merge.js";
 import { useDbStore } from "@/stores/db-store";
 import { shallow } from "zustand/shallow";
 
@@ -33,7 +33,10 @@ export function VacacionesPage({ clientId, shared }: VacacionesPageProps) {
   const [fields, setFields] = useState({ ...DEFAULT_FIELDS });
   const [saved, setSaved] = useState(false);
   const [saveToolOpen, setSaveToolOpen] = useState(false);
-  const baselineRef = useRef(null);
+  const dirtyKeysRef = useRef(new Set());
+  const hydratedRef = useRef(false);
+  const focusedKeyRef = useRef(null);
+  focusedKeyRef.current = fieldKeyFromCollabId(collab?.myFocusedField, "vacaciones");
 
   useEffect(() => {
     if (!ready) return;
@@ -46,16 +49,26 @@ export function VacacionesPage({ clientId, shared }: VacacionesPageProps) {
         vi: b.vi === undefined || b.vi === null || String(b.vi) === "" ? "8" : String(b.vi),
       }
       : { ...DEFAULT_FIELDS };
-    const focusedKey = fieldKeyFromCollabId(collab?.myFocusedField, "vacaciones");
-    setFields((prev) => applyRemoteFormState(prev, next, { baselineRef, focusedKey }));
-  }, [ready, clientId, getBucket, shared?.prospectId, toolsRevision, collab?.myFocusedField]);
+    setFields((prev) => applyRemoteFormState(prev, next, {
+      dirtyKeys: dirtyKeysRef.current,
+      focusedKey: focusedKeyRef.current,
+      hydratedRef,
+    }));
+  }, [ready, clientId, getBucket, shared?.prospectId, toolsRevision]);
 
   const handleClear = async () => {
     if (readOnly) return;
     setFields({ ...DEFAULT_FIELDS });
-    resetFormBaseline(baselineRef, { ...DEFAULT_FIELDS });
+    clearDirtyFields(dirtyKeysRef);
     if (ready) await saveBucket("vacaciones", { ...DEFAULT_FIELDS });
   };
+
+  const setField = (key, value) => {
+    markFieldsDirty(dirtyKeysRef, key);
+    setFields((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const onEditStart = (key) => markFieldsDirty(dirtyKeysRef, key);
 
   const r = useMemo(
     () => computeVacaciones(fields),
@@ -70,7 +83,7 @@ export function VacacionesPage({ clientId, shared }: VacacionesPageProps) {
   const handleSave = async () => {
     if (readOnly) return;
     await saveBucket("vacaciones", fields);
-    resetFormBaseline(baselineRef, fields);
+    clearDirtyFields(dirtyKeysRef);
     if (!isFileMode) { setSaveToolOpen(true); return; }
     setSaved(true);
     setTimeout(() => setSaved(false), 1600);
@@ -96,9 +109,9 @@ export function VacacionesPage({ clientId, shared }: VacacionesPageProps) {
             <div className="tool-calc-fields">
               <div className="frow frow-first tool-frow">
                 <div className="flabel">{t("tools.vacation.tripsPerYear")}</div>
-                <CollabField collab={collab} fieldId={fid("vv")} disabled={readOnly}>
+                <CollabField collab={collab} fieldId={fid("vv")} dirtyKeysRef={dirtyKeysRef} disabled={readOnly}>
                   {(lp) => (
-                    <input type="number" inputMode="numeric" className={`tool-num-input ${lp.className || ""}`.trim()} min={1} value={fields.vv} onFocus={(e) => { lp.onFocus?.(e); selectOnFocus(e); }} onBlur={lp.onBlur} disabled={lp.disabled} readOnly={lp.readOnly} onChange={(e) => setFields({ ...fields, vv: e.target.value })} />
+                    <input type="number" inputMode="numeric" className={`tool-num-input ${lp.className || ""}`.trim()} min={1} value={fields.vv} onFocus={(e) => { onEditStart("vv"); lp.onFocus?.(e); selectOnFocus(e); }} onBlur={lp.onBlur} disabled={lp.disabled} readOnly={lp.readOnly} onChange={(e) => setField("vv", e.target.value)} />
                   )}
                 </CollabField>
               </div>
@@ -106,26 +119,26 @@ export function VacacionesPage({ clientId, shared }: VacacionesPageProps) {
                 <div className="flabel">{t("tools.vacation.costPerTrip")}</div>
                 <div className="mfield">
                   <span className="mpfx">$</span>
-                  <CollabField collab={collab} fieldId={fid("vc")} disabled={readOnly}>
+                  <CollabField collab={collab} fieldId={fid("vc")} dirtyKeysRef={dirtyKeysRef} disabled={readOnly}>
                     {(lp) => (
-                      <input type="text" inputMode="decimal" value={fields.vc} className={lp.className} onFocus={(e) => { lp.onFocus?.(e); selectOnFocus(e); }} onBlur={(e) => { lp.onBlur?.(e); setFields({ ...fields, vc: formatMoneyValue(e.target.value) }); }} disabled={lp.disabled} readOnly={lp.readOnly} onChange={(e) => setFields({ ...fields, vc: formatDecimalInput(e.target.value) })} />
+                      <input type="text" inputMode="decimal" value={fields.vc} className={lp.className} onFocus={(e) => { onEditStart("vc"); lp.onFocus?.(e); selectOnFocus(e); }} onBlur={(e) => { lp.onBlur?.(e); setField("vc", formatMoneyValue(e.target.value)); }} disabled={lp.disabled} readOnly={lp.readOnly} onChange={(e) => setField("vc", formatDecimalInput(e.target.value))} />
                     )}
                   </CollabField>
                 </div>
               </div>
               <div className="frow tool-frow">
                 <div className="flabel">{t("tools.vacation.yearsProject")}</div>
-                <CollabField collab={collab} fieldId={fid("va")} disabled={readOnly}>
+                <CollabField collab={collab} fieldId={fid("va")} dirtyKeysRef={dirtyKeysRef} disabled={readOnly}>
                   {(lp) => (
-                    <input type="number" inputMode="numeric" className={`tool-num-input ${lp.className || ""}`.trim()} min={1} max={60} value={fields.va} onFocus={(e) => { lp.onFocus?.(e); selectOnFocus(e); }} onBlur={lp.onBlur} disabled={lp.disabled} readOnly={lp.readOnly} onChange={(e) => setFields({ ...fields, va: e.target.value })} />
+                    <input type="number" inputMode="numeric" className={`tool-num-input ${lp.className || ""}`.trim()} min={1} max={60} value={fields.va} onFocus={(e) => { onEditStart("va"); lp.onFocus?.(e); selectOnFocus(e); }} onBlur={lp.onBlur} disabled={lp.disabled} readOnly={lp.readOnly} onChange={(e) => setField("va", e.target.value)} />
                   )}
                 </CollabField>
               </div>
               <div className="frow tool-frow tool-frow--range">
                 <div className="flabel">{t("tools.vacation.inflation")} — <strong style={{ color: "var(--blue)" }}>{(r.inf * 100).toFixed(1)}%</strong></div>
-                <CollabField collab={collab} fieldId={fid("vi")} disabled={readOnly}>
+                <CollabField collab={collab} fieldId={fid("vi")} dirtyKeysRef={dirtyKeysRef} disabled={readOnly}>
                   {(lp) => (
-                    <input type="range" className={`tool-range-input ${lp.className || ""}`.trim()} min={0} max={20} step={0.5} value={fields.vi} onFocus={lp.onFocus} onBlur={lp.onBlur} disabled={lp.disabled} onChange={(e) => setFields({ ...fields, vi: e.target.value })} />
+                    <input type="range" className={`tool-range-input ${lp.className || ""}`.trim()} min={0} max={20} step={0.5} value={fields.vi} onFocus={(e) => { onEditStart("vi"); lp.onFocus?.(e); }} onBlur={lp.onBlur} disabled={lp.disabled} onChange={(e) => setField("vi", e.target.value)} />
                   )}
                 </CollabField>
               </div>

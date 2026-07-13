@@ -7,7 +7,7 @@ import { toast } from "@/lib/toast";
 const recent = new Map(); // key -> ts
 const localSaves = new Map(); // `${prospectId}:${tool}` -> ts
 const TOAST_TTL_MS = 2500;
-const LOCAL_SAVE_IGNORE_MS = 4000;
+const LOCAL_SAVE_IGNORE_MS = 6000;
 
 function prune(now) {
   for (const [k, t] of recent) {
