@@ -1,4 +1,4 @@
-import { Link, Outlet, useLocation } from "react-router-dom";
+import { Link, Outlet } from "react-router-dom";
 import {
   ArrowRight,
   ChevronDown,
@@ -45,8 +45,6 @@ const TEAM_AVATARS = [
 
 export function AuthLandingShell() {
   const { t, lang } = useI18n();
-  const location = useLocation();
-  const isLogin = location.pathname === "/login";
 
   const setLang = (value) => {
     const { db, replaceDb, persist } = useDbStore.getState();
@@ -80,11 +78,6 @@ export function AuthLandingShell() {
             </select>
             <ChevronDown size={14} aria-hidden />
           </label>
-          {isLogin ? (
-            <Link to="/register" className="auth-landing-header-link">{t("auth.login.createAccount")}</Link>
-          ) : (
-            <Link to="/login" className="auth-landing-header-link">{t("auth.register.signIn")}</Link>
-          )}
         </div>
       </header>
 

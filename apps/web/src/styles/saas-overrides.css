@@ -271,20 +271,30 @@
   --al-muted: #64748b;
   --al-border: #e2e8f0;
   --al-green: #059669;
+  --al-safe-top: env(safe-area-inset-top, 0px);
+  --al-safe-right: env(safe-area-inset-right, 0px);
+  --al-safe-bottom: env(safe-area-inset-bottom, 0px);
+  --al-safe-left: env(safe-area-inset-left, 0px);
   min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
   background: #ffffff;
   color: var(--al-text);
   font-family: Inter, system-ui, -apple-system, sans-serif;
+  padding-bottom: var(--al-safe-bottom);
+  box-sizing: border-box;
 }
 .auth-landing-header {
   display: flex;
   align-items: center;
   gap: 24px;
-  padding: 18px 48px;
+  padding: calc(18px + var(--al-safe-top)) calc(48px + var(--al-safe-right)) 18px calc(48px + var(--al-safe-left));
   background: #fff;
   border-bottom: 1px solid #f1f5f9;
+  position: sticky;
+  top: 0;
+  z-index: 20;
 }
 .auth-landing-brand {
   display: inline-flex;
@@ -713,11 +723,14 @@
 
 @media (max-width: 1100px) {
   .auth-landing-nav { display: none; }
-  .auth-landing-header,
+  .auth-landing-header {
+    padding-left: calc(20px + var(--al-safe-left));
+    padding-right: calc(20px + var(--al-safe-right));
+  }
   .auth-landing-main,
   .auth-landing-trust {
-    padding-left: 20px;
-    padding-right: 20px;
+    padding-left: calc(20px + var(--al-safe-left));
+    padding-right: calc(20px + var(--al-safe-right));
   }
   .auth-landing-main {
     grid-template-columns: 1fr;
@@ -736,13 +749,37 @@
   }
 }
 @media (max-width: 560px) {
-  .auth-landing-header { padding: 12px 14px; gap: 10px; }
-  .auth-landing-brand-logo { height: 32px; }
-  .auth-landing-main { padding: 16px 14px; }
+  .auth-landing-header {
+    padding-top: calc(12px + var(--al-safe-top));
+    padding-bottom: 12px;
+    padding-left: calc(14px + var(--al-safe-left));
+    padding-right: calc(14px + var(--al-safe-right));
+    gap: 10px;
+  }
+  .auth-landing-brand {
+    min-width: 0;
+    max-width: calc(100% - 140px);
+  }
+  .auth-landing-brand-logo {
+    height: 32px;
+    max-width: 100%;
+    object-fit: contain;
+  }
+  .auth-landing-header-actions {
+    margin-left: auto;
+  }
+  .auth-landing-lang {
+    padding: 6px 8px;
+    font-size: 12px;
+    max-width: 100%;
+  }
+  .auth-landing-main {
+    padding: 16px calc(14px + var(--al-safe-right)) 16px calc(14px + var(--al-safe-left));
+  }
   .auth-landing-card { padding: 22px 16px 16px; }
   .auth-landing-trust {
     grid-template-columns: 1fr;
-    padding: 16px 14px 22px;
+    padding: 16px calc(14px + var(--al-safe-right)) calc(22px + var(--al-safe-bottom)) calc(14px + var(--al-safe-left));
   }
 }
 
