@@ -9,7 +9,8 @@ import { ensureProspectIdentity } from "@/lib/clients";
 import { sharingApi } from "@/lib/network-api.js";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { isExpedienteUuid } from "@/lib/expediente-collab.js";
-import { markLocalToolSave, notifyRemoteSectionUpdated } from "@/lib/collab-remote-notify.js";
+import { markLocalToolSave, notifyRemoteSectionUpdated, wasLocalToolSaveRecent } from "@/lib/collab-remote-notify.js";
+import { runWithoutOutboundSync } from "@/lib/sync-suspend.js";
 import { useI18n } from "@/hooks/use-i18n.js";
 
 /** Unifica carga/guardado local (store) y remoto (expediente compartido). */
@@ -50,13 +51,25 @@ export function useToolSession({ clientId, shared, section }) {
   toolSectionRef.current = toolSection;
 
   onLocalDataChangeRef.current = async (payload) => {
+    if (payload?.table === "prospects") {
+      // No tocar tools; el detalle del prospecto se refresca por otras vías si hace falta.
+      return;
+    }
     if (payload?.table !== "tool_calculations" || !payload.tool || !clientId || !localProspectId) return;
     try {
+      // Eco propio o apply remoto: nunca disparar reconcile outbound (eco de UPDATE).
+      if (wasLocalToolSaveRecent(localProspectId, payload.tool)) {
+        return;
+      }
       if (payload.data != null && typeof payload.data === "object") {
-        saveToolBucket(payload.tool, mode, payload.data, clientId);
+        runWithoutOutboundSync(() => {
+          saveToolBucket(payload.tool, mode, payload.data, clientId);
+        });
       } else {
         const data = await sharingApi.getTool(localProspectId, payload.tool);
-        saveToolBucket(payload.tool, mode, data || {}, clientId);
+        runWithoutOutboundSync(() => {
+          saveToolBucket(payload.tool, mode, data || {}, clientId);
+        });
       }
       setLocalToolsRevision((n) => n + 1);
       if (payload.tool === toolSectionRef.current) {
@@ -88,7 +101,6 @@ export function useToolSession({ clientId, shared, section }) {
   const hasOthers = useShared ? sharedSession.hasOthers : localCollab.hasOthers;
   const toolsRevision = useShared ? sharedSession.toolsRevision : localToolsRevision;
   const collab = useShared ? sharedSession.collab : localCollab;
-  // Propietario siempre puede editar; compartido depende del permiso (no del soft-lock de sección).
   const readOnly = useShared ? sharedSession.readOnly : false;
   const backHref = resolveToolBackHref(clientId, useShared ? sharedSession.backHref : undefined);
 
@@ -124,14 +136,15 @@ export function useToolSession({ clientId, shared, section }) {
         occupation1: fields.occupation1,
         occupation2: fields.occupation2,
       });
-      await sharedSession.reload();
+      // Solo parche local — sin reload de tools.
+      sharedSession.patchProspect?.(fields);
       return;
     }
     if (!clientId) return;
     const c = getClient(clientId);
     if (!c) return;
     saveClient(ensureProspectIdentity({ ...c, ...fields }));
-  }, [useShared, sharedSession.canEdit, sharedSession.reload, shared?.prospectId, clientId, getClient, saveClient]);
+  }, [useShared, sharedSession.canEdit, sharedSession.patchProspect, shared?.prospectId, clientId, getClient, saveClient]);
 
   return useMemo(() => ({
     ready,

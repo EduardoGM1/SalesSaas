@@ -25,6 +25,7 @@ export function useExpedienteCollab({
   const [peers, setPeers] = useState([]);
   const [profile, setProfile] = useState(null);
   const [tick, setTick] = useState(0);
+  const [myFocusedField, setMyFocusedField] = useState(null);
   const canCollab = enabled && isSupabaseConfigured() && isExpedienteUuid(prospectId);
   const onDataChangeRef = useRef(onDataChange);
   onDataChangeRef.current = onDataChange;
@@ -88,10 +89,12 @@ export function useExpedienteCollab({
   );
 
   const lockField = useCallback(async (fieldId) => {
+    setMyFocusedField(fieldId || null);
     await setFocusedField(fieldId || null);
   }, []);
 
   const unlockField = useCallback(async () => {
+    setMyFocusedField(null);
     await setFocusedField(null);
   }, []);
 
@@ -108,6 +111,7 @@ export function useExpedienteCollab({
     sectionLocked,
     trackState,
     hasOthers: otherPeers.length > 0,
+    myFocusedField,
     lockField,
     unlockField,
     getFieldLocker,

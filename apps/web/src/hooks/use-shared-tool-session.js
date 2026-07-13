@@ -3,7 +3,7 @@ import { sharingApi } from "@/lib/network-api.js";
 import { prospectRowToClient, canEditShared } from "@/lib/shared-prospect";
 import { EMPTY_TOOL_BUCKET } from "@/lib/store-empty.js";
 import { useExpedienteCollab } from "@/hooks/use-expediente-collab.js";
-import { markLocalToolSave, notifyRemoteSectionUpdated } from "@/lib/collab-remote-notify.js";
+import { markLocalToolSave, notifyRemoteSectionUpdated, wasLocalToolSaveRecent } from "@/lib/collab-remote-notify.js";
 import { useI18n } from "@/hooks/use-i18n.js";
 
 export function useSharedToolSession(prospectId, contactId, section = "detail") {
@@ -37,6 +37,11 @@ export function useSharedToolSession(prospectId, contactId, section = "detail") 
     bumpTools((prev) => ({ ...prev, [tool]: data || {} }));
   }, [prospectId, bumpTools]);
 
+  const patchProspect = useCallback((fields) => {
+    if (!fields) return;
+    setProspect((prev) => (prev ? { ...prev, ...fields } : prev));
+  }, []);
+
   useEffect(() => {
     if (!prospectId) return;
     setLoading(true);
@@ -50,6 +55,10 @@ export function useSharedToolSession(prospectId, contactId, section = "detail") 
   onDataChangeRef.current = async (payload) => {
     try {
       if (payload?.table === "tool_calculations" && payload.tool) {
+        // Eco del propio guardado: ya actualizamos en saveTool; no re-bump.
+        if (wasLocalToolSaveRecent(prospectId, payload.tool)) {
+          return;
+        }
         if (payload.data != null && typeof payload.data === "object") {
           bumpTools((prev) => ({ ...prev, [payload.tool]: payload.data }));
         } else {
@@ -67,7 +76,14 @@ export function useSharedToolSession(prospectId, contactId, section = "detail") 
         return;
       }
       if (payload?.table === "prospects") {
-        await reload();
+        // Solo actualizar prospecto — NO recargar tools (pisaría ediciones en curso).
+        if (payload.data && typeof payload.data === "object") {
+          setProspect(prospectRowToClient(payload.data));
+        } else {
+          const data = await sharingApi.getSharedProspect(prospectId);
+          setPermission(data.permission);
+          setProspect(prospectRowToClient(data.prospect));
+        }
       }
     } catch {
       /* ignore */
@@ -82,7 +98,6 @@ export function useSharedToolSession(prospectId, contactId, section = "detail") 
     onDataChange: (payload) => onDataChangeRef.current?.(payload),
   });
 
-  // Solo permiso: el soft-lock de sección es informativo; el exclusividad real es por campo.
   const readOnly = loading || !canEdit;
   const backHref = contactId
     ? `/red/contacto/${contactId}/expediente/${prospectId}`
@@ -92,7 +107,6 @@ export function useSharedToolSession(prospectId, contactId, section = "detail") 
 
   const saveTool = useCallback(async (tool, data) => {
     markLocalToolSave(prospectId, tool);
-    // No bloquear el guardado: el peer ve el unlock en cuanto Presence sync.
     void collab.unlockField?.();
     const saved = await sharingApi.saveTool(prospectId, tool, data);
     bumpTools((prev) => ({ ...prev, [tool]: saved }));
@@ -111,6 +125,7 @@ export function useSharedToolSession(prospectId, contactId, section = "detail") 
     saveTool,
     reload,
     reloadTool,
+    patchProspect,
     toolsRevision,
     peers: collab.peers,
     lockedBy: collab.lockedBy,
@@ -128,6 +143,7 @@ export function useSharedToolSession(prospectId, contactId, section = "detail") 
     saveTool,
     reload,
     reloadTool,
+    patchProspect,
     toolsRevision,
     collab,
   ]);

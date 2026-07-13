@@ -1,7 +1,7 @@
 
 import { Link } from "react-router-dom";
 import { Settings } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { SalesModal } from "@/components/ui/sales-modal";
 import { SaveToolModal } from "@/components/calculators/save-tool-modal";
 import { Topbar } from "@/components/layout/topbar";
@@ -16,6 +16,7 @@ import { useI18n } from "@/hooks/use-i18n.js";
 import { useMoney } from "@/hooks/use-money.js";
 import { useToolSession } from "@/hooks/use-tool-session.js";
 import { CollabField, collabFieldId } from "@/components/clients/collab-field.jsx";
+import { applyRemoteFormState, fieldKeyFromCollabId, resetFormBaseline } from "@/lib/collab-form-merge.js";
 import { useDbStore } from "@/stores/db-store";
 import { shallow } from "zustand/shallow";
 
@@ -39,6 +40,7 @@ export function WorksheetPage({ clientId, shared }: WorksheetPageProps) {
   const [config, setConfig] = useState<Record<string, string>>({ ...WS_DEFAULTS });
   const [saved, setSaved] = useState(false);
   const [saveToolOpen, setSaveToolOpen] = useState(false);
+  const baselineRef = useRef(null);
 
   useEffect(() => {
     if (!ready) return;
@@ -51,19 +53,18 @@ export function WorksheetPage({ clientId, shared }: WorksheetPageProps) {
       if (keys.every((k) => prev[k] === next[k])) return prev;
       return next;
     });
-    setFields((prev) => {
-      const next = {
-        wv: String(b.wv ?? ""), we: String(b.we ?? ""),
-        wcc: String(b.wcc ?? ""), wob: String(b.wob ?? ""),
-      };
-      if (prev.wv === next.wv && prev.we === next.we && prev.wcc === next.wcc && prev.wob === next.wob) return prev;
-      return next;
-    });
-  }, [ready, clientId, getBucket, worksheetConfig, shared?.prospectId, toolsRevision]);
+    const next = {
+      wv: String(b.wv ?? ""), we: String(b.we ?? ""),
+      wcc: String(b.wcc ?? ""), wob: String(b.wob ?? ""),
+    };
+    const focusedKey = fieldKeyFromCollabId(collab?.myFocusedField, "worksheet");
+    setFields((prev) => applyRemoteFormState(prev, next, { baselineRef, focusedKey }));
+  }, [ready, clientId, getBucket, worksheetConfig, shared?.prospectId, toolsRevision, collab?.myFocusedField]);
 
   const handleClear = async () => {
     if (readOnly) return;
     setFields({ ...EMPTY_FIELDS });
+    resetFormBaseline(baselineRef, { ...EMPTY_FIELDS });
     if (ready) await saveBucket("worksheet", { ...EMPTY_FIELDS, ...config });
   };
 
@@ -75,6 +76,7 @@ export function WorksheetPage({ clientId, shared }: WorksheetPageProps) {
   const saveAll = async () => {
     if (readOnly) return;
     await saveBucket("worksheet", { ...fields, ...config });
+    resetFormBaseline(baselineRef, fields);
     setSaved(true);
     setTimeout(() => setSaved(false), 1600);
   };
@@ -82,6 +84,7 @@ export function WorksheetPage({ clientId, shared }: WorksheetPageProps) {
   const handleSave = async () => {
     if (readOnly) return;
     await saveBucket("worksheet", { ...fields, ...config });
+    resetFormBaseline(baselineRef, fields);
     if (!isFileMode) { setSaveToolOpen(true); return; }
     setSaved(true);
     setTimeout(() => setSaved(false), 1600);

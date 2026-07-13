@@ -1,5 +1,5 @@
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Topbar } from "@/components/layout/topbar";
 import { PageBack } from "@/components/layout/page-back.jsx";
 import { SaveToolModal } from "@/components/calculators/save-tool-modal";
@@ -15,6 +15,7 @@ import { useI18n } from "@/hooks/use-i18n.js";
 import { useMoney } from "@/hooks/use-money.js";
 import { useToolSession } from "@/hooks/use-tool-session.js";
 import { CollabField, collabFieldId } from "@/components/clients/collab-field.jsx";
+import { applyRemoteFormState, fieldKeyFromCollabId, resetFormBaseline } from "@/lib/collab-form-merge.js";
 import { useDbStore } from "@/stores/db-store";
 import { shallow } from "zustand/shallow";
 
@@ -56,6 +57,7 @@ export function SurveyPage({ clientId, shared }: SurveyPageProps) {
   const [saved, setSaved] = useState(false);
   const [saveToolOpen, setSaveToolOpen] = useState(false);
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+  const baselineRef = useRef(null);
 
   useEffect(() => {
     if (!ready) return;
@@ -81,12 +83,9 @@ export function SurveyPage({ clientId, shared }: SurveyPageProps) {
       loaded.svp_occ1 = loaded.svp_occ1 || c.occupation1 || "";
       loaded.svp_city = loaded.svp_city || c.city || "";
     }
-    setData((prev) => {
-      const keys = Object.keys(loaded);
-      if (keys.every((k) => prev[k] === loaded[k])) return prev;
-      return loaded;
-    });
-  }, [ready, clientId, isFileMode, isShared, getBucket, getClient, prospectId, shared?.prospectId, session.prospect?.id, toolsRevision]);
+    const focusedKey = fieldKeyFromCollabId(collab?.myFocusedField, "survey");
+    setData((prev) => applyRemoteFormState(prev, loaded, { baselineRef, focusedKey }));
+  }, [ready, clientId, isFileMode, isShared, getBucket, getClient, prospectId, shared?.prospectId, session.prospect?.id, toolsRevision, collab?.myFocusedField]);
 
   const client = isFileMode ? (isShared ? session.prospect : (clientId ? getClient(clientId) : undefined)) : undefined;
   const countries = Object.keys(COUNTRY_CITY);
@@ -149,6 +148,7 @@ export function SurveyPage({ clientId, shared }: SurveyPageProps) {
     if (Object.keys(errors).length) return;
     await saveBucket("survey", { ...data, stype: sType, futureType });
     if (isFileMode) await syncProspectFields(prospectPatchFromData(data));
+    resetFormBaseline(baselineRef, { ...data, stype: sType, futureType });
     if (!isFileMode) { setSaveToolOpen(true); return; }
     setSaved(true);
     setTimeout(() => setSaved(false), 1600);
@@ -160,6 +160,7 @@ export function SurveyPage({ clientId, shared }: SurveyPageProps) {
     setData(cleared);
     setSType("hotel");
     setFutureType("real");
+    resetFormBaseline(baselineRef, { ...cleared, stype: "hotel", futureType: "real" });
     if (ready) {
       await saveBucket("survey", { ...cleared, stype: "hotel", futureType: "real" });
     }

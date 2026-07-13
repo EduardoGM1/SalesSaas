@@ -24,6 +24,13 @@ export function markLocalToolSave(prospectId, tool) {
   localSaves.set(`${prospectId}:${tool}`, Date.now());
 }
 
+/** true si este cliente acaba de guardar ese tool (eco Realtime / sync). */
+export function wasLocalToolSaveRecent(prospectId, tool, windowMs = LOCAL_SAVE_IGNORE_MS) {
+  if (!prospectId || !tool) return false;
+  const at = localSaves.get(`${prospectId}:${tool}`);
+  return !!(at && Date.now() - at < windowMs);
+}
+
 /**
  * @returns {boolean} true si se mostró el toast
  */

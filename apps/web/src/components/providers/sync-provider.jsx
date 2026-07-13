@@ -14,6 +14,7 @@ import {
   stopDashboardDataRealtime,
 } from "@/lib/dashboard-data-realtime.js";
 import { isStandaloneApp } from "@/lib/pwa-install.js";
+import { isOutboundSyncSuspended } from "@/lib/sync-suspend.js";
 import { useDbStore } from "@/stores/db-store";
 import { useSyncStore } from "@/stores/sync-store";
 import { Toaster } from "@/components/ui/toaster";
@@ -219,6 +220,7 @@ export function SyncProvider({ children }) {
     const unsub = useDbStore.subscribe((state, prev) => {
       if (state.db === prev.db) return;
       if (suspendRef.current || !enabledRef.current) return;
+      if (isOutboundSyncSuspended()) return;
       scheduleSync();
     });
 

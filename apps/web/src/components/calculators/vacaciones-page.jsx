@@ -1,5 +1,5 @@
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Topbar } from "@/components/layout/topbar";
 import { PageBack } from "@/components/layout/page-back.jsx";
 import { SaveToolModal } from "@/components/calculators/save-tool-modal";
@@ -12,6 +12,7 @@ import { useI18n } from "@/hooks/use-i18n.js";
 import { useMoney } from "@/hooks/use-money.js";
 import { useToolSession } from "@/hooks/use-tool-session.js";
 import { CollabField, collabFieldId } from "@/components/clients/collab-field.jsx";
+import { applyRemoteFormState, fieldKeyFromCollabId, resetFormBaseline } from "@/lib/collab-form-merge.js";
 import { useDbStore } from "@/stores/db-store";
 import { shallow } from "zustand/shallow";
 
@@ -32,6 +33,7 @@ export function VacacionesPage({ clientId, shared }: VacacionesPageProps) {
   const [fields, setFields] = useState({ ...DEFAULT_FIELDS });
   const [saved, setSaved] = useState(false);
   const [saveToolOpen, setSaveToolOpen] = useState(false);
+  const baselineRef = useRef(null);
 
   useEffect(() => {
     if (!ready) return;
@@ -44,14 +46,14 @@ export function VacacionesPage({ clientId, shared }: VacacionesPageProps) {
         vi: b.vi === undefined || b.vi === null || String(b.vi) === "" ? "8" : String(b.vi),
       }
       : { ...DEFAULT_FIELDS };
-    setFields((prev) => (
-      prev.vv === next.vv && prev.vc === next.vc && prev.va === next.va && prev.vi === next.vi ? prev : next
-    ));
-  }, [ready, clientId, getBucket, shared?.prospectId, toolsRevision]);
+    const focusedKey = fieldKeyFromCollabId(collab?.myFocusedField, "vacaciones");
+    setFields((prev) => applyRemoteFormState(prev, next, { baselineRef, focusedKey }));
+  }, [ready, clientId, getBucket, shared?.prospectId, toolsRevision, collab?.myFocusedField]);
 
   const handleClear = async () => {
     if (readOnly) return;
     setFields({ ...DEFAULT_FIELDS });
+    resetFormBaseline(baselineRef, { ...DEFAULT_FIELDS });
     if (ready) await saveBucket("vacaciones", { ...DEFAULT_FIELDS });
   };
 
@@ -68,6 +70,7 @@ export function VacacionesPage({ clientId, shared }: VacacionesPageProps) {
   const handleSave = async () => {
     if (readOnly) return;
     await saveBucket("vacaciones", fields);
+    resetFormBaseline(baselineRef, fields);
     if (!isFileMode) { setSaveToolOpen(true); return; }
     setSaved(true);
     setTimeout(() => setSaved(false), 1600);
