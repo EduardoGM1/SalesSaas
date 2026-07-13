@@ -8,9 +8,12 @@ import { emptyDatabase } from "@/lib/storage/types";
 import { watchSession } from "@/lib/session-api.js";
 import { registerSyncRefresh, unregisterSyncRefresh } from "@/lib/sync-refresh.js";
 import {
+  ensureDashboardDataRealtime,
+  isDashboardRealtimeHealthy,
   startDashboardDataRealtime,
   stopDashboardDataRealtime,
 } from "@/lib/dashboard-data-realtime.js";
+import { isStandaloneApp } from "@/lib/pwa-install.js";
 import { useDbStore } from "@/stores/db-store";
 import { useSyncStore } from "@/stores/sync-store";
 import { Toaster } from "@/components/ui/toaster";
@@ -18,8 +21,10 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 const ACCOUNT_KEY = "sts4_account";
 const DEBOUNCE_MS = 1200;
-/** Evita storms de pull al cambiar de app / foco. */
+/** Desktop: evita storms al cambiar de pestaña. */
 const RESUME_PULL_COOLDOWN_MS = 45_000;
+/** PWA: el WS suele morir en background → pull más seguido al volver. */
+const PWA_RESUME_PULL_COOLDOWN_MS = 5_000;
 
 export function SyncProvider({ children }) {
   const userIdRef = useRef(null);
@@ -86,7 +91,8 @@ export function SyncProvider({ children }) {
       }
 
       const now = Date.now();
-      if (!force && now - lastResumePullAtRef.current < RESUME_PULL_COOLDOWN_MS) return;
+      const cooldown = isStandaloneApp() ? PWA_RESUME_PULL_COOLDOWN_MS : RESUME_PULL_COOLDOWN_MS;
+      if (!force && now - lastResumePullAtRef.current < cooldown) return;
       lastResumePullAtRef.current = now;
       refreshInFlightRef.current = true;
 
@@ -138,7 +144,13 @@ export function SyncProvider({ children }) {
             else applyRemote(norm);
             localStorage.setItem(ACCOUNT_KEY, userId);
             useSyncStore.getState().setSynced();
-            void startDashboardDataRealtime(userId);
+            void startDashboardDataRealtime(userId).then(() => {
+              if (!isDashboardRealtimeHealthy()) {
+                setTimeout(() => {
+                  void ensureDashboardDataRealtime(userId, { force: true });
+                }, 2500);
+              }
+            });
             return;
           } catch (syncErr) {
             useSyncStore.getState().setStatus(
@@ -179,7 +191,14 @@ export function SyncProvider({ children }) {
 
       enabledRef.current = true;
       lastResumePullAtRef.current = Date.now();
-      void startDashboardDataRealtime(userId);
+      void startDashboardDataRealtime(userId).then(() => {
+        // PWA: a veces el WS aún no está listo al login; reintentar una vez.
+        if (!isDashboardRealtimeHealthy()) {
+          setTimeout(() => {
+            void ensureDashboardDataRealtime(userId, { force: true });
+          }, 2500);
+        }
+      });
     };
 
     const stopForUser = () => {
@@ -205,17 +224,28 @@ export function SyncProvider({ children }) {
 
     const onOnline = () => {
       lastResumePullAtRef.current = 0;
-      void refreshInbound({ reason: "online" });
+      const uid = userIdRef.current;
+      if (uid) void ensureDashboardDataRealtime(uid, { force: true });
+      void refreshInbound({ reason: "online", force: true });
+    };
+
+    /** PWA/móvil: rearmar Realtime + pull de respaldo al volver a primer plano. */
+    const onAppForeground = () => {
+      if (document.visibilityState && document.visibilityState !== "visible") return;
+      const uid = userIdRef.current;
+      if (!uid || !enabledRef.current) return;
+      const pwa = isStandaloneApp();
+      void ensureDashboardDataRealtime(uid, { force: pwa });
+      // En PWA forzamos pull: el WS a menudo no entregó eventos mientras estaba en background.
+      void refreshInbound({ reason: "foreground", force: pwa });
     };
 
     const onVisible = () => {
-      if (document.visibilityState === "visible") {
-        void refreshInbound({ reason: "visibility" });
-      }
+      if (document.visibilityState === "visible") onAppForeground();
     };
 
     const onFocus = () => {
-      void refreshInbound({ reason: "focus" });
+      onAppForeground();
     };
 
     const onStorage = (event) => {
@@ -244,6 +274,7 @@ export function SyncProvider({ children }) {
     window.addEventListener("online", onOnline);
     document.addEventListener("visibilitychange", onVisible);
     window.addEventListener("focus", onFocus);
+    window.addEventListener("pageshow", onFocus);
     window.addEventListener("storage", onStorage);
     window.addEventListener("auth:resume", onFocus);
 
@@ -255,6 +286,7 @@ export function SyncProvider({ children }) {
       window.removeEventListener("online", onOnline);
       document.removeEventListener("visibilitychange", onVisible);
       window.removeEventListener("focus", onFocus);
+      window.removeEventListener("pageshow", onFocus);
       window.removeEventListener("storage", onStorage);
       window.removeEventListener("auth:resume", onFocus);
       if (timerRef.current) clearTimeout(timerRef.current);
