@@ -9,7 +9,8 @@ import { CollapsibleSection } from "@/components/ui/collapsible-section.jsx";
 import { ShareProspectModal } from "@/components/network/share-prospect-modal.jsx";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { sharingApi } from "@/lib/network-api.js";
-import { prospectRowToClient, canEditShared, canCommentShared } from "@/lib/shared-prospect";
+import { prospectRowToClient, canEditShared, canCommentShared, canAddToWorkspace } from "@/lib/shared-prospect";
+import { startProspectRealtime, stopProspectRealtime } from "@/lib/prospect-realtime.js";
 import { Topbar } from "@/components/layout/topbar";
 import { clientDisplayName, ensureProspectIdentity } from "@/lib/clients";
 import { longDate, ymdToday } from "@/lib/format/dates";
@@ -20,8 +21,6 @@ import { useI18n } from "@/hooks/use-i18n.js";
 import { useDbStore } from "@/stores/db-store";
 import { useAppStore } from "@/stores/app-store";
 import { shallow } from "zustand/shallow";
-import { ClientRecord } from "@/lib/storage/types";
-import { SaleRecord } from "@/lib/storage/types";
 import { useClientActions } from "@/hooks/use-client-actions.js";
 import { useSaleActions } from "@/hooks/use-sale-actions.js";
 import { useCalendarActions } from "@/hooks/use-calendar-actions.js";
@@ -55,11 +54,13 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
   const [shareOpen, setShareOpen] = useState(false);
   const [recordModal, setRecordModal] = useState(null);
   const [noteOpen, setNoteOpen] = useState(false);
-  const [form, setForm] = useState<Partial<ClientRecord>>({});
+  const [form, setForm] = useState({});
   const [saleForm, setSaleForm] = useState({ date: ymdToday(), vol: "", tours: "1", contract: "", status: "venta", processDate: "", note: "", addProcessingFollowup: true });
   const [noteForm, setNoteForm] = useState({ type: "nota", note: "", date: "", time: "" });
   const [remoteClient, setRemoteClient] = useState(null);
   const [sharePerm, setSharePerm] = useState("owner");
+  const [shareMeta, setShareMeta] = useState({ shareId: null, addedAt: null, canPin: false });
+  const [pinBusy, setPinBusy] = useState(false);
   const [remoteLoading, setRemoteLoading] = useState(sharedRemote);
 
   const c = sharedRemote ? remoteClient : localC;
@@ -67,26 +68,68 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
   const canEdit = canEditShared(perm);
   const canComment = canCommentShared(perm);
   const isOwner = perm === "owner";
+  const showAddToWorkspace = sharedRemote
+    && canAddToWorkspace(perm)
+    && shareMeta.canPin
+    && !shareMeta.addedAt
+    && !!shareMeta.shareId;
+
+  const applySharedPayload = (data) => {
+    setSharePerm(data.permission);
+    setRemoteClient(prospectRowToClient(data.prospect));
+    setShareMeta({
+      shareId: data.share_id || null,
+      addedAt: data.added_to_workspace_at || null,
+      canPin: data.can_add_to_workspace === true || canAddToWorkspace(data.permission),
+    });
+  };
 
   useEffect(() => {
     if (!sharedRemote || !id) return;
     setRemoteLoading(true);
     sharingApi.getSharedProspect(id)
-      .then((data) => {
-        setSharePerm(data.permission);
-        setRemoteClient(prospectRowToClient(data.prospect));
-      })
+      .then(applySharedPayload)
       .catch((err) => toast.error(err.message))
       .finally(() => setRemoteLoading(false));
   }, [id, sharedRemote]);
 
   const reloadRemote = async () => {
     const data = await sharingApi.getSharedProspect(id);
-    setSharePerm(data.permission);
-    setRemoteClient(prospectRowToClient(data.prospect));
+    applySharedPayload(data);
   };
 
-  const openSaleModal = (sale?: SaleRecord, prefillFromWorksheet = false) => {
+  useEffect(() => {
+    if (!sharedRemote || !id) return undefined;
+    startProspectRealtime(id, () => {
+      reloadRemote().catch(() => {});
+    });
+    return () => {
+      stopProspectRealtime();
+    };
+  }, [id, sharedRemote]);
+
+  const handleAddToWorkspace = async () => {
+    if (!shareMeta.shareId || pinBusy) return;
+    setPinBusy(true);
+    try {
+      await sharingApi.addToWorkspace(shareMeta.shareId);
+      setShareMeta((prev) => ({ ...prev, addedAt: new Date().toISOString() }));
+      toast.success(t("clients.addToWorkspaceDone"));
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setPinBusy(false);
+    }
+  };
+
+  const permHintKey = () => {
+    if (perm === "workspace") return "network.permWorkspace";
+    if (perm === "edit") return "network.permEdit";
+    if (perm === "comment") return "network.permComment";
+    return "network.permView";
+  };
+
+  const openSaleModal = (sale, prefillFromWorksheet = false) => {
     const ws = c?.data?.worksheet || {};
     const worksheetVol = prefillFromWorksheet ? parseMoney(String(ws.wv ?? "")) : 0;
     const existingSales = [...(c?.sales || [])].sort((a, b) => (b.ts || 0) - (a.ts || 0));
@@ -260,7 +303,7 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
             <p className="exp-page-sub" id="exp-since">{since}</p>
             {sharedRemote && (
               <p className="exp-page-sub shared-perm-hint">
-                {perm === "edit" ? t("network.permEdit") : perm === "comment" ? t("network.permComment") : t("network.permView")}
+                {t(permHintKey())}
               </p>
             )}
           </div>
@@ -273,6 +316,18 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
               <button type="button" className="btn btn-danger btn-sm" onClick={async () => {
                 if (await removeClient(id, clientDisplayName(c))) navigate("/clients");
               }}>{t("exp.delete")}</button>
+            </div>
+          )}
+          {showAddToWorkspace && (
+            <div className="exp-page-actions">
+              <button
+                type="button"
+                className="btn btn-primary btn-sm"
+                disabled={pinBusy}
+                onClick={handleAddToWorkspace}
+              >
+                {t("clients.addToWorkspace")}
+              </button>
             </div>
           )}
         </header>

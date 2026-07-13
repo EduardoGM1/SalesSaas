@@ -1842,6 +1842,57 @@ div.modal-backdrop.sales-modal-overlay:not([hidden]) {
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
 }
 
+.share-level-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+@media (max-width: 640px) {
+  .share-level-grid { grid-template-columns: 1fr; }
+}
+
+.share-level-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  text-align: left;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border, #e2e8f0);
+  background: #fff;
+  cursor: pointer;
+  color: #334155;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.share-level-card strong {
+  font-size: 13px;
+  color: #0f172a;
+}
+
+.share-level-card.on {
+  border-color: #2563eb;
+  background: #eff6ff;
+  box-shadow: 0 0 0 1px #2563eb;
+}
+
+.share-level-badge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  font-size: 10px;
+  font-weight: 800;
+  color: #1d4ed8;
+  background: #dbeafe;
+  border-radius: 999px;
+  padding: 2px 7px;
+}
+
 .share-external-preview {
   margin: 0 0 10px;
   padding: 12px 14px;
@@ -3682,6 +3733,7 @@ body,
   display: flex;
   align-items: center;
   gap: 6px;
+  overflow: visible;
 }
 
 /* Mobile brand row (Saletse logo) — hidden on desktop */
@@ -3712,12 +3764,14 @@ body,
 
 .top-settings-btn {
   position: relative;
+  overflow: visible;
 }
 
 .topbar-action-badge {
   position: absolute;
-  top: -4px;
-  right: -4px;
+  top: -5px;
+  right: -5px;
+  z-index: 3;
   min-width: 16px;
   height: 16px;
   padding: 0 4px;
@@ -3728,6 +3782,8 @@ body,
   font-weight: 800;
   line-height: 16px;
   text-align: center;
+  pointer-events: none;
+  box-sizing: border-box;
 }
 
 .top-settings-btn.active {
@@ -3866,6 +3922,7 @@ body,
     align-items: center;
     gap: 4px;
     flex-shrink: 0;
+    overflow: visible;
   }
 
   .topbar-mobile-actions .top-settings-btn {

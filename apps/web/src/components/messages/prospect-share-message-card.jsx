@@ -8,10 +8,18 @@ const PERM_KEY = {
   view: "network.permView",
   edit: "network.permEdit",
   comment: "network.permComment",
+  workspace: "network.permWorkspace",
 };
 
 function permLabel(t, permission) {
   return t(PERM_KEY[permission] || "network.permView");
+}
+
+function rank(permission) {
+  if (permission === "workspace") return 3;
+  if (permission === "edit") return 2;
+  if (permission === "comment") return 1;
+  return 0;
 }
 
 /**
@@ -34,18 +42,19 @@ export function ProspectShareMessageCard({ message, t, onResolved }) {
     ? `/red/contacto/${ownerId}/expediente/${prospectId}`
     : null;
 
-  // Dueño recibe la solicitud (mine=false) → puede aprobar/rechazar
   const canDecide = type === "permission_request"
     && !message.mine
     && requestId
     && !decision;
 
-  // Receptor del acceso (mine=false en access_granted) puede pedir edición
-  const canRequestEdit = type === "access_granted"
+  const canRequestUpgrade = type === "access_granted"
     && !message.mine
     && shareId
     && permission
-    && permission !== "edit";
+    && permission !== "workspace";
+
+  const canRequestEdit = canRequestUpgrade && rank(permission) < rank("edit");
+  const canRequestWorkspace = canRequestUpgrade && rank(permission) < rank("workspace");
 
   const handleDecide = async (value) => {
     if (!requestId || busy) return;
@@ -61,11 +70,11 @@ export function ProspectShareMessageCard({ message, t, onResolved }) {
     }
   };
 
-  const handleRequestEdit = async () => {
+  const handleRequest = async (toPermission) => {
     if (!shareId || busy) return;
     setBusy(true);
     try {
-      await sharingApi.requestPermission(shareId, "edit");
+      await sharingApi.requestPermission(shareId, toPermission);
       toast.success(t("messages.share.requestSentToast"));
       onResolved?.();
     } catch (err) {
@@ -115,8 +124,13 @@ export function ProspectShareMessageCard({ message, t, onResolved }) {
           <Link to={href} className="btn btn-ghost btn-sm">{t("messages.share.open")}</Link>
         )}
         {canRequestEdit && (
-          <button type="button" className="btn btn-primary btn-sm" disabled={busy} onClick={handleRequestEdit}>
+          <button type="button" className="btn btn-primary btn-sm" disabled={busy} onClick={() => handleRequest("edit")}>
             {t("messages.share.requestEdit")}
+          </button>
+        )}
+        {canRequestWorkspace && (
+          <button type="button" className="btn btn-ghost btn-sm" disabled={busy} onClick={() => handleRequest("workspace")}>
+            {t("messages.share.requestWorkspace")}
           </button>
         )}
         {canDecide && (

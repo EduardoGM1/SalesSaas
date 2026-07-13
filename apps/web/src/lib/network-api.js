@@ -57,6 +57,11 @@ export const sharingApi = {
     method: "POST",
     body: JSON.stringify({}),
   }),
+  listWorkspace: () => apiFetch("/shares/workspace"),
+  addToWorkspace: (shareId) => apiFetch(`/shares/${shareId}/add-to-workspace`, {
+    method: "POST",
+    body: JSON.stringify({}),
+  }),
   requestPermission: (shareId, toPermission = "edit") => apiFetch(`/shares/${shareId}/permission-requests`, {
     method: "POST",
     body: JSON.stringify({ to_permission: toPermission }),

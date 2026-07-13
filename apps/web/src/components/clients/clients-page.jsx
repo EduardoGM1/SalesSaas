@@ -1,10 +1,11 @@
 
 import { Link, useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Eye, Share2, Trash2 } from "lucide-react";
 import { ShareProspectModal } from "@/components/network/share-prospect-modal.jsx";
 import { NewClientModal } from "@/components/clients/new-client-modal.jsx";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
+import { sharingApi } from "@/lib/network-api.js";
 import { Topbar } from "@/components/layout/topbar";
 import { PageBack } from "@/components/layout/page-back";
 import { clientDisplayName } from "@/lib/clients";
@@ -14,6 +15,39 @@ import { selectOnFocus } from "@/lib/focus-select.js";
 import { useAppStore } from "@/stores/app-store";
 import { useClientActions } from "@/hooks/use-client-actions.js";
 
+function pinnedToRow(share) {
+  const name = share.prospect_name || "—";
+  return {
+    id: share.prospect_id,
+    prospectCode: share.prospect_code || "",
+    name,
+    name1: name,
+    tourDate: share.tour_date || null,
+    createdYmd: share.tour_date || null,
+    tipo_tour: null,
+    tour_cuantificable: true,
+    pinned: true,
+    shareId: share.id,
+    href: share.href || `/red/contacto/${share.owner_id}/expediente/${share.prospect_id}`,
+    permission: share.permission,
+  };
+}
+
+function matchesQuery(row, q) {
+  if (!q) return true;
+  const hay = [
+    row.name,
+    row.name1,
+    row.prospectCode,
+    row.tipo_tour,
+    row.tourDate,
+    row.city,
+    row.country,
+    row.status,
+  ].filter(Boolean).join(" ").toLowerCase();
+  return hay.includes(q);
+}
+
 export function ClientsPage() {
   const { t, lang } = useI18n();
   const navigate = useNavigate();
@@ -22,18 +56,46 @@ export function ClientsPage() {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [shareClient, setShareClient] = useState(null);
+  const [pinned, setPinned] = useState([]);
   const canShare = isSupabaseConfigured();
 
-  const allClients = searchClients("");
-  const sorted = searchClients(query);
+  useEffect(() => {
+    if (!canShare || !hydrated) return;
+    let active = true;
+    sharingApi.listWorkspace()
+      .then((rows) => {
+        if (!active) return;
+        setPinned(Array.isArray(rows) ? rows.map(pinnedToRow) : []);
+      })
+      .catch(() => {
+        if (active) setPinned([]);
+      });
+    return () => { active = false; };
+  }, [canShare, hydrated]);
+
+  const ownedAll = searchClients("");
+  const ownedIds = useMemo(() => new Set(ownedAll.map((c) => c.id)), [ownedAll]);
+  const pinnedOnly = useMemo(
+    () => pinned.filter((p) => !ownedIds.has(p.id)),
+    [pinned, ownedIds],
+  );
+
+  const q = query.trim().toLowerCase();
+  const ownedSorted = searchClients(query);
+  const pinnedSorted = useMemo(
+    () => pinnedOnly.filter((p) => matchesQuery(p, q)),
+    [pinnedOnly, q],
+  );
+  const allRows = useMemo(() => [...ownedSorted, ...pinnedSorted], [ownedSorted, pinnedSorted]);
+  const totalCount = ownedAll.length + pinnedOnly.length;
   const hasSearch = query.trim().length > 0;
 
   if (!hydrated) return <Topbar title={t("page.clients.title")} subtitle={t("common.loading")} />;
 
-  const handleRowClick = (clientId, event) => {
+  const handleRowClick = (row, event) => {
     if (!window.matchMedia("(max-width: 768px)").matches) return;
     if (event.target.closest(".client-actions")) return;
-    navigate(`/clients/${clientId}`);
+    navigate(row.pinned ? row.href : `/clients/${row.id}`);
   };
 
   return (
@@ -60,16 +122,16 @@ export function ClientsPage() {
             <button type="button" className="btn btn-ghost btn-sm" onClick={() => setQuery("")}>{t("common.clear")}</button>
             <div className="client-search-count">
               {hasSearch
-                ? t("clients.filesCount", { shown: sorted.length, total: allClients.length })
-                : t("clients.filesTotal", { total: allClients.length })}
+                ? t("clients.filesCount", { shown: allRows.length, total: totalCount })
+                : t("clients.filesTotal", { total: totalCount })}
             </div>
           </div>
           <div className="client-search-help">{t("clients.searchHelp")}</div>
         </div>
 
-        {!allClients.length ? (
+        {!totalCount ? (
           <div className="client-empty">{t("clients.emptyCreate")}</div>
-        ) : !sorted.length ? (
+        ) : !allRows.length ? (
           <div className="client-search-empty">{t("clients.noResults", { query })}</div>
         ) : (
           <div className="client-table-card">
@@ -83,46 +145,59 @@ export function ClientsPage() {
                 </tr>
               </thead>
               <tbody>
-                {sorted.map((c) => (
-                  <tr
-                    key={c.id}
-                    className="client-table-row"
-                    onClick={(e) => handleRowClick(c.id, e)}
-                  >
-                    <td>
-                      <Link to={`/clients/${c.id}`} className="client-name-link client-name-link--desktop">
-                        <span>{clientDisplayName(c)}</span>
-                        <span className="client-code">{c.prospectCode}</span>
-                      </Link>
-                      <div className="client-name-link client-name-link--mobile">
-                        <span>{clientDisplayName(c)}</span>
-                        <span className="client-code">{c.prospectCode}</span>
-                      </div>
-                    </td>
-                    <td>{c.tourDate ? shortDate(c.tourDate, lang) : c.createdYmd ? shortDate(c.createdYmd, lang) : "—"}</td>
-                    <td>{c.tipo_tour ? `${c.tipo_tour} - ${c.tour_cuantificable !== false ? "1" : "0"}` : "—"}</td>
-                    <td>
-                      <div className="client-actions" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
-                        <Link to={`/clients/${c.id}`} className="icon-btn client-action-view" title={t("clients.viewFile")}><Eye size={14} /></Link>
-                        {canShare && (
-                          <button
-                            type="button"
-                            className="icon-btn"
-                            title={t("clients.share")}
-                            onClick={() => {
-                              setShareClient(c);
-                            }}
-                          >
-                            <Share2 size={14} />
-                          </button>
-                        )}
-                        <button type="button" className="icon-btn danger" title={t("clients.delete")} onClick={async () => {
-                          await removeClient(c.id, clientDisplayName(c));
-                        }}><Trash2 size={14} color="#dc2626" /></button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                {allRows.map((c) => {
+                  const href = c.pinned ? c.href : `/clients/${c.id}`;
+                  return (
+                    <tr
+                      key={c.pinned ? `pin-${c.shareId || c.id}` : c.id}
+                      className="client-table-row"
+                      onClick={(e) => handleRowClick(c, e)}
+                    >
+                      <td>
+                        <Link to={href} className="client-name-link client-name-link--desktop">
+                          <span>
+                            {clientDisplayName(c)}
+                            {c.pinned && (
+                              <span className="client-status-badge">{t("clients.pinnedBadge")}</span>
+                            )}
+                          </span>
+                          <span className="client-code">{c.prospectCode}</span>
+                        </Link>
+                        <div className="client-name-link client-name-link--mobile">
+                          <span>
+                            {clientDisplayName(c)}
+                            {c.pinned && (
+                              <span className="client-status-badge">{t("clients.pinnedBadge")}</span>
+                            )}
+                          </span>
+                          <span className="client-code">{c.prospectCode}</span>
+                        </div>
+                      </td>
+                      <td>{c.tourDate ? shortDate(c.tourDate, lang) : c.createdYmd ? shortDate(c.createdYmd, lang) : "—"}</td>
+                      <td>{c.tipo_tour ? `${c.tipo_tour} - ${c.tour_cuantificable !== false ? "1" : "0"}` : "—"}</td>
+                      <td>
+                        <div className="client-actions" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
+                          <Link to={href} className="icon-btn client-action-view" title={t("clients.viewFile")}><Eye size={14} /></Link>
+                          {!c.pinned && canShare && (
+                            <button
+                              type="button"
+                              className="icon-btn"
+                              title={t("clients.share")}
+                              onClick={() => setShareClient(c)}
+                            >
+                              <Share2 size={14} />
+                            </button>
+                          )}
+                          {!c.pinned && (
+                            <button type="button" className="icon-btn danger" title={t("clients.delete")} onClick={async () => {
+                              await removeClient(c.id, clientDisplayName(c));
+                            }}><Trash2 size={14} color="#dc2626" /></button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

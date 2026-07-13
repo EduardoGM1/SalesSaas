@@ -1,23 +1,27 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { fetchSession } from "@/lib/session-api.js";
 import { sharingApi } from "@/lib/network-api.js";
 import { isSupabaseConfigured } from "@/lib/supabase/config.js";
 import { toast } from "@/lib/toast";
+import { SalesModal } from "@/components/ui/sales-modal";
 
 export function ExpedienteInvitePage() {
   const { token } = useParams();
+  const [searchParams] = useSearchParams();
   const { t } = useI18n();
   const navigate = useNavigate();
-  const [view, setView] = useState("loading"); // loading | gate | error | redeeming
+  const [view, setView] = useState("loading");
   const [errorMsg, setErrorMsg] = useState("");
+  const [pinPrompt, setPinPrompt] = useState(null);
 
   useEffect(() => {
     let active = true;
 
     async function resolve() {
-      if (!token || String(token).includes("/") || String(token).includes("..")) {
+      const inviteToken = token || searchParams.get("token");
+      if (!inviteToken || String(inviteToken).includes("/") || String(inviteToken).includes("..")) {
         if (active) {
           setErrorMsg(t("share.gate.invalid"));
           setView("error");
@@ -38,24 +42,45 @@ export function ExpedienteInvitePage() {
 
       if (active) setView("redeeming");
       try {
-        const data = await sharingApi.redeemInvite(token);
+        const data = await sharingApi.redeemInvite(inviteToken);
         if (!active) return;
         toast.success(t("messages.share.redeemToast"));
         const path = data?.path || `/red/contacto/${data.owner_id}/expediente/${data.prospect_id}`;
+        const canPin = data?.can_add_to_workspace && !data?.added_to_workspace_at && data?.share?.id;
+        if (canPin) {
+          setPinPrompt({ shareId: data.share.id, path });
+          setView("pin");
+          return;
+        }
         navigate(path, { replace: true });
       } catch (err) {
         if (!active) return;
-        setErrorMsg(err.message || t("share.gate.noAccessBody"));
+        const msg = err.message || t("share.invite.expired");
+        setErrorMsg(msg);
         setView("error");
       }
     }
 
     resolve();
     return () => { active = false; };
-  }, [token, navigate, t]);
+  }, [token, searchParams, navigate, t]);
 
-  const next = token ? `/e/i/${token}` : "/";
+  const inviteToken = token || searchParams.get("token");
+  const next = inviteToken ? `/share/${inviteToken}` : "/";
   const nextQ = encodeURIComponent(next);
+
+  const finishPin = async (add) => {
+    if (!pinPrompt) return;
+    if (add) {
+      try {
+        await sharingApi.addToWorkspace(pinPrompt.shareId);
+        toast.success(t("clients.addToWorkspaceDone"));
+      } catch (err) {
+        toast.error(err.message);
+      }
+    }
+    navigate(pinPrompt.path, { replace: true });
+  };
 
   if (view === "loading" || view === "redeeming") {
     return (
@@ -67,12 +92,29 @@ export function ExpedienteInvitePage() {
     );
   }
 
+  if (view === "pin" && pinPrompt) {
+    return (
+      <div className="expediente-link-page">
+        <SalesModal open onOpenChange={() => finishPin(false)} title={t("clients.addToWorkspace")} sub={t("clients.addToWorkspacePrompt")}>
+          <div className="btn-row">
+            <button type="button" className="btn btn-primary" onClick={() => finishPin(true)}>
+              {t("clients.addToWorkspaceYes")}
+            </button>
+            <button type="button" className="btn btn-ghost" onClick={() => finishPin(false)}>
+              {t("clients.addToWorkspaceNo")}
+            </button>
+          </div>
+        </SalesModal>
+      </div>
+    );
+  }
+
   if (view === "error") {
     return (
       <div className="expediente-link-page">
         <div className="expediente-link-card">
           <h1>{t("share.gate.title")}</h1>
-          <p>{errorMsg || t("share.gate.noAccessBody")}</p>
+          <p>{errorMsg || t("share.invite.expired")}</p>
           <div className="expediente-link-actions">
             <Link className="btn btn-primary" to="/">{t("share.gate.home")}</Link>
           </div>

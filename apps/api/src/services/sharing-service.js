@@ -27,13 +27,22 @@ function prospectDisplayName(prospect) {
   return name || prospect.name || prospect.prospect_code || "Expediente";
 }
 
-const VALID_PERMISSIONS = ["view", "edit", "comment"];
+const VALID_PERMISSIONS = ["view", "edit", "comment", "workspace"];
 
 const PERM_LABEL = {
   view: "solo lectura",
   edit: "edición",
   comment: "comentario",
+  workspace: "agregar a su espacio",
 };
+
+function canEditPermission(permission) {
+  return permission === "edit" || permission === "workspace" || permission === "owner";
+}
+
+function canPinPermission(permission) {
+  return permission === "edit" || permission === "workspace";
+}
 
 function mapShare(row, profiles, prospects) {
   const prospect = prospects.get(row.prospect_id);
@@ -43,6 +52,7 @@ function mapShare(row, profiles, prospects) {
     owner_id: row.owner_id,
     shared_with_id: row.shared_with_id,
     permission: row.permission,
+    added_to_workspace_at: row.added_to_workspace_at ?? null,
     created_at: row.created_at,
     prospect_name: prospectDisplayName(prospect),
     prospect_code: prospect?.prospect_code,
@@ -123,7 +133,7 @@ export async function listSharesForProspect(supabase, userId, prospectId) {
 
   const { data, error } = await supabase
     .from("prospect_shares")
-    .select("id, prospect_id, owner_id, shared_with_id, permission, created_at")
+    .select("id, prospect_id, owner_id, shared_with_id, permission, added_to_workspace_at, created_at")
     .eq("prospect_id", prospectId)
     .eq("owner_id", userId)
     .order("created_at", { ascending: false });
@@ -145,7 +155,7 @@ export async function listSharesWithContact(supabase, userId, contactId) {
 
   const { data, error } = await supabase
     .from("prospect_shares")
-    .select("id, prospect_id, owner_id, shared_with_id, permission, created_at")
+    .select("id, prospect_id, owner_id, shared_with_id, permission, added_to_workspace_at, created_at")
     .or(`and(owner_id.eq.${userId},shared_with_id.eq.${contactId}),and(owner_id.eq.${contactId},shared_with_id.eq.${userId})`)
     .order("created_at", { ascending: false });
   if (error) throw new ServiceError(error.message, 500);
@@ -168,7 +178,7 @@ export async function listSharesWithContact(supabase, userId, contactId) {
 export async function listSharedWithMe(supabase, userId) {
   const { data, error } = await supabase
     .from("prospect_shares")
-    .select("id, prospect_id, owner_id, shared_with_id, permission, created_at")
+    .select("id, prospect_id, owner_id, shared_with_id, permission, added_to_workspace_at, created_at")
     .eq("shared_with_id", userId)
     .order("created_at", { ascending: false });
   if (error) throw new ServiceError(error.message, 500);
@@ -212,7 +222,7 @@ export async function createShare(supabase, userId, prospectId, { shared_with_id
       shared_with_id: sharedWithId,
       permission,
     }, { onConflict: "prospect_id,shared_with_id" })
-    .select("id, prospect_id, owner_id, shared_with_id, permission, created_at")
+    .select("id, prospect_id, owner_id, shared_with_id, permission, added_to_workspace_at, created_at")
     .single();
   if (error) {
     if (error.message?.includes("row-level security")) {
@@ -264,7 +274,7 @@ export async function updateSharePermission(supabase, userId, shareId, permissio
     .update({ permission })
     .eq("id", shareId)
     .eq("owner_id", userId)
-    .select("id, prospect_id, owner_id, shared_with_id, permission, created_at")
+    .select("id, prospect_id, owner_id, shared_with_id, permission, added_to_workspace_at, created_at")
     .maybeSingle();
   if (error) throw new ServiceError(error.message, 400);
   assertFound(data, "Compartido no encontrado.");
@@ -303,14 +313,19 @@ export async function requestPermissionUpgrade(supabase, userId, shareId, { to_p
   if (error) throw new ServiceError(error.message, 500);
   assertFound(share, "Compartido no encontrado.");
 
-  if (share.permission === "edit") {
-    throw new ServiceError("Ya tienes acceso de edición.");
+  if (share.permission === "workspace" || share.permission === "edit") {
+    if (toPermission === "edit" && share.permission === "edit") {
+      throw new ServiceError("Ya tienes acceso de edición.");
+    }
+    if (share.permission === "workspace") {
+      throw new ServiceError("Ya tienes el acceso máximo.");
+    }
   }
   if (share.permission === toPermission) {
     throw new ServiceError("Ya tienes ese nivel de acceso.");
   }
-  if (toPermission !== "edit") {
-    throw new ServiceError("Solo se puede solicitar acceso de edición.");
+  if (!["edit", "workspace"].includes(toPermission)) {
+    throw new ServiceError("Solo se puede solicitar edición o agregar a espacio.");
   }
 
   const { data: prospect } = await supabase
@@ -523,7 +538,7 @@ export async function redeemShareInvite(supabase, userId, token) {
       shared_with_id: userId,
       permission: invite.permission,
     }, { onConflict: "prospect_id,shared_with_id" })
-    .select("id, prospect_id, owner_id, shared_with_id, permission, created_at")
+    .select("id, prospect_id, owner_id, shared_with_id, permission, added_to_workspace_at, created_at")
     .single();
   if (shareErr) {
     if (shareErr.message?.includes("row-level security")) {
@@ -571,8 +586,75 @@ export async function redeemShareInvite(supabase, userId, token) {
     owner_id: invite.owner_id,
     prospect_id: invite.prospect_id,
     permission: invite.permission,
+    can_add_to_workspace: canPinPermission(invite.permission),
+    added_to_workspace_at: share.added_to_workspace_at ?? null,
     path: `/red/contacto/${invite.owner_id}/expediente/${invite.prospect_id}`,
   };
+}
+
+export async function addShareToWorkspace(supabase, userId, shareId) {
+  if (!isUuid(shareId)) throw new ServiceError("Compartido inválido.");
+  const { data: share, error } = await supabase
+    .from("prospect_shares")
+    .select("id, prospect_id, owner_id, shared_with_id, permission, added_to_workspace_at, created_at")
+    .eq("id", shareId)
+    .eq("shared_with_id", userId)
+    .maybeSingle();
+  if (error) throw new ServiceError(error.message, 500);
+  assertFound(share, "Compartido no encontrado.");
+  if (!canPinPermission(share.permission)) {
+    throw new ServiceError("Tu permiso no permite agregar este expediente a tu espacio.", 403);
+  }
+  if (share.added_to_workspace_at) {
+    return mapShare(share, await loadProfiles(supabase, [share.owner_id, share.shared_with_id]), new Map());
+  }
+  const now = new Date().toISOString();
+  const { data, error: upErr } = await supabase
+    .from("prospect_shares")
+    .update({ added_to_workspace_at: now })
+    .eq("id", shareId)
+    .eq("shared_with_id", userId)
+    .select("id, prospect_id, owner_id, shared_with_id, permission, added_to_workspace_at, created_at")
+    .maybeSingle();
+  if (upErr) throw new ServiceError(upErr.message, 400);
+  assertFound(data, "Compartido no encontrado.");
+  const profiles = await loadProfiles(supabase, [data.owner_id, data.shared_with_id]);
+  const { data: prospect } = await supabase
+    .from("prospects")
+    .select("id, prospect_code, name, name1, name2")
+    .eq("id", data.prospect_id)
+    .maybeSingle();
+  return mapShare(data, profiles, new Map(prospect ? [[prospect.id, prospect]] : []));
+}
+
+/** Expedientes pinneados en el espacio del receptor (mismo registro, no copia). */
+export async function listWorkspacePinned(supabase, userId) {
+  const { data, error } = await supabase
+    .from("prospect_shares")
+    .select("id, prospect_id, owner_id, shared_with_id, permission, added_to_workspace_at, created_at")
+    .eq("shared_with_id", userId)
+    .not("added_to_workspace_at", "is", null)
+    .order("added_to_workspace_at", { ascending: false });
+  if (error) throw new ServiceError(error.message, 500);
+  const rows = data ?? [];
+  const profiles = await loadProfiles(supabase, rows.flatMap((r) => [r.owner_id, r.shared_with_id]));
+  const prospectIds = [...new Set(rows.map((r) => r.prospect_id))];
+  const { data: prospectRows } = prospectIds.length
+    ? await supabase.from("prospects").select("id, prospect_code, name, name1, name2, tour_date, city, country, status").in("id", prospectIds)
+    : { data: [] };
+  const prospects = new Map((prospectRows ?? []).map((p) => [p.id, p]));
+  return rows.map((row) => {
+    const mapped = mapShare(row, profiles, prospects);
+    const p = prospects.get(row.prospect_id);
+    return {
+      ...mapped,
+      tour_date: p?.tour_date ?? null,
+      city: p?.city ?? null,
+      country: p?.country ?? null,
+      status: p?.status ?? null,
+      href: `/red/contacto/${row.owner_id}/expediente/${row.prospect_id}`,
+    };
+  });
 }
 
 export async function getSharedProspect(supabase, userId, prospectId) {
@@ -591,7 +673,7 @@ export async function getSharedProspect(supabase, userId, prospectId) {
 
   const { data: share } = await supabase
     .from("prospect_shares")
-    .select("id, permission, owner_id")
+    .select("id, permission, owner_id, added_to_workspace_at")
     .eq("prospect_id", prospectId)
     .eq("shared_with_id", userId)
     .maybeSingle();
@@ -610,6 +692,8 @@ export async function getSharedProspect(supabase, userId, prospectId) {
     permission: share.permission,
     share_id: share.id,
     owner_id: share.owner_id,
+    added_to_workspace_at: share.added_to_workspace_at ?? null,
+    can_add_to_workspace: canPinPermission(share.permission),
     tools,
   };
 }
@@ -664,7 +748,7 @@ export async function getSharedTool(supabase, userId, prospectId, tool) {
 export async function saveSharedTool(supabase, userId, prospectId, tool, data) {
   if (!SHARED_TOOLS.has(tool)) throw new ServiceError("Herramienta inválida.");
   const access = await resolveSharedAccess(supabase, userId, prospectId);
-  if (access.permission !== "owner" && access.permission !== "edit") {
+  if (access.permission !== "owner" && !canEditPermission(access.permission)) {
     throw new ServiceError("Solo lectura: no puedes editar esta herramienta.", 403);
   }
   const { data: saved, error } = await supabase
@@ -684,7 +768,7 @@ export async function saveSharedTool(supabase, userId, prospectId, tool, data) {
 export async function updateSharedProspect(supabase, userId, prospectId, body) {
   if (!isUuid(prospectId)) throw new ServiceError("Expediente inválido.");
   const access = await resolveSharedAccess(supabase, userId, prospectId);
-  if (access.permission !== "owner" && access.permission !== "edit") {
+  if (access.permission !== "owner" && !canEditPermission(access.permission)) {
     throw new ServiceError("Solo lectura: no puedes editar este expediente.", 403);
   }
   const patch = bodyToProspectPatch(body);

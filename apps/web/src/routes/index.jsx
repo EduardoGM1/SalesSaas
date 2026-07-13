@@ -84,6 +84,7 @@ export function AppRoutes() {
   return (
     <Routes>
       <Route path="/auth/callback" element={<AuthCallbackPage />} />
+      <Route path="/share/:token" element={<ExpedienteInvitePage />} />
       <Route path="/e/i/:token" element={<ExpedienteInvitePage />} />
       <Route path="/e/:prospectId" element={<ExpedienteLinkPage />} />
       <Route element={<AuthLayout />}>

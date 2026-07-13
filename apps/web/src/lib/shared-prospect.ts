@@ -27,18 +27,23 @@ export function prospectRowToClient(row: Record<string, unknown>): ClientRecord 
     createdYmd: tourDate,
     quickExpedient: row.quick_expedient === true,
     completedExpedient: row.completed === true,
+    deletedAt: row.deleted_at ? new Date(String(row.deleted_at)).getTime() : null,
     data: {},
     sales: [],
     activities: [],
   };
 }
 
-export type SharePermission = "owner" | "view" | "edit" | "comment";
+export type SharePermission = "owner" | "view" | "edit" | "comment" | "workspace";
 
 export function canEditShared(perm: SharePermission) {
-  return perm === "owner" || perm === "edit";
+  return perm === "owner" || perm === "edit" || perm === "workspace";
 }
 
 export function canCommentShared(perm: SharePermission) {
-  return perm === "owner" || perm === "edit" || perm === "comment";
+  return perm === "owner" || perm === "edit" || perm === "comment" || perm === "workspace";
+}
+
+export function canAddToWorkspace(perm: SharePermission | string | undefined | null) {
+  return perm === "edit" || perm === "workspace";
 }

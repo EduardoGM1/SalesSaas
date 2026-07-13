@@ -1,18 +1,28 @@
 import { useEffect, useMemo, useState } from "react";
+import { Eye, FolderPlus, Pencil } from "lucide-react";
 import { SalesModal } from "@/components/ui/sales-modal";
 import { networkApi, sharingApi } from "@/lib/network-api.js";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { toast } from "@/lib/toast";
 import { nudgePushPrompt } from "@/lib/push-prompt.js";
+import { fetchProfile } from "@/lib/session-api.js";
+import { buildMailtoHref } from "@/lib/share-message-templates.js";
 import {
   buildExternalShareMessage,
   canUseWebShare,
   shareExternally,
 } from "@/lib/share-external.js";
 
+const LEVELS = [
+  { value: "view", icon: Eye, key: "network.shareLevel.view", recommended: false },
+  { value: "edit", icon: Pencil, key: "network.shareLevel.edit", recommended: true },
+  { value: "workspace", icon: FolderPlus, key: "network.shareLevel.workspace", recommended: false },
+];
+
 const PERM_OPTIONS = [
   { value: "view", key: "network.permView" },
   { value: "edit", key: "network.permEdit" },
+  { value: "workspace", key: "network.permWorkspace" },
   { value: "comment", key: "network.permComment" },
 ];
 
@@ -48,11 +58,11 @@ function ShareRow({ share, onPermissionChange, onRemove, t }) {
       <div className="share-row-name">{displayName(share.shared_with)}</div>
       <select
         className="share-perm-select"
-        value={share.permission}
+        value={share.permission === "comment" ? "view" : share.permission}
         onChange={(e) => handlePerm(e.target.value)}
         aria-label={t("network.permission")}
       >
-        {PERM_OPTIONS.map(({ value, key }) => (
+        {PERM_OPTIONS.filter((o) => o.value !== "comment").map(({ value, key }) => (
           <option key={value} value={value}>{t(key)}</option>
         ))}
       </select>
@@ -71,10 +81,11 @@ export function ShareProspectModal({ open, onOpenChange, prospectId, prospectNam
   const [shares, setShares] = useState([]);
   const [loading, setLoading] = useState(false);
   const [selectedId, setSelectedId] = useState("");
-  const [permission, setPermission] = useState("view");
-  const [externalPermission, setExternalPermission] = useState("view");
-  const [invitePreview, setInvitePreview] = useState("");
+  const [permission, setPermission] = useState("edit");
+  const [externalPermission, setExternalPermission] = useState("edit");
+  const [invitePayload, setInvitePayload] = useState(null);
   const [sharingOut, setSharingOut] = useState(false);
+  const [sharerName, setSharerName] = useState("Saletse");
 
   const clientForShare = useMemo(() => {
     if (prospect && typeof prospect === "object") {
@@ -82,12 +93,6 @@ export function ShareProspectModal({ open, onOpenChange, prospectId, prospectNam
     }
     return { id: prospectId, name: prospectName, name1: prospectName };
   }, [prospect, prospectId, prospectName]);
-
-  const permLabelKey = {
-    view: "network.permView",
-    edit: "network.permEdit",
-    comment: "network.permComment",
-  };
 
   const refresh = async () => {
     if (!prospectId) return;
@@ -109,19 +114,23 @@ export function ShareProspectModal({ open, onOpenChange, prospectId, prospectNam
   useEffect(() => {
     if (open) {
       setMode("internal");
+      setPermission("edit");
+      setExternalPermission("edit");
       refresh();
+      fetchProfile().then((p) => {
+        if (p?.full_name) setSharerName(p.full_name.trim());
+        else if (p?.email) setSharerName(p.email.split("@")[0]);
+      }).catch(() => {});
     } else {
       setSelectedId("");
-      setPermission("view");
-      setExternalPermission("view");
-      setInvitePreview("");
+      setInvitePayload(null);
       setMode("internal");
     }
   }, [open, prospectId]);
 
   useEffect(() => {
     if (!open || mode !== "external" || !prospectId || typeof window === "undefined") {
-      setInvitePreview("");
+      setInvitePayload(null);
       return;
     }
     let cancelled = false;
@@ -129,24 +138,23 @@ export function ShareProspectModal({ open, onOpenChange, prospectId, prospectNam
       try {
         const invite = await sharingApi.createInvite(prospectId, externalPermission);
         if (cancelled) return;
-        const text = buildExternalShareMessage({
+        const msg = buildExternalShareMessage({
           client: clientForShare,
           origin: window.location.origin,
-          t,
           lang,
           inviteToken: invite.token,
-          permissionLabel: t(permLabelKey[externalPermission] || "network.permView"),
+          sharerName,
         });
-        setInvitePreview(text);
+        setInvitePayload({ ...msg, token: invite.token });
       } catch (err) {
         if (!cancelled) {
-          setInvitePreview("");
+          setInvitePayload(null);
           toast.error(err.message);
         }
       }
     })();
     return () => { cancelled = true; };
-  }, [open, mode, prospectId, externalPermission, clientForShare, t, lang]);
+  }, [open, mode, prospectId, externalPermission, clientForShare, lang, sharerName]);
 
   const handleShare = async () => {
     if (!selectedId) return;
@@ -175,13 +183,23 @@ export function ShareProspectModal({ open, onOpenChange, prospectId, prospectNam
     }
   };
 
+  const handleCopyLink = async () => {
+    if (!invitePayload?.url) return;
+    try {
+      await navigator.clipboard.writeText(invitePayload.url);
+      toast.success(t("network.shareExternal.copied"));
+    } catch {
+      toast.error(t("auth.login.errorGeneric"));
+    }
+  };
+
   const handleExternalShare = async () => {
-    if (!invitePreview) return;
+    if (!invitePayload?.text) return;
     setSharingOut(true);
     try {
       const result = await shareExternally({
-        text: invitePreview,
-        title: t("network.shareTitle"),
+        text: invitePayload.text,
+        title: invitePayload.subject,
       });
       if (result === "shared" || result === "whatsapp") {
         toast.success(t("network.shareExternal.done"));
@@ -199,7 +217,7 @@ export function ShareProspectModal({ open, onOpenChange, prospectId, prospectNam
       onOpenChange={onOpenChange}
       title={t("network.shareTitle")}
       sub={t("network.shareSub", { name: prospectName })}
-      maxWidth={600}
+      maxWidth={640}
     >
       <div className="share-mode-tabs" role="tablist" aria-label={t("network.shareTitle")}>
         <button
@@ -224,22 +242,43 @@ export function ShareProspectModal({ open, onOpenChange, prospectId, prospectNam
 
       {mode === "external" ? (
         <div className="share-external-panel">
-          <div className="prospect-field" style={{ marginBottom: 12 }}>
-            <label>{t("network.permission")}</label>
-            <select value={externalPermission} onChange={(e) => setExternalPermission(e.target.value)}>
-              {PERM_OPTIONS.map(({ value, key }) => (
-                <option key={value} value={value}>{t(key)}</option>
-              ))}
-            </select>
+          <div className="share-level-grid">
+            {LEVELS.map((lvl) => {
+              const Icon = lvl.icon;
+              const on = externalPermission === lvl.value;
+              return (
+                <button
+                  key={lvl.value}
+                  type="button"
+                  className={`share-level-card${on ? " on" : ""}`}
+                  onClick={() => setExternalPermission(lvl.value)}
+                >
+                  {lvl.recommended && <span className="share-level-badge">{t("network.shareLevel.recommended")}</span>}
+                  <Icon size={20} aria-hidden />
+                  <strong>{t(`${lvl.key}.title`)}</strong>
+                  <span>{t(`${lvl.key}.desc`)}</span>
+                </button>
+              );
+            })}
           </div>
           <div className="section-label">{t("network.shareExternal.preview")}</div>
-          <pre className="share-external-preview">{invitePreview || t("common.loading")}</pre>
+          <pre className="share-external-preview">{invitePayload?.text || t("common.loading")}</pre>
           <p className="share-external-hint">{t("network.shareExternal.hint")}</p>
-          <div className="btn-row" style={{ marginTop: 0 }}>
+          <div className="btn-row" style={{ marginTop: 0, flexWrap: "wrap" }}>
+            <button type="button" className="btn btn-ghost btn-sm" disabled={!invitePayload?.url} onClick={handleCopyLink}>
+              {t("network.shareExternal.copyLink")}
+            </button>
+            <a
+              className={`btn btn-ghost btn-sm${!invitePayload ? " disabled" : ""}`}
+              href={invitePayload ? buildMailtoHref(invitePayload) : undefined}
+              onClick={(e) => { if (!invitePayload) e.preventDefault(); }}
+            >
+              {t("network.shareExternal.email")}
+            </a>
             <button
               type="button"
               className="btn btn-primary"
-              disabled={!prospectId || sharingOut || !invitePreview}
+              disabled={!invitePayload || sharingOut}
               onClick={handleExternalShare}
             >
               {sharingOut
@@ -255,6 +294,26 @@ export function ShareProspectModal({ open, onOpenChange, prospectId, prospectNam
         </div>
       ) : (
         <>
+          <div className="share-level-grid" style={{ marginBottom: 14 }}>
+            {LEVELS.map((lvl) => {
+              const Icon = lvl.icon;
+              const on = permission === lvl.value;
+              return (
+                <button
+                  key={lvl.value}
+                  type="button"
+                  className={`share-level-card${on ? " on" : ""}`}
+                  onClick={() => setPermission(lvl.value)}
+                >
+                  {lvl.recommended && <span className="share-level-badge">{t("network.shareLevel.recommended")}</span>}
+                  <Icon size={18} aria-hidden />
+                  <strong>{t(`${lvl.key}.title`)}</strong>
+                  <span>{t(`${lvl.key}.desc`)}</span>
+                </button>
+              );
+            })}
+          </div>
+
           {loading ? (
             <div className="dp-empty">{t("common.loading")}</div>
           ) : contacts.length === 0 ? (
@@ -271,14 +330,6 @@ export function ShareProspectModal({ open, onOpenChange, prospectId, prospectNam
                       .map((c) => (
                         <option key={c.id} value={c.id}>{displayName(c)}</option>
                       ))}
-                  </select>
-                </div>
-                <div className="prospect-field">
-                  <label>{t("network.permission")}</label>
-                  <select value={permission} onChange={(e) => setPermission(e.target.value)}>
-                    {PERM_OPTIONS.map(({ value, key }) => (
-                      <option key={value} value={value}>{t(key)}</option>
-                    ))}
                   </select>
                 </div>
               </div>

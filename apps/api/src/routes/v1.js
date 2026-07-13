@@ -501,6 +501,18 @@ router.post("/share-invites/:token/redeem", async (req, res) => {
   await runService(res, () => sharingService.redeemShareInvite(a.supabase, a.userId, req.params.token), { wrap: "data" });
 });
 
+router.get("/shares/workspace", async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  await runService(res, () => sharingService.listWorkspacePinned(a.supabase, a.userId), { wrap: "data" });
+});
+
+router.post("/shares/:id/add-to-workspace", async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  await runService(res, () => sharingService.addShareToWorkspace(a.supabase, a.userId, req.params.id), { wrap: "data" });
+});
+
 router.post("/shares/:id/permission-requests", async (req, res) => {
   const a = await requireAuth(req, res);
   if (!a) return;
