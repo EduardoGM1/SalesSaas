@@ -3,7 +3,7 @@ import { sharingApi } from "@/lib/network-api.js";
 import { prospectRowToClient, canEditShared } from "@/lib/shared-prospect";
 import { EMPTY_TOOL_BUCKET } from "@/lib/store-empty.js";
 import { useExpedienteCollab } from "@/hooks/use-expediente-collab.js";
-import { toast } from "@/lib/toast";
+import { markLocalToolSave, notifyRemoteSectionUpdated } from "@/lib/collab-remote-notify.js";
 import { useI18n } from "@/hooks/use-i18n.js";
 
 export function useSharedToolSession(prospectId, contactId, section = "detail") {
@@ -14,7 +14,6 @@ export function useSharedToolSession(prospectId, contactId, section = "detail") 
   const [tools, setTools] = useState({});
   const [toolsRevision, setToolsRevision] = useState(0);
   const onDataChangeRef = useRef(null);
-  const lastToastAtRef = useRef(0);
   const sectionRef = useRef(section);
   sectionRef.current = section;
 
@@ -57,11 +56,13 @@ export function useSharedToolSession(prospectId, contactId, section = "detail") 
           await reloadTool(payload.tool);
         }
         if (payload.tool === sectionRef.current) {
-          const now = Date.now();
-          if (now - lastToastAtRef.current > 1500) {
-            lastToastAtRef.current = now;
-            toast.success(t("collab.remoteUpdated"));
-          }
+          notifyRemoteSectionUpdated({
+            prospectId,
+            tool: payload.tool,
+            message: t("collab.remoteUpdated"),
+            eventId: payload.eventId || `${payload.tool}:${payload.commit_timestamp}`,
+            source: "shared-session",
+          });
         }
         return;
       }
@@ -81,7 +82,8 @@ export function useSharedToolSession(prospectId, contactId, section = "detail") 
     onDataChange: (payload) => onDataChangeRef.current?.(payload),
   });
 
-  const readOnly = loading || !canEdit || collab.sectionLocked;
+  // Solo permiso: el soft-lock de sección es informativo; el exclusividad real es por campo.
+  const readOnly = loading || !canEdit;
   const backHref = contactId
     ? `/red/contacto/${contactId}/expediente/${prospectId}`
     : `/network`;
@@ -89,13 +91,12 @@ export function useSharedToolSession(prospectId, contactId, section = "detail") 
   const getToolData = useCallback((tool) => tools[tool] || EMPTY_TOOL_BUCKET, [tools]);
 
   const saveTool = useCallback(async (tool, data) => {
-    if (collab.sectionLocked) {
-      throw new Error(t("collab.sectionLocked", { name: collab.lockedBy?.name || t("collab.someone") }));
-    }
+    markLocalToolSave(prospectId, tool);
+    await collab.unlockField?.();
     const saved = await sharingApi.saveTool(prospectId, tool, data);
     bumpTools((prev) => ({ ...prev, [tool]: saved }));
     return saved;
-  }, [prospectId, collab.sectionLocked, collab.lockedBy, t, bumpTools]);
+  }, [prospectId, collab.unlockField, bumpTools]);
 
   return useMemo(() => ({
     ready: !loading && !!prospect,
@@ -114,6 +115,7 @@ export function useSharedToolSession(prospectId, contactId, section = "detail") 
     lockedBy: collab.lockedBy,
     sectionLocked: collab.sectionLocked,
     hasOthers: collab.hasOthers,
+    collab,
   }), [
     loading,
     permission,
@@ -126,9 +128,6 @@ export function useSharedToolSession(prospectId, contactId, section = "detail") 
     reload,
     reloadTool,
     toolsRevision,
-    collab.peers,
-    collab.lockedBy,
-    collab.sectionLocked,
-    collab.hasOthers,
+    collab,
   ]);
 }

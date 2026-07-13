@@ -1988,6 +1988,66 @@ div.modal-backdrop.sales-modal-overlay:not([hidden]) {
   font-weight: 600;
 }
 
+/* Field-level lock (Presence focused_field) */
+.collab-field-wrap {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  display: block;
+  width: 100%;
+}
+
+.collab-field-wrap > input,
+.collab-field-wrap > select {
+  width: 100%;
+}
+
+.client-survey-cfield .collab-field-wrap {
+  flex: 1;
+  min-width: 0;
+}
+
+.collab-field-wrap.is-locked > input,
+.collab-field-wrap.is-locked > select,
+input.collab-field-locked,
+select.collab-field-locked {
+  opacity: 0.75;
+  cursor: not-allowed;
+  border-color: color-mix(in srgb, var(--blue) 55%, var(--border)) !important;
+  padding-right: 28px;
+}
+
+.collab-field-lock-badge {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  overflow: hidden;
+  pointer-events: none;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--blue) 40%, transparent);
+  background: var(--surface2, #e2e8f0);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1;
+}
+
+.collab-field-lock-avatar {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.collab-field-lock-initial {
+  font-size: 9px;
+  font-weight: 800;
+  color: var(--blue);
+  line-height: 1;
+}
+
 .exp-presence-bar {
   display: flex;
   align-items: center;

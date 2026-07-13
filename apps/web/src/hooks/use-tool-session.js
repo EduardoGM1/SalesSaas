@@ -9,7 +9,7 @@ import { ensureProspectIdentity } from "@/lib/clients";
 import { sharingApi } from "@/lib/network-api.js";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { isExpedienteUuid } from "@/lib/expediente-collab.js";
-import { toast } from "@/lib/toast";
+import { markLocalToolSave, notifyRemoteSectionUpdated } from "@/lib/collab-remote-notify.js";
 import { useI18n } from "@/hooks/use-i18n.js";
 
 /** Unifica carga/guardado local (store) y remoto (expediente compartido). */
@@ -46,7 +46,6 @@ export function useToolSession({ clientId, shared, section }) {
           ? clientId
           : null);
   const onLocalDataChangeRef = useRef(null);
-  const lastToastAtRef = useRef(0);
   const toolSectionRef = useRef(toolSection);
   toolSectionRef.current = toolSection;
 
@@ -61,11 +60,13 @@ export function useToolSession({ clientId, shared, section }) {
       }
       setLocalToolsRevision((n) => n + 1);
       if (payload.tool === toolSectionRef.current) {
-        const now = Date.now();
-        if (now - lastToastAtRef.current > 1500) {
-          lastToastAtRef.current = now;
-          toast.success(t("collab.remoteUpdated"));
-        }
+        notifyRemoteSectionUpdated({
+          prospectId: localProspectId,
+          tool: payload.tool,
+          message: t("collab.remoteUpdated"),
+          eventId: payload.eventId || `${payload.tool}:${payload.commit_timestamp}`,
+          source: "owner-session",
+        });
       }
     } catch {
       /* ignore */
@@ -86,9 +87,9 @@ export function useToolSession({ clientId, shared, section }) {
   const peers = useShared ? sharedSession.peers : localCollab.peers;
   const hasOthers = useShared ? sharedSession.hasOthers : localCollab.hasOthers;
   const toolsRevision = useShared ? sharedSession.toolsRevision : localToolsRevision;
-  const readOnly = useShared
-    ? sharedSession.readOnly
-    : sectionLocked;
+  const collab = useShared ? sharedSession.collab : localCollab;
+  // Propietario siempre puede editar; compartido depende del permiso (no del soft-lock de sección).
+  const readOnly = useShared ? sharedSession.readOnly : false;
   const backHref = resolveToolBackHref(clientId, useShared ? sharedSession.backHref : undefined);
 
   const getBucket = useCallback((tool) => (
@@ -96,15 +97,15 @@ export function useToolSession({ clientId, shared, section }) {
   ), [useShared, sharedSession.getToolData, getToolBucket, mode, clientId, toolsRevision]);
 
   const saveBucket = useCallback(async (tool, data) => {
-    if (sectionLocked) {
-      throw new Error(t("collab.sectionLocked", { name: lockedBy?.name || t("collab.someone") }));
-    }
+    const pid = useShared ? shared?.prospectId : localProspectId;
+    if (pid) markLocalToolSave(pid, tool);
+    await collab?.unlockField?.();
     if (useShared) {
       await sharedSession.saveTool(tool, data);
       return;
     }
     saveToolBucket(tool, mode, data, clientId);
-  }, [useShared, sharedSession.saveTool, saveToolBucket, mode, clientId, sectionLocked, lockedBy, t]);
+  }, [useShared, sharedSession.saveTool, saveToolBucket, mode, clientId, shared?.prospectId, localProspectId, collab]);
 
   const getProspectClient = useCallback(() => (
     useShared ? sharedSession.prospect : (clientId ? getClient(clientId) : undefined)
@@ -113,7 +114,7 @@ export function useToolSession({ clientId, shared, section }) {
   const syncProspectFields = useCallback(async (fields) => {
     if (!fields) return;
     if (useShared) {
-      if (!sharedSession.canEdit || sectionLocked) return;
+      if (!sharedSession.canEdit) return;
       await sharingApi.updateProspect(shared.prospectId, {
         name1: fields.name1,
         name2: fields.name2,
@@ -130,7 +131,7 @@ export function useToolSession({ clientId, shared, section }) {
     const c = getClient(clientId);
     if (!c) return;
     saveClient(ensureProspectIdentity({ ...c, ...fields }));
-  }, [useShared, sharedSession.canEdit, sharedSession.reload, shared?.prospectId, clientId, getClient, saveClient, sectionLocked]);
+  }, [useShared, sharedSession.canEdit, sharedSession.reload, shared?.prospectId, clientId, getClient, saveClient]);
 
   return useMemo(() => ({
     ready,
@@ -150,6 +151,7 @@ export function useToolSession({ clientId, shared, section }) {
     sectionLocked,
     hasOthers,
     toolsRevision,
+    collab,
   }), [
     ready,
     mode,
@@ -169,5 +171,6 @@ export function useToolSession({ clientId, shared, section }) {
     sectionLocked,
     hasOthers,
     toolsRevision,
+    collab,
   ]);
 }

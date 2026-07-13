@@ -1,16 +1,19 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { fetchProfile } from "@/lib/session-api.js";
 import {
   startExpedienteCollab,
   stopExpedienteCollab,
   updateExpedienteCollabTrack,
+  setFocusedField,
   findSectionLocker,
+  findFieldLocker,
   isExpedienteUuid,
+  FIELD_LOCK_TTL_MS,
 } from "@/lib/expediente-collab.js";
 
 /**
- * Presencia + sync de un expediente. Un canal por prospectId.
+ * Presencia + sync + field lock de un expediente.
  */
 export function useExpedienteCollab({
   prospectId,
@@ -21,6 +24,7 @@ export function useExpedienteCollab({
 }) {
   const [peers, setPeers] = useState([]);
   const [profile, setProfile] = useState(null);
+  const [tick, setTick] = useState(0);
   const canCollab = enabled && isSupabaseConfigured() && isExpedienteUuid(prospectId);
   const onDataChangeRef = useRef(onDataChange);
   onDataChangeRef.current = onDataChange;
@@ -36,13 +40,21 @@ export function useExpedienteCollab({
     return () => { active = false; };
   }, [canCollab]);
 
+  // Re-evaluar TTL de locks de campo periódicamente
+  useEffect(() => {
+    if (!canCollab) return undefined;
+    const id = setInterval(() => setTick((n) => n + 1), 10_000);
+    return () => clearInterval(id);
+  }, [canCollab]);
+
   const myId = profile?.id || null;
   const lockedBy = useMemo(
     () => findSectionLocker(peers, myId, section),
     [peers, myId, section],
   );
+  // Soft-lock informativo (banner); no bloquea el formulario — eso lo hace field lock.
   const sectionLocked = !!lockedBy;
-  const trackState = wantEdit && !sectionLocked ? "editing" : "viewing";
+  const trackState = wantEdit ? "editing" : "viewing";
 
   useEffect(() => {
     if (!canCollab || !profile?.id) return undefined;
@@ -63,7 +75,6 @@ export function useExpedienteCollab({
       cancelled = true;
       stopExpedienteCollab().catch(() => {});
     };
-    // Solo re-suscribir al cambiar expediente/perfil — no al cambiar trackState.
   }, [canCollab, prospectId, profile?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
@@ -76,6 +87,19 @@ export function useExpedienteCollab({
     [peers, myId],
   );
 
+  const lockField = useCallback(async (fieldId) => {
+    await setFocusedField(fieldId || null);
+  }, []);
+
+  const unlockField = useCallback(async () => {
+    await setFocusedField(null);
+  }, []);
+
+  const getFieldLocker = useCallback((fieldId) => {
+    void tick;
+    return findFieldLocker(peers, myId, fieldId);
+  }, [peers, myId, tick]);
+
   return {
     peers: otherPeers,
     allPeers: peers,
@@ -84,5 +108,40 @@ export function useExpedienteCollab({
     sectionLocked,
     trackState,
     hasOthers: otherPeers.length > 0,
+    lockField,
+    unlockField,
+    getFieldLocker,
+    fieldLockTtlMs: FIELD_LOCK_TTL_MS,
+  };
+}
+
+/**
+ * Props de bloqueo para un input concreto (mismo Presence que avatares).
+ */
+export function useFieldLock(collab, fieldId, { disabled = false } = {}) {
+  const locker = collab?.getFieldLocker?.(fieldId) || null;
+  const locked = !!locker && !disabled;
+
+  const onFocus = useCallback(() => {
+    if (disabled || locked) return;
+    collab?.lockField?.(fieldId);
+  }, [collab, fieldId, disabled, locked]);
+
+  const onBlur = useCallback(() => {
+    if (disabled) return;
+    collab?.unlockField?.();
+  }, [collab, disabled]);
+
+  return {
+    locked,
+    locker,
+    lockProps: {
+      onFocus,
+      onBlur,
+      readOnly: disabled || locked,
+      disabled: disabled || locked,
+      "aria-disabled": disabled || locked ? "true" : undefined,
+      className: locked ? "collab-field-locked" : undefined,
+    },
   };
 }

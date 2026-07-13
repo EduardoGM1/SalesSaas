@@ -14,6 +14,7 @@ import { formatSingleNameInput, isValidSingleName, SINGLE_NAME_MAX_LENGTH } from
 import { useI18n } from "@/hooks/use-i18n.js";
 import { useMoney } from "@/hooks/use-money.js";
 import { useToolSession } from "@/hooks/use-tool-session.js";
+import { CollabField, collabFieldId } from "@/components/clients/collab-field.jsx";
 import { useDbStore } from "@/stores/db-store";
 import { shallow } from "zustand/shallow";
 
@@ -39,7 +40,11 @@ interface SurveyPageProps {
 export function SurveyPage({ clientId, shared }: SurveyPageProps) {
   const { t } = useI18n();
   const session = useToolSession({ clientId, shared, section: "survey" });
-  const { ready, readOnly, backHref, getBucket, saveBucket, syncProspectFields, isFileMode, isShared, prospectId, peers, lockedBy, toolsRevision } = session;
+  const {
+    ready, readOnly, backHref, getBucket, saveBucket, syncProspectFields,
+    isFileMode, isShared, prospectId, peers, lockedBy, toolsRevision, collab,
+  } = session;
+  const fid = (key) => collabFieldId("survey", key);
   const saveClient = useDbStore((s) => s.saveClient);
   const getClient = useDbStore((s) => s.getClient);
   const moneySettings = useDbStore((s) => s.db.settings, shallow);
@@ -180,52 +185,99 @@ export function SurveyPage({ clientId, shared }: SurveyPageProps) {
           <div className="client-survey-compact">
             <div className="client-survey-cfield">
               <label>{t("tools.survey.name")}</label>
-              <input
-                type="text"
-                inputMode="text"
-                id="svp-name1"
-                autoComplete="off"
-                autoCorrect="off"
-                spellCheck={false}
-                maxLength={SINGLE_NAME_MAX_LENGTH}
-                placeholder={t("tools.survey.namePlaceholder")}
-                value={data.svp_name1 || ""}
-                onFocus={selectOnFocus}
-                onChange={(e) => update("svp_name1", formatSingleNameInput(e.target.value))}
-                onKeyDown={(e) => { if (e.key === " ") e.preventDefault(); }}
-                className={validationErrors.svp_name1 ? "input-error" : ""}
-              />
+              <CollabField collab={collab} fieldId={fid("svp_name1")} disabled={readOnly}>
+                {(lp) => (
+                  <input
+                    type="text"
+                    inputMode="text"
+                    id="svp-name1"
+                    autoComplete="off"
+                    autoCorrect="off"
+                    spellCheck={false}
+                    maxLength={SINGLE_NAME_MAX_LENGTH}
+                    placeholder={t("tools.survey.namePlaceholder")}
+                    value={data.svp_name1 || ""}
+                    onFocus={(e) => { lp.onFocus?.(e); selectOnFocus(e); }}
+                    onBlur={lp.onBlur}
+                    disabled={lp.disabled}
+                    readOnly={lp.readOnly}
+                    onChange={(e) => update("svp_name1", formatSingleNameInput(e.target.value))}
+                    onKeyDown={(e) => { if (e.key === " ") e.preventDefault(); }}
+                    className={[validationErrors.svp_name1 ? "input-error" : "", lp.className].filter(Boolean).join(" ")}
+                  />
+                )}
+              </CollabField>
             </div>
             {validationErrors.svp_name1 && <div className="client-survey-name-error">{validationErrors.svp_name1}</div>}
             <div className="client-survey-crow">
               <div className="client-survey-cfield">
                 <label>{t("tools.survey.country")}</label>
-                <select id="svp-country" value={data.svp_country || ""} onFocus={selectOnFocus} onChange={(e) => update("svp_country", e.target.value)}>
-                  <option value="">{t("tools.survey.selectCountry")}</option>
-                  {countries.map((country) => (
-                    <option key={country} value={country}>{COUNTRY_FLAGS[country] || "🌐"} {country}</option>
-                  ))}
-                  {data.svp_country && !countries.includes(data.svp_country) && (
-                    <option value={data.svp_country}>{data.svp_country}</option>
+                <CollabField collab={collab} fieldId={fid("svp_country")} disabled={readOnly}>
+                  {(lp) => (
+                    <select
+                      id="svp-country"
+                      value={data.svp_country || ""}
+                      onFocus={(e) => { lp.onFocus?.(e); selectOnFocus(e); }}
+                      onBlur={lp.onBlur}
+                      disabled={lp.disabled}
+                      onChange={(e) => update("svp_country", e.target.value)}
+                      className={lp.className}
+                    >
+                      <option value="">{t("tools.survey.selectCountry")}</option>
+                      {countries.map((country) => (
+                        <option key={country} value={country}>{COUNTRY_FLAGS[country] || "🌐"} {country}</option>
+                      ))}
+                      {data.svp_country && !countries.includes(data.svp_country) && (
+                        <option value={data.svp_country}>{data.svp_country}</option>
+                      )}
+                    </select>
                   )}
-                </select>
+                </CollabField>
               </div>
               <div className="client-survey-cfield">
                 <label>{t("tools.survey.city")}</label>
-                <select id="svp-city" value={data.svp_city || ""} onFocus={selectOnFocus} onChange={(e) => update("svp_city", e.target.value)} disabled={!data.svp_country}>
-                  <option value="">{t("tools.survey.selectCity")}</option>
-                  {cities.map((city) => (
-                    <option key={city} value={city}>{city}</option>
-                  ))}
-                  {data.svp_city && !cities.includes(data.svp_city) && (
-                    <option value={data.svp_city}>{data.svp_city}</option>
+                <CollabField collab={collab} fieldId={fid("svp_city")} disabled={readOnly || !data.svp_country}>
+                  {(lp) => (
+                    <select
+                      id="svp-city"
+                      value={data.svp_city || ""}
+                      onFocus={(e) => { lp.onFocus?.(e); selectOnFocus(e); }}
+                      onBlur={lp.onBlur}
+                      disabled={lp.disabled}
+                      onChange={(e) => update("svp_city", e.target.value)}
+                      className={lp.className}
+                    >
+                      <option value="">{t("tools.survey.selectCity")}</option>
+                      {cities.map((city) => (
+                        <option key={city} value={city}>{city}</option>
+                      ))}
+                      {data.svp_city && !cities.includes(data.svp_city) && (
+                        <option value={data.svp_city}>{data.svp_city}</option>
+                      )}
+                    </select>
                   )}
-                </select>
+                </CollabField>
               </div>
             </div>
             <div className="client-survey-cfield">
               <label>{t("tools.survey.occupation")}</label>
-              <input type="text" inputMode="text" id="svp-occ1" placeholder={t("tools.survey.occPlaceholder")} value={data.svp_occ1 || ""} onFocus={selectOnFocus} onChange={(e) => update("svp_occ1", e.target.value)} />
+              <CollabField collab={collab} fieldId={fid("svp_occ1")} disabled={readOnly}>
+                {(lp) => (
+                  <input
+                    type="text"
+                    inputMode="text"
+                    id="svp-occ1"
+                    placeholder={t("tools.survey.occPlaceholder")}
+                    value={data.svp_occ1 || ""}
+                    onFocus={(e) => { lp.onFocus?.(e); selectOnFocus(e); }}
+                    onBlur={lp.onBlur}
+                    disabled={lp.disabled}
+                    readOnly={lp.readOnly}
+                    onChange={(e) => update("svp_occ1", e.target.value)}
+                    className={lp.className}
+                  />
+                )}
+              </CollabField>
             </div>
           </div>
         </div>
@@ -237,7 +289,11 @@ export function SurveyPage({ clientId, shared }: SurveyPageProps) {
             <div className="tool-calc-fields">
               <div className="frow frow-first tool-frow">
                 <div className="flabel">{t("tools.survey.nights")}</div>
-                <input type="number" inputMode="numeric" className="input-compact tool-num-input" id="sv-nights" min={1} value={data.nights} onFocus={selectOnFocus} onChange={(e) => update("nights", e.target.value)} />
+                <CollabField collab={collab} fieldId={fid("nights")} disabled={readOnly}>
+                  {(lp) => (
+                    <input type="number" inputMode="numeric" className={`input-compact tool-num-input ${lp.className || ""}`.trim()} id="sv-nights" min={1} value={data.nights} onFocus={(e) => { lp.onFocus?.(e); selectOnFocus(e); }} onBlur={lp.onBlur} disabled={lp.disabled} readOnly={lp.readOnly} onChange={(e) => update("nights", e.target.value)} />
+                  )}
+                </CollabField>
               </div>
               <div className="frow tool-frow">
                 <div className="flabel">{t("tools.survey.expenseType")}</div>
@@ -250,14 +306,22 @@ export function SurveyPage({ clientId, shared }: SurveyPageProps) {
                 <div className="flabel">{t("tools.survey.totalPaid")}</div>
                 <div className="mfield">
                   <span className="mpfx">$</span>
-                  <input type="text" inputMode="decimal" id="sv-total" value={data.total} onFocus={selectOnFocus} onChange={(e) => update("total", formatDecimalInput(e.target.value))} onBlur={(e) => update("total", formatMoneyValue(e.target.value))} />
+                  <CollabField collab={collab} fieldId={fid("total")} disabled={readOnly}>
+                    {(lp) => (
+                      <input type="text" inputMode="decimal" id="sv-total" value={data.total} className={lp.className} onFocus={(e) => { lp.onFocus?.(e); selectOnFocus(e); }} onBlur={(e) => { lp.onBlur?.(e); update("total", formatMoneyValue(e.target.value)); }} disabled={lp.disabled} readOnly={lp.readOnly} onChange={(e) => update("total", formatDecimalInput(e.target.value))} />
+                    )}
+                  </CollabField>
                 </div>
               </div>
               <div id="sv-split" style={{ display: sType === "paquete" ? "block" : "none" }}>
                 <div className="frow tool-frow">
                   <div className="flabel">{t("tools.survey.hotelPct")}</div>
                   <div className="frow-inline">
-                    <input type="number" inputMode="numeric" className="input-compact tool-num-input" id="sv-hpct" min={1} max={99} value={data.hpct} onFocus={selectOnFocus} onChange={(e) => update("hpct", e.target.value)} />
+                    <CollabField collab={collab} fieldId={fid("hpct")} disabled={readOnly}>
+                      {(lp) => (
+                        <input type="number" inputMode="numeric" className={`input-compact tool-num-input ${lp.className || ""}`.trim()} id="sv-hpct" min={1} max={99} value={data.hpct} onFocus={(e) => { lp.onFocus?.(e); selectOnFocus(e); }} onBlur={lp.onBlur} disabled={lp.disabled} readOnly={lp.readOnly} onChange={(e) => update("hpct", e.target.value)} />
+                      )}
+                    </CollabField>
                     <span className="frow-suffix">%</span>
                   </div>
                 </div>
@@ -292,12 +356,34 @@ export function SurveyPage({ clientId, shared }: SurveyPageProps) {
               <tbody>
                 {HIST.map((p) => (
                   <tr key={p}>
-                    <td><input type="text" inputMode="text" value={data[`${p}c`]} onFocus={selectOnFocus} onChange={(e) => update(`${p}c`, e.target.value)} /></td>
-                    <td className="nc"><input type="number" inputMode="numeric" value={data[`${p}y`]} onFocus={selectOnFocus} onChange={(e) => update(`${p}y`, e.target.value)} /></td>
-                    <td className="nc"><input type="number" inputMode="numeric" value={data[`${p}n`]} onFocus={selectOnFocus} onChange={(e) => update(`${p}n`, e.target.value)} /></td>
+                    <td>
+                      <CollabField collab={collab} fieldId={fid(`${p}c`)} disabled={readOnly}>
+                        {(lp) => (
+                          <input type="text" inputMode="text" value={data[`${p}c`]} className={lp.className} onFocus={(e) => { lp.onFocus?.(e); selectOnFocus(e); }} onBlur={lp.onBlur} disabled={lp.disabled} readOnly={lp.readOnly} onChange={(e) => update(`${p}c`, e.target.value)} />
+                        )}
+                      </CollabField>
+                    </td>
+                    <td className="nc">
+                      <CollabField collab={collab} fieldId={fid(`${p}y`)} disabled={readOnly}>
+                        {(lp) => (
+                          <input type="number" inputMode="numeric" value={data[`${p}y`]} className={lp.className} onFocus={(e) => { lp.onFocus?.(e); selectOnFocus(e); }} onBlur={lp.onBlur} disabled={lp.disabled} readOnly={lp.readOnly} onChange={(e) => update(`${p}y`, e.target.value)} />
+                        )}
+                      </CollabField>
+                    </td>
+                    <td className="nc">
+                      <CollabField collab={collab} fieldId={fid(`${p}n`)} disabled={readOnly}>
+                        {(lp) => (
+                          <input type="number" inputMode="numeric" value={data[`${p}n`]} className={lp.className} onFocus={(e) => { lp.onFocus?.(e); selectOnFocus(e); }} onBlur={lp.onBlur} disabled={lp.disabled} readOnly={lp.readOnly} onChange={(e) => update(`${p}n`, e.target.value)} />
+                        )}
+                      </CollabField>
+                    </td>
                     <td className="mc">
                       <div className="mfield"><span className="mpfx">$</span>
-                        <input type="text" inputMode="decimal" value={data[`${p}a`]} onFocus={selectOnFocus} onChange={(e) => update(`${p}a`, formatDecimalInput(e.target.value))} onBlur={(e) => update(`${p}a`, formatMoneyValue(e.target.value))} />
+                        <CollabField collab={collab} fieldId={fid(`${p}a`)} disabled={readOnly}>
+                          {(lp) => (
+                            <input type="text" inputMode="decimal" value={data[`${p}a`]} className={lp.className} onFocus={(e) => { lp.onFocus?.(e); selectOnFocus(e); }} onBlur={(e) => { lp.onBlur?.(e); update(`${p}a`, formatMoneyValue(e.target.value)); }} disabled={lp.disabled} readOnly={lp.readOnly} onChange={(e) => update(`${p}a`, formatDecimalInput(e.target.value))} />
+                          )}
+                        </CollabField>
                       </div>
                     </td>
                   </tr>
@@ -345,12 +431,34 @@ export function SurveyPage({ clientId, shared }: SurveyPageProps) {
               <tbody>
                 {FUT.map((p) => (
                   <tr key={p}>
-                    <td><input type="text" inputMode="text" value={data[`${p}c`]} onFocus={selectOnFocus} onChange={(e) => update(`${p}c`, e.target.value)} /></td>
-                    <td className="nc"><input type="number" inputMode="numeric" value={data[`${p}y`]} onFocus={selectOnFocus} onChange={(e) => update(`${p}y`, e.target.value)} /></td>
-                    <td className="nc"><input type="number" inputMode="numeric" value={data[`${p}n`]} onFocus={selectOnFocus} onChange={(e) => update(`${p}n`, e.target.value)} /></td>
+                    <td>
+                      <CollabField collab={collab} fieldId={fid(`${p}c`)} disabled={readOnly}>
+                        {(lp) => (
+                          <input type="text" inputMode="text" value={data[`${p}c`]} className={lp.className} onFocus={(e) => { lp.onFocus?.(e); selectOnFocus(e); }} onBlur={lp.onBlur} disabled={lp.disabled} readOnly={lp.readOnly} onChange={(e) => update(`${p}c`, e.target.value)} />
+                        )}
+                      </CollabField>
+                    </td>
+                    <td className="nc">
+                      <CollabField collab={collab} fieldId={fid(`${p}y`)} disabled={readOnly}>
+                        {(lp) => (
+                          <input type="number" inputMode="numeric" value={data[`${p}y`]} className={lp.className} onFocus={(e) => { lp.onFocus?.(e); selectOnFocus(e); }} onBlur={lp.onBlur} disabled={lp.disabled} readOnly={lp.readOnly} onChange={(e) => update(`${p}y`, e.target.value)} />
+                        )}
+                      </CollabField>
+                    </td>
+                    <td className="nc">
+                      <CollabField collab={collab} fieldId={fid(`${p}n`)} disabled={readOnly}>
+                        {(lp) => (
+                          <input type="number" inputMode="numeric" value={data[`${p}n`]} className={lp.className} onFocus={(e) => { lp.onFocus?.(e); selectOnFocus(e); }} onBlur={lp.onBlur} disabled={lp.disabled} readOnly={lp.readOnly} onChange={(e) => update(`${p}n`, e.target.value)} />
+                        )}
+                      </CollabField>
+                    </td>
                     <td className="mc">
                       <div className="mfield"><span className="mpfx">$</span>
-                        <input type="text" inputMode="decimal" placeholder="0" value={data[`${p}a`]} onFocus={selectOnFocus} onChange={(e) => update(`${p}a`, e.target.value)} onBlur={(e) => update(`${p}a`, formatMoneyValue(e.target.value))} />
+                        <CollabField collab={collab} fieldId={fid(`${p}a`)} disabled={readOnly}>
+                          {(lp) => (
+                            <input type="text" inputMode="decimal" placeholder="0" value={data[`${p}a`]} className={lp.className} onFocus={(e) => { lp.onFocus?.(e); selectOnFocus(e); }} onBlur={(e) => { lp.onBlur?.(e); update(`${p}a`, formatMoneyValue(e.target.value)); }} disabled={lp.disabled} readOnly={lp.readOnly} onChange={(e) => update(`${p}a`, e.target.value)} />
+                          )}
+                        </CollabField>
                       </div>
                     </td>
                   </tr>

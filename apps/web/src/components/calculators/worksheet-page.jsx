@@ -15,6 +15,7 @@ import { formatDecimalInput } from "@/lib/format/numeric-input.js";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { useMoney } from "@/hooks/use-money.js";
 import { useToolSession } from "@/hooks/use-tool-session.js";
+import { CollabField, collabFieldId } from "@/components/clients/collab-field.jsx";
 import { useDbStore } from "@/stores/db-store";
 import { shallow } from "zustand/shallow";
 
@@ -27,7 +28,9 @@ interface WorksheetPageProps {
 
 export function WorksheetPage({ clientId, shared }: WorksheetPageProps) {
   const { t } = useI18n();
-  const { ready, readOnly, backHref, getBucket, saveBucket, isFileMode, isShared, peers, lockedBy, toolsRevision } = useToolSession({ clientId, shared, section: "worksheet" });
+  const session = useToolSession({ clientId, shared, section: "worksheet" });
+  const { ready, readOnly, backHref, getBucket, saveBucket, isFileMode, isShared, peers, lockedBy, toolsRevision, collab } = session;
+  const fid = (key) => collabFieldId("worksheet", key);
   const { fmt } = useMoney();
   const moneySettings = useDbStore((s) => s.db.settings, shallow);
   const worksheetConfig = useDbStore((s) => s.db.settings?.worksheetConfig, shallow);
@@ -86,7 +89,11 @@ export function WorksheetPage({ clientId, shared }: WorksheetPageProps) {
 
   const moneyField = (key: keyof typeof fields) => (
     <div className="mfield"><span className="mpfx">$</span>
-      <input type="text" inputMode="decimal" value={fields[key]} onFocus={selectOnFocus} onChange={(e) => setFields({ ...fields, [key]: formatDecimalInput(e.target.value) })} onBlur={(e) => setFields({ ...fields, [key]: formatMoneyValue(e.target.value) })} />
+      <CollabField collab={collab} fieldId={fid(key)} disabled={readOnly}>
+        {(lp) => (
+          <input type="text" inputMode="decimal" value={fields[key]} className={lp.className} onFocus={(e) => { lp.onFocus?.(e); selectOnFocus(e); }} onBlur={(e) => { lp.onBlur?.(e); setFields({ ...fields, [key]: formatMoneyValue(e.target.value) }); }} disabled={lp.disabled} readOnly={lp.readOnly} onChange={(e) => setFields({ ...fields, [key]: formatDecimalInput(e.target.value) })} />
+        )}
+      </CollabField>
     </div>
   );
 
@@ -115,7 +122,11 @@ export function WorksheetPage({ clientId, shared }: WorksheetPageProps) {
               <div className="frow tool-frow">
                 <div className="flabel">{t("tools.worksheet.downPct")}</div>
                 <div className="frow-inline">
-                  <input type="number" inputMode="numeric" className="tool-num-input" min={0} max={100} value={fields.we} onFocus={selectOnFocus} onChange={(e) => setFields({ ...fields, we: e.target.value })} />
+                  <CollabField collab={collab} fieldId={fid("we")} disabled={readOnly}>
+                    {(lp) => (
+                      <input type="number" inputMode="numeric" className={`tool-num-input ${lp.className || ""}`.trim()} min={0} max={100} value={fields.we} onFocus={(e) => { lp.onFocus?.(e); selectOnFocus(e); }} onBlur={lp.onBlur} disabled={lp.disabled} readOnly={lp.readOnly} onChange={(e) => setFields({ ...fields, we: e.target.value })} />
+                    )}
+                  </CollabField>
                   <span className="frow-suffix">%</span>
                 </div>
               </div>

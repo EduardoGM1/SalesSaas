@@ -11,6 +11,7 @@ import { formatMoneyValue } from "@/lib/format/money";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { useMoney } from "@/hooks/use-money.js";
 import { useToolSession } from "@/hooks/use-tool-session.js";
+import { CollabField, collabFieldId } from "@/components/clients/collab-field.jsx";
 import { useDbStore } from "@/stores/db-store";
 import { shallow } from "zustand/shallow";
 
@@ -23,7 +24,9 @@ interface VacacionesPageProps {
 
 export function VacacionesPage({ clientId, shared }: VacacionesPageProps) {
   const { t } = useI18n();
-  const { ready, readOnly, backHref, getBucket, saveBucket, isFileMode, isShared, peers, lockedBy, toolsRevision } = useToolSession({ clientId, shared, section: "vacaciones" });
+  const session = useToolSession({ clientId, shared, section: "vacaciones" });
+  const { ready, readOnly, backHref, getBucket, saveBucket, isFileMode, isShared, peers, lockedBy, toolsRevision, collab } = session;
+  const fid = (key) => collabFieldId("vacaciones", key);
   const { fmt, fmtN } = useMoney();
   const moneySettings = useDbStore((s) => s.db.settings, shallow);
   const [fields, setFields] = useState({ ...DEFAULT_FIELDS });
@@ -90,22 +93,38 @@ export function VacacionesPage({ clientId, shared }: VacacionesPageProps) {
             <div className="tool-calc-fields">
               <div className="frow frow-first tool-frow">
                 <div className="flabel">{t("tools.vacation.tripsPerYear")}</div>
-                <input type="number" inputMode="numeric" className="tool-num-input" min={1} value={fields.vv} onFocus={selectOnFocus} onChange={(e) => setFields({ ...fields, vv: e.target.value })} />
+                <CollabField collab={collab} fieldId={fid("vv")} disabled={readOnly}>
+                  {(lp) => (
+                    <input type="number" inputMode="numeric" className={`tool-num-input ${lp.className || ""}`.trim()} min={1} value={fields.vv} onFocus={(e) => { lp.onFocus?.(e); selectOnFocus(e); }} onBlur={lp.onBlur} disabled={lp.disabled} readOnly={lp.readOnly} onChange={(e) => setFields({ ...fields, vv: e.target.value })} />
+                  )}
+                </CollabField>
               </div>
               <div className="frow tool-frow">
                 <div className="flabel">{t("tools.vacation.costPerTrip")}</div>
                 <div className="mfield">
                   <span className="mpfx">$</span>
-                  <input type="text" inputMode="decimal" value={fields.vc} onFocus={selectOnFocus} onChange={(e) => setFields({ ...fields, vc: formatDecimalInput(e.target.value) })} onBlur={(e) => setFields({ ...fields, vc: formatMoneyValue(e.target.value) })} />
+                  <CollabField collab={collab} fieldId={fid("vc")} disabled={readOnly}>
+                    {(lp) => (
+                      <input type="text" inputMode="decimal" value={fields.vc} className={lp.className} onFocus={(e) => { lp.onFocus?.(e); selectOnFocus(e); }} onBlur={(e) => { lp.onBlur?.(e); setFields({ ...fields, vc: formatMoneyValue(e.target.value) }); }} disabled={lp.disabled} readOnly={lp.readOnly} onChange={(e) => setFields({ ...fields, vc: formatDecimalInput(e.target.value) })} />
+                    )}
+                  </CollabField>
                 </div>
               </div>
               <div className="frow tool-frow">
                 <div className="flabel">{t("tools.vacation.yearsProject")}</div>
-                <input type="number" inputMode="numeric" className="tool-num-input" min={1} max={60} value={fields.va} onFocus={selectOnFocus} onChange={(e) => setFields({ ...fields, va: e.target.value })} />
+                <CollabField collab={collab} fieldId={fid("va")} disabled={readOnly}>
+                  {(lp) => (
+                    <input type="number" inputMode="numeric" className={`tool-num-input ${lp.className || ""}`.trim()} min={1} max={60} value={fields.va} onFocus={(e) => { lp.onFocus?.(e); selectOnFocus(e); }} onBlur={lp.onBlur} disabled={lp.disabled} readOnly={lp.readOnly} onChange={(e) => setFields({ ...fields, va: e.target.value })} />
+                  )}
+                </CollabField>
               </div>
               <div className="frow tool-frow tool-frow--range">
                 <div className="flabel">{t("tools.vacation.inflation")} — <strong style={{ color: "var(--blue)" }}>{(r.inf * 100).toFixed(1)}%</strong></div>
-                <input type="range" className="tool-range-input" min={0} max={20} step={0.5} value={fields.vi} onChange={(e) => setFields({ ...fields, vi: e.target.value })} />
+                <CollabField collab={collab} fieldId={fid("vi")} disabled={readOnly}>
+                  {(lp) => (
+                    <input type="range" className={`tool-range-input ${lp.className || ""}`.trim()} min={0} max={20} step={0.5} value={fields.vi} onFocus={lp.onFocus} onBlur={lp.onBlur} disabled={lp.disabled} onChange={(e) => setFields({ ...fields, vi: e.target.value })} />
+                  )}
+                </CollabField>
               </div>
             </div>
           </div>

@@ -1,18 +1,17 @@
 /**
  * Colaboración por expediente:
- * - Presence (privado): expediente:{prospectId}
+ * - Presence (privado): expediente:{prospectId} — peers + focused_field
  * - Postgres Changes (público): expediente-data:{prospectId}
- *
- * Serializa start/stop con generación para evitar canales huérfanos
- * (causa de toasts duplicados).
  */
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { createClient, primeRealtimeAuth } from "@/lib/supabase/client";
 import { fetchRealtimeSession } from "@/lib/presence-api.js";
 import { ensureRealtimeReady, removeChannelSafe } from "@/lib/presence/realtime.js";
 
-const DEBOUNCE_MS = 280;
+const DEBOUNCE_MS = 200;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+/** Locks de campo más viejos que esto se ignoran en clientes (desconexión / stale). */
+export const FIELD_LOCK_TTL_MS = 60_000;
 
 let presenceChannel = null;
 let dataChannel = null;
@@ -24,11 +23,10 @@ let onPeersCb = null;
 let onDataChangeCb = null;
 let lastTrack = null;
 let pagehideBound = false;
-/** Invalida starts en vuelo cuando hay stop o un start más nuevo. */
 let opGeneration = 0;
 let opChain = Promise.resolve();
-/** Dedup de eventos postgres (mismo commit). */
 const recentEventKeys = new Map();
+let focusHeartbeatTimer = null;
 
 export function expedienteTopic(prospectId) {
   return `expediente:${prospectId}`;
@@ -75,6 +73,8 @@ function presenceListToPeers(ch) {
       section: meta.section || "detail",
       state: meta.state === "editing" ? "editing" : "viewing",
       online_at: meta.online_at || null,
+      focused_field: meta.focused_field || null,
+      focused_at: meta.focused_at || null,
     });
   }
   return peers;
@@ -88,36 +88,48 @@ function emitPeers() {
   }
 }
 
-function eventDedupeKey(payload) {
-  const table = payload?.table || "";
-  const tool = payload?.tool || "";
-  const ts = payload?.commit_timestamp || "";
-  const data = payload?.data;
-  const stamp = ts || (data != null ? JSON.stringify(data).slice(0, 200) : String(Date.now()));
-  return `${table}:${tool}:${stamp}`;
-}
-
 function shouldEmitDataChange(payload) {
-  const key = eventDedupeKey(payload);
   const now = Date.now();
+  // Colapsar cualquier ráfaga del mismo tool en 2s (INSERT+UPDATE, ecos, etc.)
+  const key = payload?.table === "tool_calculations" && payload?.tool
+    ? `tool:${payload.tool}`
+    : payload?.table === "prospects"
+      ? `prospects`
+      : `other:${payload?.table}:${payload?.commit_timestamp || now}`;
   const prev = recentEventKeys.get(key);
   if (prev && now - prev < 2000) return false;
   recentEventKeys.set(key, now);
-  if (recentEventKeys.size > 40) {
+  if (recentEventKeys.size > 50) {
     for (const [k, t] of recentEventKeys) {
-      if (now - t > 5000) recentEventKeys.delete(k);
+      if (now - t > 8000) recentEventKeys.delete(k);
     }
   }
   return true;
 }
 
 function scheduleDataChange(payload) {
-  if (!shouldEmitDataChange(payload)) return;
+  // Un log por cada callback Realtime (antes de dedupe/debounce) para diagnosticar ecos.
+  const eventId = `${payload?.table || "?"}:${payload?.tool || "-"}:${payload?.commit_timestamp || Date.now()}:${Math.random().toString(36).slice(2, 7)}`;
+  console.info("[expediente-collab] postgres raw", {
+    eventId,
+    at: Date.now(),
+    table: payload?.table,
+    tool: payload?.tool,
+    eventType: payload?.eventType,
+    commit_timestamp: payload?.commit_timestamp,
+    channel: activeProspectId ? expedienteDataTopic(activeProspectId) : null,
+  });
+  if (!shouldEmitDataChange(payload)) {
+    console.info("[expediente-collab] postgres deduped", { eventId, tool: payload?.tool });
+    return;
+  }
   clearTimeout(debounceTimer);
   debounceTimer = setTimeout(() => {
     debounceTimer = null;
+    const emitId = `${payload?.table}:${payload?.tool}:${payload?.commit_timestamp || "na"}`;
+    console.info("[expediente-collab] postgres emit→handler", { emitId, at: Date.now(), tool: payload?.tool });
     try {
-      onDataChangeCb?.(payload);
+      onDataChangeCb?.({ ...payload, eventId: emitId });
     } catch {
       /* ignore */
     }
@@ -132,6 +144,27 @@ function ensurePagehideListener() {
   if (pagehideBound || typeof window === "undefined") return;
   pagehideBound = true;
   window.addEventListener("pagehide", onPageHide);
+}
+
+function clearFocusHeartbeat() {
+  if (focusHeartbeatTimer) {
+    clearInterval(focusHeartbeatTimer);
+    focusHeartbeatTimer = null;
+  }
+}
+
+function startFocusHeartbeat() {
+  clearFocusHeartbeat();
+  focusHeartbeatTimer = setInterval(() => {
+    if (!lastTrack?.focused_field) {
+      clearFocusHeartbeat();
+      return;
+    }
+    updateExpedienteCollabTrack({
+      focused_field: lastTrack.focused_field,
+      focused_at: new Date().toISOString(),
+    }).catch(() => {});
+  }, 20_000);
 }
 
 async function subscribeChannel(ch) {
@@ -152,6 +185,7 @@ async function subscribeChannel(ch) {
 async function tearDownChannels() {
   clearTimeout(debounceTimer);
   debounceTimer = null;
+  clearFocusHeartbeat();
   const sb = createClient();
   const pCh = presenceChannel;
   const dCh = dataChannel;
@@ -180,38 +214,65 @@ export async function stopExpedienteCollab() {
   await opChain;
 }
 
-export async function updateExpedienteCollabTrack({ section, state } = {}) {
+export async function updateExpedienteCollabTrack(patch = {}) {
   if (!presenceChannel || !presenceJoined || !lastTrack) return;
   const next = {
     ...lastTrack,
-    section: section || lastTrack.section || "detail",
-    state: state === "editing" ? "editing" : "viewing",
+    section: patch.section ?? lastTrack.section ?? "detail",
+    state: patch.state ?? lastTrack.state ?? "viewing",
     online_at: new Date().toISOString(),
   };
+  if (Object.prototype.hasOwnProperty.call(patch, "focused_field")) {
+    next.focused_field = patch.focused_field || null;
+    next.focused_at = patch.focused_field
+      ? (patch.focused_at || new Date().toISOString())
+      : null;
+  }
   lastTrack = next;
   try {
     await presenceChannel.track(next);
+    emitPeers();
   } catch (err) {
     console.warn("[expediente-collab] track:", err?.message || err);
   }
 }
 
-/**
- * @param {{
- *   prospectId: string,
- *   profile: { id: string, full_name?: string, email?: string, avatar_url?: string },
- *   section?: string,
- *   state?: 'viewing'|'editing',
- *   onPeers?: (peers: Array) => void,
- *   onDataChange?: (payload: object) => void,
- * }} opts
- */
+/** Bloqueo de campo vía Presence (mismo canal). */
+export async function setFocusedField(fieldId) {
+  if (fieldId) {
+    await updateExpedienteCollabTrack({
+      focused_field: fieldId,
+      focused_at: new Date().toISOString(),
+    });
+    startFocusHeartbeat();
+  } else {
+    clearFocusHeartbeat();
+    await updateExpedienteCollabTrack({ focused_field: null, focused_at: null });
+  }
+}
+
+export function findFieldLocker(peers, myId, fieldId) {
+  if (!fieldId) return null;
+  const now = Date.now();
+  const candidates = (peers || []).filter((p) => {
+    if (p.user_id === myId) return false;
+    if (p.focused_field !== fieldId) return false;
+    if (!p.focused_at) return true;
+    const age = now - new Date(p.focused_at).getTime();
+    return Number.isFinite(age) && age < FIELD_LOCK_TTL_MS;
+  });
+  if (!candidates.length) return null;
+  candidates.sort((a, b) => String(a.focused_at || "").localeCompare(String(b.focused_at || "")));
+  return candidates[0];
+}
+
 export async function startExpedienteCollab(opts) {
   const {
     prospectId,
     profile,
     section = "detail",
     state = "viewing",
+    focused_field = null,
     onPeers,
     onDataChange,
   } = opts || {};
@@ -227,7 +288,7 @@ export async function startExpedienteCollab(opts) {
   ensurePagehideListener();
 
   if (presenceJoined && dataJoined && activeProspectId === prospectId && presenceChannel && dataChannel) {
-    await updateExpedienteCollabTrack({ section, state });
+    await updateExpedienteCollabTrack({ section, state, focused_field });
     emitPeers();
     return;
   }
@@ -260,6 +321,8 @@ export async function startExpedienteCollab(opts) {
       section,
       state: state === "editing" ? "editing" : "viewing",
       online_at: new Date().toISOString(),
+      focused_field: focused_field || null,
+      focused_at: focused_field ? new Date().toISOString() : null,
     };
     lastTrack = trackPayload;
     activeProspectId = prospectId;
@@ -286,31 +349,44 @@ export async function startExpedienteCollab(opts) {
         console.warn("[expediente-collab] track inicial:", err?.message || err);
       }
       emitPeers();
+      if (trackPayload.focused_field) startFocusHeartbeat();
     }
 
+    // Un solo handler de postgres_changes por tabla (evitar bindings duplicados).
     const dCh = supabase.channel(expedienteDataTopic(prospectId));
-    dCh.on(
-      "postgres_changes",
-      { event: "*", schema: "public", table: "prospects", filter: `id=eq.${prospectId}` },
-      (payload) => scheduleDataChange({
+    const onToolChange = (payload) => {
+      const row = payload?.new || payload?.old || {};
+      scheduleDataChange({
+        table: "tool_calculations",
+        tool: row.tool || null,
+        data: row.data ?? null,
+        commit_timestamp: payload?.commit_timestamp || null,
+        eventType: payload?.eventType || null,
+      });
+    };
+    const onProspectChange = (payload) => {
+      scheduleDataChange({
         table: "prospects",
         tool: null,
         data: payload?.new || null,
         commit_timestamp: payload?.commit_timestamp || null,
-      }),
+        eventType: payload?.eventType || null,
+      });
+    };
+    dCh.on(
+      "postgres_changes",
+      { event: "INSERT", schema: "public", table: "tool_calculations", filter: `prospect_id=eq.${prospectId}` },
+      onToolChange,
     );
     dCh.on(
       "postgres_changes",
-      { event: "*", schema: "public", table: "tool_calculations", filter: `prospect_id=eq.${prospectId}` },
-      (payload) => {
-        const row = payload?.new || payload?.old || {};
-        scheduleDataChange({
-          table: "tool_calculations",
-          tool: row.tool || null,
-          data: row.data ?? null,
-          commit_timestamp: payload?.commit_timestamp || null,
-        });
-      },
+      { event: "UPDATE", schema: "public", table: "tool_calculations", filter: `prospect_id=eq.${prospectId}` },
+      onToolChange,
+    );
+    dCh.on(
+      "postgres_changes",
+      { event: "UPDATE", schema: "public", table: "prospects", filter: `id=eq.${prospectId}` },
+      onProspectChange,
     );
     dataChannel = dCh;
     const dRes = await subscribeChannel(dCh);
