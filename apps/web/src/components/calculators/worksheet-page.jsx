@@ -27,7 +27,7 @@ interface WorksheetPageProps {
 
 export function WorksheetPage({ clientId, shared }: WorksheetPageProps) {
   const { t } = useI18n();
-  const { ready, readOnly, backHref, getBucket, saveBucket, isFileMode, isShared } = useToolSession({ clientId, shared });
+  const { ready, readOnly, backHref, getBucket, saveBucket, isFileMode, isShared, peers, lockedBy } = useToolSession({ clientId, shared, section: "worksheet" });
   const { fmt } = useMoney();
   const moneySettings = useDbStore((s) => s.db.settings, shallow);
   const worksheetConfig = useDbStore((s) => s.db.settings?.worksheetConfig, shallow);
@@ -101,7 +101,7 @@ export function WorksheetPage({ clientId, shared }: WorksheetPageProps) {
           )}
         </div>
 
-        <SharedToolBanner show={readOnly} />
+        <SharedToolBanner show={isShared && readOnly && !lockedBy} lockedBy={lockedBy} peers={peers} />
 
         <fieldset className="shared-tool-fieldset" disabled={readOnly}>
         <div className="g2">

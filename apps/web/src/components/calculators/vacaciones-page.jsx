@@ -23,7 +23,7 @@ interface VacacionesPageProps {
 
 export function VacacionesPage({ clientId, shared }: VacacionesPageProps) {
   const { t } = useI18n();
-  const { ready, readOnly, backHref, getBucket, saveBucket, isFileMode, isShared } = useToolSession({ clientId, shared });
+  const { ready, readOnly, backHref, getBucket, saveBucket, isFileMode, isShared, peers, lockedBy } = useToolSession({ clientId, shared, section: "vacaciones" });
   const { fmt, fmtN } = useMoney();
   const moneySettings = useDbStore((s) => s.db.settings, shallow);
   const [fields, setFields] = useState({ ...DEFAULT_FIELDS });
@@ -81,7 +81,7 @@ export function VacacionesPage({ clientId, shared }: VacacionesPageProps) {
           )}
         </div>
 
-        <SharedToolBanner show={readOnly} />
+        <SharedToolBanner show={isShared && readOnly && !lockedBy} lockedBy={lockedBy} peers={peers} />
 
         <fieldset className="shared-tool-fieldset" disabled={readOnly}>
         <div className="g2 vacation-calc-layout">

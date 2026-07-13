@@ -38,8 +38,8 @@ interface SurveyPageProps {
 
 export function SurveyPage({ clientId, shared }: SurveyPageProps) {
   const { t } = useI18n();
-  const session = useToolSession({ clientId, shared });
-  const { ready, readOnly, backHref, getBucket, saveBucket, syncProspectFields, isFileMode, isShared, prospectId } = session;
+  const session = useToolSession({ clientId, shared, section: "survey" });
+  const { ready, readOnly, backHref, getBucket, saveBucket, syncProspectFields, isFileMode, isShared, prospectId, peers, lockedBy } = session;
   const saveClient = useDbStore((s) => s.saveClient);
   const getClient = useDbStore((s) => s.getClient);
   const moneySettings = useDbStore((s) => s.db.settings, shallow);
@@ -171,7 +171,7 @@ export function SurveyPage({ clientId, shared }: SurveyPageProps) {
           )}
         </div>
 
-        <SharedToolBanner show={readOnly} />
+        <SharedToolBanner show={isShared && readOnly && !lockedBy} lockedBy={lockedBy} peers={peers} />
 
         <fieldset className="shared-tool-fieldset" disabled={readOnly}>
         <div className={`card client-survey-prospect${isFileMode ? " show" : ""}`}>

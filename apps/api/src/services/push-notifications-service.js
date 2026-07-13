@@ -8,10 +8,19 @@ import {
   networkPath,
   pushUrl,
   sharedProspectPath,
+  sharedProspectSectionPath,
 } from "@salesapp/shared/push/notification-targets.js";
 
 const ONESIGNAL_API = "https://api.onesignal.com/notifications";
 const MAX_STORED_SUBSCRIPTIONS = 5;
+const SECTION_CHANGE_COOLDOWN_MS = 30_000;
+
+const SECTION_LABELS = {
+  detail: "Expediente",
+  survey: "Survey",
+  vacaciones: "Proyección de Vacaciones",
+  worksheet: "Worksheet",
+};
 
 export function getOneSignalAppId() {
   return process.env.ONESIGNAL_APP_ID || process.env.VITE_ONESIGNAL_APP_ID || null;
@@ -206,6 +215,68 @@ export async function notifyProspectShared(recipientId, { ownerId, ownerName, pr
     type: PushType.SHARED_PROSPECT,
     tag: `shared-prospect-${prospectId}`,
   });
+}
+
+async function claimNotificationCooldown(serviceSb, key, windowMs = SECTION_CHANGE_COOLDOWN_MS) {
+  const { data } = await serviceSb
+    .from("notification_cooldowns")
+    .select("last_sent_at")
+    .eq("key", key)
+    .maybeSingle();
+  if (data?.last_sent_at) {
+    const elapsed = Date.now() - new Date(data.last_sent_at).getTime();
+    if (elapsed < windowMs) return false;
+  }
+  const now = new Date().toISOString();
+  const { error } = await serviceSb
+    .from("notification_cooldowns")
+    .upsert({ key, last_sent_at: now }, { onConflict: "key" });
+  if (error) {
+    console.warn("[onesignal] cooldown upsert:", error.message);
+    return true;
+  }
+  return true;
+}
+
+/**
+ * Push a colaboradores (owner + shares) cuando alguien guarda un apartado.
+ * Agrupa por recipient+prospect+section en ventana de 30s.
+ */
+export async function notifyProspectSectionChanged({
+  actorId,
+  actorName,
+  prospectId,
+  ownerId,
+  section = "detail",
+  recipientIds = [],
+}) {
+  const serviceSb = createServiceSupabaseClient();
+  if (!serviceSb || !isPushConfigured()) return;
+  if (!actorId || !prospectId || !ownerId) return;
+
+  const sectionKey = SECTION_LABELS[section] ? section : "detail";
+  const sectionLabel = SECTION_LABELS[sectionKey];
+  const origin = primaryWebOrigin();
+  const path = sharedProspectSectionPath(ownerId, prospectId, sectionKey);
+  const uniqueRecipients = [...new Set((recipientIds || []).filter((id) => id && id !== actorId))];
+
+  await Promise.all(uniqueRecipients.map(async (recipientId) => {
+    const prefs = await loadNotificationPrefs(serviceSb, recipientId);
+    if (!prefs.shared_prospects) return;
+
+    const tag = `prospect-change-${recipientId}-${prospectId}-${sectionKey}`;
+    const allowed = await claimNotificationCooldown(serviceSb, tag);
+    if (!allowed) return;
+
+    await sendToUser(serviceSb, recipientId, {
+      title: "Cambios en expediente",
+      body: `${actorName || "Alguien"} realizó cambios en ${sectionLabel}`,
+      url: pushUrl(origin, path),
+      path,
+      type: PushType.PROSPECT_SECTION_CHANGED,
+      tag,
+    });
+  }));
 }
 
 export async function notifyConnectionAccepted(requesterId, { peerId, peerName }) {

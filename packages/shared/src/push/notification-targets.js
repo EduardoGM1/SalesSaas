@@ -4,6 +4,7 @@ export const PushType = {
   CONNECTION_REQUEST: "connection_request",
   CONNECTION_ACCEPTED: "connection_accepted",
   SHARED_PROSPECT: "shared_prospect",
+  PROSPECT_SECTION_CHANGED: "prospect_section_changed",
   /** Logout en otro dispositivo: forzar cierre local / ir a login. */
   SESSION_REVOKED: "session_revoked",
 };
@@ -22,6 +23,14 @@ export function contactPath(contactId) {
 
 export function sharedProspectPath(ownerId, prospectId) {
   return `/red/contacto/${encodeURIComponent(String(ownerId))}/expediente/${encodeURIComponent(String(prospectId))}`;
+}
+
+export function sharedProspectSectionPath(ownerId, prospectId, section) {
+  const base = sharedProspectPath(ownerId, prospectId);
+  if (section && section !== "detail" && ["survey", "vacaciones", "worksheet"].includes(section)) {
+    return `${base}/${section}`;
+  }
+  return base;
 }
 
 export function pushUrl(origin, path) {
@@ -59,6 +68,9 @@ export function resolvePushPathFromPayload(payload = {}) {
       return networkPath();
     case PushType.CONNECTION_ACCEPTED:
       return networkPath();
+    case PushType.PROSPECT_SECTION_CHANGED:
+    case PushType.SHARED_PROSPECT:
+      return typeof payload.path === "string" ? payload.path : null;
     default:
       return null;
   }

@@ -23,8 +23,8 @@ export function AnalysisPage({ clientId, shared }: { clientId?; shared? }) {
   const { t } = useI18n();
   const { fmt, fmtD } = useMoney();
   const moneySettings = useDbStore((s) => s.db.settings, shallow);
-  const session = useToolSession({ clientId, shared });
-  const { ready, backHref, readOnly, isShared, getBucket, prospect } = session;
+  const session = useToolSession({ clientId, shared, section: "detail" });
+  const { ready, backHref, readOnly, isShared, getBucket, prospect, peers, lockedBy } = session;
 
   const survey = useMemo(() => {
     if (!ready) return EMPTY_TOOL_BUCKET;
@@ -56,7 +56,7 @@ export function AnalysisPage({ clientId, shared }: { clientId?; shared? }) {
           <PageBack inline href={backHref} />
         </div>
 
-        <SharedToolBanner show={readOnly} />
+        <SharedToolBanner show={isShared && readOnly && !lockedBy} lockedBy={lockedBy} peers={peers} />
 
         <div className="card">
           <div className="card-heading">{t("tools.survey.patternTitle")}</div>

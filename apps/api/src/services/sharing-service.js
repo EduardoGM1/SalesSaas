@@ -3,7 +3,7 @@ import { isUuid } from "@salesapp/shared/data/mappers.js";
 import { bodyToProspectPatch } from "@salesapp/shared/api/validators.js";
 import { ServiceError, assertFound } from "../lib/service-error.js";
 import { createServiceSupabaseClient } from "../lib/supabase-server.js";
-import { notifyProspectShared } from "./push-notifications-service.js";
+import { notifyProspectShared, notifyProspectSectionChanged } from "./push-notifications-service.js";
 import { MESSAGE_TYPES, sendStructuredMessage } from "./messages-service.js";
 
 function profileName(profile) {
@@ -762,6 +762,14 @@ export async function saveSharedTool(supabase, userId, prospectId, tool, data) {
     .select("data")
     .single();
   if (error) throw new ServiceError(error.message, 400);
+
+  notifyCollaboratorsSectionChanged(supabase, {
+    actorId: userId,
+    prospectId,
+    ownerId: access.ownerId,
+    section: tool,
+  }).catch((err) => console.warn("[share] push section:", err?.message || err));
+
   return saved?.data ?? {};
 }
 
@@ -780,5 +788,48 @@ export async function updateSharedProspect(supabase, userId, prospectId, body) {
     .select()
     .maybeSingle();
   if (error) throw new ServiceError(error.message, 400);
-  return assertFound(data, "Expediente no encontrado.");
+  const row = assertFound(data, "Expediente no encontrado.");
+
+  notifyCollaboratorsSectionChanged(supabase, {
+    actorId: userId,
+    prospectId,
+    ownerId: access.ownerId,
+    section: "detail",
+  }).catch((err) => console.warn("[share] push section:", err?.message || err));
+
+  return row;
+}
+
+/** Destinatarios con acceso (owner + shares) excepto el actor. */
+async function listProspectCollaboratorIds(supabase, prospectId, ownerId) {
+  const ids = new Set([ownerId].filter(Boolean));
+  const { data } = await supabase
+    .from("prospect_shares")
+    .select("shared_with_id")
+    .eq("prospect_id", prospectId);
+  for (const row of data ?? []) {
+    if (row.shared_with_id) ids.add(row.shared_with_id);
+  }
+  return [...ids];
+}
+
+async function notifyCollaboratorsSectionChanged(supabase, { actorId, prospectId, ownerId, section }) {
+  const recipientIds = await listProspectCollaboratorIds(supabase, prospectId, ownerId);
+  if (!recipientIds.some((id) => id !== actorId)) return;
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("full_name, email")
+    .eq("id", actorId)
+    .maybeSingle();
+  const actorName = profileName(profile);
+
+  await notifyProspectSectionChanged({
+    actorId,
+    actorName,
+    prospectId,
+    ownerId,
+    section,
+    recipientIds,
+  });
 }
