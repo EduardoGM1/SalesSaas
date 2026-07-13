@@ -161,9 +161,17 @@ Con 15 min + `auth_revoked_at`, aunque falle Realtime/push, el token viejo deja 
 |------|-----------|
 | `auth_revoked_at` + API | Seguridad real |
 | Broadcast `user-session:{id}` | Tiempo real móvil ↔ desktop |
-| Realtime postgres_changes | Respaldo del Broadcast |
+| Realtime postgres_changes | Respaldo del Broadcast + invalidación Dashboard |
 | Push `session_revoked` | PWA en background |
 | JWT 15 min | Tope de exposición residual |
+
+### Dashboard en tiempo real (migración 0026)
+
+Tras login, el cliente escucha `prospects` / `sales` / `goals` / `calendar_entries`
+(filtrado por `user_id`). Cada cambio dispara un pull debounced y el Dashboard
+recalcula con `productionTourSaleCounts` / `getDashboardWeeks` (sin contadores +1).
+
+Aplica `0026_realtime_dashboard_tables.sql` en Supabase si aún no está en la publicación Realtime.
 
 ## 5. Siguientes pasos (los implemento yo con las credenciales)
 

@@ -6,6 +6,11 @@ import { loadDatabase } from "@/lib/storage/local-storage-adapter";
 import { STORAGE_KEY } from "@/lib/storage/keys";
 import { emptyDatabase } from "@/lib/storage/types";
 import { watchSession } from "@/lib/session-api.js";
+import { registerSyncRefresh, unregisterSyncRefresh } from "@/lib/sync-refresh.js";
+import {
+  startDashboardDataRealtime,
+  stopDashboardDataRealtime,
+} from "@/lib/dashboard-data-realtime.js";
 import { useDbStore } from "@/stores/db-store";
 import { useSyncStore } from "@/stores/sync-store";
 import { Toaster } from "@/components/ui/toaster";
@@ -52,7 +57,6 @@ export function SyncProvider({ children }) {
       useSyncStore.getState().setStatus("syncing");
       try {
         const remote = await reconcileViaApi(useDbStore.getState().db);
-        // El servidor ya reconcilió: aplicar snapshot para Dashboard/otras vistas sin F5.
         if (remote) applyRemote(remote);
         useSyncStore.getState().setSynced();
       } catch (err) {
@@ -69,11 +73,11 @@ export function SyncProvider({ children }) {
     };
 
     /**
-     * Inbound refresh al volver a la app:
-     * - Si hay sync local pendiente → reconcile (no perder edits).
-     * - Si no → pull ligero desde la nube.
+     * @param {{ force?: boolean, reason?: string }} [opts]
+     * force: Realtime / invalidación — ignora cooldown de resume.
      */
-    const refreshInbound = async (reason = "resume") => {
+    const refreshInbound = async (opts = {}) => {
+      const force = opts.force === true;
       const uid = userIdRef.current;
       if (!uid || !enabledRef.current || refreshInFlightRef.current) return;
       if (typeof navigator !== "undefined" && !navigator.onLine) {
@@ -82,7 +86,7 @@ export function SyncProvider({ children }) {
       }
 
       const now = Date.now();
-      if (now - lastResumePullAtRef.current < RESUME_PULL_COOLDOWN_MS) return;
+      if (!force && now - lastResumePullAtRef.current < RESUME_PULL_COOLDOWN_MS) return;
       lastResumePullAtRef.current = now;
       refreshInFlightRef.current = true;
 
@@ -108,6 +112,8 @@ export function SyncProvider({ children }) {
       }
     };
 
+    registerSyncRefresh(refreshInbound);
+
     const initForUser = async (userId) => {
       if (initedForRef.current === userId) return;
       initedForRef.current = userId;
@@ -132,6 +138,7 @@ export function SyncProvider({ children }) {
             else applyRemote(norm);
             localStorage.setItem(ACCOUNT_KEY, userId);
             useSyncStore.getState().setSynced();
+            void startDashboardDataRealtime(userId);
             return;
           } catch (syncErr) {
             useSyncStore.getState().setStatus(
@@ -172,6 +179,7 @@ export function SyncProvider({ children }) {
 
       enabledRef.current = true;
       lastResumePullAtRef.current = Date.now();
+      void startDashboardDataRealtime(userId);
     };
 
     const stopForUser = () => {
@@ -179,6 +187,7 @@ export function SyncProvider({ children }) {
       initedForRef.current = null;
       userIdRef.current = null;
       lastResumePullAtRef.current = 0;
+      void stopDashboardDataRealtime();
       useSyncStore.getState().setStatus("disabled");
     };
 
@@ -196,18 +205,19 @@ export function SyncProvider({ children }) {
 
     const onOnline = () => {
       lastResumePullAtRef.current = 0;
-      void refreshInbound("online");
+      void refreshInbound({ reason: "online" });
     };
 
     const onVisible = () => {
-      if (document.visibilityState === "visible") void refreshInbound("visibility");
+      if (document.visibilityState === "visible") {
+        void refreshInbound({ reason: "visibility" });
+      }
     };
 
     const onFocus = () => {
-      void refreshInbound("focus");
+      void refreshInbound({ reason: "focus" });
     };
 
-    /** Otra pestaña del mismo origen escribió el DB → rehidratar sin F5. */
     const onStorage = (event) => {
       if (event.key !== STORAGE_KEY || !event.newValue) return;
       if (!enabledRef.current || suspendRef.current) return;
@@ -227,7 +237,7 @@ export function SyncProvider({ children }) {
         useDbStore.getState().replaceDb(next);
         suspendRef.current = false;
       } catch {
-        // JSON inválido: ignorar.
+        // ignore
       }
     };
 
@@ -238,6 +248,8 @@ export function SyncProvider({ children }) {
     window.addEventListener("auth:resume", onFocus);
 
     return () => {
+      unregisterSyncRefresh(refreshInbound);
+      void stopDashboardDataRealtime();
       unsubSession();
       unsub();
       window.removeEventListener("online", onOnline);
