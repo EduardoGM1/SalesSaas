@@ -27,7 +27,7 @@ interface WorksheetPageProps {
 
 export function WorksheetPage({ clientId, shared }: WorksheetPageProps) {
   const { t } = useI18n();
-  const { ready, readOnly, backHref, getBucket, saveBucket, isFileMode, isShared, peers, lockedBy } = useToolSession({ clientId, shared, section: "worksheet" });
+  const { ready, readOnly, backHref, getBucket, saveBucket, isFileMode, isShared, peers, lockedBy, toolsRevision } = useToolSession({ clientId, shared, section: "worksheet" });
   const { fmt } = useMoney();
   const moneySettings = useDbStore((s) => s.db.settings, shallow);
   const worksheetConfig = useDbStore((s) => s.db.settings?.worksheetConfig, shallow);
@@ -56,7 +56,7 @@ export function WorksheetPage({ clientId, shared }: WorksheetPageProps) {
       if (prev.wv === next.wv && prev.we === next.we && prev.wcc === next.wcc && prev.wob === next.wob) return prev;
       return next;
     });
-  }, [ready, clientId, getBucket, worksheetConfig, shared?.prospectId]);
+  }, [ready, clientId, getBucket, worksheetConfig, shared?.prospectId, toolsRevision]);
 
   const handleClear = async () => {
     if (readOnly) return;

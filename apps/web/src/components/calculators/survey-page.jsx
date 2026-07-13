@@ -39,7 +39,7 @@ interface SurveyPageProps {
 export function SurveyPage({ clientId, shared }: SurveyPageProps) {
   const { t } = useI18n();
   const session = useToolSession({ clientId, shared, section: "survey" });
-  const { ready, readOnly, backHref, getBucket, saveBucket, syncProspectFields, isFileMode, isShared, prospectId, peers, lockedBy } = session;
+  const { ready, readOnly, backHref, getBucket, saveBucket, syncProspectFields, isFileMode, isShared, prospectId, peers, lockedBy, toolsRevision } = session;
   const saveClient = useDbStore((s) => s.saveClient);
   const getClient = useDbStore((s) => s.getClient);
   const moneySettings = useDbStore((s) => s.db.settings, shallow);
@@ -81,7 +81,7 @@ export function SurveyPage({ clientId, shared }: SurveyPageProps) {
       if (keys.every((k) => prev[k] === loaded[k])) return prev;
       return loaded;
     });
-  }, [ready, clientId, isFileMode, isShared, getBucket, getClient, prospectId, shared?.prospectId, session.prospect?.id]);
+  }, [ready, clientId, isFileMode, isShared, getBucket, getClient, prospectId, shared?.prospectId, session.prospect?.id, toolsRevision]);
 
   const client = isFileMode ? (isShared ? session.prospect : (clientId ? getClient(clientId) : undefined)) : undefined;
   const countries = Object.keys(COUNTRY_CITY);

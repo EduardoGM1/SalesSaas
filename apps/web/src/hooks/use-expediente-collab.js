@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { fetchProfile } from "@/lib/session-api.js";
 import {
@@ -22,6 +22,8 @@ export function useExpedienteCollab({
   const [peers, setPeers] = useState([]);
   const [profile, setProfile] = useState(null);
   const canCollab = enabled && isSupabaseConfigured() && isExpedienteUuid(prospectId);
+  const onDataChangeRef = useRef(onDataChange);
+  onDataChangeRef.current = onDataChange;
 
   useEffect(() => {
     if (!canCollab) return undefined;
@@ -43,9 +45,7 @@ export function useExpedienteCollab({
   const trackState = wantEdit && !sectionLocked ? "editing" : "viewing";
 
   useEffect(() => {
-    if (!canCollab || !profile?.id) {
-      return undefined;
-    }
+    if (!canCollab || !profile?.id) return undefined;
 
     let cancelled = false;
     startExpedienteCollab({
@@ -56,13 +56,14 @@ export function useExpedienteCollab({
       onPeers: (list) => {
         if (!cancelled) setPeers(list);
       },
-      onDataChange,
+      onDataChange: (payload) => onDataChangeRef.current?.(payload),
     }).catch(() => {});
 
     return () => {
       cancelled = true;
       stopExpedienteCollab().catch(() => {});
     };
+    // Solo re-suscribir al cambiar expediente/perfil — no al cambiar trackState.
   }, [canCollab, prospectId, profile?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
@@ -75,8 +76,6 @@ export function useExpedienteCollab({
     [peers, myId],
   );
 
-  const refreshPeers = useCallback(() => {}, []);
-
   return {
     peers: otherPeers,
     allPeers: peers,
@@ -84,6 +83,6 @@ export function useExpedienteCollab({
     lockedBy,
     sectionLocked,
     trackState,
-    refreshPeers,
+    hasOthers: otherPeers.length > 0,
   };
 }

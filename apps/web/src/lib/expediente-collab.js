@@ -3,16 +3,15 @@
  * - Presence (privado): expediente:{prospectId}
  * - Postgres Changes (público): expediente-data:{prospectId}
  *
- * No mezclar presence privado + postgres_changes en el mismo canal:
- * Realtime Authorization solo aplica a Presence/Broadcast y puede dejar
- * el canal en CHANNEL_ERROR sin avatares ni sync.
+ * Serializa start/stop con generación para evitar canales huérfanos
+ * (causa de toasts duplicados).
  */
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { createClient, primeRealtimeAuth } from "@/lib/supabase/client";
 import { fetchRealtimeSession } from "@/lib/presence-api.js";
 import { ensureRealtimeReady, removeChannelSafe } from "@/lib/presence/realtime.js";
 
-const DEBOUNCE_MS = 300;
+const DEBOUNCE_MS = 280;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 let presenceChannel = null;
@@ -25,6 +24,11 @@ let onPeersCb = null;
 let onDataChangeCb = null;
 let lastTrack = null;
 let pagehideBound = false;
+/** Invalida starts en vuelo cuando hay stop o un start más nuevo. */
+let opGeneration = 0;
+let opChain = Promise.resolve();
+/** Dedup de eventos postgres (mismo commit). */
+const recentEventKeys = new Map();
 
 export function expedienteTopic(prospectId) {
   return `expediente:${prospectId}`;
@@ -84,7 +88,31 @@ function emitPeers() {
   }
 }
 
+function eventDedupeKey(payload) {
+  const table = payload?.table || "";
+  const tool = payload?.tool || "";
+  const ts = payload?.commit_timestamp || "";
+  const data = payload?.data;
+  const stamp = ts || (data != null ? JSON.stringify(data).slice(0, 200) : String(Date.now()));
+  return `${table}:${tool}:${stamp}`;
+}
+
+function shouldEmitDataChange(payload) {
+  const key = eventDedupeKey(payload);
+  const now = Date.now();
+  const prev = recentEventKeys.get(key);
+  if (prev && now - prev < 2000) return false;
+  recentEventKeys.set(key, now);
+  if (recentEventKeys.size > 40) {
+    for (const [k, t] of recentEventKeys) {
+      if (now - t > 5000) recentEventKeys.delete(k);
+    }
+  }
+  return true;
+}
+
 function scheduleDataChange(payload) {
+  if (!shouldEmitDataChange(payload)) return;
   clearTimeout(debounceTimer);
   debounceTimer = setTimeout(() => {
     debounceTimer = null;
@@ -121,12 +149,9 @@ async function subscribeChannel(ch) {
   });
 }
 
-export async function stopExpedienteCollab() {
+async function tearDownChannels() {
   clearTimeout(debounceTimer);
   debounceTimer = null;
-  onPeersCb = null;
-  onDataChangeCb = null;
-  lastTrack = null;
   const sb = createClient();
   const pCh = presenceChannel;
   const dCh = dataChannel;
@@ -135,6 +160,7 @@ export async function stopExpedienteCollab() {
   activeProspectId = null;
   presenceJoined = false;
   dataJoined = false;
+  lastTrack = null;
   if (pCh) {
     try {
       await pCh.untrack();
@@ -144,6 +170,14 @@ export async function stopExpedienteCollab() {
     await removeChannelSafe(sb, pCh);
   }
   if (dCh) await removeChannelSafe(sb, dCh);
+}
+
+export async function stopExpedienteCollab() {
+  opGeneration += 1;
+  onPeersCb = null;
+  onDataChangeCb = null;
+  opChain = opChain.then(() => tearDownChannels()).catch(() => {});
+  await opChain;
 }
 
 export async function updateExpedienteCollabTrack({ section, state } = {}) {
@@ -169,7 +203,7 @@ export async function updateExpedienteCollabTrack({ section, state } = {}) {
  *   section?: string,
  *   state?: 'viewing'|'editing',
  *   onPeers?: (peers: Array) => void,
- *   onDataChange?: (payload: { table: string, tool?: string|null }) => void,
+ *   onDataChange?: (payload: object) => void,
  * }} opts
  */
 export async function startExpedienteCollab(opts) {
@@ -192,74 +226,105 @@ export async function startExpedienteCollab(opts) {
   onDataChangeCb = onDataChange;
   ensurePagehideListener();
 
-  if (presenceJoined && dataJoined && activeProspectId === prospectId && presenceChannel) {
+  if (presenceJoined && dataJoined && activeProspectId === prospectId && presenceChannel && dataChannel) {
     await updateExpedienteCollabTrack({ section, state });
     emitPeers();
     return;
   }
 
-  await stopExpedienteCollab();
-  onPeersCb = onPeers;
-  onDataChangeCb = onDataChange;
+  const myGen = ++opGeneration;
+  opChain = opChain.then(async () => {
+    if (myGen !== opGeneration) return;
 
-  const supabase = createClient();
-  const session = await ensureBrowserSession(supabase);
-  if (!session?.access_token) {
-    console.warn("[expediente-collab] sin sesión realtime");
-    return;
-  }
+    await tearDownChannels();
+    if (myGen !== opGeneration) return;
 
-  await ensureRealtimeReady(supabase, session.access_token, 8_000);
+    onPeersCb = onPeers;
+    onDataChangeCb = onDataChange;
 
-  const trackPayload = {
-    user_id: profile.id,
-    name: profile.full_name?.trim() || profile.email?.split("@")[0] || "Usuario",
-    avatar_url: profile.avatar_url || null,
-    section,
-    state: state === "editing" ? "editing" : "viewing",
-    online_at: new Date().toISOString(),
-  };
-  lastTrack = trackPayload;
-  activeProspectId = prospectId;
-
-  // 1) Presence privado
-  const pCh = supabase.channel(expedienteTopic(prospectId), {
-    config: { private: true, presence: { key: profile.id } },
-  });
-  pCh.on("presence", { event: "sync" }, () => emitPeers());
-  pCh.on("presence", { event: "join" }, () => emitPeers());
-  pCh.on("presence", { event: "leave" }, () => emitPeers());
-  presenceChannel = pCh;
-
-  const pRes = await subscribeChannel(pCh);
-  presenceJoined = pRes.ok;
-  if (pRes.ok) {
-    try {
-      await pCh.track(trackPayload);
-    } catch (err) {
-      console.warn("[expediente-collab] track inicial:", err?.message || err);
+    const supabase = createClient();
+    const session = await ensureBrowserSession(supabase);
+    if (!session?.access_token) {
+      console.warn("[expediente-collab] sin sesión realtime");
+      return;
     }
-    emitPeers();
-  }
+    if (myGen !== opGeneration) return;
 
-  // 2) Postgres Changes en canal aparte (no privado)
-  const dCh = supabase.channel(expedienteDataTopic(prospectId));
-  dCh.on(
-    "postgres_changes",
-    { event: "*", schema: "public", table: "prospects", filter: `id=eq.${prospectId}` },
-    () => scheduleDataChange({ table: "prospects", tool: null }),
-  );
-  dCh.on(
-    "postgres_changes",
-    { event: "*", schema: "public", table: "tool_calculations", filter: `prospect_id=eq.${prospectId}` },
-    (payload) => {
-      const tool = payload?.new?.tool || payload?.old?.tool || null;
-      scheduleDataChange({ table: "tool_calculations", tool });
-    },
-  );
-  dataChannel = dCh;
-  const dRes = await subscribeChannel(dCh);
-  dataJoined = dRes.ok;
+    await ensureRealtimeReady(supabase, session.access_token, 8_000);
+    if (myGen !== opGeneration) return;
+
+    const trackPayload = {
+      user_id: profile.id,
+      name: profile.full_name?.trim() || profile.email?.split("@")[0] || "Usuario",
+      avatar_url: profile.avatar_url || null,
+      section,
+      state: state === "editing" ? "editing" : "viewing",
+      online_at: new Date().toISOString(),
+    };
+    lastTrack = trackPayload;
+    activeProspectId = prospectId;
+
+    const pCh = supabase.channel(expedienteTopic(prospectId), {
+      config: { private: true, presence: { key: profile.id } },
+    });
+    pCh.on("presence", { event: "sync" }, () => emitPeers());
+    pCh.on("presence", { event: "join" }, () => emitPeers());
+    pCh.on("presence", { event: "leave" }, () => emitPeers());
+    presenceChannel = pCh;
+
+    const pRes = await subscribeChannel(pCh);
+    if (myGen !== opGeneration) {
+      await removeChannelSafe(supabase, pCh);
+      if (presenceChannel === pCh) presenceChannel = null;
+      return;
+    }
+    presenceJoined = pRes.ok;
+    if (pRes.ok) {
+      try {
+        await pCh.track(trackPayload);
+      } catch (err) {
+        console.warn("[expediente-collab] track inicial:", err?.message || err);
+      }
+      emitPeers();
+    }
+
+    const dCh = supabase.channel(expedienteDataTopic(prospectId));
+    dCh.on(
+      "postgres_changes",
+      { event: "*", schema: "public", table: "prospects", filter: `id=eq.${prospectId}` },
+      (payload) => scheduleDataChange({
+        table: "prospects",
+        tool: null,
+        data: payload?.new || null,
+        commit_timestamp: payload?.commit_timestamp || null,
+      }),
+    );
+    dCh.on(
+      "postgres_changes",
+      { event: "*", schema: "public", table: "tool_calculations", filter: `prospect_id=eq.${prospectId}` },
+      (payload) => {
+        const row = payload?.new || payload?.old || {};
+        scheduleDataChange({
+          table: "tool_calculations",
+          tool: row.tool || null,
+          data: row.data ?? null,
+          commit_timestamp: payload?.commit_timestamp || null,
+        });
+      },
+    );
+    dataChannel = dCh;
+    const dRes = await subscribeChannel(dCh);
+    if (myGen !== opGeneration) {
+      await removeChannelSafe(supabase, dCh);
+      if (dataChannel === dCh) dataChannel = null;
+      return;
+    }
+    dataJoined = dRes.ok;
+  }).catch((err) => {
+    console.warn("[expediente-collab] start:", err?.message || err);
+  });
+
+  await opChain;
 }
 
 export function getExpedienteCollabPeers() {

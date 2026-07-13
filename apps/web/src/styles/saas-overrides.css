@@ -1994,14 +1994,24 @@ div.modal-backdrop.sales-modal-overlay:not([hidden]) {
   gap: 10px;
   margin-top: 8px;
   flex-wrap: wrap;
+  min-height: 28px;
 }
 
-.exp-presence-bar-label {
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--muted);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+.exp-presence-eye {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  color: var(--muted2, #94a3b8);
+  background: transparent;
+  transition: color 0.2s ease, background 0.2s ease;
+}
+
+.exp-presence-eye.is-active {
+  color: var(--green, #059669);
+  background: color-mix(in srgb, var(--green, #059669) 12%, transparent);
 }
 
 .exp-presence-avatars {

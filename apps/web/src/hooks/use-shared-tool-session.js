@@ -12,22 +12,31 @@ export function useSharedToolSession(prospectId, contactId, section = "detail") 
   const [permission, setPermission] = useState(null);
   const [prospect, setProspect] = useState(null);
   const [tools, setTools] = useState({});
+  const [toolsRevision, setToolsRevision] = useState(0);
   const onDataChangeRef = useRef(null);
+  const lastToastAtRef = useRef(0);
+  const sectionRef = useRef(section);
+  sectionRef.current = section;
+
+  const bumpTools = useCallback((updater) => {
+    setTools(updater);
+    setToolsRevision((n) => n + 1);
+  }, []);
 
   const reload = useCallback(async () => {
     if (!prospectId) return null;
     const data = await sharingApi.getSharedProspect(prospectId);
     setPermission(data.permission);
     setProspect(prospectRowToClient(data.prospect));
-    setTools(data.tools || {});
+    bumpTools(() => data.tools || {});
     return data;
-  }, [prospectId]);
+  }, [prospectId, bumpTools]);
 
   const reloadTool = useCallback(async (tool) => {
     if (!prospectId || !tool) return;
     const data = await sharingApi.getTool(prospectId, tool);
-    setTools((prev) => ({ ...prev, [tool]: data || {} }));
-  }, [prospectId]);
+    bumpTools((prev) => ({ ...prev, [tool]: data || {} }));
+  }, [prospectId, bumpTools]);
 
   useEffect(() => {
     if (!prospectId) return;
@@ -42,9 +51,17 @@ export function useSharedToolSession(prospectId, contactId, section = "detail") 
   onDataChangeRef.current = async (payload) => {
     try {
       if (payload?.table === "tool_calculations" && payload.tool) {
-        await reloadTool(payload.tool);
-        if (payload.tool === section) {
-          toast.success(t("collab.remoteUpdated"));
+        if (payload.data != null && typeof payload.data === "object") {
+          bumpTools((prev) => ({ ...prev, [payload.tool]: payload.data }));
+        } else {
+          await reloadTool(payload.tool);
+        }
+        if (payload.tool === sectionRef.current) {
+          const now = Date.now();
+          if (now - lastToastAtRef.current > 1500) {
+            lastToastAtRef.current = now;
+            toast.success(t("collab.remoteUpdated"));
+          }
         }
         return;
       }
@@ -76,9 +93,9 @@ export function useSharedToolSession(prospectId, contactId, section = "detail") 
       throw new Error(t("collab.sectionLocked", { name: collab.lockedBy?.name || t("collab.someone") }));
     }
     const saved = await sharingApi.saveTool(prospectId, tool, data);
-    setTools((prev) => ({ ...prev, [tool]: saved }));
+    bumpTools((prev) => ({ ...prev, [tool]: saved }));
     return saved;
-  }, [prospectId, collab.sectionLocked, collab.lockedBy, t]);
+  }, [prospectId, collab.sectionLocked, collab.lockedBy, t, bumpTools]);
 
   return useMemo(() => ({
     ready: !loading && !!prospect,
@@ -92,9 +109,11 @@ export function useSharedToolSession(prospectId, contactId, section = "detail") 
     saveTool,
     reload,
     reloadTool,
+    toolsRevision,
     peers: collab.peers,
     lockedBy: collab.lockedBy,
     sectionLocked: collab.sectionLocked,
+    hasOthers: collab.hasOthers,
   }), [
     loading,
     permission,
@@ -106,8 +125,10 @@ export function useSharedToolSession(prospectId, contactId, section = "detail") 
     saveTool,
     reload,
     reloadTool,
+    toolsRevision,
     collab.peers,
     collab.lockedBy,
     collab.sectionLocked,
+    collab.hasOthers,
   ]);
 }

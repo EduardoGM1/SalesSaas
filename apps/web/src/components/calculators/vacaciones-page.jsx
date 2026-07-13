@@ -23,7 +23,7 @@ interface VacacionesPageProps {
 
 export function VacacionesPage({ clientId, shared }: VacacionesPageProps) {
   const { t } = useI18n();
-  const { ready, readOnly, backHref, getBucket, saveBucket, isFileMode, isShared, peers, lockedBy } = useToolSession({ clientId, shared, section: "vacaciones" });
+  const { ready, readOnly, backHref, getBucket, saveBucket, isFileMode, isShared, peers, lockedBy, toolsRevision } = useToolSession({ clientId, shared, section: "vacaciones" });
   const { fmt, fmtN } = useMoney();
   const moneySettings = useDbStore((s) => s.db.settings, shallow);
   const [fields, setFields] = useState({ ...DEFAULT_FIELDS });
@@ -44,7 +44,7 @@ export function VacacionesPage({ clientId, shared }: VacacionesPageProps) {
     setFields((prev) => (
       prev.vv === next.vv && prev.vc === next.vc && prev.va === next.va && prev.vi === next.vi ? prev : next
     ));
-  }, [ready, clientId, getBucket, shared?.prospectId]);
+  }, [ready, clientId, getBucket, shared?.prospectId, toolsRevision]);
 
   const handleClear = async () => {
     if (readOnly) return;

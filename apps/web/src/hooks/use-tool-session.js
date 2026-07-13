@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { useDbStore } from "@/stores/db-store";
 import { shallow } from "zustand/shallow";
 import { useToolBucketReady } from "@/hooks/use-tool-bucket-ready";
@@ -33,6 +33,7 @@ export function useToolSession({ clientId, shared, section }) {
   const saveToolBucket = useDbStore((s) => s.saveToolBucket);
   const getClient = useDbStore((s) => s.getClient);
   const saveClient = useDbStore((s) => s.saveClient);
+  const [localToolsRevision, setLocalToolsRevision] = useState(0);
 
   const mode = useShared ? "client" : localReady.mode;
   const localProspectId = useShared
@@ -45,17 +46,29 @@ export function useToolSession({ clientId, shared, section }) {
           ? clientId
           : null);
   const onLocalDataChangeRef = useRef(null);
+  const lastToastAtRef = useRef(0);
+  const toolSectionRef = useRef(toolSection);
+  toolSectionRef.current = toolSection;
 
   onLocalDataChangeRef.current = async (payload) => {
     if (payload?.table !== "tool_calculations" || !payload.tool || !clientId || !localProspectId) return;
     try {
-      const data = await sharingApi.getTool(localProspectId, payload.tool);
-      saveToolBucket(payload.tool, mode, data || {}, clientId);
-      if (payload.tool === toolSection) {
-        toast.success(t("collab.remoteUpdated"));
+      if (payload.data != null && typeof payload.data === "object") {
+        saveToolBucket(payload.tool, mode, payload.data, clientId);
+      } else {
+        const data = await sharingApi.getTool(localProspectId, payload.tool);
+        saveToolBucket(payload.tool, mode, data || {}, clientId);
+      }
+      setLocalToolsRevision((n) => n + 1);
+      if (payload.tool === toolSectionRef.current) {
+        const now = Date.now();
+        if (now - lastToastAtRef.current > 1500) {
+          lastToastAtRef.current = now;
+          toast.success(t("collab.remoteUpdated"));
+        }
       }
     } catch {
-      /* ignore — sin shares / sin acceso */
+      /* ignore */
     }
   };
 
@@ -71,6 +84,8 @@ export function useToolSession({ clientId, shared, section }) {
   const sectionLocked = useShared ? sharedSession.sectionLocked : localCollab.sectionLocked;
   const lockedBy = useShared ? sharedSession.lockedBy : localCollab.lockedBy;
   const peers = useShared ? sharedSession.peers : localCollab.peers;
+  const hasOthers = useShared ? sharedSession.hasOthers : localCollab.hasOthers;
+  const toolsRevision = useShared ? sharedSession.toolsRevision : localToolsRevision;
   const readOnly = useShared
     ? sharedSession.readOnly
     : sectionLocked;
@@ -78,7 +93,7 @@ export function useToolSession({ clientId, shared, section }) {
 
   const getBucket = useCallback((tool) => (
     useShared ? sharedSession.getToolData(tool) : getToolBucket(tool, mode, clientId)
-  ), [useShared, sharedSession.getToolData, getToolBucket, mode, clientId]);
+  ), [useShared, sharedSession.getToolData, getToolBucket, mode, clientId, toolsRevision]);
 
   const saveBucket = useCallback(async (tool, data) => {
     if (sectionLocked) {
@@ -133,6 +148,8 @@ export function useToolSession({ clientId, shared, section }) {
     peers,
     lockedBy,
     sectionLocked,
+    hasOthers,
+    toolsRevision,
   }), [
     ready,
     mode,
@@ -150,5 +167,7 @@ export function useToolSession({ clientId, shared, section }) {
     peers,
     lockedBy,
     sectionLocked,
+    hasOthers,
+    toolsRevision,
   ]);
 }
