@@ -1,9 +1,59 @@
-import { ClientRecord } from "@/lib/storage/types";
+import { ClientRecord, ClientActivity, SaleRecord } from "@/lib/storage/types";
 
-/** Mapea fila `prospects` de Supabase al shape local de expediente. */
-export function prospectRowToClient(row: Record<string, unknown>): ClientRecord {
+function isoToMs(iso: unknown): number {
+  if (!iso) return Date.now();
+  const ms = new Date(String(iso)).getTime();
+  return Number.isFinite(ms) ? ms : Date.now();
+}
+
+function mapSaleRow(s: Record<string, unknown>): SaleRecord {
+  return {
+    saleId: String(s.id),
+    date: String(s.sale_date || ""),
+    vol: Number(s.vol || 0),
+    tours: Number(s.tours || 1),
+    contract: s.contract ? String(s.contract) : undefined,
+    status: s.status ? String(s.status) : undefined,
+    processing: s.processing
+      ? String(s.processing)
+      : (s.status === "pendiente" ? "pendiente" : "venta"),
+    processDate: s.process_date ? String(s.process_date) : undefined,
+    addProcessingFollowup: !!s.add_processing_followup,
+    note: s.note ? String(s.note) : undefined,
+    ts: isoToMs(s.created_at),
+    prospectId: s.prospect_id ? String(s.prospect_id) : undefined,
+  };
+}
+
+function mapActivityRow(a: Record<string, unknown>): ClientActivity {
+  return {
+    id: String(a.id),
+    ts: isoToMs(a.created_at),
+    type: String(a.type || "nota"),
+    date: a.activity_date ? String(a.activity_date) : undefined,
+    title: a.title ? String(a.title) : undefined,
+    note: a.note ? String(a.note) : undefined,
+    source: a.source ? String(a.source) : undefined,
+    saleId: a.sale_id ? String(a.sale_id) : undefined,
+    contract: a.contract ? String(a.contract) : undefined,
+    vol: a.vol != null ? Number(a.vol) : undefined,
+    tours: a.tours != null ? Number(a.tours) : undefined,
+  };
+}
+
+/** Mapea fila `prospects` (+ ventas/actividades opcionales) al shape local. */
+export function prospectRowToClient(
+  row: Record<string, unknown>,
+  extras: {
+    sales?: Record<string, unknown>[];
+    activities?: Record<string, unknown>[];
+    tools?: Record<string, Record<string, unknown>>;
+  } = {},
+): ClientRecord {
   const createdAt = row.created_at ? new Date(String(row.created_at)).getTime() : Date.now();
   const tourDate = row.tour_date ? String(row.tour_date) : undefined;
+  const sales = (extras.sales || []).map(mapSaleRow);
+  const activities = (extras.activities || []).map(mapActivityRow);
   return {
     id: String(row.id),
     prospectId: String(row.id),
@@ -23,14 +73,16 @@ export function prospectRowToClient(row: Record<string, unknown>): ClientRecord 
     processDate: row.process_date ? String(row.process_date) : undefined,
     processAmount: row.process_amount != null ? Number(row.process_amount) : undefined,
     note: row.note ? String(row.note) : undefined,
+    tipo_tour: row.tipo_tour ? String(row.tipo_tour) : undefined,
+    tour_cuantificable: row.tour_cuantificable != null ? !!row.tour_cuantificable : undefined,
     createdAt,
     createdYmd: tourDate,
     quickExpedient: row.quick_expedient === true,
     completedExpedient: row.completed === true,
     deletedAt: row.deleted_at ? new Date(String(row.deleted_at)).getTime() : null,
-    data: {},
-    sales: [],
-    activities: [],
+    data: extras.tools ? { ...extras.tools } : {},
+    sales,
+    activities,
   };
 }
 

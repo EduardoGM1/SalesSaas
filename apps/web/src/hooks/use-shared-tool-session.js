@@ -21,7 +21,11 @@ export function useSharedToolSession(prospectId, contactId, section = "detail") 
     if (!prospectId) return null;
     const data = await sharingApi.getSharedProspect(prospectId);
     setPermission(data.permission);
-    setProspect(prospectRowToClient(data.prospect));
+    setProspect(prospectRowToClient(data.prospect, {
+      sales: data.sales,
+      activities: data.activities,
+      tools: data.tools,
+    }));
     bumpTools(() => data.tools || {});
     return data;
   }, [prospectId, bumpTools]);

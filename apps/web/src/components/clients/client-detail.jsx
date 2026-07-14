@@ -77,7 +77,11 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
 
   const applySharedPayload = (data) => {
     setSharePerm(data.permission);
-    setRemoteClient(prospectRowToClient(data.prospect));
+    setRemoteClient(prospectRowToClient(data.prospect, {
+      sales: data.sales,
+      activities: data.activities,
+      tools: data.tools,
+    }));
     setShareMeta({
       shareId: data.share_id || null,
       addedAt: data.added_to_workspace_at || null,
@@ -216,8 +220,8 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
   };
 
   const activityItems = (() => {
-    const acts: typeof c.activities = [];
-    const seen = new Set<string>();
+    const acts = [];
+    const seen = new Set();
     for (const a of c.activities || []) {
       const sig = a.saleId ? `sale:${a.saleId}` : `${a.type}|${a.date}|${a.title}|${a.note}`;
       if (seen.has(sig)) continue;
@@ -269,8 +273,24 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
     </div>
   );
 
-  const saleCard = isOwner ? { label: t("exp.card.sale"), desc: t("exp.card.saleDesc"), icon: DollarSign, tone: "green", onClick: () => openSaleModal() } : null;
-  const notesCard = canComment && !sharedRemote ? { label: t("exp.card.notes"), desc: t("exp.card.notesDesc"), icon: MessageSquare, tone: "blue", onClick: () => setNoteOpen(true) } : null;
+  const scrollToSection = (selector) => {
+    const el = document.querySelector(selector);
+    if (!el) return;
+    if (el.classList.contains("is-collapsed")) {
+      el.querySelector(".collapsible-section-head")?.click();
+    }
+    el.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+  const saleCard = isOwner
+    ? { label: t("exp.card.sale"), desc: t("exp.card.saleDesc"), icon: DollarSign, tone: "green", onClick: () => openSaleModal() }
+    : sharedRemote
+      ? { label: t("exp.card.sale"), desc: t("exp.card.saleDesc"), icon: DollarSign, tone: "green", onClick: () => scrollToSection("#client-sales-card") }
+      : null;
+  const notesCard = !sharedRemote && canComment
+    ? { label: t("exp.card.notes"), desc: t("exp.card.notesDesc"), icon: MessageSquare, tone: "blue", onClick: () => setNoteOpen(true) }
+    : sharedRemote
+      ? { label: t("exp.card.notes"), desc: t("exp.card.notesDesc"), icon: MessageSquare, tone: "blue", onClick: () => scrollToSection("#client-activity-card") }
+      : null;
   const isQuick = !!c.quickExpedient && !c.completedExpedient;
   const toolCards = isQuick
     ? [saleCard, notesCard].filter(Boolean)
@@ -450,6 +470,7 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
           mobileOnly
           defaultOpen={false}
           className="card activity-card exp-collapsible-card"
+          id="client-activity-card"
           title={<div className="card-heading">{t("exp.activity.title")}</div>}
           subtitle={t("exp.activity.sub")}
         >

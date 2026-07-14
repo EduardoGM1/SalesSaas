@@ -657,6 +657,39 @@ export async function listWorkspacePinned(supabase, userId) {
   });
 }
 
+async function loadProspectTools(supabase, prospectId) {
+  const { data: toolRows, error } = await supabase
+    .from("tool_calculations")
+    .select("tool, data")
+    .eq("prospect_id", prospectId);
+  if (error) throw new ServiceError(error.message, 500);
+  const tools = {};
+  for (const row of toolRows ?? []) {
+    tools[row.tool] = row.data ?? {};
+  }
+  return tools;
+}
+
+async function loadProspectSales(supabase, prospectId) {
+  const { data, error } = await supabase
+    .from("sales")
+    .select("*")
+    .eq("prospect_id", prospectId)
+    .order("created_at", { ascending: false });
+  if (error) throw new ServiceError(error.message, 500);
+  return data ?? [];
+}
+
+async function loadProspectActivities(supabase, prospectId) {
+  const { data, error } = await supabase
+    .from("activities")
+    .select("*")
+    .eq("prospect_id", prospectId)
+    .order("created_at", { ascending: false });
+  if (error) throw new ServiceError(error.message, 500);
+  return data ?? [];
+}
+
 export async function getSharedProspect(supabase, userId, prospectId) {
   if (!isUuid(prospectId)) throw new ServiceError("Expediente inválido.");
 
@@ -667,8 +700,12 @@ export async function getSharedProspect(supabase, userId, prospectId) {
     .eq("user_id", userId)
     .maybeSingle();
   if (owned) {
-    const tools = await loadProspectTools(supabase, prospectId);
-    return { prospect: owned, permission: "owner", tools };
+    const [tools, sales, activities] = await Promise.all([
+      loadProspectTools(supabase, prospectId),
+      loadProspectSales(supabase, prospectId),
+      loadProspectActivities(supabase, prospectId),
+    ]);
+    return { prospect: owned, permission: "owner", tools, sales, activities };
   }
 
   const { data: share } = await supabase
@@ -686,7 +723,13 @@ export async function getSharedProspect(supabase, userId, prospectId) {
     .maybeSingle();
   if (error) throw new ServiceError(error.message, 500);
   assertFound(prospect, "Expediente no encontrado.");
-  const tools = await loadProspectTools(supabase, prospectId);
+
+  const [tools, sales, activities] = await Promise.all([
+    loadProspectTools(supabase, prospectId),
+    loadProspectSales(supabase, prospectId),
+    loadProspectActivities(supabase, prospectId),
+  ]);
+
   return {
     prospect,
     permission: share.permission,
@@ -695,20 +738,9 @@ export async function getSharedProspect(supabase, userId, prospectId) {
     added_to_workspace_at: share.added_to_workspace_at ?? null,
     can_add_to_workspace: canPinPermission(share.permission),
     tools,
+    sales,
+    activities,
   };
-}
-
-async function loadProspectTools(supabase, prospectId) {
-  const { data: toolRows, error } = await supabase
-    .from("tool_calculations")
-    .select("tool, data")
-    .eq("prospect_id", prospectId);
-  if (error) throw new ServiceError(error.message, 500);
-  const tools = {};
-  for (const row of toolRows ?? []) {
-    tools[row.tool] = row.data ?? {};
-  }
-  return tools;
 }
 
 async function resolveSharedAccess(supabase, userId, prospectId) {
