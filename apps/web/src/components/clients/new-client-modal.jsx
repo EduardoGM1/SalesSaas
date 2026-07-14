@@ -6,9 +6,10 @@ import { formatSingleNameInput, isValidSingleName, SINGLE_NAME_MAX_LENGTH } from
 import { DEFAULT_TOUR_TYPES } from "@/lib/store-empty.js";
 import { useDbStore } from "@/stores/db-store";
 import { createProspectFromName } from "@/actions/clients.js";
+import { adoptLibreToolsToClient } from "@/lib/tools/adopt-libre-tools";
 import { shallow } from "zustand/shallow";
 
-export function NewClientModal({ open, onOpenChange, onCreated }) {
+export function NewClientModal({ open, onOpenChange, onCreated, adoptLibreTools = false }) {
   const { t } = useI18n();
   const tourTypes = useDbStore((s) => s.db.settings?.tourTypes ?? DEFAULT_TOUR_TYPES, shallow);
   const [name, setName] = useState("");
@@ -78,7 +79,13 @@ export function NewClientModal({ open, onOpenChange, onCreated }) {
       return;
     }
 
-    onCreated?.(result.client);
+    let client = result.client;
+    if (adoptLibreTools) {
+      adoptLibreToolsToClient(client.id);
+      client = useDbStore.getState().getClient(client.id) ?? client;
+    }
+
+    onCreated?.(client);
     handleOpenChange(false);
   };
 

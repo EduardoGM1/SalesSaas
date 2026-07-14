@@ -60,6 +60,30 @@ async function deleteMissing(
   if (error) throw new Error(`delete ${table}: ${error.message}`);
 }
 
+async function deleteMissingToolCalculations(
+  sb: SB,
+  userId: string,
+  keepRows: { prospect_id: string | null; tool: string }[],
+): Promise<void> {
+  const { data: existing, error: fetchErr } = await sb
+    .from("tool_calculations")
+    .select("id, prospect_id, tool")
+    .eq("user_id", userId);
+  if (fetchErr) throw new Error(`fetch tool_calculations: ${fetchErr.message}`);
+  const keepSet = new Set(
+    keepRows.map((r) => `${r.prospect_id ?? "null"}:${r.tool}`),
+  );
+  const toDelete = (existing ?? []).filter(
+    (r) => !keepSet.has(`${r.prospect_id ?? "null"}:${r.tool}`),
+  );
+  if (!toDelete.length) return;
+  const { error } = await sb
+    .from("tool_calculations")
+    .delete()
+    .in("id", toDelete.map((r) => r.id));
+  if (error) throw new Error(`delete tool_calculations: ${error.message}`);
+}
+
 /**
  * Reconcilia el estado completo del usuario con la nube:
  * upsert de todo lo presente + borrado de lo que ya no existe.
@@ -82,6 +106,11 @@ export async function reconcile(sb: SB, db: AppDatabase, userId: string): Promis
   );
 
   // Borrado de faltantes (hijos primero; prospects cascada al final)
+  await deleteMissingToolCalculations(
+    sb,
+    userId,
+    rows.tool_calculations.map((r) => ({ prospect_id: r.prospect_id, tool: r.tool })),
+  );
   await deleteMissing(sb, "calendar_entries", userId, rows.calendar_entries.map((r) => r.id));
   await deleteMissing(sb, "activities", userId, rows.activities.map((r) => r.id));
   await deleteMissing(sb, "sales", userId, rows.sales.map((r) => r.id));

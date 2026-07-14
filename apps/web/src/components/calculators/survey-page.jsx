@@ -14,6 +14,7 @@ import { formatSingleNameInput, isValidSingleName, SINGLE_NAME_MAX_LENGTH } from
 import { useI18n } from "@/hooks/use-i18n.js";
 import { useMoney } from "@/hooks/use-money.js";
 import { useToolSession } from "@/hooks/use-tool-session.js";
+import { useFlushLibreToolOnLeave } from "@/hooks/use-flush-libre-tool-on-leave.js";
 import { CollabField, collabFieldId } from "@/components/clients/collab-field.jsx";
 import { applyRemoteFormState, fieldKeyFromCollabId, markFieldsDirty, clearDirtyFields } from "@/lib/collab-form-merge.js";
 import { useDbStore } from "@/stores/db-store";
@@ -61,6 +62,13 @@ export function SurveyPage({ clientId, shared }: SurveyPageProps) {
   const hydratedRef = useRef(false);
   const focusedKeyRef = useRef(null);
   focusedKeyRef.current = fieldKeyFromCollabId(collab?.myFocusedField, "survey");
+
+  useFlushLibreToolOnLeave({
+    enabled: ready && !isFileMode,
+    tool: "survey",
+    getSnapshot: () => ({ ...data, stype: sType, futureType }),
+    hasChanges: () => dirtyKeysRef.current.size > 0,
+  });
 
   useEffect(() => {
     if (!ready) return;

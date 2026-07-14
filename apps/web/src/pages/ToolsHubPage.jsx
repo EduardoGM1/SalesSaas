@@ -50,6 +50,7 @@ export function ToolsHubPage() {
       <NewClientModal
         open={newClientOpen}
         onOpenChange={setNewClientOpen}
+        adoptLibreTools
         onCreated={(client) => navigate(`/clients/${client.id}`)}
       />
     </>

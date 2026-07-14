@@ -33,6 +33,7 @@ interface DbState {
   deleteClientSale: (clientId: string, saleId: string) => void;
   getToolBucket: (tool: string, mode: "libre" | "client", clientId?: string | null) => Record<string, string | number>;
   saveToolBucket: (tool: string, mode: "libre" | "client", data: Record<string, string | number>, clientId?: string | null) => void;
+  clearLibreTool: (tool: string) => void;
   addClientActivity: (clientId: string, activity: Omit<ClientActivity, "id" | "ts"> & { ts?: number }) => void;
   addUserActivity: (activity: Omit<ClientActivity, "id" | "ts">) => void;
   registerClientSale: (clientId: string, sale: {
@@ -312,6 +313,16 @@ export const useDbStore = create<DbState>((set, get) => ({
       } else {
         db.libre[tool] = { ...data };
       }
+      saveDatabase(db);
+      return { db };
+    });
+  },
+
+  clearLibreTool: (tool) => {
+    set((s) => {
+      const db = cloneDb(s.db);
+      if (!db.libre[tool] || Object.keys(db.libre[tool]).length === 0) return s;
+      db.libre[tool] = { ...EMPTY_TOOL_BUCKET };
       saveDatabase(db);
       return { db };
     });

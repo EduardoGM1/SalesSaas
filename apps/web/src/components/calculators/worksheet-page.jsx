@@ -15,6 +15,7 @@ import { formatDecimalInput } from "@/lib/format/numeric-input.js";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { useMoney } from "@/hooks/use-money.js";
 import { useToolSession } from "@/hooks/use-tool-session.js";
+import { useFlushLibreToolOnLeave } from "@/hooks/use-flush-libre-tool-on-leave.js";
 import { CollabField, collabFieldId } from "@/components/clients/collab-field.jsx";
 import { applyRemoteFormState, fieldKeyFromCollabId, markFieldsDirty, clearDirtyFields } from "@/lib/collab-form-merge.js";
 import { useDbStore } from "@/stores/db-store";
@@ -44,6 +45,13 @@ export function WorksheetPage({ clientId, shared }: WorksheetPageProps) {
   const hydratedRef = useRef(false);
   const focusedKeyRef = useRef(null);
   focusedKeyRef.current = fieldKeyFromCollabId(collab?.myFocusedField, "worksheet");
+
+  useFlushLibreToolOnLeave({
+    enabled: ready && !isFileMode,
+    tool: "worksheet",
+    getSnapshot: () => ({ ...fields, ...config }),
+    hasChanges: () => dirtyKeysRef.current.size > 0,
+  });
 
   useEffect(() => {
     if (!ready) return;

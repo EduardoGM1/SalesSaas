@@ -11,6 +11,7 @@ import { formatMoneyValue } from "@/lib/format/money";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { useMoney } from "@/hooks/use-money.js";
 import { useToolSession } from "@/hooks/use-tool-session.js";
+import { useFlushLibreToolOnLeave } from "@/hooks/use-flush-libre-tool-on-leave.js";
 import { CollabField, collabFieldId } from "@/components/clients/collab-field.jsx";
 import { applyRemoteFormState, fieldKeyFromCollabId, markFieldsDirty, clearDirtyFields } from "@/lib/collab-form-merge.js";
 import { useDbStore } from "@/stores/db-store";
@@ -37,6 +38,13 @@ export function VacacionesPage({ clientId, shared }: VacacionesPageProps) {
   const hydratedRef = useRef(false);
   const focusedKeyRef = useRef(null);
   focusedKeyRef.current = fieldKeyFromCollabId(collab?.myFocusedField, "vacaciones");
+
+  useFlushLibreToolOnLeave({
+    enabled: ready && !isFileMode,
+    tool: "vacaciones",
+    getSnapshot: () => ({ ...fields }),
+    hasChanges: () => dirtyKeysRef.current.size > 0,
+  });
 
   useEffect(() => {
     if (!ready) return;

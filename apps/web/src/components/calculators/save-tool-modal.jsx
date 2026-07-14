@@ -8,6 +8,7 @@ import { activeClients, clientDisplayName } from "@/lib/clients";
 import { ymdToday } from "@/lib/format/dates";
 import { parseMoney } from "@/lib/format/money";
 import { createEmptyClient, useDbStore } from "@/stores/db-store";
+import { adoptLibreToolsToClient } from "@/lib/tools/adopt-libre-tools";
 import { DEFAULT_TOUR_TYPES } from "@/lib/store-empty.js";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { selectOnFocus } from "@/lib/focus-select.js";
@@ -48,7 +49,6 @@ export function SaveToolModal({ open, onOpenChange, tool }: SaveToolModalProps) 
   const db = useDbStore((s) => s.db, shallow);
   const getToolBucket = useDbStore((s) => s.getToolBucket);
   const saveClient = useDbStore((s) => s.saveClient);
-  const saveToolBucket = useDbStore((s) => s.saveToolBucket);
   const tourTypes = db.settings?.tourTypes ?? DEFAULT_TOUR_TYPES;
 
   const [targetMode, setTargetMode] = useState<"new" | "existing">("new");
@@ -80,7 +80,7 @@ export function SaveToolModal({ open, onOpenChange, tool }: SaveToolModalProps) 
         return;
       }
       setMissingProspect(false);
-      saveToolBucket(tool, "client", src, existingId);
+      adoptLibreToolsToClient(existingId, { tools: [tool], snapshots: { [tool]: src } });
       onOpenChange(false);
       navigate(`/clients/${existingId}`);
       return;
@@ -107,8 +107,8 @@ export function SaveToolModal({ open, onOpenChange, tool }: SaveToolModalProps) 
     c.processDate = f.processDate;
     c.processAmount = parseMoney(f.processAmount);
     c.note = f.note;
-    c.data = { survey: {}, vacaciones: {}, worksheet: {}, ...(c.data || {}), [tool]: src };
     saveClient(c);
+    adoptLibreToolsToClient(c.id, { tools: [tool], snapshots: { [tool]: src } });
     onOpenChange(false);
     navigate(`/clients/${c.id}`);
   };

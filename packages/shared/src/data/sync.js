@@ -35,6 +35,25 @@ async function deleteMissing(sb, table, userId, keepIds) {
   const { error } = await q;
   if (error) throw new Error(`delete ${table}: ${error.message}`);
 }
+async function deleteMissingToolCalculations(sb, userId, keepRows) {
+  const { data: existing, error: fetchErr } = await sb
+    .from("tool_calculations")
+    .select("id, prospect_id, tool")
+    .eq("user_id", userId);
+  if (fetchErr) throw new Error(`fetch tool_calculations: ${fetchErr.message}`);
+  const keepSet = new Set(
+    keepRows.map((r) => `${r.prospect_id ?? "null"}:${r.tool}`),
+  );
+  const toDelete = (existing ?? []).filter(
+    (r) => !keepSet.has(`${r.prospect_id ?? "null"}:${r.tool}`),
+  );
+  if (!toDelete.length) return;
+  const { error } = await sb
+    .from("tool_calculations")
+    .delete()
+    .in("id", toDelete.map((r) => r.id));
+  if (error) throw new Error(`delete tool_calculations: ${error.message}`);
+}
 async function reconcile(sb, db, userId) {
   const rows = dbToRows(db, userId);
   await upsert(sb, "prospects", rows.prospects);
@@ -47,6 +66,11 @@ async function reconcile(sb, db, userId) {
     "tool_calculations",
     rows.tool_calculations,
     "user_id,prospect_id,tool"
+  );
+  await deleteMissingToolCalculations(
+    sb,
+    userId,
+    rows.tool_calculations.map((r) => ({ prospect_id: r.prospect_id, tool: r.tool })),
   );
   await deleteMissing(sb, "calendar_entries", userId, rows.calendar_entries.map((r) => r.id));
   await deleteMissing(sb, "activities", userId, rows.activities.map((r) => r.id));
