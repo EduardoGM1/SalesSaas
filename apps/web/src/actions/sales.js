@@ -1,6 +1,7 @@
 import { parseMoney } from "@/lib/format/money";
 import { translate } from "@/lib/i18n.js";
 import { resolveSaleProcessDate } from "@/lib/sales/form-valid";
+import { scheduleReminderPush } from "@/lib/schedule-reminder-push.js";
 import { useDbStore } from "@/stores/db-store";
 import { toast } from "@/lib/toast";
 
@@ -33,6 +34,16 @@ export function saveClientSale(clientId, saleForm, editingSaleId) {
   const store = useDbStore.getState();
   if (editingSaleId) store.updateClientSale(clientId, editingSaleId, payload);
   else store.registerClientSale(clientId, payload);
+
+  if (payload.status === "pendiente" && payload.addProcessingFollowup && payload.processDate) {
+    scheduleReminderPush({
+      type: "follow-up",
+      date: payload.processDate,
+      note: `Procesar venta pendiente${payload.contract ? ` · Folio ${payload.contract}` : ""}`,
+      entryKey: `sale-proc-${clientId}-${payload.processDate}-${payload.contract || ""}`,
+    });
+  }
+
   const message = saleForm.status === "pendiente"
     ? translate("toast.sale.pendingSaved")
     : translate("toast.sale.saved");

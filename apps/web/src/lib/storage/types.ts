@@ -5,6 +5,8 @@ export interface CalEntry {
   t: EntryType;
   ts: number;
   note?: string;
+  /** Hora local HH:MM del recordatorio (opcional). */
+  time?: string;
   vol?: number;
   tours?: number;
   contract?: string;

@@ -56,6 +56,7 @@ router.get("/", (_req, res) => {
         status: { GET: "/api/v1/notifications/status" },
         device: { POST: "/api/v1/notifications/device" },
         digest: { POST: "/api/v1/notifications/digest-reminders" },
+        scheduleReminder: { POST: "/api/v1/notifications/schedule-reminder" },
       },
       support: {
         requests: { POST: "/api/v1/support/requests" },
@@ -476,9 +477,24 @@ router.post("/notifications/device", async (req, res) => {
 router.post("/notifications/digest-reminders", async (req, res) => {
   const a = await requireAuth(req, res);
   if (!a) return;
+  const body = req.body && typeof req.body === "object" && !Array.isArray(req.body) ? req.body : {};
   await runService(
     res,
-    () => pushService.digestOperationalReminders(a.userId),
+    () => pushService.digestOperationalReminders(a.userId, {
+      timezoneOffsetMinutes: body.timezone_offset_minutes ?? body.timezoneOffsetMinutes,
+    }),
+    { wrap: "data" },
+  );
+});
+
+router.post("/notifications/schedule-reminder", async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  const body = parseJsonBody(req, res);
+  if (!body) return;
+  await runService(
+    res,
+    () => pushService.scheduleOperationalReminder(a.userId, body),
     { wrap: "data" },
   );
 });

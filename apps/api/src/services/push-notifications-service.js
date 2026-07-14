@@ -68,9 +68,9 @@ async function loadSubscriptionIds(serviceSb, userId) {
   return Array.isArray(ids) ? ids.filter(Boolean) : [];
 }
 
-function buildMessagePayload(appId, { title, body, url, path, type, tag }) {
+function buildMessagePayload(appId, { title, body, url, path, type, tag, sendAfter }) {
   const appPath = path || "/";
-  return {
+  const payload = {
     app_id: appId,
     headings: { en: title, es: title },
     contents: { en: body, es: body },
@@ -79,6 +79,8 @@ function buildMessagePayload(appId, { title, body, url, path, type, tag }) {
     collapse_id: tag,
     data: { url, path: appPath, type: type || null },
   };
+  if (sendAfter) payload.send_after = sendAfter;
+  return payload;
 }
 
 async function postOneSignal(apiKey, payload) {
@@ -331,8 +333,9 @@ export async function notifySessionRevoked(userId) {
 /**
  * Digest diario de recordatorios operativos (follow-ups, ventas por procesar, notas).
  * Pensado para dispararse al volver a primer plano; cooldown por tipo/día.
+ * No sustituye avisos a hora exacta (ver scheduleOperationalReminder).
  */
-export async function digestOperationalReminders(userId) {
+export async function digestOperationalReminders(userId, { timezoneOffsetMinutes } = {}) {
   const serviceSb = createServiceSupabaseClient();
   if (!serviceSb || !isPushConfigured()) return { sent: 0, skipped: "not_configured" };
   if (!userId) return { sent: 0, skipped: "no_user" };
@@ -342,9 +345,13 @@ export async function digestOperationalReminders(userId) {
     return { sent: 0, skipped: "prefs_off" };
   }
 
-  const today = new Date().toISOString().slice(0, 10);
+  const offset = Number.isFinite(Number(timezoneOffsetMinutes))
+    ? Number(timezoneOffsetMinutes)
+    : 0;
+  const localNow = new Date(Date.now() - offset * 60_000);
+  const today = localNow.toISOString().slice(0, 10);
   const db = await pullAll(serviceSb, userId);
-  const due = collectReminders(db, { to: today }).filter(
+  const due = collectReminders(db, { to: today, today }).filter(
     (r) => r.due === "today" || r.due === "overdue",
   );
 
@@ -385,7 +392,8 @@ export async function digestOperationalReminders(userId) {
   let sent = 0;
   for (const group of groups) {
     if (!prefs[group.pref]) continue;
-    const items = due.filter((r) => r.type === group.type);
+    // Digest solo para ítems sin hora (los con hora van por scheduleOperationalReminder).
+    const items = due.filter((r) => r.type === group.type && !r.time);
     if (!items.length) continue;
 
     const tag = `digest-${group.type}-${userId}-${today}`;
@@ -403,7 +411,119 @@ export async function digestOperationalReminders(userId) {
     sent += 1;
   }
 
+  // Catch-up: follow-ups/notas con hora ya vencida hoy (p. ej. creados antes del schedule).
+  const nowShifted = localNow.getTime();
+  for (const item of due) {
+    if (!item.time) continue;
+    const isFollow = item.type === "follow-up";
+    const isNote = item.type === "note";
+    if (isFollow && !prefs.follow_up_reminders) continue;
+    if (isNote && !prefs.scheduled_notes) continue;
+    if (!isFollow && !isNote) continue;
+
+    const [hh, mm] = item.time.split(":").map(Number);
+    const [y, mo, d] = item.date.split("-").map(Number);
+    // Misma escala que localNow (UTC components = hora local).
+    const dueShifted = Date.UTC(y, mo - 1, d, hh, mm, 0);
+    const age = nowShifted - dueShifted;
+    if (age < 0 || age > 6 * 60 * 60 * 1000) continue;
+
+    const tag = `catchup-${item.type}-${userId}-${item.date}-${item.time.replace(":", "")}-${item.id}`.slice(0, 120);
+    const allowed = await claimNotificationCooldown(serviceSb, tag, REMINDER_DIGEST_COOLDOWN_MS);
+    if (!allowed) continue;
+
+    const title = isFollow ? "Recordatorio de follow-up" : "Nota programada";
+    const preview = String(item.note || "").replace(/^\d{1,2}:\d{2}\s*·\s*/, "").trim();
+    await sendToUser(serviceSb, userId, {
+      title,
+      body: preview
+        ? (preview.length > 120 ? `${preview.slice(0, 120)}…` : preview)
+        : (isFollow ? `Follow-up de las ${item.time}` : `Nota de las ${item.time}`),
+      url: pushUrl(origin, calendarPath()),
+      path: calendarPath(),
+      type: isFollow ? PushType.FOLLOW_UP_REMINDER : PushType.SCHEDULED_NOTE,
+      tag,
+    });
+    sent += 1;
+  }
+
   return { sent };
+}
+
+/**
+ * Programa (o envía ya) un push a la hora local del follow-up / nota.
+ * El cliente envía send_at en ISO absoluto (timezone del dispositivo).
+ */
+export async function scheduleOperationalReminder(userId, body = {}) {
+  const serviceSb = createServiceSupabaseClient();
+  if (!serviceSb || !isPushConfigured()) {
+    throw new ServiceError("Notificaciones push no configuradas.", 503);
+  }
+  if (!userId) throw new ServiceError("Usuario requerido.", 401);
+
+  const kind = String(body.type ?? body.kind ?? "").trim();
+  const date = String(body.date ?? "").trim();
+  const timeRaw = String(body.time ?? "").trim();
+  const note = String(body.note ?? "").trim();
+  const sendAtRaw = body.send_at ?? body.sendAt ?? null;
+  const entryKey = String(body.entry_key ?? body.entryKey ?? body.ts ?? Date.now());
+
+  const isFollow = kind === "follow-up" || kind === "follow";
+  const isNote = kind === "note" || kind === "nota" || kind === "scheduled_note";
+  if (!isFollow && !isNote) {
+    throw new ServiceError("Tipo de recordatorio no válido.", 400);
+  }
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    throw new ServiceError("Fecha inválida.", 400);
+  }
+
+  const prefs = await loadNotificationPrefs(serviceSb, userId);
+  if (isFollow && !prefs.follow_up_reminders) return { ok: true, skipped: "prefs_off" };
+  if (isNote && !prefs.scheduled_notes) return { ok: true, skipped: "prefs_off" };
+
+  const time = /^\d{1,2}:\d{2}$/.test(timeRaw) ? timeRaw.padStart(5, "0") : "09:00";
+  let sendAt = sendAtRaw ? new Date(String(sendAtRaw)) : null;
+  if (!sendAt || Number.isNaN(sendAt.getTime())) {
+    throw new ServiceError("send_at inválido.", 400);
+  }
+
+  const now = Date.now();
+  const delta = sendAt.getTime() - now;
+  // Más de 2h en el pasado → no molestar.
+  if (delta < -2 * 60 * 60 * 1000) {
+    return { ok: true, skipped: "too_late" };
+  }
+  // Hasta 2 min de retraso → enviar ya.
+  const sendAfter = delta > 120_000 ? sendAt.toISOString() : null;
+
+  const origin = primaryWebOrigin();
+  const path = calendarPath();
+  const title = isFollow ? "Recordatorio de follow-up" : "Nota programada";
+  const preview = note
+    ? (note.length > 120 ? `${note.slice(0, 120)}…` : note)
+    : (isFollow ? "Tienes un follow-up programado" : "Tienes una nota programada");
+  const bodyText = isFollow
+    ? (note ? `Follow-up: ${preview}` : `Follow-up a las ${time}`)
+    : (note ? `Nota: ${preview}` : `Nota programada a las ${time}`);
+
+  const tag = `timed-${isFollow ? "follow" : "note"}-${userId}-${date}-${time.replace(":", "")}-${entryKey}`.slice(0, 120);
+
+  const result = await sendToUser(serviceSb, userId, {
+    title,
+    body: bodyText,
+    url: pushUrl(origin, path),
+    path,
+    type: isFollow ? PushType.FOLLOW_UP_REMINDER : PushType.SCHEDULED_NOTE,
+    tag,
+    sendAfter,
+  });
+
+  return {
+    ok: Boolean(result?.ok),
+    scheduled: Boolean(sendAfter),
+    send_at: sendAfter || new Date().toISOString(),
+    reason: result?.reason || null,
+  };
 }
 
 // Compatibilidad con rutas antiguas (VAPID / web-push).
