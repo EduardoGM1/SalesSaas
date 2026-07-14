@@ -15,6 +15,12 @@
   "env": {
     "NODE_OPTIONS": "--dns-result-order=ipv4first"
   },
+  "crons": [
+    {
+      "path": "/api/v1/cron/flush-reminders",
+      "schedule": "* * * * *"
+    }
+  ],
   "rewrites": [
     { "source": "/health", "destination": "/api" },
     { "source": "/health/:path*", "destination": "/api" },

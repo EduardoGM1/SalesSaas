@@ -480,8 +480,8 @@ export async function digestOperationalReminders(userId, { timezoneOffsetMinutes
 }
 
 /**
- * Programa (o envía ya) un push a la hora local del follow-up / nota.
- * El cliente envía send_at en ISO absoluto (timezone del dispositivo).
+ * Encola un push a hora exacta. NO usa OneSignal send_after (web push lo ignora o adelanta).
+ * El envío real lo hace flushDueScheduledPushes() — mismo canal inmediato que mensajes.
  */
 export async function scheduleOperationalReminder(userId, body = {}) {
   const serviceSb = createServiceSupabaseClient();
@@ -511,19 +511,16 @@ export async function scheduleOperationalReminder(userId, body = {}) {
   if (isNote && !prefs.scheduled_notes) return { ok: true, skipped: "prefs_off" };
 
   const time = /^\d{1,2}:\d{2}$/.test(timeRaw) ? timeRaw.padStart(5, "0") : "09:00";
-  let sendAt = sendAtRaw ? new Date(String(sendAtRaw)) : null;
+  const sendAt = sendAtRaw ? new Date(String(sendAtRaw)) : null;
   if (!sendAt || Number.isNaN(sendAt.getTime())) {
     throw new ServiceError("send_at inválido.", 400);
   }
 
   const now = Date.now();
   const delta = sendAt.getTime() - now;
-  // Más de 2h en el pasado → no molestar.
   if (delta < -2 * 60 * 60 * 1000) {
     return { ok: true, skipped: "too_late" };
   }
-  // Hasta 2 min de retraso → enviar ya.
-  const sendAfter = delta > 120_000 ? sendAt.toISOString() : null;
 
   const origin = primaryWebOrigin();
   const path = calendarPath();
@@ -534,44 +531,156 @@ export async function scheduleOperationalReminder(userId, body = {}) {
   const bodyText = isFollow
     ? (note ? `Follow-up: ${preview}` : `Follow-up a las ${time}`)
     : (note ? `Nota: ${preview}` : `Nota programada a las ${time}`);
+  const pushType = isFollow ? PushType.FOLLOW_UP_REMINDER : PushType.SCHEDULED_NOTE;
+  const tag = pushTag(isFollow ? "fu" : "note", date, time.replace(":", ""), entryKey);
 
-  const tag = pushTag(
-    isFollow ? "fu" : "note",
-    date,
-    time.replace(":", ""),
-    entryKey,
-  );
+  // Cancela jobs pendientes previos del mismo entry (reprogramación).
+  await serviceSb
+    .from("scheduled_push_jobs")
+    .update({ status: "cancelled" })
+    .eq("user_id", userId)
+    .eq("entry_key", entryKey)
+    .eq("status", "pending");
 
-  const result = await sendToUser(serviceSb, userId, {
-    title,
-    body: bodyText,
-    url: pushUrl(origin, path),
-    path,
-    type: isFollow ? PushType.FOLLOW_UP_REMINDER : PushType.SCHEDULED_NOTE,
-    tag,
-    sendAfter,
-  });
+  const { data: job, error: insertErr } = await serviceSb
+    .from("scheduled_push_jobs")
+    .insert({
+      user_id: userId,
+      send_at: sendAt.toISOString(),
+      push_type: pushType,
+      title,
+      body: bodyText,
+      path,
+      tag,
+      entry_key: entryKey,
+      status: "pending",
+    })
+    .select("id, send_at")
+    .single();
 
-  if (!result?.ok) {
-    const detail = Array.isArray(result?.errors) ? result.errors.join("; ") : "";
-    if (result?.reason === "no_subscription") {
+  if (insertErr) {
+    throw new ServiceError(insertErr.message || "No se pudo encolar el aviso.", 400);
+  }
+
+  // Si ya toca (≤90s), enviar ya — mismo camino inmediato que un mensaje.
+  if (delta <= 90_000) {
+    const result = await sendToUser(serviceSb, userId, {
+      title,
+      body: bodyText,
+      url: pushUrl(origin, path),
+      path,
+      type: pushType,
+      tag,
+    });
+    await serviceSb
+      .from("scheduled_push_jobs")
+      .update({
+        status: result?.ok ? "sent" : "failed",
+        sent_at: result?.ok ? new Date().toISOString() : null,
+        attempts: 1,
+        last_error: result?.ok ? null : (result?.reason || "send_failed"),
+      })
+      .eq("id", job.id);
+
+    if (!result?.ok) {
       throw new ServiceError(
-        "No hay dispositivo con push activo. Activa las notificaciones en Configuración.",
-        400,
+        result?.reason === "no_subscription"
+          ? "No hay dispositivo con push activo. Activa las notificaciones en Configuración."
+          : "No se pudo enviar el aviso push.",
+        502,
       );
     }
-    throw new ServiceError(
-      detail || "No se pudo programar el aviso push (mismo canal que mensajes).",
-      502,
-    );
+    return {
+      ok: true,
+      scheduled: false,
+      send_at: sendAt.toISOString(),
+      job_id: job.id,
+    };
   }
 
   return {
     ok: true,
-    scheduled: Boolean(sendAfter),
-    send_at: sendAfter || new Date().toISOString(),
-    onesignal_id: result?.body?.id || null,
+    scheduled: true,
+    send_at: sendAt.toISOString(),
+    job_id: job.id,
   };
+}
+
+/**
+ * Envía jobs pendientes cuya hora ya llegó (mismo sendToUser que mensajes).
+ * Pensado para cron cada minuto + poll del cliente.
+ */
+export async function flushDueScheduledPushes({ limit = 40, userId = null } = {}) {
+  const serviceSb = createServiceSupabaseClient();
+  if (!serviceSb || !isPushConfigured()) {
+    return { sent: 0, skipped: "not_configured" };
+  }
+
+  const nowIso = new Date().toISOString();
+  let query = serviceSb
+    .from("scheduled_push_jobs")
+    .select("id, user_id, push_type, title, body, path, tag, attempts")
+    .eq("status", "pending")
+    .lte("send_at", nowIso)
+    .order("send_at", { ascending: true })
+    .limit(Math.min(Math.max(Number(limit) || 40, 1), 100));
+
+  if (userId) query = query.eq("user_id", userId);
+
+  const { data: jobs, error } = await query;
+
+  if (error) {
+    console.warn("[scheduled-push] flush select:", error.message);
+    return { sent: 0, skipped: "query_error", error: error.message };
+  }
+  if (!jobs?.length) return { sent: 0 };
+
+  const origin = primaryWebOrigin();
+  let sent = 0;
+
+  for (const job of jobs) {
+    const prefs = await loadNotificationPrefs(serviceSb, job.user_id);
+    const isFollow = job.push_type === PushType.FOLLOW_UP_REMINDER;
+    const isNote = job.push_type === PushType.SCHEDULED_NOTE;
+    if (isFollow && !prefs.follow_up_reminders) {
+      await serviceSb.from("scheduled_push_jobs").update({ status: "cancelled" }).eq("id", job.id);
+      continue;
+    }
+    if (isNote && !prefs.scheduled_notes) {
+      await serviceSb.from("scheduled_push_jobs").update({ status: "cancelled" }).eq("id", job.id);
+      continue;
+    }
+
+    const path = job.path || calendarPath();
+    const result = await sendToUser(serviceSb, job.user_id, {
+      title: job.title,
+      body: job.body,
+      url: pushUrl(origin, path),
+      path,
+      type: job.push_type,
+      tag: job.tag,
+    });
+
+    const attempts = (job.attempts || 0) + 1;
+    if (result?.ok) {
+      await serviceSb
+        .from("scheduled_push_jobs")
+        .update({ status: "sent", sent_at: new Date().toISOString(), attempts, last_error: null })
+        .eq("id", job.id);
+      sent += 1;
+    } else {
+      const giveUp = attempts >= 5;
+      const patch = {
+        status: giveUp ? "failed" : "pending",
+        attempts,
+        last_error: result?.reason || "send_failed",
+      };
+      if (!giveUp) patch.send_at = new Date(Date.now() + 60_000).toISOString();
+      await serviceSb.from("scheduled_push_jobs").update(patch).eq("id", job.id);
+    }
+  }
+
+  return { sent, checked: jobs.length };
 }
 
 // Compatibilidad con rutas antiguas (VAPID / web-push).

@@ -15,7 +15,7 @@ import {
 } from "@/lib/dashboard-data-realtime.js";
 import { isStandaloneApp } from "@/lib/pwa-install.js";
 import { isOutboundSyncSuspended } from "@/lib/sync-suspend.js";
-import { maybeRequestReminderDigest } from "@/lib/reminder-digest.js";
+import { maybeRequestReminderDigest, maybeFlushScheduledReminders, startScheduledReminderFlushLoop } from "@/lib/reminder-digest.js";
 import { useDbStore } from "@/stores/db-store";
 import { useSyncStore } from "@/stores/sync-store";
 import { Toaster } from "@/components/ui/toaster";
@@ -36,6 +36,7 @@ export function SyncProvider({ children }) {
   const timerRef = useRef(null);
   const lastResumePullAtRef = useRef(0);
   const refreshInFlightRef = useRef(false);
+  const stopFlushLoopRef = useRef(null);
 
   useEffect(() => {
     if (!isSupabaseConfigured()) {
@@ -202,6 +203,8 @@ export function SyncProvider({ children }) {
         }
       });
       maybeRequestReminderDigest();
+      if (typeof stopFlushLoopRef.current === "function") stopFlushLoopRef.current();
+      stopFlushLoopRef.current = startScheduledReminderFlushLoop();
     };
 
     const stopForUser = () => {
@@ -209,6 +212,10 @@ export function SyncProvider({ children }) {
       initedForRef.current = null;
       userIdRef.current = null;
       lastResumePullAtRef.current = 0;
+      if (typeof stopFlushLoopRef.current === "function") {
+        stopFlushLoopRef.current();
+        stopFlushLoopRef.current = null;
+      }
       void stopDashboardDataRealtime();
       useSyncStore.getState().setStatus("disabled");
     };
@@ -243,6 +250,7 @@ export function SyncProvider({ children }) {
       // En PWA forzamos pull: el WS a menudo no entregó eventos mientras estaba en background.
       void refreshInbound({ reason: "foreground", force: pwa });
       maybeRequestReminderDigest();
+      maybeFlushScheduledReminders({ force: true });
     };
 
     const onVisible = () => {
@@ -286,6 +294,10 @@ export function SyncProvider({ children }) {
     return () => {
       unregisterSyncRefresh(refreshInbound);
       void stopDashboardDataRealtime();
+      if (typeof stopFlushLoopRef.current === "function") {
+        stopFlushLoopRef.current();
+        stopFlushLoopRef.current = null;
+      }
       unsubSession();
       unsub();
       window.removeEventListener("online", onOnline);

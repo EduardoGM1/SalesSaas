@@ -57,6 +57,10 @@ router.get("/", (_req, res) => {
         device: { POST: "/api/v1/notifications/device" },
         digest: { POST: "/api/v1/notifications/digest-reminders" },
         scheduleReminder: { POST: "/api/v1/notifications/schedule-reminder" },
+        flushReminders: { POST: "/api/v1/notifications/flush-reminders" },
+      },
+      cron: {
+        flushReminders: { GET_POST: "/api/v1/cron/flush-reminders" },
       },
       support: {
         requests: { POST: "/api/v1/support/requests" },
@@ -495,6 +499,51 @@ router.post("/notifications/schedule-reminder", async (req, res) => {
   await runService(
     res,
     () => pushService.scheduleOperationalReminder(a.userId, body),
+    { wrap: "data" },
+  );
+});
+
+/** Cliente autenticado: descarga sus jobs vencidos (mismo envío inmediato que mensajes). */
+router.post("/notifications/flush-reminders", async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  await runService(
+    res,
+    () => pushService.flushDueScheduledPushes({ userId: a.userId, limit: 20 }),
+    { wrap: "data" },
+  );
+});
+
+/**
+ * Cron Vercel / externo: Authorization Bearer CRON_SECRET.
+ * Procesa jobs de todos los usuarios.
+ */
+router.post("/cron/flush-reminders", async (req, res) => {
+  const secret = process.env.CRON_SECRET;
+  const auth = String(req.get("authorization") || "");
+  const bearer = auth.startsWith("Bearer ") ? auth.slice(7).trim() : "";
+  const token = bearer || String(req.query.secret || req.get("x-cron-secret") || "");
+  if (!secret || token !== secret) {
+    return apiError(res, "Unauthorized", 401);
+  }
+  await runService(
+    res,
+    () => pushService.flushDueScheduledPushes({ limit: 80 }),
+    { wrap: "data" },
+  );
+});
+
+router.get("/cron/flush-reminders", async (req, res) => {
+  const secret = process.env.CRON_SECRET;
+  const auth = String(req.get("authorization") || "");
+  const bearer = auth.startsWith("Bearer ") ? auth.slice(7).trim() : "";
+  const token = bearer || String(req.query.secret || req.get("x-cron-secret") || "");
+  if (!secret || token !== secret) {
+    return apiError(res, "Unauthorized", 401);
+  }
+  await runService(
+    res,
+    () => pushService.flushDueScheduledPushes({ limit: 80 }),
     { wrap: "data" },
   );
 });
