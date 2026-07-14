@@ -1,7 +1,6 @@
 import { notificationsApi } from "@/lib/notifications-api.js";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { toast } from "@/lib/toast";
-import { translate } from "@/lib/i18n.js";
 
 /**
  * Convierte fecha+hora local del dispositivo a ISO absoluto.
@@ -34,9 +33,7 @@ export function scheduleReminderPush({
 }) {
   if (!isSupabaseConfigured()) return;
   if (typeof navigator !== "undefined" && !navigator.onLine) {
-    toast.error(translate("settings.help.sentError") === "No se pudo enviar la solicitud."
-      ? "Sin conexión: no se pudo programar el aviso push."
-      : "Offline: could not schedule push reminder.");
+    toast.error("Sin conexión: no se pudo programar el aviso push.");
     return;
   }
   if (!date) return;
@@ -62,9 +59,7 @@ export function scheduleReminderPush({
     })
     .then((result) => {
       if (result?.skipped === "prefs_off") {
-        toast.error(
-          "Los recordatorios están desactivados en Configuración → Notificaciones.",
-        );
+        toast.error("Activa los recordatorios en Configuración → Notificaciones y guarda.");
         return;
       }
       if (result?.skipped === "too_late") return;
