@@ -22,9 +22,11 @@ export function saveClientNote({ clientId, client, noteForm }) {
     note: fullNote,
     source: "Clientes",
   });
-  if (noteForm.date) {
+  // Fecha explícita, o hoy si hay hora (mismo criterio que el recordatorio UI).
+  const reminderDate = noteForm.date || (time ? noteForm.fallbackDate : null);
+  if (reminderDate) {
     const entryType = noteForm.type === "follow" ? "follow" : "nota";
-    store.addCalEntryByDate(date, {
+    store.addCalEntryByDate(reminderDate, {
       t: entryType,
       note: fullNote,
       time: time || undefined,
@@ -37,7 +39,7 @@ export function saveClientNote({ clientId, client, noteForm }) {
     if (entryType === "follow" || entryType === "nota") {
       scheduleReminderPush({
         type: entryType === "follow" ? "follow-up" : "note",
-        date,
+        date: reminderDate,
         time: time || undefined,
         note: noteForm.note,
         entryKey: ts,

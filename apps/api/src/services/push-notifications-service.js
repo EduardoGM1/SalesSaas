@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { createServiceSupabaseClient } from "../lib/supabase-server.js";
 import { primaryWebOrigin } from "../lib/origins.js";
 import { ServiceError } from "../lib/service-error.js";
@@ -20,6 +21,8 @@ const MAX_STORED_SUBSCRIPTIONS = 5;
 const SECTION_CHANGE_COOLDOWN_MS = 30_000;
 /** Evita spamear digests operativos el mismo día (~20h). */
 const REMINDER_DIGEST_COOLDOWN_MS = 20 * 60 * 60 * 1000;
+/** OneSignal: web_push_topic / collapse_id máx. 64 chars. */
+const MAX_PUSH_TAG_LEN = 64;
 
 const SECTION_LABELS = {
   detail: "Expediente",
@@ -27,6 +30,16 @@ const SECTION_LABELS = {
   vacaciones: "Proyección de Vacaciones",
   worksheet: "Worksheet",
 };
+
+/** Tag corto y estable (mismo límite que mensajes: ≤64). */
+function pushTag(prefix, ...parts) {
+  const safePrefix = String(prefix || "n").replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 20);
+  const raw = parts.map((p) => String(p ?? "")).filter(Boolean).join("-");
+  const full = raw ? `${safePrefix}-${raw}` : safePrefix;
+  if (full.length <= MAX_PUSH_TAG_LEN) return full;
+  const hash = createHash("sha256").update(full).digest("hex").slice(0, 12);
+  return `${safePrefix}-${hash}`.slice(0, MAX_PUSH_TAG_LEN);
+}
 
 export function getOneSignalAppId() {
   return process.env.ONESIGNAL_APP_ID || process.env.VITE_ONESIGNAL_APP_ID || null;
@@ -70,13 +83,15 @@ async function loadSubscriptionIds(serviceSb, userId) {
 
 function buildMessagePayload(appId, { title, body, url, path, type, tag, sendAfter }) {
   const appPath = path || "/";
+  const topic = pushTag(tag || type || "push");
   const payload = {
     app_id: appId,
     headings: { en: title, es: title },
     contents: { en: body, es: body },
     url,
-    web_push_topic: tag,
-    collapse_id: tag,
+    // Mismos campos que mensajes/contactos (topic ≤64).
+    web_push_topic: topic,
+    collapse_id: topic,
     data: { url, path: appPath, type: type || null },
   };
   if (sendAfter) payload.send_after = sendAfter;
@@ -94,12 +109,17 @@ async function postOneSignal(apiKey, payload) {
   });
 
   const body = await res.json().catch(() => ({}));
-  const ok = res.ok && Boolean(body.id) && !body.errors?.length;
+  const hasErrors = Array.isArray(body.errors)
+    ? body.errors.length > 0
+    : Boolean(body.errors);
+  const ok = res.ok && Boolean(body.id) && !hasErrors;
   if (!ok) {
     console.warn("[onesignal] Envío fallido:", {
       status: res.status,
       errors: body.errors,
       recipients: body.recipients,
+      send_after: payload.send_after || null,
+      topic: payload.web_push_topic || null,
     });
   }
   return { ok, body };
@@ -111,7 +131,9 @@ async function sendToUser(serviceSb, userId, message) {
   if (!appId || !apiKey) return { ok: false, reason: "not_configured" };
 
   const base = buildMessagePayload(appId, message);
+  const subscriptionIds = await loadSubscriptionIds(serviceSb, userId);
 
+  // Misma estrategia que mensajes: alias external_id, luego subscription_ids.
   const byAlias = await postOneSignal(apiKey, {
     ...base,
     target_channel: "push",
@@ -119,16 +141,23 @@ async function sendToUser(serviceSb, userId, message) {
   });
   if (byAlias.ok) return byAlias;
 
-  const subscriptionIds = await loadSubscriptionIds(serviceSb, userId);
   if (!subscriptionIds.length) {
     console.warn("[onesignal] Sin suscripción para usuario", userId, byAlias.body?.errors);
     return { ok: false, reason: "no_subscription", errors: byAlias.body?.errors };
   }
 
-  return postOneSignal(apiKey, {
+  const bySub = await postOneSignal(apiKey, {
     ...base,
+    target_channel: "push",
     include_subscription_ids: subscriptionIds,
   });
+  if (bySub.ok) return bySub;
+
+  return {
+    ok: false,
+    reason: "send_failed",
+    errors: bySub.body?.errors || byAlias.body?.errors,
+  };
 }
 
 export async function registerPushDevice(supabase, userId, subscriptionId) {
@@ -406,7 +435,7 @@ export async function digestOperationalReminders(userId, { timezoneOffsetMinutes
       url: pushUrl(origin, group.path),
       path: group.path,
       type: group.pushType,
-      tag,
+      tag: pushTag("dig", group.type, today),
     });
     sent += 1;
   }
@@ -428,8 +457,8 @@ export async function digestOperationalReminders(userId, { timezoneOffsetMinutes
     const age = nowShifted - dueShifted;
     if (age < 0 || age > 6 * 60 * 60 * 1000) continue;
 
-    const tag = `catchup-${item.type}-${userId}-${item.date}-${item.time.replace(":", "")}-${item.id}`.slice(0, 120);
-    const allowed = await claimNotificationCooldown(serviceSb, tag, REMINDER_DIGEST_COOLDOWN_MS);
+    const cooldownKey = `catchup-${item.type}-${userId}-${item.date}-${item.time}-${item.id}`;
+    const allowed = await claimNotificationCooldown(serviceSb, cooldownKey, REMINDER_DIGEST_COOLDOWN_MS);
     if (!allowed) continue;
 
     const title = isFollow ? "Recordatorio de follow-up" : "Nota programada";
@@ -442,7 +471,7 @@ export async function digestOperationalReminders(userId, { timezoneOffsetMinutes
       url: pushUrl(origin, calendarPath()),
       path: calendarPath(),
       type: isFollow ? PushType.FOLLOW_UP_REMINDER : PushType.SCHEDULED_NOTE,
-      tag,
+      tag: pushTag(isFollow ? "cfu" : "cnote", item.date, item.time, item.id),
     });
     sent += 1;
   }
@@ -506,7 +535,12 @@ export async function scheduleOperationalReminder(userId, body = {}) {
     ? (note ? `Follow-up: ${preview}` : `Follow-up a las ${time}`)
     : (note ? `Nota: ${preview}` : `Nota programada a las ${time}`);
 
-  const tag = `timed-${isFollow ? "follow" : "note"}-${userId}-${date}-${time.replace(":", "")}-${entryKey}`.slice(0, 120);
+  const tag = pushTag(
+    isFollow ? "fu" : "note",
+    date,
+    time.replace(":", ""),
+    entryKey,
+  );
 
   const result = await sendToUser(serviceSb, userId, {
     title,
@@ -518,11 +552,25 @@ export async function scheduleOperationalReminder(userId, body = {}) {
     sendAfter,
   });
 
+  if (!result?.ok) {
+    const detail = Array.isArray(result?.errors) ? result.errors.join("; ") : "";
+    if (result?.reason === "no_subscription") {
+      throw new ServiceError(
+        "No hay dispositivo con push activo. Activa las notificaciones en Configuración.",
+        400,
+      );
+    }
+    throw new ServiceError(
+      detail || "No se pudo programar el aviso push (mismo canal que mensajes).",
+      502,
+    );
+  }
+
   return {
-    ok: Boolean(result?.ok),
+    ok: true,
     scheduled: Boolean(sendAfter),
     send_at: sendAfter || new Date().toISOString(),
-    reason: result?.reason || null,
+    onesignal_id: result?.body?.id || null,
   };
 }
 
