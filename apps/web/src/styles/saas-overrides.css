@@ -1714,7 +1714,18 @@ div.modal-backdrop.sales-modal-overlay:not([hidden]) {
   }
 
   .messages-page .messages-layout {
-    grid-template-rows: auto minmax(0, 1fr);
+    grid-template-columns: 1fr;
+    grid-template-rows: 1fr;
+  }
+
+  /* Solo lista: ocupa toda la altura; sin panel vacío debajo */
+  .messages-page .messages-layout--list-only .messages-thread {
+    display: none;
+  }
+
+  .messages-page .messages-layout--list-only .messages-sidebar {
+    max-height: none;
+    height: 100%;
   }
 
   .messages-page .messages-layout--thread-open {
@@ -1726,7 +1737,8 @@ div.modal-backdrop.sales-modal-overlay:not([hidden]) {
   }
 
   .messages-page .messages-sidebar {
-    max-height: min(180px, 26vh);
+    max-height: none;
+    height: 100%;
   }
 }
 
@@ -1743,7 +1755,6 @@ div.modal-backdrop.sales-modal-overlay:not([hidden]) {
 
 @media (max-width: 900px) {
   .messages-layout { grid-template-columns: 1fr; }
-  .messages-sidebar { max-height: 220px; }
 }
 
 .network-row-clickable {

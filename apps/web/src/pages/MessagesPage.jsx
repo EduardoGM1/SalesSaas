@@ -160,7 +160,7 @@ export function MessagesPage() {
         <div className="messages-page-nav">
           <PageBack inline onClick={handleBack} />
         </div>
-        <div className={`messages-layout${activePeerId ? " messages-layout--thread-open" : ""}`}>
+        <div className={`messages-layout${activePeerId ? " messages-layout--thread-open" : " messages-layout--list-only"}`}>
           <aside className="messages-sidebar">
             <div className="messages-sidebar-head">{t("messages.conversations")}</div>
             {loading && <div className="dp-empty">{t("common.loading")}</div>}
