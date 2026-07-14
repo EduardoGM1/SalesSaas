@@ -1,5 +1,16 @@
 import { useEffect, useState } from "react";
 import {
+  MessageSquare,
+  UserPlus,
+  CheckCircle2,
+  FolderOpen,
+  CalendarClock,
+  CircleDollarSign,
+  StickyNote,
+  Bell,
+  BellOff,
+} from "lucide-react";
+import {
   getPushStatus,
   isPushSupported,
   needsIosPwaInstall,
@@ -9,6 +20,106 @@ import { enablePushNotifications, toastPushEnableResult } from "@/lib/push-enabl
 import { openInstallPrompt, isAndroidDevice } from "@/lib/pwa-install.js";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { toast } from "@/lib/toast";
+
+const DEFAULT_PREFS = {
+  messages: true,
+  connection_requests: true,
+  connection_accepted: true,
+  shared_prospects: true,
+  follow_up_reminders: true,
+  sales_to_process: false,
+  scheduled_notes: true,
+};
+
+const SOCIAL_PREFS = [
+  {
+    key: "messages",
+    icon: MessageSquare,
+    tone: "blue",
+    titleKey: "settings.notifications.prefMessages",
+    descKey: "settings.notifications.prefMessagesDesc",
+  },
+  {
+    key: "connection_requests",
+    icon: UserPlus,
+    tone: "teal",
+    titleKey: "settings.notifications.prefRequests",
+    descKey: "settings.notifications.prefRequestsDesc",
+  },
+  {
+    key: "connection_accepted",
+    icon: CheckCircle2,
+    tone: "green",
+    titleKey: "settings.notifications.prefAccepted",
+    descKey: "settings.notifications.prefAcceptedDesc",
+  },
+  {
+    key: "shared_prospects",
+    icon: FolderOpen,
+    tone: "purple",
+    titleKey: "settings.notifications.prefShared",
+    descKey: "settings.notifications.prefSharedDesc",
+  },
+];
+
+const OPS_PREFS = [
+  {
+    key: "follow_up_reminders",
+    icon: CalendarClock,
+    tone: "blue",
+    titleKey: "settings.notifications.prefFollowUps",
+    descKey: "settings.notifications.prefFollowUpsDesc",
+  },
+  {
+    key: "sales_to_process",
+    icon: CircleDollarSign,
+    tone: "green",
+    titleKey: "settings.notifications.prefSalesProcess",
+    descKey: "settings.notifications.prefSalesProcessDesc",
+  },
+  {
+    key: "scheduled_notes",
+    icon: StickyNote,
+    tone: "teal",
+    titleKey: "settings.notifications.prefScheduledNotes",
+    descKey: "settings.notifications.prefScheduledNotesDesc",
+  },
+];
+
+function PrefToggle({ checked, onChange, label }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-label={label}
+      className={`notif-toggle${checked ? " is-on" : ""}`}
+      onClick={() => onChange(!checked)}
+    >
+      <span className="notif-toggle-knob" />
+    </button>
+  );
+}
+
+function PrefRow({ item, checked, onChange, t }) {
+  const Icon = item.icon;
+  return (
+    <div className="notif-pref-row">
+      <div className={`notif-pref-icon tone-${item.tone}`} aria-hidden="true">
+        <Icon size={18} strokeWidth={2.1} />
+      </div>
+      <div className="notif-pref-copy">
+        <div className="notif-pref-title">{t(item.titleKey)}</div>
+        <div className="notif-pref-desc">{t(item.descKey)}</div>
+      </div>
+      <PrefToggle
+        checked={checked}
+        onChange={onChange}
+        label={t(item.titleKey)}
+      />
+    </div>
+  );
+}
 
 export function NotificationsSettings({
   settings,
@@ -26,11 +137,9 @@ export function NotificationsSettings({
   });
   const [pending, setPending] = useState(false);
 
-  const notifications = settings?.notifications ?? {
-    messages: true,
-    connection_requests: true,
-    connection_accepted: true,
-    shared_prospects: true,
+  const notifications = {
+    ...DEFAULT_PREFS,
+    ...(settings?.notifications ?? {}),
   };
 
   const refreshStatus = () => {
@@ -86,9 +195,16 @@ export function NotificationsSettings({
 
   if (needsIosPwaInstall()) {
     return (
-      <div className="ethic-box">
-        <p style={{ marginBottom: 12 }}>{t("settings.notifications.iosPwaRequired")}</p>
-        <button type="button" className="btn btn-primary btn-sm" onClick={openInstallPrompt}>
+      <div className="notif-panel">
+        <div className="notif-status-card">
+          <div className="notif-status-icon tone-blue" aria-hidden="true">
+            <Bell size={20} />
+          </div>
+          <div className="notif-pref-copy">
+            <div className="notif-pref-title">{t("settings.notifications.iosPwaRequired")}</div>
+          </div>
+        </div>
+        <button type="button" className="btn btn-primary" onClick={openInstallPrompt}>
           {t("settings.notifications.iosPwaInstall")}
         </button>
       </div>
@@ -97,12 +213,21 @@ export function NotificationsSettings({
 
   if (!isPushSupported()) {
     return (
-      <div className="ethic-box">{t("settings.notifications.unsupported")}</div>
+      <div className="notif-panel">
+        <div className="notif-status-card">
+          <div className="notif-status-icon tone-muted" aria-hidden="true">
+            <BellOff size={20} />
+          </div>
+          <div className="notif-pref-copy">
+            <div className="notif-pref-title">{t("settings.notifications.unsupported")}</div>
+          </div>
+        </div>
+      </div>
     );
   }
 
   return (
-    <>
+    <div className="notif-panel">
       {!status.pushConfigured && (
         <div className="auth-error" style={{ marginBottom: 12 }}>
           {t("settings.notifications.serverNotConfigured")}
@@ -115,32 +240,33 @@ export function NotificationsSettings({
         </div>
       )}
 
-      <div className="settings-row">
-        <div>
-          <div className="settings-label">{t("settings.notifications.status")}</div>
-          <div className="settings-help">
+      <div className="notif-status-card">
+        <div className={`notif-status-icon ${status.subscribed ? "tone-green" : "tone-muted"}`} aria-hidden="true">
+          {status.subscribed ? <Bell size={20} /> : <BellOff size={20} />}
+        </div>
+        <div className="notif-pref-copy">
+          <div className="notif-pref-title">{t("settings.notifications.status")}</div>
+          <div className="notif-pref-desc">
             {status.subscribed
               ? t("settings.notifications.statusOn")
               : t("settings.notifications.statusOff")}
             {status.permission === "denied" ? ` — ${t("settings.notifications.denied")}` : ""}
           </div>
         </div>
-        <div className="btn-row">
-          {!status.subscribed ? (
-            <button
-              type="button"
-              className="btn btn-primary"
-              disabled={pending || !status.pushConfigured}
-              onClick={handleEnable}
-            >
-              {pending ? t("common.loading") : t("settings.notifications.enable")}
-            </button>
-          ) : (
-            <button type="button" className="btn btn-ghost" disabled={pending} onClick={handleDisable}>
-              {pending ? t("common.loading") : t("settings.notifications.disable")}
-            </button>
-          )}
-        </div>
+        {!status.subscribed ? (
+          <button
+            type="button"
+            className="btn btn-primary btn-sm"
+            disabled={pending || !status.pushConfigured}
+            onClick={handleEnable}
+          >
+            {pending ? t("common.loading") : t("settings.notifications.enable")}
+          </button>
+        ) : (
+          <button type="button" className="btn btn-ghost btn-sm" disabled={pending} onClick={handleDisable}>
+            {pending ? t("common.loading") : t("settings.notifications.disable")}
+          </button>
+        )}
       </div>
 
       {status.permission === "denied" && (
@@ -149,50 +275,35 @@ export function NotificationsSettings({
         </p>
       )}
 
-      <div className="settings-row">
-        <div>
-          <div className="settings-label">{t("settings.notifications.prefsTitle")}</div>
-          <div className="settings-help">{t("settings.notifications.prefsHelp")}</div>
-        </div>
-        <div className="settings-checklist">
-          <label className="settings-check">
-            <input
-              type="checkbox"
-              checked={notifications.messages !== false}
-              onChange={(e) => setPref("messages", e.target.checked)}
-            />
-            {t("settings.notifications.prefMessages")}
-          </label>
-          <label className="settings-check">
-            <input
-              type="checkbox"
-              checked={notifications.connection_requests !== false}
-              onChange={(e) => setPref("connection_requests", e.target.checked)}
-            />
-            {t("settings.notifications.prefRequests")}
-          </label>
-          <label className="settings-check">
-            <input
-              type="checkbox"
-              checked={notifications.connection_accepted !== false}
-              onChange={(e) => setPref("connection_accepted", e.target.checked)}
-            />
-            {t("settings.notifications.prefAccepted")}
-          </label>
-          <label className="settings-check">
-            <input
-              type="checkbox"
-              checked={notifications.shared_prospects !== false}
-              onChange={(e) => setPref("shared_prospects", e.target.checked)}
-            />
-            {t("settings.notifications.prefShared")}
-          </label>
-        </div>
+      <div className="notif-section-label">{t("settings.notifications.sectionSocial")}</div>
+      <div className="notif-pref-list">
+        {SOCIAL_PREFS.map((item) => (
+          <PrefRow
+            key={item.key}
+            item={item}
+            t={t}
+            checked={Boolean(notifications[item.key])}
+            onChange={(v) => setPref(item.key, v)}
+          />
+        ))}
       </div>
 
-      <p className="settings-help" style={{ marginTop: 8 }}>
+      <div className="notif-section-label">{t("settings.notifications.sectionOps")}</div>
+      <div className="notif-pref-list">
+        {OPS_PREFS.map((item) => (
+          <PrefRow
+            key={item.key}
+            item={item}
+            t={t}
+            checked={Boolean(notifications[item.key])}
+            onChange={(v) => setPref(item.key, v)}
+          />
+        ))}
+      </div>
+
+      <p className="settings-help" style={{ marginTop: 14 }}>
         {isAndroidDevice() ? t("settings.notifications.androidHint") : t("settings.notifications.pwaHint")}
       </p>
-    </>
+    </div>
   );
 }

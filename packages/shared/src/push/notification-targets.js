@@ -5,12 +5,23 @@ export const PushType = {
   CONNECTION_ACCEPTED: "connection_accepted",
   SHARED_PROSPECT: "shared_prospect",
   PROSPECT_SECTION_CHANGED: "prospect_section_changed",
+  FOLLOW_UP_REMINDER: "follow_up_reminder",
+  SALES_TO_PROCESS: "sales_to_process",
+  SCHEDULED_NOTE: "scheduled_note",
   /** Logout en otro dispositivo: forzar cierre local / ir a login. */
   SESSION_REVOKED: "session_revoked",
 };
 
 export function networkPath() {
   return "/network";
+}
+
+export function calendarPath() {
+  return "/";
+}
+
+export function salesPath() {
+  return "/sales";
 }
 
 export function messagePath(senderId) {
@@ -68,6 +79,11 @@ export function resolvePushPathFromPayload(payload = {}) {
       return networkPath();
     case PushType.CONNECTION_ACCEPTED:
       return networkPath();
+    case PushType.FOLLOW_UP_REMINDER:
+    case PushType.SCHEDULED_NOTE:
+      return calendarPath();
+    case PushType.SALES_TO_PROCESS:
+      return salesPath();
     case PushType.PROSPECT_SECTION_CHANGED:
     case PushType.SHARED_PROSPECT:
       return typeof payload.path === "string" ? payload.path : null;

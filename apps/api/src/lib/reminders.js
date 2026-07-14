@@ -16,13 +16,14 @@ export function collectReminders(db, { from, to } = {}) {
       const date = `${ym}-${padDay(day)}`;
       for (const entry of entries ?? []) {
         const type = entry.t || entry.type;
-        if (type !== "follow") continue;
+        if (type !== "follow" && type !== "nota") continue;
+        const isNote = type === "nota";
         items.push({
           id: `cal-${date}-${entry.ts ?? entry.note ?? items.length}`,
-          type: "follow-up",
+          type: isNote ? "note" : "follow-up",
           date,
           due: date < today ? "overdue" : date === today ? "today" : "upcoming",
-          note: entry.note ?? "Seguimiento",
+          note: entry.note ?? (isNote ? "Nota programada" : "Seguimiento"),
           clientId: entry.clientId ?? null,
           prospectId: entry.prospectId ?? null,
         });

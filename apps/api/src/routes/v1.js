@@ -18,6 +18,7 @@ import * as networkService from "../services/network-service.js";
 import * as messagesService from "../services/messages-service.js";
 import * as sharingService from "../services/sharing-service.js";
 import * as pushService from "../services/push-notifications-service.js";
+import * as supportService from "../services/support-service.js";
 import { ServiceError } from "../lib/service-error.js";
 
 const router = Router();
@@ -54,6 +55,10 @@ router.get("/", (_req, res) => {
         config: { GET: "/api/v1/notifications/config" },
         status: { GET: "/api/v1/notifications/status" },
         device: { POST: "/api/v1/notifications/device" },
+        digest: { POST: "/api/v1/notifications/digest-reminders" },
+      },
+      support: {
+        requests: { POST: "/api/v1/support/requests" },
       },
       shares: {
         received: { GET: "/api/v1/shares/received" },
@@ -465,6 +470,28 @@ router.post("/notifications/device", async (req, res) => {
     res,
     () => pushService.registerPushDevice(a.supabase, a.userId, subscriptionId),
     { wrap: "data" },
+  );
+});
+
+router.post("/notifications/digest-reminders", async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  await runService(
+    res,
+    () => pushService.digestOperationalReminders(a.userId),
+    { wrap: "data" },
+  );
+});
+
+router.post("/support/requests", async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  const body = parseJsonBody(req, res);
+  if (!body) return;
+  await runService(
+    res,
+    () => supportService.createSupportRequest(a.supabase, a.userId, body),
+    { wrap: "data", successStatus: 201 },
   );
 });
 

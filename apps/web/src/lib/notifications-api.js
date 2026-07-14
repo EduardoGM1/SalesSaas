@@ -16,4 +16,9 @@ export const notificationsApi = {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ subscription_id: subscriptionId }),
   }),
+  digestReminders: () => apiFetch("/notifications/digest-reminders", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: "{}",
+  }),
 };

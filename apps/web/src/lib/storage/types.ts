@@ -123,6 +123,8 @@ export interface ClientRecord {
   hasSales?: boolean;
   lastSaleDate?: string;
   lastSaleVolume?: number;
+  /** Soft delete: oculto en Clientes; ventas/tours siguen contando en stats. */
+  deletedAt?: number | null;
   data?: {
     survey?: Record<string, string | number>;
     vacaciones?: Record<string, string | number>;
@@ -167,6 +169,9 @@ export interface UserSettings {
     connection_requests?: boolean;
     connection_accepted?: boolean;
     shared_prospects?: boolean;
+    follow_up_reminders?: boolean;
+    sales_to_process?: boolean;
+    scheduled_notes?: boolean;
   };
   onesignal_subscription_ids?: string[];
 }

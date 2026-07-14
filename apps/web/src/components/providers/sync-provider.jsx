@@ -15,6 +15,7 @@ import {
 } from "@/lib/dashboard-data-realtime.js";
 import { isStandaloneApp } from "@/lib/pwa-install.js";
 import { isOutboundSyncSuspended } from "@/lib/sync-suspend.js";
+import { maybeRequestReminderDigest } from "@/lib/reminder-digest.js";
 import { useDbStore } from "@/stores/db-store";
 import { useSyncStore } from "@/stores/sync-store";
 import { Toaster } from "@/components/ui/toaster";
@@ -200,6 +201,7 @@ export function SyncProvider({ children }) {
           }, 2500);
         }
       });
+      maybeRequestReminderDigest();
     };
 
     const stopForUser = () => {
@@ -240,6 +242,7 @@ export function SyncProvider({ children }) {
       void ensureDashboardDataRealtime(uid, { force: pwa });
       // En PWA forzamos pull: el WS a menudo no entregó eventos mientras estaba en background.
       void refreshInbound({ reason: "foreground", force: pwa });
+      maybeRequestReminderDigest();
     };
 
     const onVisible = () => {

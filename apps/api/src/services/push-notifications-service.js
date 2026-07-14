@@ -1,19 +1,25 @@
 import { createServiceSupabaseClient } from "../lib/supabase-server.js";
 import { primaryWebOrigin } from "../lib/origins.js";
 import { ServiceError } from "../lib/service-error.js";
+import { pullAll } from "@salesapp/shared/data/sync.js";
 import {
   PushType,
+  calendarPath,
   contactPath,
   messagePath,
   networkPath,
   pushUrl,
+  salesPath,
   sharedProspectPath,
   sharedProspectSectionPath,
 } from "@salesapp/shared/push/notification-targets.js";
+import { collectReminders } from "../lib/reminders.js";
 
 const ONESIGNAL_API = "https://api.onesignal.com/notifications";
 const MAX_STORED_SUBSCRIPTIONS = 5;
 const SECTION_CHANGE_COOLDOWN_MS = 30_000;
+/** Evita spamear digests operativos el mismo día (~20h). */
+const REMINDER_DIGEST_COOLDOWN_MS = 20 * 60 * 60 * 1000;
 
 const SECTION_LABELS = {
   detail: "Expediente",
@@ -50,6 +56,9 @@ async function loadNotificationPrefs(serviceSb, userId) {
     connection_requests: notifications.connection_requests !== false,
     connection_accepted: notifications.connection_accepted !== false,
     shared_prospects: notifications.shared_prospects !== false,
+    follow_up_reminders: notifications.follow_up_reminders !== false,
+    sales_to_process: notifications.sales_to_process === true,
+    scheduled_notes: notifications.scheduled_notes !== false,
   };
 }
 
@@ -317,6 +326,84 @@ export async function notifySessionRevoked(userId) {
     type: PushType.SESSION_REVOKED,
     tag: `session-revoked-${userId}`,
   });
+}
+
+/**
+ * Digest diario de recordatorios operativos (follow-ups, ventas por procesar, notas).
+ * Pensado para dispararse al volver a primer plano; cooldown por tipo/día.
+ */
+export async function digestOperationalReminders(userId) {
+  const serviceSb = createServiceSupabaseClient();
+  if (!serviceSb || !isPushConfigured()) return { sent: 0, skipped: "not_configured" };
+  if (!userId) return { sent: 0, skipped: "no_user" };
+
+  const prefs = await loadNotificationPrefs(serviceSb, userId);
+  if (!prefs.follow_up_reminders && !prefs.sales_to_process && !prefs.scheduled_notes) {
+    return { sent: 0, skipped: "prefs_off" };
+  }
+
+  const today = new Date().toISOString().slice(0, 10);
+  const db = await pullAll(serviceSb, userId);
+  const due = collectReminders(db, { to: today }).filter(
+    (r) => r.due === "today" || r.due === "overdue",
+  );
+
+  const origin = primaryWebOrigin();
+  const groups = [
+    {
+      pref: "follow_up_reminders",
+      type: "follow-up",
+      pushType: PushType.FOLLOW_UP_REMINDER,
+      path: calendarPath(),
+      title: "Recordatorios de follow-up",
+      body: (n) => (n === 1
+        ? "Tienes 1 follow-up pendiente para hoy"
+        : `Tienes ${n} follow-ups pendientes para hoy`),
+    },
+    {
+      pref: "sales_to_process",
+      type: "processing",
+      pushType: PushType.SALES_TO_PROCESS,
+      path: salesPath(),
+      title: "Ventas por procesar",
+      body: (n) => (n === 1
+        ? "Tienes 1 venta pendiente por procesar"
+        : `Tienes ${n} ventas pendientes por procesar`),
+    },
+    {
+      pref: "scheduled_notes",
+      type: "note",
+      pushType: PushType.SCHEDULED_NOTE,
+      path: calendarPath(),
+      title: "Notas programadas",
+      body: (n) => (n === 1
+        ? "Tienes 1 nota programada para hoy"
+        : `Tienes ${n} notas programadas para hoy`),
+    },
+  ];
+
+  let sent = 0;
+  for (const group of groups) {
+    if (!prefs[group.pref]) continue;
+    const items = due.filter((r) => r.type === group.type);
+    if (!items.length) continue;
+
+    const tag = `digest-${group.type}-${userId}-${today}`;
+    const allowed = await claimNotificationCooldown(serviceSb, tag, REMINDER_DIGEST_COOLDOWN_MS);
+    if (!allowed) continue;
+
+    await sendToUser(serviceSb, userId, {
+      title: group.title,
+      body: group.body(items.length),
+      url: pushUrl(origin, group.path),
+      path: group.path,
+      type: group.pushType,
+      tag,
+    });
+    sent += 1;
+  }
+
+  return { sent };
 }
 
 // Compatibilidad con rutas antiguas (VAPID / web-push).

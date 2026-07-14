@@ -1,7 +1,7 @@
 
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
-import { ChevronRight, Bell, Code2, Database, DollarSign, Download, Globe2, LogOut, ShieldAlert, Smartphone, Tag, Trash2, Upload, User, WalletCards } from "lucide-react";
+import { ChevronRight, Bell, Code2, Database, DollarSign, Download, Globe2, HelpCircle, LogOut, ShieldAlert, Smartphone, Tag, Trash2, Upload, User, WalletCards } from "lucide-react";
 import { isStandaloneApp, shouldShowPwaInstallInSettings } from "@/lib/pwa-install.js";
 import { Topbar } from "@/components/layout/topbar";
 import { PageBack } from "@/components/layout/page-back";
@@ -24,10 +24,11 @@ import { useSyncStore } from "@/stores/sync-store";
 import { toast } from "@/lib/toast";
 import { confirmDialog } from "@/lib/confirm";
 import { NotificationsSettings } from "@/components/settings/notifications-settings.jsx";
+import { HelpSettings } from "@/components/settings/help-settings.jsx";
 import { PwaInstallSettings } from "@/components/settings/pwa-install-settings.jsx";
 import { livePreviewSettingsEqual } from "@/lib/settings-sync.js";
 
-type SettingsSection = "user" | "worksheet" | "tourTypes" | "money" | "language" | "apis" | "backup" | "account" | "notifications" | "pwa" | null;
+type SettingsSection = "user" | "worksheet" | "tourTypes" | "money" | "language" | "apis" | "backup" | "account" | "notifications" | "help" | "pwa" | null;
 
 const CURRENCY_LABEL: Record<string, string> = {
   USD: "USD - US Dollar",
@@ -192,6 +193,17 @@ export function SettingsPage() {
 
   if (!hydrated) return <Topbar title={ti("settings.title")} subtitle={ti("common.loading")} />;
 
+  const topTitle = activeSection === "notifications"
+    ? ti("settings.notifications.title")
+    : ti("settings.title");
+  const topSubtitle = activeSection === "notifications"
+    ? ti("settings.notifications.manageSub")
+    : ti("settings.subtitle");
+  const saveLabel = activeSection === "notifications"
+    ? ti("settings.notifications.save")
+    : ti("settings.save");
+  const hideSave = activeSection === "help";
+
   const renderHub = () => (
     <div className="settings-hub">
       <div className="exp-tool-list">
@@ -200,6 +212,7 @@ export function SettingsPage() {
         {isSupabaseConfigured() && (
           <SettingsEntry icon={<Bell size={18} />} tone="green" title={ti("settings.hub.notifications")} desc={ti("settings.hub.notificationsDesc")} onClick={() => setActiveSection("notifications")} />
         )}
+        <SettingsEntry icon={<HelpCircle size={18} />} tone="teal" title={ti("settings.hub.help")} desc={ti("settings.hub.helpDesc")} onClick={() => setActiveSection("help")} />
 
         <div className="settings-hub-divider" role="separator" aria-hidden="true" />
 
@@ -234,7 +247,7 @@ export function SettingsPage() {
 
   return (
     <>
-      <Topbar title={ti("settings.title")} subtitle={ti("settings.subtitle")} />
+      <Topbar title={topTitle} subtitle={topSubtitle} />
       <div className="sales-page">
         <div className="page-toolbar page-toolbar--between">
           {!activeSection ? (
@@ -242,9 +255,11 @@ export function SettingsPage() {
           ) : (
             <PageBack inline onClick={() => setActiveSection(null)} />
           )}
-          <button type="button" className="btn btn-primary btn-sm" disabled={profilePending} onClick={() => saveProfile()}>
-            {profilePending ? ti("settings.saving") : ti("settings.save")}
-          </button>
+          {!hideSave && (
+            <button type="button" className="btn btn-primary btn-sm" disabled={profilePending} onClick={() => saveProfile()}>
+              {profilePending ? ti("settings.saving") : saveLabel}
+            </button>
+          )}
         </div>
         {!activeSection && isSupabaseConfigured() && (
           <div className="settings-hub-signout settings-hub-signout--top">
@@ -476,15 +491,19 @@ export function SettingsPage() {
             )}
 
             {activeSection === "notifications" && isSupabaseConfigured() && (
-              <div className="settings-section">
-                <div className="settings-card">
-                  <div className="card-heading">{ti("settings.notifications.title")}</div>
-                  <div className="card-sub">{ti("settings.notifications.sub")}</div>
-                  <NotificationsSettings
-                    settings={settings}
-                    onNotificationsChange={setNotifications}
-                    onSave={saveProfile}
-                  />
+              <div className="settings-section settings-section--notifications">
+                <NotificationsSettings
+                  settings={settings}
+                  onNotificationsChange={setNotifications}
+                  onSave={saveProfile}
+                />
+              </div>
+            )}
+
+            {activeSection === "help" && (
+              <div className="settings-section settings-section--help">
+                <div className="settings-card help-card">
+                  <HelpSettings />
                 </div>
               </div>
             )}
@@ -498,7 +517,7 @@ export function SettingsPage() {
                     <ApiItem name="Exchange Rate API" desc="GET /api/v1/exchange-rates?to=MXN — Frankfurter (ECB), cache 12h en backend." done activeLabel={ti("settings.apis.active")} />
                     <ApiItem name="Catálogo País / Estado / Ciudad" desc="GET /api/v1/geo/countries y /geo/countries/:país/cities con ISO y banderas." done activeLabel={ti("settings.apis.active")} />
                     <ApiItem name="User Settings API" desc="GET/PATCH /api/v1/profile — idioma, moneda, avatar y preferencias." done activeLabel={ti("settings.apis.active")} />
-                    <ApiItem name="Reminder / Notification API" desc="GET /api/v1/reminders — follow-up y procesamiento desde datos sincronizados." done activeLabel={ti("settings.apis.active")} />
+                    <ApiItem name="Reminder / Notification API" desc="GET /api/v1/reminders + POST /api/v1/notifications/digest-reminders — follow-ups, procesamiento y notas." done activeLabel={ti("settings.apis.active")} />
                   </div>
                 </div>
               </div>
