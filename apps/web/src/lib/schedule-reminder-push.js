@@ -60,14 +60,8 @@ export function scheduleReminderPush({
     .then((result) => {
       if (result?.skipped === "prefs_off") {
         toast.error("Activa los recordatorios en Configuración → Notificaciones y guarda.");
-        return;
       }
-      if (result?.skipped === "too_late") return;
-      if (result?.scheduled) {
-        toast.success(`Aviso push programado para las ${displayTime}.`);
-      } else if (result?.ok) {
-        toast.success("Aviso push enviado.");
-      }
+      // Sin toast de éxito: solo debe llegar el push a la hora programada.
     })
     .catch((err) => {
       console.warn("[reminder-push] No se pudo programar:", err?.message || err);

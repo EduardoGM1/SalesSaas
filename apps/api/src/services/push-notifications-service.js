@@ -562,8 +562,8 @@ export async function scheduleOperationalReminder(userId, body = {}) {
     throw new ServiceError(insertErr.message || "No se pudo encolar el aviso.", 400);
   }
 
-  // Si ya toca (≤90s), enviar ya — mismo camino inmediato que un mensaje.
-  if (delta <= 90_000) {
+  // Solo enviar ya si la hora ya pasó; si es futuro, esperar flush/cron (evita push al crear).
+  if (delta <= 0) {
     const result = await sendToUser(serviceSb, userId, {
       title,
       body: bodyText,
