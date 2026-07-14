@@ -18,7 +18,7 @@
   "crons": [
     {
       "path": "/api/v1/cron/flush-reminders",
-      "schedule": "* * * * *"
+      "schedule": "0 9 * * *"
     }
   ],
   "rewrites": [
