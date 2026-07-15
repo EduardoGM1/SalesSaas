@@ -1,7 +1,7 @@
 
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
-import { ChevronRight, Bell, Code2, Database, DollarSign, Download, Globe2, HelpCircle, LogOut, ShieldAlert, Smartphone, Tag, Trash2, Upload, User, WalletCards } from "lucide-react";
+import { ChevronRight, Bell, Code2, Database, DollarSign, Download, Globe2, Headset, LogOut, ShieldAlert, Smartphone, Tag, Trash2, Upload, User, WalletCards } from "lucide-react";
 import { isStandaloneApp, shouldShowPwaInstallInSettings } from "@/lib/pwa-install.js";
 import { Topbar } from "@/components/layout/topbar";
 import { PageBack } from "@/components/layout/page-back";
@@ -212,7 +212,7 @@ export function SettingsPage() {
         {isSupabaseConfigured() && (
           <SettingsEntry icon={<Bell size={18} />} tone="green" title={ti("settings.hub.notifications")} desc={ti("settings.hub.notificationsDesc")} onClick={() => setActiveSection("notifications")} />
         )}
-        <SettingsEntry icon={<HelpCircle size={18} />} tone="teal" title={ti("settings.hub.help")} desc={ti("settings.hub.helpDesc")} onClick={() => setActiveSection("help")} />
+        <SettingsEntry icon={<Headset size={18} />} tone="teal" title={ti("settings.hub.help")} desc={ti("settings.hub.helpDesc")} onClick={() => setActiveSection("help")} />
 
         <div className="settings-hub-divider" role="separator" aria-hidden="true" />
 

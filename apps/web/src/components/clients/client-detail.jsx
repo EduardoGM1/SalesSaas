@@ -394,7 +394,7 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
           </div>
 
           <CollapsibleSection
-            defaultOpen={false}
+            defaultOpen={!sharedRemote}
             className="card exp-side-card prospect-summary-card exp-collapsible-card"
             title={<div className="prospect-summary-title">{t("exp.prospect.title")}</div>}
             subtitle={t("exp.prospect.sub")}
