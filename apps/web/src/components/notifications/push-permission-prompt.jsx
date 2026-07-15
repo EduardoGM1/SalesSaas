@@ -16,6 +16,7 @@ async function shouldShowPushPrompt({ contextual = false } = {}) {
     return false;
   }
   if (wasPushPromptSnoozed({ contextual })) return false;
+  if (!contextual && wasAutoPushRequested()) return false;
   if (!canOfferPushPromptAlongsidePwa()) return false;
 
   const status = await getPushStatus();

@@ -2,6 +2,7 @@ import { canOfferPwaInstall, wasInstallPromptDismissed } from "@/lib/pwa-install
 
 const DISMISS_KEY = "push_prompt_dismissed_at";
 const DENIED_KEY = "push_prompt_blocked";
+const AUTO_REQUEST_KEY = "push_auto_requested";
 const SNOOZE_DAYS = 7;
 const CONTEXTUAL_SNOOZE_HOURS = 24;
 
@@ -21,6 +22,17 @@ export function wasPushPromptPermanentlyBlocked() {
 export function markPushPromptPermanentlyBlocked() {
   if (typeof localStorage === "undefined") return;
   localStorage.setItem(DENIED_KEY, "1");
+}
+
+/** true tras el primer intento automático de permiso nativo (aceptado, rechazado o cerrado). */
+export function wasAutoPushRequested() {
+  if (typeof localStorage === "undefined") return false;
+  return localStorage.getItem(AUTO_REQUEST_KEY) === "1";
+}
+
+export function markAutoPushRequested() {
+  if (typeof localStorage === "undefined") return;
+  localStorage.setItem(AUTO_REQUEST_KEY, "1");
 }
 
 export function wasPushPromptSnoozed({ contextual = false } = {}) {

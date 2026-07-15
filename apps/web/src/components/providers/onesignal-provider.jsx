@@ -11,7 +11,7 @@ import {
   unlinkOneSignalUser,
 } from "@/lib/onesignal.js";
 import { registerDeviceSubscription, syncPushSubscription } from "@/lib/push-notifications.js";
-import { nudgePushPrompt } from "@/lib/push-prompt.js";
+import { scheduleAutoPushRequest } from "@/lib/push-enable.js";
 
 /** Inicializa OneSignal y vincula el usuario de Supabase como external_id. */
 export function OneSignalProvider({ children }) {
@@ -49,9 +49,6 @@ export function OneSignalProvider({ children }) {
 
         if (activeUserId) {
           await syncIdentity(activeUserId);
-          window.setTimeout(() => {
-            if (!cancelled) nudgePushPrompt({ reason: "post-login" });
-          }, 2800);
         }
 
         pushSubscriptionListener = async () => {
@@ -71,9 +68,7 @@ export function OneSignalProvider({ children }) {
           if (session?.user?.id) {
             await syncIdentity(session.user.id);
             if (event === "SIGNED_IN") {
-              window.setTimeout(() => {
-                if (!cancelled) nudgePushPrompt({ reason: "signed-in" });
-              }, 2800);
+              scheduleAutoPushRequest({ reason: "signed-in", delayMs: 900 });
             }
           } else if (event === "SIGNED_OUT") {
             await unlinkOneSignalUser();

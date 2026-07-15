@@ -148,6 +148,9 @@ export function NotificationsSettings({
 
   useEffect(() => {
     refreshStatus();
+    const onStatus = () => refreshStatus();
+    window.addEventListener("push:status-changed", onStatus);
+    return () => window.removeEventListener("push:status-changed", onStatus);
   }, []);
 
   const setPref = (key, value) => {
