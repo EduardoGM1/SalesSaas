@@ -2,6 +2,7 @@ import { notificationsApi } from "@/lib/notifications-api.js";
 import { createClient } from "@/lib/supabase/client";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { isIosDevice, isStandaloneApp } from "@/lib/pwa-install.js";
+import { reportOneSignalLinkIssue } from "@/lib/observability.js";
 import { PushType, resolvePushPathFromPayload } from "@salesapp/shared/push/notification-targets.js";
 import { clearLocalSession } from "@/lib/session-api.js";
 
@@ -264,21 +265,94 @@ function notifyPushStatusChanged() {
   window.dispatchEvent(new CustomEvent("push:status-changed"));
 }
 
-export async function linkOneSignalUser(userId, { retries = 3 } = {}) {
+function readExternalId(OneSignal) {
+  const id = OneSignal.User.externalId;
+  return id != null && id !== "" ? String(id) : null;
+}
+
+async function waitForExternalIdMatch(OneSignal, userId, timeoutMs = 6000) {
+  const expected = String(userId);
+  if (readExternalId(OneSignal) === expected) {
+    return { ok: true, externalId: expected };
+  }
+
+  return new Promise((resolve) => {
+    let done = false;
+    const finish = (result) => {
+      if (done) return;
+      done = true;
+      try {
+        OneSignal.User.removeEventListener("change", onChange);
+      } catch {
+        // SDK no soporta remove en algunas versiones.
+      }
+      clearTimeout(timer);
+      resolve(result);
+    };
+
+    const onChange = () => {
+      if (readExternalId(OneSignal) === expected) {
+        finish({ ok: true, externalId: expected });
+      }
+    };
+
+    OneSignal.User.addEventListener("change", onChange);
+    const timer = window.setTimeout(() => {
+      finish({ ok: false, externalId: readExternalId(OneSignal) });
+    }, timeoutMs);
+  });
+}
+
+export async function isOneSignalExternalIdLinked(userId) {
+  if (!userId) return false;
+  try {
+    const OneSignal = await ensureOneSignal();
+    return readExternalId(OneSignal) === String(userId);
+  } catch {
+    return false;
+  }
+}
+
+export async function linkOneSignalUser(userId, { retries = 3, verifyTimeoutMs = 6000 } = {}) {
   if (!userId) return { ok: false, reason: "no_user" };
   const OneSignal = await ensureOneSignal();
+  const expected = String(userId);
   let lastErr = null;
+
   for (let attempt = 0; attempt < retries; attempt++) {
     try {
-      await OneSignal.login(String(userId));
-      return { ok: true };
+      await OneSignal.login(expected);
+      const verified = await waitForExternalIdMatch(OneSignal, expected, verifyTimeoutMs);
+      if (verified.ok) {
+        return {
+          ok: true,
+          externalId: verified.externalId,
+          onesignalId: OneSignal.User.onesignalId || null,
+        };
+      }
+      lastErr = new Error(
+        `external_id mismatch: expected ${expected}, got ${verified.externalId ?? "null"}`,
+      );
     } catch (err) {
       lastErr = err;
-      if (attempt < retries - 1) await delay(400 * (attempt + 1));
     }
+    if (attempt < retries - 1) await delay(400 * (attempt + 1));
   }
+
+  const pushState = readSubscriptionState(OneSignal);
+  void reportOneSignalLinkIssue({
+    stage: "linkOneSignalUser",
+    userId: expected,
+    externalId: readExternalId(OneSignal),
+    onesignalId: OneSignal.User.onesignalId || null,
+    subscriptionId: pushState.subscriptionId,
+    subscribed: pushState.subscribed,
+    error: lastErr,
+    message: lastErr instanceof Error ? lastErr.message : String(lastErr),
+  });
+
   console.warn("[onesignal] linkOneSignalUser failed after retries:", lastErr);
-  return { ok: false, error: lastErr };
+  return { ok: false, error: lastErr, externalId: readExternalId(OneSignal) };
 }
 
 export async function unlinkOneSignalUser() {
@@ -423,7 +497,6 @@ export async function subscribeToPush() {
   }
 
   const userId = await resolveUserId();
-  if (userId) await linkOneSignalUser(userId);
 
   try {
     await OneSignal.User.PushSubscription.optIn();
@@ -444,7 +517,15 @@ export async function subscribeToPush() {
     throw err;
   }
 
-  if (userId) await linkOneSignalUser(userId);
+  // Vincular external_id DESPUÉS de que exista la suscripción (playerId/subscription id).
+  if (userId) {
+    const linkResult = await linkOneSignalUser(userId);
+    if (!linkResult.ok) {
+      const err = new Error("EXTERNAL_ID_LINK_FAILED");
+      err.code = "EXTERNAL_ID_LINK_FAILED";
+      throw err;
+    }
+  }
 
   await registerDeviceSubscription(readSubscriptionState(OneSignal).subscriptionId);
 
@@ -461,19 +542,24 @@ export async function restorePushSubscriptionIfNeeded() {
   try {
     const OneSignal = await ensureOneSignal();
     const before = readSubscriptionState(OneSignal);
+    const userId = await resolveUserId();
+
     if (before.subscribed) {
+      if (userId) await linkOneSignalUser(userId);
       await registerDeviceSubscription(before.subscriptionId);
       return { restored: false, alreadySubscribed: true };
     }
 
-    const userId = await resolveUserId();
     if (userId) await linkOneSignalUser(userId);
 
     await OneSignal.User.PushSubscription.optIn();
     const subscribed = await waitForPushSubscription(OneSignal, 12_000);
     if (!subscribed) return { restored: false };
 
-    if (userId) await linkOneSignalUser(userId);
+    if (userId) {
+      const linkResult = await linkOneSignalUser(userId);
+      if (!linkResult.ok) return { restored: false, linkFailed: true };
+    }
     await registerDeviceSubscription(readSubscriptionState(OneSignal).subscriptionId);
     return { restored: true };
   } catch {
@@ -495,7 +581,27 @@ export async function syncPushIdentityAndSubscription() {
   const userId = await resolveUserId();
   if (!userId) return { ok: false, reason: "no_session" };
 
-  const linkResult = await linkOneSignalUser(userId);
+  let OneSignal;
+  try {
+    OneSignal = await ensureOneSignal();
+  } catch {
+    return { ok: false, reason: "sdk_unavailable" };
+  }
+
+  const beforeLinked = readExternalId(OneSignal) === String(userId);
+  const pushState = readSubscriptionState(OneSignal);
+
+  // Auto-corrección: re-vincular en cada apertura de sesión si hay suscripción pero external_id no coincide.
+  let linkResult = { ok: beforeLinked };
+  if (!beforeLinked || pushState.subscribed) {
+    linkResult = await linkOneSignalUser(userId);
+  }
+
+  if (pushState.subscribed && !linkResult.ok) {
+    await delay(800);
+    linkResult = await linkOneSignalUser(userId, { retries: 2 });
+  }
+
   await restorePushSubscriptionIfNeeded();
   const state = await getPushStatus();
   if (state.subscribed && state.subscriptionId) {
@@ -503,11 +609,16 @@ export async function syncPushIdentityAndSubscription() {
   }
   notifyPushStatusChanged();
 
+  const linked = linkResult.ok || readExternalId(OneSignal) === String(userId);
+
   return {
     ok: true,
-    linked: linkResult.ok,
+    linked,
+    wasLinked: beforeLinked,
+    autoCorrected: !beforeLinked && linked,
     subscribed: state.subscribed,
     subscriptionId: state.subscriptionId,
+    externalId: readExternalId(OneSignal),
   };
 }
 
@@ -537,6 +648,7 @@ export async function getPushStatus() {
 
   let subscribed = false;
   let subscriptionId = null;
+  let externalId = null;
   let permission = Notification.permission;
 
   if (appId) {
@@ -545,6 +657,7 @@ export async function getPushStatus() {
       const state = readSubscriptionState(OneSignal);
       subscribed = state.subscribed;
       subscriptionId = state.subscriptionId;
+      externalId = readExternalId(OneSignal);
       permission = Notification.permission;
     } catch {
       subscribed = false;
@@ -555,9 +668,11 @@ export async function getPushStatus() {
     supported: true,
     subscribed,
     subscriptionId,
+    externalId,
     permission,
     pushConfigured: pushConfigured && Boolean(appId),
     needsResync: permission === "granted" && !subscribed,
+    needsExternalIdLink: permission === "granted" && subscribed && !externalId,
     provider: "onesignal",
   };
 }

@@ -4,13 +4,11 @@ import { createClient } from "@/lib/supabase/client";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import {
   ensureOneSignal,
-  linkOneSignalUser,
   resolveOneSignalAppId,
   setupPushNotificationHandlers,
   syncPushIdentityAndSubscription,
   unlinkOneSignalUser,
 } from "@/lib/onesignal.js";
-import { registerDeviceSubscription } from "@/lib/push-notifications.js";
 import { scheduleAutoPushRequest } from "@/lib/push-enable.js";
 
 /** Inicializa OneSignal y vincula el usuario de Supabase como external_id. */
@@ -63,14 +61,8 @@ export function OneSignalProvider({ children }) {
         }
 
         pushSubscriptionListener = async () => {
-          if (!activeUserId || cancelled || !oneSignalInstance) return;
-          const subscriptionId = oneSignalInstance.User.PushSubscription.id || null;
-          if (subscriptionId) {
-            await linkOneSignalUser(activeUserId);
-            await registerDeviceSubscription(subscriptionId);
-            return;
-          }
-          await syncIdentity(activeUserId);
+          if (!activeUserId || cancelled) return;
+          await syncPushIdentityAndSubscription();
         };
         oneSignalInstance.User.PushSubscription.addEventListener("change", pushSubscriptionListener);
 

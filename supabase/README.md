@@ -135,11 +135,13 @@ VITE_ONESIGNAL_APP_ID=tu-app-id
 
 ### Diagnóstico Android ("No recipients" / no llegan push)
 
-**Síntoma:** el usuario aceptó permisos en Android pero OneSignal muestra *No recipients* (0 enviados) o la notificación no aparece en el teléfono.
+**Síntoma:** el usuario aceptó permisos en Android pero OneSignal muestra *No recipients* (0 enviados) o la notificación no aparece en el teléfono. A menudo **sí recibe el push de bienvenida de OneSignal** al suscribirse, pero **no** los envíos posteriores de la app.
+
+**Interpretación:** el push de bienvenida confirma Service Worker + permiso + `subscription_id` activo. Los envíos de la app usan `external_id` (UUID Supabase); si `OneSignal.login(userId)` no completó el vínculo, el targeting por `external_id` devuelve 0 destinatarios aunque la suscripción base exista.
 
 **Causas frecuentes:**
 
-1. **`external_id` no vinculado** — Aceptar el permiso del SO no equivale a `OneSignal.login(userId)`. Si el login falló, los envíos por `external_id` no encuentran destinatario. La app reintenta el vínculo al abrir, al volver de background (`auth:resume` / `visibilitychange`) y al cambiar la suscripción push.
+1. **`external_id` no vinculado** — Aceptar el permiso del SO no equivale a `OneSignal.login(userId)`. La app vincula **después** de crear la suscripción, verifica `OneSignal.User.externalId`, reintenta en login/resume/visibilitychange y reporta fallos a Sentry (`VITE_SENTRY_DSN`).
 2. **`subscription_id` no registrado en servidor** — Tras activar push, el cliente llama `POST /api/v1/notifications/device`. Si falló (red, sesión), el backend no tiene IDs para el fallback. El usuario puede desactivar y reactivar notificaciones en **Configuración → Notificaciones**.
 3. **Filtro incorrecto en pruebas del dashboard** — En OneSignal, un envío a un `external_id` que no existe en Audience → Subscriptions muestra *No recipients*. Prueba con **Send to Test Users** usando el UUID de Supabase del usuario, o **All Subscribed Users** para descartar segmentación.
 4. **Service Worker** — Verifica que `https://tu-dominio.com/onesignal/OneSignalSDKWorker.js` responda 200. En Chrome Android: DevTools remoto → Application → Service Workers.
