@@ -7,8 +7,11 @@ import { PushType, resolvePushPathFromPayload } from "@salesapp/shared/push/noti
 import { clearLocalSession } from "@/lib/session-api.js";
 
 const SDK_URL = "https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js";
+/** Ruta relativa desde el origen (sin slash inicial), según docs OneSignal Custom Code. */
 const SW_PATH = "onesignal/OneSignalSDKWorker.js";
+/** Scope dedicado para no chocar con el SW de la PWA (Workbox en `/`). */
 const SW_SCOPE = "/onesignal/";
+const SW_URL = `/${SW_PATH}`;
 
 let initPromise = null;
 let sdkReady = null;
@@ -207,6 +210,83 @@ async function requestBrowserPermission(OneSignal) {
   return Notification.permission === "granted";
 }
 
+/**
+ * Comprueba que el SW de OneSignal se sirve como JS (no HTML de la SPA).
+ * Fallo típico: rewrite catch-all → index.html → registration failed.
+ */
+async function preflightOneSignalServiceWorker() {
+  const url = `${window.location.origin}${SW_URL}?preflight=${Date.now()}`;
+  let res;
+  try {
+    res = await fetch(url, { method: "GET", cache: "no-store", credentials: "same-origin" });
+  } catch (err) {
+    const mapped = new Error("SW_UNREACHABLE");
+    mapped.code = "SW_UNREACHABLE";
+    mapped.cause = err;
+    throw mapped;
+  }
+
+  const contentType = String(res.headers.get("content-type") || "").toLowerCase();
+  const text = await res.text();
+  const looksLikeJs = /importScripts\s*\(/.test(text) && !/<!DOCTYPE html|<html/i.test(text);
+  const okType = contentType.includes("javascript") || contentType.includes("ecmascript") || contentType === "";
+
+  if (!res.ok || !looksLikeJs || (!okType && contentType.includes("html"))) {
+    console.warn("[onesignal] SW preflight failed:", {
+      url,
+      status: res.status,
+      contentType,
+      bodyPreview: text.slice(0, 120),
+    });
+    const mapped = new Error("SW_UNREACHABLE");
+    mapped.code = "SW_UNREACHABLE";
+    throw mapped;
+  }
+
+  return true;
+}
+
+/** Registra el SW de OneSignal en scope dedicado y espera activación. */
+async function ensureOneSignalServiceWorkerRegistered() {
+  if (!("serviceWorker" in navigator)) {
+    const mapped = new Error("PUSH_UNSUPPORTED");
+    mapped.code = "PUSH_UNSUPPORTED";
+    throw mapped;
+  }
+
+  await preflightOneSignalServiceWorker();
+
+  let registration;
+  try {
+    registration = await navigator.serviceWorker.register(SW_URL, { scope: SW_SCOPE });
+  } catch (err) {
+    console.warn("[onesignal] SW register failed:", err);
+    const mapped = new Error("SW_REGISTER_FAILED");
+    mapped.code = "SW_REGISTER_FAILED";
+    mapped.cause = err;
+    throw mapped;
+  }
+
+  const worker = registration.installing || registration.waiting || registration.active;
+  if (worker && worker.state !== "activated") {
+    await new Promise((resolve) => {
+      const done = () => resolve();
+      worker.addEventListener("statechange", () => {
+        if (worker.state === "activated" || worker.state === "redundant") done();
+      });
+      window.setTimeout(done, 8_000);
+    });
+  }
+
+  try {
+    await registration.update();
+  } catch {
+    // update() puede fallar offline; el registro existente basta.
+  }
+
+  return registration;
+}
+
 export async function ensureOneSignal() {
   const appId = await resolveOneSignalAppId();
   if (!appId) {
@@ -216,6 +296,11 @@ export async function ensureOneSignal() {
 
   if (!initPromise) {
     initPromise = (async () => {
+      try {
+        await navigator.serviceWorker?.register(SW_URL, { scope: SW_SCOPE });
+      } catch (err) {
+        console.warn("[onesignal] early SW register skipped:", err);
+      }
       await loadScript(SDK_URL);
       return new Promise((resolve, reject) => {
         window.OneSignalDeferred = window.OneSignalDeferred || [];
@@ -478,13 +563,16 @@ export async function subscribeToPush() {
 
   await cleanupLegacyWebPushSubscription();
 
+  // Asegura SW OneSignal activo antes de optIn (crítico en Android PWA + Workbox).
+  await ensureOneSignalServiceWorkerRegistered();
+
   const OneSignal = await ensureOneSignal();
 
   if (typeof OneSignal.Notifications?.isPushSupported === "function") {
     const supported = await OneSignal.Notifications.isPushSupported();
     if (!supported) {
-      const err = new Error("PUSH_SERVICE_ERROR");
-      err.code = "PUSH_SERVICE_ERROR";
+      const err = new Error("PUSH_UNSUPPORTED");
+      err.code = "PUSH_UNSUPPORTED";
       throw err;
     }
   }
@@ -502,9 +590,17 @@ export async function subscribeToPush() {
     await OneSignal.User.PushSubscription.optIn();
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
+    console.warn("[onesignal] optIn failed:", message, err);
+    if (/service worker|failed to register|bad HTTP|unsupported MIME|redirect/i.test(message)) {
+      const mapped = new Error("SW_REGISTER_FAILED");
+      mapped.code = "SW_REGISTER_FAILED";
+      mapped.cause = err;
+      throw mapped;
+    }
     if (/push service|registration failed/i.test(message)) {
       const mapped = new Error("PUSH_SERVICE_ERROR");
       mapped.code = "PUSH_SERVICE_ERROR";
+      mapped.cause = err;
       throw mapped;
     }
     throw err;

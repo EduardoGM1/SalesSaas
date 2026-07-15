@@ -135,16 +135,50 @@ VITE_ONESIGNAL_APP_ID=tu-app-id
 
 ### Diagnóstico Android ("No recipients" / no llegan push)
 
-**Síntoma:** el usuario aceptó permisos en Android pero OneSignal muestra *No recipients* (0 enviados) o la notificación no aparece en el teléfono. A menudo **sí recibe el push de bienvenida de OneSignal** al suscribirse, pero **no** los envíos posteriores de la app.
+**Síntoma A — bienvenida sí, envíos de la app no:** el push de confirmación OneSignal llega, pero los envíos posteriores muestran *No recipients*. Causa típica: `external_id` no vinculado (ver sección de vínculo más abajo).
 
-**Interpretación:** el push de bienvenida confirma Service Worker + permiso + `subscription_id` activo. Los envíos de la app usan `external_id` (UUID Supabase); si `OneSignal.login(userId)` no completó el vínculo, el targeting por `external_id` devuelve 0 destinatarios aunque la suscripción base exista.
+**Síntoma B — error al activar en PWA Android:** mensajes como «permiso concedido pero sin suscripción» + «No se pudo registrar el dispositivo».
+
+**Verificación del Service Worker (producción):**
+
+```bash
+curl -sI https://TU-DOMINIO/onesignal/OneSignalSDKWorker.js
+# Esperado: 200, Content-Type: application/javascript, Service-Worker-Allowed: /
+curl -s https://TU-DOMINIO/onesignal/OneSignalSDKWorker.js
+# Esperado: importScripts("https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.sw.js");
+```
+
+Confirmado en `sales-app-nine-gamma.vercel.app` y `sales-saas-api.vercel.app`: el archivo existe y responde JS válido. Si en tu dominio custom falla, revisa rewrites de la SPA.
+
+**Site URL en OneSignal (obligatorio):**
+
+1. OneSignal → Settings → Push & In-App → Web Configuration.
+2. **Site URL** debe coincidir **exactamente** con el dominio desde el que el usuario instaló la PWA (`https://…`, con/sin `www`, sin path).
+3. Si tienes dos dominios Vercel, registra el que usan los usuarios finales (o ambos si OneSignal lo permite / usa el principal + redirects).
+
+**Configuración en código:**
+
+- `serviceWorkerPath`: `onesignal/OneSignalSDKWorker.js`
+- `serviceWorkerParam.scope`: `/onesignal/` (dedicado; el SW de la PWA/Workbox usa `/`)
+- Workbox excluye `/onesignal/` del `navigateFallback` y del precache
+- Antes de `optIn`, la app hace preflight + `navigator.serviceWorker.register` del SW OneSignal
+
+**Recuperación para usuarios ya afectados (Android PWA):**
+
+1. Desplegar el fix.
+2. En el teléfono: desinstalar la PWA (icono → desinstalar).
+3. Chrome → candado / Información del sitio → **Borrar datos y cookies** del dominio de producción.
+4. Abrir el dominio de producción en Chrome → Instalar app de nuevo.
+5. Abrir desde el icono → Configuración → Notificaciones → **Activar notificaciones**.
+6. OneSignal Audience: confirmar suscripción **Subscribed** + `external_id` = UUID Supabase.
+7. Enviar prueba al `external_id` → Delivered ≥ 1.
 
 **Causas frecuentes:**
 
 1. **`external_id` no vinculado** — Aceptar el permiso del SO no equivale a `OneSignal.login(userId)`. La app vincula **después** de crear la suscripción, verifica `OneSignal.User.externalId`, reintenta en login/resume/visibilitychange y reporta fallos a Sentry (`VITE_SENTRY_DSN`).
 2. **`subscription_id` no registrado en servidor** — Tras activar push, el cliente llama `POST /api/v1/notifications/device`. Si falló (red, sesión), el backend no tiene IDs para el fallback. El usuario puede desactivar y reactivar notificaciones en **Configuración → Notificaciones**.
 3. **Filtro incorrecto en pruebas del dashboard** — En OneSignal, un envío a un `external_id` que no existe en Audience → Subscriptions muestra *No recipients*. Prueba con **Send to Test Users** usando el UUID de Supabase del usuario, o **All Subscribed Users** para descartar segmentación.
-4. **Service Worker** — Verifica que `https://tu-dominio.com/onesignal/OneSignalSDKWorker.js` responda 200. En Chrome Android: DevTools remoto → Application → Service Workers.
+4. **Service Worker / PWA** — Conflicto con Workbox o SW “atascado” en el dispositivo. Ver recuperación arriba.
 5. **Optimización de batería (Xiaomi, Huawei, Samsung, etc.)** — Puede matar el SW en segundo plano. Pedir al usuario: Ajustes → Apps → Chrome (o la PWA) → Batería → **Sin restricciones**.
 
 **Verificación rápida (usuario autenticado):**

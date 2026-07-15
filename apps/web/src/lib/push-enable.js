@@ -110,6 +110,15 @@ export function toastPushEnableResult(result, t) {
     case "PUSH_SERVICE_ERROR":
       toast.error(t("settings.notifications.pushServiceError"));
       break;
+    case "SW_UNREACHABLE":
+      toast.error(t("settings.notifications.swUnreachable"));
+      break;
+    case "SW_REGISTER_FAILED":
+      toast.error(t("settings.notifications.swRegisterFailed"));
+      break;
+    case "PUSH_UNSUPPORTED":
+      toast.error(t("settings.notifications.pushUnsupported"));
+      break;
     case "EXTERNAL_ID_LINK_FAILED":
       toast.error(t("settings.notifications.externalIdLinkError"));
       break;

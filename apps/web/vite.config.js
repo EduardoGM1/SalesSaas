@@ -43,9 +43,16 @@ export default defineConfig({
       },
       workbox: {
         navigateFallback: "/index.html",
-        navigateFallbackDenylist: [/^\/api/, /^\/auth/],
+        // No interceptar el SW de OneSignal ni auth/api (evita servir index.html / precache).
+        navigateFallbackDenylist: [
+          /^\/api/,
+          /^\/auth/,
+          /^\/onesignal\//,
+          /OneSignalSDKWorker\.js$/,
+        ],
         cleanupOutdatedCaches: true,
         globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
+        globIgnores: ["**/onesignal/**", "**/OneSignalSDKWorker.js"],
         runtimeCaching: [
           {
             urlPattern: ({ request }) => request.mode === "navigate",
