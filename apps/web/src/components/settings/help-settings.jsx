@@ -61,6 +61,14 @@ function AppAreaPicker({ value, onChange, lang, t }) {
     };
   }, [open]);
 
+  const openPicker = () => {
+    setOpen(true);
+    // Al abrir, expandir solo el módulo de la selección actual (sigue pudiendo cerrarse).
+    if (selected?.moduleId) {
+      setExpanded(new Set([selected.moduleId]));
+    }
+  };
+
   const toggleModule = (moduleId) => {
     setExpanded((prev) => {
       const next = new Set(prev);
@@ -83,7 +91,7 @@ function AppAreaPicker({ value, onChange, lang, t }) {
         className={`help-area-trigger${open ? " is-open" : ""}`}
         aria-haspopup="listbox"
         aria-expanded={open}
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => (open ? setOpen(false) : openPicker())}
       >
         <span className={selected ? "help-area-trigger-value" : "help-area-trigger-placeholder"}>
           {selected ? selected.pathLabel : t("settings.help.appAreaPlaceholder")}
@@ -101,7 +109,7 @@ function AppAreaPicker({ value, onChange, lang, t }) {
         <div className="help-area-panel" role="listbox" aria-label={t("settings.help.appArea")}>
           <div className="help-area-panel-scroll">
             {SUPPORT_SITE_MAP.map((mod) => {
-              const isOpen = expanded.has(mod.moduleId) || mod.children.some((c) => c.id === value);
+              const isOpen = expanded.has(mod.moduleId);
               return (
                 <div key={mod.moduleId} className="help-area-module">
                   <button
