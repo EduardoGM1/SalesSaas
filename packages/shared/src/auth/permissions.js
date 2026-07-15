@@ -5,7 +5,8 @@ const DELEGATABLE_ADMIN_PERMISSIONS = [
   { key: "users:activate", label: "Activar cuentas" },
   { key: "users:export", label: "Exportar usuarios (CSV)" },
   { key: "goals:read", label: "Ver metas globales" },
-  { key: "tools:analytics", label: "Ver uso de herramientas (agregado)" }
+  { key: "tools:analytics", label: "Ver uso de herramientas (agregado)" },
+  { key: "support:read", label: "Ver tickets de Atención a usuario" }
 ];
 const SUPER_ADMIN_ONLY_PERMISSIONS = ["users:role", "users:permissions"];
 const DELEGATABLE_KEYS = new Set(DELEGATABLE_ADMIN_PERMISSIONS.map((p) => p.key));
@@ -50,7 +51,8 @@ const ADMIN_NAV_PERMISSIONS = {
   "/admin": "dashboard:read",
   "/admin/users": "users:read",
   "/admin/goals": "goals:read",
-  "/admin/tools": "tools:analytics"
+  "/admin/tools": "tools:analytics",
+  "/admin/support": "support:read"
 };
 function canAccessAdminPath(profile, pathname) {
   if (!hasAnyAdminAccess(profile)) return false;
@@ -60,6 +62,7 @@ function canAccessAdminPath(profile, pathname) {
   if (pathname.startsWith("/admin/export/users")) return hasPermission(profile, "users:export");
   if (pathname.startsWith("/admin/users")) return hasPermission(profile, "users:read");
   if (pathname.startsWith("/admin/tools")) return hasPermission(profile, "tools:analytics");
+  if (pathname.startsWith("/admin/support")) return hasPermission(profile, "support:read");
   if (pathname.startsWith("/admin/goals")) return hasPermission(profile, "goals:read");
   if (pathname === "/admin") return hasPermission(profile, "dashboard:read");
   return isSuperAdmin(profile);

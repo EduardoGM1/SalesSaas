@@ -61,9 +61,16 @@ router.get("/", (_req, res) => {
       },
       cron: {
         flushReminders: { GET_POST: "/api/v1/cron/flush-reminders" },
+        cleanupSupportAttachments: { GET_POST: "/api/v1/cron/cleanup-support-attachments" },
       },
       support: {
         requests: { POST: "/api/v1/support/requests" },
+      },
+      admin: {
+        supportRequests: {
+          GET: "/api/v1/admin/support/requests",
+          PATCH: "/api/v1/admin/support/requests/:id",
+        },
       },
       shares: {
         received: { GET: "/api/v1/shares/received" },
@@ -556,6 +563,28 @@ router.get("/cron/flush-reminders", async (req, res) => {
     () => pushService.flushDueScheduledPushes({ limit: 80 }),
     { wrap: "data" },
   );
+});
+
+function authorizeCron(req) {
+  const secret = process.env.CRON_SECRET;
+  const auth = String(req.get("authorization") || "");
+  const bearer = auth.startsWith("Bearer ") ? auth.slice(7).trim() : "";
+  const token = bearer || String(req.query.secret || req.get("x-cron-secret") || "");
+  return Boolean(secret && token === secret);
+}
+
+/**
+ * Cron: elimina adjuntos de tickets resueltos/cerrados (>90 días).
+ * Authorization Bearer CRON_SECRET.
+ */
+router.post("/cron/cleanup-support-attachments", async (req, res) => {
+  if (!authorizeCron(req)) return apiError(res, "Unauthorized", 401);
+  await runService(res, () => supportService.cleanupExpiredSupportAttachments({ limit: 80 }), { wrap: "data" });
+});
+
+router.get("/cron/cleanup-support-attachments", async (req, res) => {
+  if (!authorizeCron(req)) return apiError(res, "Unauthorized", 401);
+  await runService(res, () => supportService.cleanupExpiredSupportAttachments({ limit: 80 }), { wrap: "data" });
 });
 
 router.post("/support/requests", async (req, res) => {

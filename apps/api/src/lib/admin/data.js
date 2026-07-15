@@ -137,19 +137,10 @@ export async function getToolsUsage(sb, filters = {}) {
 
   const totalSaves = num(raw.totalSaves) || byTool.reduce((a, t) => a + t.saves, 0);
 
+  // Sin ranking de vendedores individuales: solo agregados (byTool + tendencia).
   return {
     totalSaves,
     byTool,
-    topUsers: Array.isArray(raw.topUsers)
-      ? raw.topUsers.map((u) => ({
-          user_id: u.user_id,
-          name: u.name || "—",
-          total: num(u.total),
-          survey: num(u.survey),
-          vacaciones: num(u.vacaciones),
-          worksheet: num(u.worksheet),
-        }))
-      : [],
     trend: Array.isArray(raw.trend)
       ? raw.trend.map((t) => ({
           month: t.month,

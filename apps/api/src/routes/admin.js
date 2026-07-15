@@ -18,6 +18,7 @@ import {
 } from "../lib/admin/data.js";
 import { parseJsonBody, runService } from "./route-utils.js";
 import * as adminUsersService from "../services/admin-users-service.js";
+import * as supportService from "../services/support-service.js";
 
 const router = Router();
 
@@ -189,6 +190,32 @@ router.patch("/users/:id/features", async (req, res) => {
   if (!body) return;
   const raw = Array.isArray(body.features) ? body.features : Array.isArray(body.permissions) ? body.permissions : [];
   await runService(res, () => adminUsersService.updateUserFeatures(a.supabase, a.profile, req.params.id, raw), { wrap: "data" });
+});
+
+router.get("/support/requests", async (req, res) => {
+  const a = await adminAuth(req, res, "support:read");
+  if (!a) return;
+  const status = typeof req.query.status === "string" ? req.query.status : "all";
+  const limit = req.query.limit;
+  const offset = req.query.offset;
+  await runService(
+    res,
+    () => supportService.listSupportRequestsForAdmin(a.supabase, { status, limit, offset }),
+    { wrap: "data" },
+  );
+});
+
+router.patch("/support/requests/:id", async (req, res) => {
+  const a = await adminAuth(req, res, "support:read");
+  if (!a) return;
+  const body = parseJsonBody(req, res);
+  if (!body) return;
+  const status = body.status;
+  await runService(
+    res,
+    () => supportService.updateSupportRequestStatus(a.supabase, req.params.id, status),
+    { wrap: "data" },
+  );
 });
 
 export default router;

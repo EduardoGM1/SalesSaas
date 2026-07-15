@@ -10,24 +10,16 @@ import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { toast } from "@/lib/toast";
 import { supportApi } from "@/lib/support-api.js";
+import { compressSupportScreenshot, SUPPORT_MAX_SOURCE_BYTES } from "@/lib/support-image.js";
 
 const MAX_CHARS = 1000;
-const MAX_FILE_BYTES = 10 * 1024 * 1024;
+const MAX_FILE_BYTES = SUPPORT_MAX_SOURCE_BYTES;
 const ACCEPT = "image/png,image/jpeg,image/jpg,image/webp";
 
 function detectPlatform() {
   if (typeof window === "undefined") return "web";
   if (isStandaloneApp() || isAndroidDevice() || isIosDevice()) return "mobile";
   return "web";
-}
-
-function readFileAsDataUrl(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result || ""));
-    reader.onerror = () => reject(new Error("No se pudo leer el archivo."));
-    reader.readAsDataURL(file);
-  });
 }
 
 function typeLabel(type, lang) {
@@ -227,7 +219,10 @@ export function HelpSettings() {
     }
 
     const areaOption = findSupportAreaOption(appArea, lang);
-    const pathLabel = areaOption?.pathLabel || appArea;
+    let pathLabel = areaOption?.pathLabel || appArea;
+    if (appArea === "otro" && appAreaOther.trim()) {
+      pathLabel = `${pathLabel}: ${appAreaOther.trim()}`;
+    }
 
     setPending(true);
     try {
@@ -235,24 +230,31 @@ export function HelpSettings() {
         throw new Error(t("settings.help.requiresCloud"));
       }
       let screenshotDataUrl = null;
-      if (file) screenshotDataUrl = await readFileAsDataUrl(file);
+      if (file) {
+        try {
+          const compressed = await compressSupportScreenshot(file);
+          screenshotDataUrl = compressed.dataUrl;
+        } catch (compressErr) {
+          const code = compressErr?.code;
+          if (code === "FILE_TOO_LARGE") {
+            toast.error(t("settings.help.fileSizeError"));
+            return;
+          }
+          throw compressErr;
+        }
+      }
 
-      const metaLines = [
-        `[Área: ${pathLabel}]`,
-        requestType === "other" && requestTypeOther.trim()
-          ? `[Tipo (otro): ${requestTypeOther.trim()}]`
-          : null,
-        appArea === "otro" && appAreaOther.trim()
-          ? `[Ubicación: ${appAreaOther.trim()}]`
-          : null,
-      ].filter(Boolean);
+      let finalDescription = text;
+      if (requestType === "other" && requestTypeOther.trim()) {
+        finalDescription = `[Tipo (otro): ${requestTypeOther.trim()}]\n\n${text}`;
+      }
 
       await supportApi.create({
         request_type: requestType,
         app_area: appArea,
         app_area_label: pathLabel,
         platform,
-        description: `${metaLines.join("\n")}\n\n${text}`,
+        description: finalDescription,
         screenshot_data_url: screenshotDataUrl,
         user_agent: typeof navigator !== "undefined" ? navigator.userAgent : null,
       });
