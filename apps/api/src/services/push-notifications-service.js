@@ -109,20 +109,28 @@ async function postOneSignal(apiKey, payload) {
   });
 
   const body = await res.json().catch(() => ({}));
+  const messageId = String(body?.id ?? "").trim();
   const hasErrors = Array.isArray(body.errors)
     ? body.errors.length > 0
     : Boolean(body.errors);
-  const ok = res.ok && Boolean(body.id) && !hasErrors;
+  // OneSignal: id vacío = aceptado pero 0 suscriptores ("No recipients" en dashboard).
+  const ok = res.ok && messageId.length > 0 && !hasErrors;
   if (!ok) {
     console.warn("[onesignal] Envío fallido:", {
       status: res.status,
+      messageId: messageId || null,
       errors: body.errors,
       recipients: body.recipients,
       send_after: payload.send_after || null,
       topic: payload.web_push_topic || null,
+      targeting: payload.include_subscription_ids
+        ? "subscription_ids"
+        : payload.include_aliases
+          ? "external_id"
+          : payload.included_segments || "other",
     });
   }
-  return { ok, body };
+  return { ok, body, messageId: messageId || null };
 }
 
 async function sendToUser(serviceSb, userId, message) {
@@ -132,31 +140,37 @@ async function sendToUser(serviceSb, userId, message) {
 
   const base = buildMessagePayload(appId, message);
   const subscriptionIds = await loadSubscriptionIds(serviceSb, userId);
+  const errors = [];
 
-  // Misma estrategia que mensajes: alias external_id, luego subscription_ids.
+  // 1) IDs de suscripción guardados al activar push en el dispositivo (Android sin login OK).
+  if (subscriptionIds.length) {
+    const bySub = await postOneSignal(apiKey, {
+      ...base,
+      target_channel: "push",
+      include_subscription_ids: subscriptionIds,
+    });
+    if (bySub.ok) return bySub;
+    if (bySub.body?.errors) errors.push(...(Array.isArray(bySub.body.errors) ? bySub.body.errors : [bySub.body.errors]));
+  }
+
+  // 2) external_id (OneSignal.login) — todos los dispositivos del usuario.
   const byAlias = await postOneSignal(apiKey, {
     ...base,
     target_channel: "push",
     include_aliases: { external_id: [String(userId)] },
   });
   if (byAlias.ok) return byAlias;
+  if (byAlias.body?.errors) errors.push(...(Array.isArray(byAlias.body.errors) ? byAlias.body.errors : [byAlias.body.errors]));
 
-  if (!subscriptionIds.length) {
-    console.warn("[onesignal] Sin suscripción para usuario", userId, byAlias.body?.errors);
-    return { ok: false, reason: "no_subscription", errors: byAlias.body?.errors };
-  }
-
-  const bySub = await postOneSignal(apiKey, {
-    ...base,
-    target_channel: "push",
-    include_subscription_ids: subscriptionIds,
+  console.warn("[onesignal] Sin destinatarios para usuario", userId, {
+    subscription_ids: subscriptionIds,
+    errors: errors.length ? errors : byAlias.body?.errors,
   });
-  if (bySub.ok) return bySub;
 
   return {
     ok: false,
-    reason: "send_failed",
-    errors: bySub.body?.errors || byAlias.body?.errors,
+    reason: subscriptionIds.length ? "send_failed" : "no_subscription",
+    errors,
   };
 }
 
@@ -193,6 +207,27 @@ export async function getPushStatus() {
     service_role_configured: Boolean(createServiceSupabaseClient()),
     provider: "onesignal",
     permission_required: true,
+  };
+}
+
+/** Diagnóstico de push para soporte (usuario autenticado). */
+export async function getPushDiagnosticsForUser(supabase, userId) {
+  const serviceSb = createServiceSupabaseClient();
+  const sb = serviceSb || supabase;
+  const settings = await loadProfileSettings(sb, userId);
+  const subscriptionIds = Array.isArray(settings.onesignal_subscription_ids)
+    ? settings.onesignal_subscription_ids.filter(Boolean)
+    : [];
+  const prefs = await loadNotificationPrefs(sb, userId);
+  return {
+    external_id: String(userId),
+    stored_subscription_ids: subscriptionIds,
+    subscription_count: subscriptionIds.length,
+    push_configured: isPushConfigured(),
+    notification_prefs: prefs,
+    hint: subscriptionIds.length
+      ? "Si no llegan push, verifica en OneSignal Audience que la suscripción esté Subscribed y que external_id coincida."
+      : "Sin subscription_id guardado: el dispositivo no completó registerDevice tras activar notificaciones.",
   };
 }
 

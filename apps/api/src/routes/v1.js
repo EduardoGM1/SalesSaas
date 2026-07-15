@@ -465,6 +465,16 @@ router.get("/notifications/status", async (req, res) => {
   await runService(res, () => pushService.getPushStatus(), { wrap: "data" });
 });
 
+router.get("/notifications/push-diagnostics", async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  await runService(
+    res,
+    () => pushService.getPushDiagnosticsForUser(a.supabase, a.userId),
+    { wrap: "data" },
+  );
+});
+
 router.post("/notifications/device", async (req, res) => {
   const a = await requireAuth(req, res);
   if (!a) return;

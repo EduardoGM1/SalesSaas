@@ -3,7 +3,7 @@ import {
   isPushSupported,
   needsIosPwaInstall,
   subscribeToPush,
-  syncPushSubscription,
+  syncPushIdentityAndSubscription,
 } from "@/lib/push-notifications.js";
 import {
   canOfferPushPromptAlongsidePwa,
@@ -28,7 +28,7 @@ export function notifyPushStatusChanged() {
 export async function enablePushNotifications() {
   try {
     await subscribeToPush();
-    await syncPushSubscription();
+    await syncPushIdentityAndSubscription();
     notifyPushStatusChanged();
     return { ok: true };
   } catch (err) {

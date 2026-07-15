@@ -5,6 +5,7 @@ import {
   needsIosPwaInstall,
   restorePushSubscriptionIfNeeded,
   subscribeToPush,
+  syncPushIdentityAndSubscription,
   unsubscribeFromPush,
 } from "@/lib/onesignal.js";
 import { notificationsApi } from "@/lib/notifications-api.js";
@@ -16,6 +17,7 @@ export {
   needsIosPwaInstall,
   restorePushSubscriptionIfNeeded,
   subscribeToPush,
+  syncPushIdentityAndSubscription,
   unsubscribeFromPush,
 };
 

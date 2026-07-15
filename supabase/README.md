@@ -131,7 +131,36 @@ VITE_ONESIGNAL_APP_ID=tu-app-id
 2. En iPhone: instala la PWA en la pantalla de inicio (iOS 16.4+) y abre desde el icono.
 3. Eventos con push: mensaje nuevo, solicitud de contacto, solicitud aceptada, **sesión cerrada en otro dispositivo**.
 
-> La tabla `push_subscriptions` (migración 0020) ya no se usa; OneSignal gestiona los dispositivos vinculados por `external_id` (UUID de Supabase).
+> La tabla `push_subscriptions` (migración 0020) ya no se usa; OneSignal gestiona los dispositivos vinculados por `external_id` (UUID de Supabase) y por `subscription_id` guardados en `profiles.settings.onesignal_subscription_ids`.
+
+### Diagnóstico Android ("No recipients" / no llegan push)
+
+**Síntoma:** el usuario aceptó permisos en Android pero OneSignal muestra *No recipients* (0 enviados) o la notificación no aparece en el teléfono.
+
+**Causas frecuentes:**
+
+1. **`external_id` no vinculado** — Aceptar el permiso del SO no equivale a `OneSignal.login(userId)`. Si el login falló, los envíos por `external_id` no encuentran destinatario. La app reintenta el vínculo al abrir, al volver de background (`auth:resume` / `visibilitychange`) y al cambiar la suscripción push.
+2. **`subscription_id` no registrado en servidor** — Tras activar push, el cliente llama `POST /api/v1/notifications/device`. Si falló (red, sesión), el backend no tiene IDs para el fallback. El usuario puede desactivar y reactivar notificaciones en **Configuración → Notificaciones**.
+3. **Filtro incorrecto en pruebas del dashboard** — En OneSignal, un envío a un `external_id` que no existe en Audience → Subscriptions muestra *No recipients*. Prueba con **Send to Test Users** usando el UUID de Supabase del usuario, o **All Subscribed Users** para descartar segmentación.
+4. **Service Worker** — Verifica que `https://tu-dominio.com/onesignal/OneSignalSDKWorker.js` responda 200. En Chrome Android: DevTools remoto → Application → Service Workers.
+5. **Optimización de batería (Xiaomi, Huawei, Samsung, etc.)** — Puede matar el SW en segundo plano. Pedir al usuario: Ajustes → Apps → Chrome (o la PWA) → Batería → **Sin restricciones**.
+
+**Verificación rápida (usuario autenticado):**
+
+```bash
+curl -b "cookies..." https://tu-dominio.com/api/v1/notifications/push-diagnostics
+```
+
+Respuesta esperada: `external_id` = UUID del usuario, `subscription_count` ≥ 1 si el dispositivo completó el registro.
+
+**Prueba de entrega:**
+
+1. OneSignal → **Audience → Subscriptions** → buscar por `external_id` (UUID Supabase) o por fecha/dispositivo Android.
+2. Estado debe ser **Subscribed** (no Unsubscribed / Invalid).
+3. Enviar mensaje de prueba a ese `external_id` → status **Delivered** con ≥ 1 destinatario.
+4. Confirmar recepción visual en el Android (PWA instalada o pestaña con permiso concedido).
+
+**PWA vs pestaña en Android:** Web Push funciona en Chrome con permiso concedido; la PWA instalada suele ser más estable para recibir en background. Tras reinstalar la PWA o limpiar datos del sitio, hay que volver a activar notificaciones.
 
 ## 4d. Sesión multi-dispositivo (logout global)
 

@@ -245,18 +245,40 @@ export async function ensureOneSignal() {
 }
 
 async function registerDeviceSubscription(subscriptionId) {
-  if (!subscriptionId) return;
+  if (!subscriptionId) return { ok: false, reason: "no_id" };
   try {
     await notificationsApi.registerDevice(subscriptionId);
-  } catch {
-    // Se reintentará al abrir la app.
+    return { ok: true };
+  } catch (err) {
+    console.warn("[onesignal] registerDeviceSubscription failed:", err);
+    return { ok: false, error: err };
   }
 }
 
-export async function linkOneSignalUser(userId) {
-  if (!userId) return;
+function delay(ms) {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
+function notifyPushStatusChanged() {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new CustomEvent("push:status-changed"));
+}
+
+export async function linkOneSignalUser(userId, { retries = 3 } = {}) {
+  if (!userId) return { ok: false, reason: "no_user" };
   const OneSignal = await ensureOneSignal();
-  await OneSignal.login(String(userId));
+  let lastErr = null;
+  for (let attempt = 0; attempt < retries; attempt++) {
+    try {
+      await OneSignal.login(String(userId));
+      return { ok: true };
+    } catch (err) {
+      lastErr = err;
+      if (attempt < retries - 1) await delay(400 * (attempt + 1));
+    }
+  }
+  console.warn("[onesignal] linkOneSignalUser failed after retries:", lastErr);
+  return { ok: false, error: lastErr };
 }
 
 export async function unlinkOneSignalUser() {
@@ -401,7 +423,7 @@ export async function subscribeToPush() {
   }
 
   const userId = await resolveUserId();
-  if (userId) await OneSignal.login(userId);
+  if (userId) await linkOneSignalUser(userId);
 
   try {
     await OneSignal.User.PushSubscription.optIn();
@@ -422,7 +444,7 @@ export async function subscribeToPush() {
     throw err;
   }
 
-  if (userId) await OneSignal.login(userId);
+  if (userId) await linkOneSignalUser(userId);
 
   await registerDeviceSubscription(readSubscriptionState(OneSignal).subscriptionId);
 
@@ -445,13 +467,13 @@ export async function restorePushSubscriptionIfNeeded() {
     }
 
     const userId = await resolveUserId();
-    if (userId) await OneSignal.login(userId);
+    if (userId) await linkOneSignalUser(userId);
 
     await OneSignal.User.PushSubscription.optIn();
     const subscribed = await waitForPushSubscription(OneSignal, 12_000);
     if (!subscribed) return { restored: false };
 
-    if (userId) await OneSignal.login(userId);
+    if (userId) await linkOneSignalUser(userId);
     await registerDeviceSubscription(readSubscriptionState(OneSignal).subscriptionId);
     return { restored: true };
   } catch {
@@ -463,6 +485,30 @@ export async function unsubscribeFromPush() {
   const OneSignal = await ensureOneSignal();
   await OneSignal.User.PushSubscription.optOut();
   return { ok: true };
+}
+
+export async function syncPushIdentityAndSubscription() {
+  if (!isBrowserPushCapable() || !isSupabaseConfigured()) {
+    return { ok: false, reason: "unsupported" };
+  }
+
+  const userId = await resolveUserId();
+  if (!userId) return { ok: false, reason: "no_session" };
+
+  const linkResult = await linkOneSignalUser(userId);
+  await restorePushSubscriptionIfNeeded();
+  const state = await getPushStatus();
+  if (state.subscribed && state.subscriptionId) {
+    await registerDeviceSubscription(state.subscriptionId);
+  }
+  notifyPushStatusChanged();
+
+  return {
+    ok: true,
+    linked: linkResult.ok,
+    subscribed: state.subscribed,
+    subscriptionId: state.subscriptionId,
+  };
 }
 
 export async function getPushStatus() {

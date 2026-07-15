@@ -6,11 +6,11 @@ import {
   ensureOneSignal,
   linkOneSignalUser,
   resolveOneSignalAppId,
-  restorePushSubscriptionIfNeeded,
   setupPushNotificationHandlers,
+  syncPushIdentityAndSubscription,
   unlinkOneSignalUser,
 } from "@/lib/onesignal.js";
-import { registerDeviceSubscription, syncPushSubscription } from "@/lib/push-notifications.js";
+import { registerDeviceSubscription } from "@/lib/push-notifications.js";
 import { scheduleAutoPushRequest } from "@/lib/push-enable.js";
 
 /** Inicializa OneSignal y vincula el usuario de Supabase como external_id. */
@@ -24,6 +24,19 @@ export function OneSignalProvider({ children }) {
     let pushSubscriptionListener = null;
     let oneSignalInstance = null;
     let cancelled = false;
+    let activeUserId = null;
+
+    const resyncOnResume = () => {
+      if (!activeUserId || cancelled) return;
+      void syncPushIdentityAndSubscription();
+    };
+
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") resyncOnResume();
+    };
+
+    window.addEventListener("auth:resume", resyncOnResume);
+    document.addEventListener("visibilitychange", onVisibility);
 
     const setup = async () => {
       try {
@@ -38,13 +51,11 @@ export function OneSignalProvider({ children }) {
 
         const supabase = createClient();
         const { data: { user } } = await supabase.auth.getUser();
-        let activeUserId = user?.id ?? null;
+        activeUserId = user?.id ?? null;
 
         const syncIdentity = async (userId) => {
           if (!userId || cancelled) return;
-          await linkOneSignalUser(userId);
-          await restorePushSubscriptionIfNeeded();
-          await syncPushSubscription();
+          await syncPushIdentityAndSubscription();
         };
 
         if (activeUserId) {
@@ -84,6 +95,8 @@ export function OneSignalProvider({ children }) {
     return () => {
       cancelled = true;
       authSubscription?.unsubscribe();
+      window.removeEventListener("auth:resume", resyncOnResume);
+      document.removeEventListener("visibilitychange", onVisibility);
       if (oneSignalInstance && pushSubscriptionListener) {
         oneSignalInstance.User.PushSubscription.removeEventListener("change", pushSubscriptionListener);
       }
