@@ -1,24 +1,8 @@
 import { ServiceError } from "../lib/service-error.js";
-
-const REQUEST_TYPES = new Set([
-  "problem",
-  "question",
-  "suggestion",
-  "account",
-  "other",
-]);
-
-const APP_AREAS = new Set([
-  "clients",
-  "calendar",
-  "sales",
-  "network",
-  "messages",
-  "tools",
-  "settings",
-  "notifications",
-  "other",
-]);
+import {
+  SUPPORT_AREA_IDS,
+  SUPPORT_REQUEST_TYPE_IDS,
+} from "@salesapp/shared/support/site-map.js";
 
 const MAX_DESCRIPTION = 1000;
 const MIN_DESCRIPTION = 10;
@@ -52,16 +36,17 @@ function decodeDataUrl(dataUrl) {
 export async function createSupportRequest(supabase, userId, body = {}) {
   const requestType = String(body.request_type ?? body.requestType ?? "").trim();
   const appArea = String(body.app_area ?? body.appArea ?? "").trim();
+  const appAreaLabel = String(body.app_area_label ?? body.appAreaLabel ?? "").trim();
   const platform = String(body.platform ?? "").trim().toLowerCase();
   const description = String(body.description ?? "").trim();
   const userAgent = body.user_agent ?? body.userAgent ?? null;
   const appVersion = body.app_version ?? body.appVersion ?? null;
   const screenshotDataUrl = body.screenshot_data_url ?? body.screenshotDataUrl ?? null;
 
-  if (!REQUEST_TYPES.has(requestType)) {
+  if (!SUPPORT_REQUEST_TYPE_IDS.has(requestType)) {
     throw new ServiceError("Tipo de solicitud no válido.", 400);
   }
-  if (!APP_AREAS.has(appArea)) {
+  if (!SUPPORT_AREA_IDS.has(appArea)) {
     throw new ServiceError("Área de la app no válida.", 400);
   }
   if (platform !== "web" && platform !== "mobile") {
@@ -70,7 +55,8 @@ export async function createSupportRequest(supabase, userId, body = {}) {
   if (description.length < MIN_DESCRIPTION) {
     throw new ServiceError(`Describe el problema con al menos ${MIN_DESCRIPTION} caracteres.`, 400);
   }
-  if (description.length > MAX_DESCRIPTION) {
+  if (description.length > MAX_DESCRIPTION + 240) {
+    // Meta de ruta puede anteponerse al texto libre (máx. 1000 del usuario).
     throw new ServiceError(`La descripción no puede superar ${MAX_DESCRIPTION} caracteres.`, 400);
   }
 
@@ -90,12 +76,17 @@ export async function createSupportRequest(supabase, userId, body = {}) {
     screenshotPath = path;
   }
 
+  // Guardar id estable; si hay etiqueta, anexarla para lectura humana en panel de soporte.
+  const storedArea = appAreaLabel
+    ? `${appArea}|${appAreaLabel}`.slice(0, 200)
+    : appArea;
+
   const { data, error } = await supabase
     .from("support_requests")
     .insert({
       user_id: userId,
       request_type: requestType,
-      app_area: appArea,
+      app_area: storedArea,
       platform,
       description,
       screenshot_path: screenshotPath,

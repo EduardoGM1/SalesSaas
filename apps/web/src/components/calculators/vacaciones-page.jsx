@@ -102,7 +102,7 @@ export function VacacionesPage({ clientId, shared }: VacacionesPageProps) {
       <Topbar title={t("tools.vacation")} subtitle={t("tools.vacationDesc")} />
       <div className="sales-page tool-calc-page">
         <div className="page-toolbar page-toolbar--between">
-          <PageBack inline href={backHref} />
+          <PageBack inline href={backHref} hasUnsavedChanges={() => dirtyKeysRef.current.size > 0} />
           {!readOnly && (
             <button type="button" className="btn btn-ghost btn-sm" onClick={handleClear}>{t("common.clear")}</button>
           )}

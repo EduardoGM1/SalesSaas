@@ -124,7 +124,7 @@ export function WorksheetPage({ clientId, shared }: WorksheetPageProps) {
       <Topbar title={t("tools.worksheet")} subtitle={isFileMode ? t("tools.sub.financing") : t("tools.sub.free")} />
       <div className="sales-page tool-calc-page">
         <div className="page-toolbar page-toolbar--between">
-          <PageBack inline href={backHref} />
+          <PageBack inline href={backHref} hasUnsavedChanges={() => dirtyKeysRef.current.size > 0} />
           {!readOnly && (
             <button type="button" className="btn btn-ghost btn-sm" onClick={handleClear}>{t("common.clear")}</button>
           )}

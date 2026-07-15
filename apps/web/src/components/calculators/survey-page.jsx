@@ -197,7 +197,7 @@ export function SurveyPage({ clientId, shared }: SurveyPageProps) {
       <Topbar title={t("tools.survey")} subtitle={isFileMode ? t("tools.sub.surveyClient") : t("tools.sub.free")} />
       <div className="sales-page tool-calc-page survey-calc-page">
         <div className="page-toolbar page-toolbar--between">
-          <PageBack inline href={backHref} />
+          <PageBack inline href={backHref} hasUnsavedChanges={() => dirtyKeysRef.current.size > 0} />
           {!readOnly && (
             <button type="button" className="btn btn-ghost btn-sm" onClick={handleClear}>{t("common.clear")}</button>
           )}

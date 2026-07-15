@@ -1,5 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { HelpCircle, LayoutGrid, Smartphone, Globe2, Pencil, Paperclip, CloudUpload, ShieldCheck, X } from "lucide-react";
+import { HelpCircle, LayoutGrid, Smartphone, Globe2, Pencil, Paperclip, CloudUpload, ShieldCheck, X, ChevronDown, ChevronRight } from "lucide-react";
+import {
+  SUPPORT_REQUEST_TYPES,
+  SUPPORT_SITE_MAP,
+  findSupportAreaOption,
+} from "@salesapp/shared/support/site-map.js";
 import { isStandaloneApp, isAndroidDevice, isIosDevice } from "@/lib/pwa-install.js";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { useI18n } from "@/hooks/use-i18n.js";
@@ -25,13 +30,134 @@ function readFileAsDataUrl(file) {
   });
 }
 
+function typeLabel(type, lang) {
+  return lang === "en" ? type.labelEn : type.labelEs;
+}
+
+function moduleLabel(mod, lang) {
+  return lang === "en" ? mod.labelEn : mod.labelEs;
+}
+
+function leafLabel(leaf, lang) {
+  return lang === "en" ? leaf.labelEn : leaf.labelEs;
+}
+
+function AppAreaPicker({ value, onChange, lang, t }) {
+  const [open, setOpen] = useState(false);
+  const [expanded, setExpanded] = useState(() => new Set());
+  const rootRef = useRef(null);
+  const selected = findSupportAreaOption(value, lang);
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const onDoc = (e) => {
+      if (rootRef.current && !rootRef.current.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener("mousedown", onDoc);
+    document.addEventListener("touchstart", onDoc);
+    return () => {
+      document.removeEventListener("mousedown", onDoc);
+      document.removeEventListener("touchstart", onDoc);
+    };
+  }, [open]);
+
+  const toggleModule = (moduleId) => {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(moduleId)) next.delete(moduleId);
+      else next.add(moduleId);
+      return next;
+    });
+  };
+
+  const pick = (id) => {
+    onChange(id);
+    setOpen(false);
+  };
+
+  return (
+    <div className="help-area-picker" ref={rootRef}>
+      <button
+        type="button"
+        id="help-app-area"
+        className={`help-area-trigger${open ? " is-open" : ""}`}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+      >
+        <span className={selected ? "help-area-trigger-value" : "help-area-trigger-placeholder"}>
+          {selected ? selected.pathLabel : t("settings.help.appAreaPlaceholder")}
+        </span>
+        <ChevronDown size={18} aria-hidden="true" />
+      </button>
+
+      {selected && (
+        <p className="help-area-path" aria-live="polite">
+          {selected.pathLabel}
+        </p>
+      )}
+
+      {open && (
+        <div className="help-area-panel" role="listbox" aria-label={t("settings.help.appArea")}>
+          <div className="help-area-panel-scroll">
+            {SUPPORT_SITE_MAP.map((mod) => {
+              const isOpen = expanded.has(mod.moduleId) || mod.children.some((c) => c.id === value);
+              return (
+                <div key={mod.moduleId} className="help-area-module">
+                  <button
+                    type="button"
+                    className="help-area-module-btn"
+                    onClick={() => toggleModule(mod.moduleId)}
+                    aria-expanded={isOpen}
+                  >
+                    <ChevronRight
+                      size={16}
+                      className={`help-area-chevron${isOpen ? " is-open" : ""}`}
+                      aria-hidden="true"
+                    />
+                    <span>{moduleLabel(mod, lang)}</span>
+                  </button>
+                  {isOpen && (
+                    <ul className="help-area-leaves">
+                      {mod.children.map((child) => {
+                        const path = `${moduleLabel(mod, lang)} > ${leafLabel(child, lang)}`;
+                        const active = child.id === value;
+                        return (
+                          <li key={child.id}>
+                            <button
+                              type="button"
+                              role="option"
+                              aria-selected={active}
+                              className={`help-area-leaf${active ? " is-active" : ""}`}
+                              onClick={() => pick(child.id)}
+                            >
+                              {leafLabel(child, lang)}
+                              <span className="help-area-leaf-path">{path}</span>
+                            </button>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function HelpSettings() {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const fileRef = useRef(null);
   const detected = useMemo(() => detectPlatform(), []);
 
   const [requestType, setRequestType] = useState("problem");
-  const [appArea, setAppArea] = useState("clients");
+  const [appArea, setAppArea] = useState("clientes_expediente");
+  const [requestTypeOther, setRequestTypeOther] = useState("");
+  const [appAreaOther, setAppAreaOther] = useState("");
   const [platform, setPlatform] = useState(detected);
   const [description, setDescription] = useState("");
   const [file, setFile] = useState(null);
@@ -83,6 +209,17 @@ export function HelpSettings() {
       toast.error(t("settings.help.descTooLong"));
       return;
     }
+    if (requestType === "other" && !requestTypeOther.trim()) {
+      toast.error(t("settings.help.otherTypeRequired"));
+      return;
+    }
+    if (appArea === "otro" && !appAreaOther.trim()) {
+      toast.error(t("settings.help.otherAreaRequired"));
+      return;
+    }
+
+    const areaOption = findSupportAreaOption(appArea, lang);
+    const pathLabel = areaOption?.pathLabel || appArea;
 
     setPending(true);
     try {
@@ -92,11 +229,22 @@ export function HelpSettings() {
       let screenshotDataUrl = null;
       if (file) screenshotDataUrl = await readFileAsDataUrl(file);
 
+      const metaLines = [
+        `[Área: ${pathLabel}]`,
+        requestType === "other" && requestTypeOther.trim()
+          ? `[Tipo (otro): ${requestTypeOther.trim()}]`
+          : null,
+        appArea === "otro" && appAreaOther.trim()
+          ? `[Ubicación: ${appAreaOther.trim()}]`
+          : null,
+      ].filter(Boolean);
+
       await supportApi.create({
         request_type: requestType,
         app_area: appArea,
+        app_area_label: pathLabel,
         platform,
-        description: text,
+        description: `${metaLines.join("\n")}\n\n${text}`,
         screenshot_data_url: screenshotDataUrl,
         user_agent: typeof navigator !== "undefined" ? navigator.userAgent : null,
       });
@@ -105,7 +253,9 @@ export function HelpSettings() {
       setDescription("");
       setFile(null);
       setRequestType("problem");
-      setAppArea("clients");
+      setAppArea("clientes_expediente");
+      setRequestTypeOther("");
+      setAppAreaOther("");
       setPlatform(detected);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t("settings.help.sentError"));
@@ -132,36 +282,40 @@ export function HelpSettings() {
             value={requestType}
             onChange={(e) => setRequestType(e.target.value)}
           >
-            <option value="problem">{t("settings.help.type.problem")}</option>
-            <option value="question">{t("settings.help.type.question")}</option>
-            <option value="suggestion">{t("settings.help.type.suggestion")}</option>
-            <option value="account">{t("settings.help.type.account")}</option>
-            <option value="other">{t("settings.help.type.other")}</option>
+            {SUPPORT_REQUEST_TYPES.map((type) => (
+              <option key={type.id} value={type.id}>{typeLabel(type, lang)}</option>
+            ))}
           </select>
+          {requestType === "other" && (
+            <input
+              className="help-other-input"
+              type="text"
+              value={requestTypeOther}
+              onChange={(e) => setRequestTypeOther(e.target.value)}
+              placeholder={t("settings.help.otherTypePlaceholder")}
+              maxLength={120}
+            />
+          )}
         </div>
       </div>
 
-      <div className="help-field">
+      <div className="help-field help-field--top">
         <div className="help-field-icon tone-blue" aria-hidden="true">
           <LayoutGrid size={18} />
         </div>
         <div className="help-field-body">
           <label className="help-label" htmlFor="help-app-area">{t("settings.help.appArea")}</label>
-          <select
-            id="help-app-area"
-            value={appArea}
-            onChange={(e) => setAppArea(e.target.value)}
-          >
-            <option value="clients">{t("settings.help.area.clients")}</option>
-            <option value="calendar">{t("settings.help.area.calendar")}</option>
-            <option value="sales">{t("settings.help.area.sales")}</option>
-            <option value="network">{t("settings.help.area.network")}</option>
-            <option value="messages">{t("settings.help.area.messages")}</option>
-            <option value="tools">{t("settings.help.area.tools")}</option>
-            <option value="settings">{t("settings.help.area.settings")}</option>
-            <option value="notifications">{t("settings.help.area.notifications")}</option>
-            <option value="other">{t("settings.help.area.other")}</option>
-          </select>
+          <AppAreaPicker value={appArea} onChange={setAppArea} lang={lang} t={t} />
+          {appArea === "otro" && (
+            <input
+              className="help-other-input"
+              type="text"
+              value={appAreaOther}
+              onChange={(e) => setAppAreaOther(e.target.value)}
+              placeholder={t("settings.help.otherAreaPlaceholder")}
+              maxLength={160}
+            />
+          )}
         </div>
       </div>
 

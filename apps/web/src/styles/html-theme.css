@@ -53,7 +53,37 @@ body{font-family:var(--font-sans,'Inter',sans-serif);background:var(--bg);color:
 .tb-left{display:flex;align-items:center;gap:16px;}
 .tb-back-btn{display:none!important;}
 .page-back-row{display:flex;align-items:center;margin-bottom:16px;}
+.page-back-row .page-back-btn,
 .page-back-row .btn{gap:7px;}
+.page-back-btn{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  min-height:44px;
+  min-width:44px;
+  padding:8px 14px;
+  border-radius:10px;
+  border:1.5px solid var(--border2);
+  background:var(--bg);
+  color:var(--text);
+  font-size:14px;
+  font-weight:700;
+  line-height:1.2;
+  text-decoration:none;
+  cursor:pointer;
+  box-shadow:0 1px 0 rgba(15,32,68,.04);
+}
+.page-back-btn:hover{
+  background:var(--bg2);
+  border-color:var(--text2);
+  color:var(--text);
+}
+.page-back-btn:focus-visible{
+  outline:2px solid var(--blue);
+  outline-offset:2px;
+}
+.page-back-btn span{white-space:nowrap;}
 .tb-page-title{font-size:17px;font-weight:700;color:var(--text);letter-spacing:-0.3px;}
 .tb-page-sub{font-size:12px;color:var(--muted);}
 .tb-right{display:flex;align-items:center;gap:10px;overflow:visible;}
@@ -114,7 +144,7 @@ body{font-family:var(--font-sans,'Inter',sans-serif);background:var(--bg);color:
 .vbox.green .vbox-val{color:var(--green);}
 .vbox.yellow .vbox-val{color:var(--yellow);}
 .vbox.red .vbox-val{color:var(--red);}
-.vbox-label{font-size:11px;color:var(--muted);margin-top:5px;font-weight:500;}
+.vbox-label{font-size:11px;color:var(--muted);margin-top:5px;font-weight:500;white-space:normal;line-height:1.3;}
 .vbox-sub{font-size:10px;color:var(--muted2);margin-top:2px;}
 
 /* FORM */
@@ -483,6 +513,8 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
 .client-table tr:last-child td{border-bottom:none;}
 .client-table tbody tr:hover td{background:rgba(37,99,235,.035);}
 .client-name-link{font-weight:800;color:var(--text);cursor:pointer;display:flex;flex-direction:column;gap:2px;}
+.client-name-link--sold,
+.client-name-link--sold > span:first-child{color:var(--green);}
 .client-name-link--mobile{display:none;}
 .client-code{font-family:var(--mono);font-size:10px;color:var(--muted);font-weight:600;}
 .client-actions{display:flex;align-items:center;justify-content:center;gap:5px;min-width:0;flex-shrink:0;}

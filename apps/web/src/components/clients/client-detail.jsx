@@ -1,5 +1,4 @@
 
-import { Link } from "react-router-dom";
 import { useEffect, useRef, useState } from "react";
 import {  useNavigate  } from "react-router-dom";
 import { FileText, Palmtree, DollarSign, MessageSquare } from "lucide-react";
@@ -13,6 +12,7 @@ import { prospectRowToClient, canEditShared, canCommentShared, canAddToWorkspace
 import { useExpedienteRealtime } from "@/hooks/use-expediente-realtime.js";
 import { ExpedientePresenceBar } from "@/components/clients/expediente-presence-bar.jsx";
 import { Topbar } from "@/components/layout/topbar";
+import { PageBack } from "@/components/layout/page-back";
 import { clientDisplayName, ensureProspectIdentity } from "@/lib/clients";
 import { longDate, ymdToday } from "@/lib/format/dates";
 import { parseMoney } from "@/lib/format/money";
@@ -173,7 +173,7 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
   if (!c) return (
     <>
       <Topbar title={t("exp.title")} subtitle={t("exp.notFound")} />
-      <div className="sales-page"><Link to={backHref} className="btn btn-ghost btn-sm">{t("exp.back")}</Link></div>
+      <div className="sales-page"><PageBack inline href={backHref} /></div>
     </>
   );
 
@@ -320,7 +320,7 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
       <Topbar title={t("exp.title")} subtitle={t("exp.subtitle")} />
       <div className="sales-page">
         <header className="exp-page-head">
-          <Link to={backHref} className="btn btn-ghost btn-sm exp-page-back">{t("exp.back")}</Link>
+          <PageBack inline href={backHref} className="exp-page-back" />
           <div className="exp-page-meta">
             <h1 className="exp-page-title" id="exp-title">{clientDisplayName(c)}</h1>
             <p className="exp-page-sub" id="exp-since">{since}</p>

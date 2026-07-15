@@ -147,6 +147,7 @@ export function ClientsPage() {
               <tbody>
                 {allRows.map((c) => {
                   const href = c.pinned ? c.href : `/clients/${c.id}`;
+                  const hasSale = !c.pinned && Array.isArray(c.sales) && c.sales.length > 0;
                   return (
                     <tr
                       key={c.pinned ? `pin-${c.shareId || c.id}` : c.id}
@@ -154,7 +155,10 @@ export function ClientsPage() {
                       onClick={(e) => handleRowClick(c, e)}
                     >
                       <td>
-                        <Link to={href} className="client-name-link client-name-link--desktop">
+                        <Link
+                          to={href}
+                          className={`client-name-link client-name-link--desktop${hasSale ? " client-name-link--sold" : ""}`}
+                        >
                           <span>
                             {clientDisplayName(c)}
                             {c.pinned && (
@@ -163,7 +167,7 @@ export function ClientsPage() {
                           </span>
                           <span className="client-code">{c.prospectCode}</span>
                         </Link>
-                        <div className="client-name-link client-name-link--mobile">
+                        <div className={`client-name-link client-name-link--mobile${hasSale ? " client-name-link--sold" : ""}`}>
                           <span>
                             {clientDisplayName(c)}
                             {c.pinned && (
@@ -174,7 +178,7 @@ export function ClientsPage() {
                         </div>
                       </td>
                       <td>{c.tourDate ? shortDate(c.tourDate, lang) : c.createdYmd ? shortDate(c.createdYmd, lang) : "—"}</td>
-                      <td>{c.tipo_tour ? `${c.tipo_tour} - ${c.tour_cuantificable !== false ? "1" : "0"}` : "—"}</td>
+                      <td>{c.tipo_tour ? String(c.tipo_tour) : "—"}</td>
                       <td>
                         <div className="client-actions" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
                           <Link to={href} className="icon-btn client-action-view" title={t("clients.viewFile")}><Eye size={14} /></Link>
