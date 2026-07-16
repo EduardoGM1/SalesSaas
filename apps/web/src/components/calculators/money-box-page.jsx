@@ -10,62 +10,61 @@ import { selectOnFocus } from "@/lib/focus-select.js";
 import { formatMoneyValue, parseMoney } from "@/lib/format/money";
 import { formatDecimalInput } from "@/lib/format/numeric-input.js";
 import {
+  factorFor,
   generateByDownPayment,
   generateByMonthly,
-  monthlyPaymentsForScenarios,
   termsFromWorksheetConfig,
 } from "@/lib/calculations/money-box";
 import { useDbStore } from "@/stores/db-store";
 import { shallow } from "zustand/shallow";
 
-function ResultTable({ results, dpPercentDisplay, financePercent, terms, t, fmt }) {
+/**
+ * Tres escenarios como tarjetas (mismo patrón Worksheet opt-block + Survey vbox),
+ * no tabla plana: Venta (azul) → Enganche (verde) → plazos (amarillo).
+ */
+function OptionScenarios({ results, dpPercentDisplay, financePercent, terms, t, fmt }) {
   return (
-    <div className="table-scroll">
-      <table className="mtbl">
-        <thead>
-          <tr>
-            <th />
-            <th>{t("moneyBox.option", { n: 1 })}</th>
-            <th>{t("moneyBox.option", { n: 2 })}</th>
-            <th>{t("moneyBox.option", { n: 3 })}</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>{t("moneyBox.sale")}</td>
-            {results.map((r, i) => (
-              <td key={`s-${i}`}>{fmt(r.sale)}</td>
-            ))}
-          </tr>
-          <tr>
-            <td>{t("moneyBox.downPayment")}</td>
-            {results.map((r, i) => (
-              <td key={`d-${i}`}>
-                ({dpPercentDisplay}%) {fmt(r.downPayment)}
-              </td>
-            ))}
-          </tr>
-          <tr>
-            <td colSpan={4}>
-              <div className="card-sub" style={{ marginBottom: 0 }}>{t("moneyBox.monthlySection")}</div>
-            </td>
-          </tr>
-          {terms.map((term) => {
-            const values = monthlyPaymentsForScenarios(results, financePercent, term);
-            return (
-              <tr key={term.label}>
-                <td>
-                  {term.label}
-                  {term.desc ? <div className="opt-info">{term.desc}</div> : null}
-                </td>
-                {values.map((v, i) => (
-                  <td key={`${term.label}-${i}`}>{fmt(v)}</td>
-                ))}
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+    <div>
+      {results.map((scenario, index) => (
+        <div key={index} className="opt-block">
+          <div className="opt-head no-toggle">
+            <div>
+              <div className="opt-tag">{t("moneyBox.option", { n: index + 1 })}</div>
+            </div>
+          </div>
+          <div className="opt-body" style={{ display: "flex", flexDirection: "column", gap: 12, flexWrap: "nowrap" }}>
+            <div className="vbox blue">
+              <div className="vbox-val">{fmt(scenario.sale)}</div>
+              <div className="vbox-label">{t("moneyBox.sale")}</div>
+            </div>
+            <div className="vbox green">
+              <div className="vbox-val">{fmt(scenario.downPayment)}</div>
+              <div className="vbox-label">{t("moneyBox.downPayment")}</div>
+              <div className="vbox-sub">
+                {t("moneyBox.downPctSub", { pct: dpPercentDisplay })}
+              </div>
+            </div>
+            <div>
+              <div className="card-sub" style={{ marginBottom: 8 }}>
+                {t("moneyBox.monthlySection")}
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {terms.map((term) => {
+                  const monthly =
+                    scenario.sale * financePercent * factorFor(term.months, term.annualRate);
+                  return (
+                    <div key={term.label} className="vbox yellow">
+                      <div className="vbox-val">{fmt(monthly)}</div>
+                      <div className="vbox-label">{term.label}</div>
+                      {term.desc ? <div className="vbox-sub">{term.desc}</div> : null}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
@@ -106,8 +105,10 @@ function MoneyPanel({
           </div>
         </div>
       </div>
-      <div className="card-heading" style={{ marginTop: 16 }}>{optionsTitle}</div>
-      <ResultTable
+
+      <div className="card-heading" style={{ marginTop: 18 }}>{optionsTitle}</div>
+      <div className="card-sub">{t("moneyBox.optionsSub")}</div>
+      <OptionScenarios
         results={results}
         dpPercentDisplay={dpPercentDisplay}
         financePercent={financePercent}
@@ -115,7 +116,8 @@ function MoneyPanel({
         t={t}
         fmt={fmt}
       />
-      <div className="card-sub" style={{ marginTop: 14, marginBottom: 0 }}>
+
+      <div className="card-sub" style={{ marginTop: 16, marginBottom: 0 }}>
         <strong>{t("moneyBox.reading")}</strong>
         {" "}
         {note}
@@ -237,7 +239,7 @@ export function MoneyBoxPage({ clientId, shared }) {
           <div className="card-heading" style={{ marginTop: 16 }}>{t("moneyBox.configuredTerms")}</div>
           {terms.map((term) => (
             <div key={term.label} className="opt-block">
-              <div className="opt-head">
+              <div className="opt-head no-toggle">
                 <div>
                   <div className="opt-tag">{term.label}</div>
                   {term.desc ? <div className="opt-info">{term.desc}</div> : null}
