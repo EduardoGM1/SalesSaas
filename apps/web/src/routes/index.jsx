@@ -27,6 +27,7 @@ import {
   SurveyPage,
   VacacionesPage,
   WorksheetPage,
+  MoneyBoxPage,
   AnalysisPage,
   AdminOverviewPage,
   AdminUsersPage,
@@ -50,6 +51,7 @@ function ClientToolRoute({ tool }) {
   if (tool === "survey") return <Lazy><SurveyPage clientId={id} /></Lazy>;
   if (tool === "vacaciones") return <Lazy><VacacionesPage clientId={id} /></Lazy>;
   if (tool === "worksheet") return <Lazy><WorksheetPage clientId={id} /></Lazy>;
+  if (tool === "money-box") return <Lazy><MoneyBoxPage clientId={id} /></Lazy>;
   if (tool === "analysis") return <Lazy><AnalysisPage clientId={id} /></Lazy>;
   return null;
 }
@@ -60,6 +62,7 @@ function SharedToolRoute({ tool }) {
   if (tool === "survey") return <Lazy><SurveyPage shared={shared} /></Lazy>;
   if (tool === "vacaciones") return <Lazy><VacacionesPage shared={shared} /></Lazy>;
   if (tool === "worksheet") return <Lazy><WorksheetPage shared={shared} /></Lazy>;
+  if (tool === "money-box") return <Lazy><MoneyBoxPage shared={shared} /></Lazy>;
   if (tool === "analysis") return <Lazy><AnalysisPage shared={shared} /></Lazy>;
   return null;
 }
@@ -104,6 +107,7 @@ export function AppRoutes() {
         <Route path="clients/:id/survey" element={<ClientToolRoute tool="survey" />} />
         <Route path="clients/:id/vacaciones" element={<ClientToolRoute tool="vacaciones" />} />
         <Route path="clients/:id/worksheet" element={<ClientToolRoute tool="worksheet" />} />
+        <Route path="clients/:id/money-box" element={<ClientToolRoute tool="money-box" />} />
         <Route path="clients/:id/analysis" element={<ClientToolRoute tool="analysis" />} />
         <Route path="network" element={<NetworkPage />} />
         <Route path="red/contacto/:contactId" element={<ContactRoute />} />
@@ -111,6 +115,7 @@ export function AppRoutes() {
         <Route path="red/contacto/:contactId/expediente/:prospectId/survey" element={<SharedToolRoute tool="survey" />} />
         <Route path="red/contacto/:contactId/expediente/:prospectId/vacaciones" element={<SharedToolRoute tool="vacaciones" />} />
         <Route path="red/contacto/:contactId/expediente/:prospectId/worksheet" element={<SharedToolRoute tool="worksheet" />} />
+        <Route path="red/contacto/:contactId/expediente/:prospectId/money-box" element={<SharedToolRoute tool="money-box" />} />
         <Route path="red/contacto/:contactId/expediente/:prospectId/analysis" element={<SharedToolRoute tool="analysis" />} />
         <Route path="network/shared/:id" element={<Navigate to="/network" replace />} />
         <Route path="messages" element={<MessagesPage />} />
@@ -118,6 +123,7 @@ export function AppRoutes() {
         <Route path="tools/survey" element={<Lazy><SurveyPage /></Lazy>} />
         <Route path="tools/vacaciones" element={<Lazy><VacacionesPage /></Lazy>} />
         <Route path="tools/worksheet" element={<Lazy><WorksheetPage /></Lazy>} />
+        <Route path="tools/money-box" element={<Lazy><MoneyBoxPage /></Lazy>} />
         <Route path="settings" element={<SettingsPage />} />
         <Route path="admin" element={<AdminSection />}>
           <Route index element={<Lazy><AdminOverviewPage /></Lazy>} />

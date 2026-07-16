@@ -19,6 +19,7 @@ import {
 import { parseJsonBody, runService } from "./route-utils.js";
 import * as adminUsersService from "../services/admin-users-service.js";
 import * as supportService from "../services/support-service.js";
+import * as membershipService from "../services/membership-service.js";
 
 const router = Router();
 
@@ -190,6 +191,16 @@ router.patch("/users/:id/features", async (req, res) => {
   if (!body) return;
   const raw = Array.isArray(body.features) ? body.features : Array.isArray(body.permissions) ? body.permissions : [];
   await runService(res, () => adminUsersService.updateUserFeatures(a.supabase, a.profile, req.params.id, raw), { wrap: "data" });
+});
+
+/** Asignar plan basico/pro (histórico de membresías). */
+router.patch("/users/:id/membership", async (req, res) => {
+  const a = await adminAuth(req, res, "users:role");
+  if (!a) return;
+  const body = parseJsonBody(req, res);
+  if (!body) return;
+  const plan = body.plan ?? body.planNombre ?? body.nombre;
+  await runService(res, () => membershipService.assignMembership(req.params.id, plan), { wrap: "data" });
 });
 
 router.get("/support/requests", async (req, res) => {

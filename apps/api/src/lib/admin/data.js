@@ -63,6 +63,8 @@ export async function getOverview(sb) {
 }
 
 export async function getUsers(sb, filters = {}) {
+  const { loadMembershipsByUserIds } = await import("../../services/membership-service.js");
+
   let profilesQuery = sb
     .from("profiles")
     .select("id, full_name, email, role, created_at, is_active, is_super_admin, admin_permissions, user_permissions")
@@ -92,8 +94,17 @@ export async function getUsers(sb, filters = {}) {
     });
   }
 
-  return (profilesRes.data ?? []).map((p) => {
+  const profiles = profilesRes.data ?? [];
+  let memberships = new Map();
+  try {
+    memberships = await loadMembershipsByUserIds(sb, profiles.map((p) => p.id));
+  } catch {
+    memberships = new Map();
+  }
+
+  return profiles.map((p) => {
     const stats = statsByUser.get(p.id) ?? { prospects: 0, sales: 0, volume: 0 };
+    const mem = memberships.get(p.id) || { plan: "basico", status: "activa" };
     return {
       id: p.id,
       name: p.full_name || p.email || `Usuario ${String(p.id).slice(0, 8)}`,
@@ -107,6 +118,10 @@ export async function getUsers(sb, filters = {}) {
       prospects: stats.prospects,
       sales: stats.sales,
       volume: stats.volume,
+      plan: mem.plan,
+      membership_status: mem.status,
+      membership_fecha_inicio: mem.fecha_inicio ?? null,
+      membership_fecha_proximo_cobro: mem.fecha_proximo_cobro ?? null,
     };
   });
 }

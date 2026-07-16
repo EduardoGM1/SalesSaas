@@ -83,6 +83,53 @@ function ConfirmModal({ kind, user, newRole, onClose, onDone }) {
   );
 }
 
+function MembershipModal({ user, onClose, onDone }) {
+  const { t } = useI18n();
+  const [pending, setPending] = useState(false);
+  const [plan, setPlan] = useState(user.plan === "pro" ? "pro" : "basico");
+
+  const submit = async () => {
+    setPending(true);
+    try {
+      await patchAdmin(`users/${user.id}/membership`, { plan });
+      onDone();
+    } catch {
+      onDone("permissions");
+    } finally {
+      setPending(false);
+    }
+  };
+
+  const planLabel = (p) => t(p === "pro" ? "admin.users.plan.pro" : "admin.users.plan.basico");
+
+  return (
+    <>
+      <button type="button" className="modal-backdrop" aria-label={t("common.cancel")} onClick={onClose} />
+      <div className="admin-confirm-panel" role="alertdialog" aria-modal="true">
+        <div className="admin-confirm-head">
+          <span className="admin-confirm-title">{t("admin.users.confirm.planTitle")}</span>
+          <span className="admin-confirm-sub">{user.name}</span>
+        </div>
+        <p className="admin-confirm-body">
+          {t("admin.users.confirm.planBody", { name: user.name, next: planLabel(plan) })}
+        </p>
+        <div style={{ padding: "0 20px 8px" }}>
+          <select className="admin-role-select" value={plan} onChange={(e) => setPlan(e.target.value)} style={{ width: "100%" }}>
+            <option value="basico">{t("admin.users.plan.basico")}</option>
+            <option value="pro">{t("admin.users.plan.pro")}</option>
+          </select>
+        </div>
+        <div className="btn-row">
+          <button type="button" className="btn btn-ghost" onClick={onClose}>{t("common.cancel")}</button>
+          <button type="button" className="btn btn-primary" disabled={pending} onClick={submit}>
+            {pending ? t("admin.users.confirm.saving") : t("admin.users.confirm.planBtn")}
+          </button>
+        </div>
+      </div>
+    </>
+  );
+}
+
 function VendorFeaturesModal({ user, onClose, onDone }) {
   const { t } = useI18n();
   const [pending, setPending] = useState(false);
@@ -210,6 +257,7 @@ export function AdminUsersPage() {
   const newRole = searchParams.get("newRole");
   const editPermsId = searchParams.get("editPerms");
   const editFeaturesId = searchParams.get("editFeatures");
+  const editMembershipId = searchParams.get("editMembership");
   const errorCode = searchParams.get("error");
   const returnTo = `/admin/users${userFiltersToSearchParams(filters)}`;
   const exportHref = `/api/v1/admin/export/users${userFiltersToSearchParams(filters)}`;
@@ -218,6 +266,14 @@ export function AdminUsersPage() {
   const confirmUser = confirmUserId ? users.find((u) => u.id === confirmUserId) : undefined;
   const permsUser = editPermsId ? users.find((u) => u.id === editPermsId) : undefined;
   const featuresUser = editFeaturesId ? users.find((u) => u.id === editFeaturesId) : undefined;
+  const membershipUser = editMembershipId ? users.find((u) => u.id === editMembershipId) : undefined;
+
+  const planLabel = (p) => t(p === "pro" ? "admin.users.plan.pro" : "admin.users.plan.basico");
+  const membershipLabel = (s) => {
+    const key = `admin.users.membership.${s || "activa"}`;
+    const translated = t(key);
+    return translated === key ? (s || "activa") : translated;
+  };
 
   const refresh = (err) => {
     const url = err ? `${returnTo}${returnTo.includes("?") ? "&" : "?"}error=${err}` : returnTo;
@@ -248,6 +304,8 @@ export function AdminUsersPage() {
                 <th>{t("admin.users.col.name")}</th>
                 <th>{t("admin.users.col.email")}</th>
                 <th>{t("admin.users.col.role")}</th>
+                <th>{t("admin.users.col.plan")}</th>
+                <th>{t("admin.users.col.membership")}</th>
                 <th>{t("admin.users.col.status")}</th>
                 <th style={{ textAlign: "right" }}>{t("admin.users.col.files")}</th>
                 <th style={{ textAlign: "right" }}>{t("admin.users.col.sales")}</th>
@@ -274,6 +332,12 @@ export function AdminUsersPage() {
                         </select>
                       )}
                     </td>
+                    <td className="admin-cell-role">
+                      <span className={`admin-status-badge ${u.plan === "pro" ? "admin-status-active" : "admin-status-inactive"}`}>
+                        {planLabel(u.plan)}
+                      </span>
+                    </td>
+                    <td className="admin-cell-muted">{membershipLabel(u.membership_status)}</td>
                     <td className="admin-cell-status">
                       <span className={`admin-status-badge ${u.is_active ? "admin-status-active" : "admin-status-inactive"}`}>
                         {u.is_active ? t("admin.users.status.active") : t("admin.users.status.inactive")}
@@ -290,6 +354,11 @@ export function AdminUsersPage() {
                             <form id={formId} onSubmit={(e) => { e.preventDefault(); const fd = new FormData(e.currentTarget); navigate(userAdminUrl(filters, { confirm: "role", userId: u.id, newRole: fd.get("newRole") })); }}>
                               <button type="submit" className="icon-btn" title={t("admin.users.action.saveRole")} disabled={!u.is_active}><IconSave /></button>
                             </form>
+                          )}
+                          {caps.canRole && !u.is_super_admin && (
+                            <Link to={userAdminUrl(filters, { editMembership: u.id })} className="btn btn-sm btn-ghost" title={t("admin.users.action.changePlan")}>
+                              {t("admin.users.action.changePlan")}
+                            </Link>
                           )}
                           {!isSelf && !u.is_super_admin && caps.canDeactivate && u.is_active && (
                             <Link to={userAdminUrl(filters, { confirm: "deactivate", userId: u.id })} className="icon-btn admin-icon-btn-danger" title={t("admin.users.action.deactivate")}><IconUserX /></Link>
@@ -332,6 +401,13 @@ export function AdminUsersPage() {
       {featuresUser && caps.canPermissions && featuresUser.role !== "admin" && !featuresUser.is_super_admin && (
         <VendorFeaturesModal
           user={featuresUser}
+          onClose={() => navigate(returnTo, { replace: true })}
+          onDone={(err) => refresh(err)}
+        />
+      )}
+      {membershipUser && caps.canRole && !membershipUser.is_super_admin && (
+        <MembershipModal
+          user={membershipUser}
           onClose={() => navigate(returnTo, { replace: true })}
           onDone={(err) => refresh(err)}
         />

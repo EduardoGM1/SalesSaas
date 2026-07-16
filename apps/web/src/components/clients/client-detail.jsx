@@ -1,11 +1,12 @@
 
 import { useEffect, useRef, useState } from "react";
 import {  useNavigate  } from "react-router-dom";
-import { FileText, Palmtree, DollarSign, MessageSquare } from "lucide-react";
+import { FileText, Palmtree, DollarSign, MessageSquare, Wallet } from "lucide-react";
 import { SalesModal } from "@/components/ui/sales-modal";
 import { ClientRecordModal } from "@/components/clients/client-record-modal.jsx";
 import { CollapsibleSection } from "@/components/ui/collapsible-section.jsx";
 import { ShareProspectModal } from "@/components/network/share-prospect-modal.jsx";
+import { PremiumFeatureCard } from "@/components/premium/premium-feature-card.jsx";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { sharingApi } from "@/lib/network-api.js";
 import { prospectRowToClient, canEditShared, canCommentShared, canAddToWorkspace } from "@/lib/shared-prospect";
@@ -296,6 +297,7 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
     ? [saleCard, notesCard].filter(Boolean)
     : [
         ...TOOL_DEFS.map((tool) => ({
+          toolKey: tool.key,
           label: t(tool.labelKey),
           desc: t(tool.descKey),
           icon: tool.icon,
@@ -367,14 +369,34 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
               {toolCards.map((card) => {
                 const Icon = card.icon;
                 return (
-                  <button key={card.label} type="button" className="tool-card" onClick={card.onClick}>
-                    <div className={`tool-icon ${card.tone}`}><Icon size={20} /></div>
-                    <div>
-                      <div className="tool-name">{card.label}</div>
-                      <div className="tool-desc">{card.desc}</div>
-                    </div>
-                    <div style={{ color: "var(--muted2)", marginLeft: "auto", fontSize: 18 }}>›</div>
-                  </button>
+                  <div key={card.label} className="tool-card-stack">
+                    <button type="button" className="tool-card" onClick={card.onClick}>
+                      <div className={`tool-icon ${card.tone}`}><Icon size={20} /></div>
+                      <div>
+                        <div className="tool-name">{card.label}</div>
+                        <div className="tool-desc">{card.desc}</div>
+                      </div>
+                      <div style={{ color: "var(--muted2)", marginLeft: "auto", fontSize: 18 }}>›</div>
+                    </button>
+                    {card.toolKey === "worksheet" && (
+                      <PremiumFeatureCard
+                        featureKey="money_box"
+                        title={t("moneyBox.title")}
+                        description={t("moneyBox.cardDesc")}
+                        icon={Wallet}
+                        tone="green"
+                        onOpen={() => {
+                          if (sharedRemote) {
+                            if (!contactId) return;
+                            navigate(`/red/contacto/${contactId}/expediente/${id}/money-box`);
+                            return;
+                          }
+                          setToolMode("client", id);
+                          navigate(`/clients/${id}/money-box`);
+                        }}
+                      />
+                    )}
+                  </div>
                 );
               })}
               {isQuick && (
@@ -394,7 +416,11 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
           </div>
 
           <CollapsibleSection
-            defaultOpen={!sharedRemote}
+            defaultOpen={
+              typeof window !== "undefined"
+              && window.matchMedia("(min-width: 769px)").matches
+              && !sharedRemote
+            }
             className="card exp-side-card prospect-summary-card exp-collapsible-card"
             title={<div className="prospect-summary-title">{t("exp.prospect.title")}</div>}
             subtitle={t("exp.prospect.sub")}

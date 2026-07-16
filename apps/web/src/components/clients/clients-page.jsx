@@ -147,7 +147,6 @@ export function ClientsPage() {
               <tbody>
                 {allRows.map((c) => {
                   const href = c.pinned ? c.href : `/clients/${c.id}`;
-                  const hasSale = !c.pinned && Array.isArray(c.sales) && c.sales.length > 0;
                   return (
                     <tr
                       key={c.pinned ? `pin-${c.shareId || c.id}` : c.id}
@@ -157,7 +156,7 @@ export function ClientsPage() {
                       <td>
                         <Link
                           to={href}
-                          className={`client-name-link client-name-link--desktop${hasSale ? " client-name-link--sold" : ""}`}
+                          className="client-name-link client-name-link--desktop"
                         >
                           <span>
                             {clientDisplayName(c)}
@@ -167,7 +166,7 @@ export function ClientsPage() {
                           </span>
                           <span className="client-code">{c.prospectCode}</span>
                         </Link>
-                        <div className={`client-name-link client-name-link--mobile${hasSale ? " client-name-link--sold" : ""}`}>
+                        <div className="client-name-link client-name-link--mobile">
                           <span>
                             {clientDisplayName(c)}
                             {c.pinned && (

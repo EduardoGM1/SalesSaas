@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Money Box MVP v6</title>
+<style>
+:root{--navy:#0f2044;--blue:#2563eb;--purple:#7c3aed;--green:#059669;--bg:#eef3f8;--card:#fff;--text:#17213b;--muted:#6b7ea8;--border:#dce4ef;--border2:#c8d4e5;--shadow:0 6px 22px rgba(15,32,68,.08);--greenbg:#e9fbf4;--purplebg:#f1ecff;--r:20px;--mono:"SFMono-Regular","JetBrains Mono",Consolas,monospace}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--bg);color:var(--text)}
+.app{display:flex;min-height:100vh}
+.sidebar{width:64px;background:var(--navy);position:fixed;left:0;top:0;bottom:0;display:flex;flex-direction:column;align-items:center;padding:14px 8px;gap:16px}
+.avatar{width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,#60a5fa,#2563eb);color:#fff;font-weight:900;display:flex;align-items:center;justify-content:center}
+.sb-icon{width:44px;height:44px;border-radius:12px;color:rgba(255,255,255,.55);display:flex;align-items:center;justify-content:center;font-size:19px}
+.sb-icon.active{background:rgba(59,130,246,.18);color:#93c5fd;border:1px solid rgba(147,197,253,.25)}
+.main{margin-left:64px;width:calc(100% - 64px)}
+.topbar{height:58px;background:#fff;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 28px;position:sticky;top:0;z-index:5}
+.title{font-size:17px;font-weight:900}.sub{font-size:12px;color:var(--muted)}
+.brand{font-weight:950;color:var(--blue)}
+.page{padding:24px 28px;max-width:1320px;margin:0 auto}
+.back{font-size:12px;color:var(--blue);font-weight:900;margin-bottom:14px}
+.hero{display:flex;align-items:center;justify-content:space-between;gap:18px;margin-bottom:18px}
+.hero h1{font-size:30px;letter-spacing:-.8px}.hero p{font-size:13px;color:var(--muted);margin-top:4px}
+.status{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.pill{font-size:11px;font-weight:900;border-radius:999px;padding:7px 11px;border:1px solid var(--border2);background:#fff;color:var(--muted)}
+.pill.pro{background:var(--purplebg);border-color:rgba(124,58,237,.25);color:var(--purple)}
+.pill.ok{background:var(--greenbg);border-color:rgba(5,150,105,.20);color:var(--green)}
+.settings-strip{background:#fff;border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;box-shadow:var(--shadow);margin-bottom:16px}
+.strip-head{display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer}
+.strip-title{font-weight:950;font-size:14px}.strip-summary{font-size:12px;color:var(--muted);margin-top:2px}
+.chev{font-size:18px;color:var(--muted);transition:.15s}.chev.open{transform:rotate(180deg)}
+.settings-body{display:none;border-top:1px solid var(--border);margin-top:13px;padding-top:14px}.settings-body.open{display:block}
+.config-grid{display:grid;grid-template-columns:190px 210px 1fr;gap:12px;align-items:start}
+.field label{display:block;font-size:10px;font-weight:950;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:6px}
+.input-wrap{display:flex;align-items:center;background:#f8fafc;border:1px solid var(--border2);border-radius:12px;padding:10px 12px;gap:6px}
+.input-wrap span{font-weight:900;color:var(--muted);font-size:13px}
+.input-wrap input{border:0;background:transparent;outline:none;width:100%;font-size:14px;font-weight:900;color:var(--text);text-align:right}
+.term-list{display:flex;gap:8px;flex-wrap:wrap}.term-chip{border:1px solid var(--border2);background:#f8fafc;border-radius:13px;padding:10px 12px;min-width:145px}
+.term-name{font-size:12px;font-weight:950;color:var(--text)}.term-desc{font-size:10px;color:var(--muted);margin-top:3px;line-height:1.25}
+.money-grid{display:grid;grid-template-columns:1fr 1px 1fr;gap:20px;align-items:start}
+.divider{background:linear-gradient(to bottom,transparent,var(--border2),transparent);height:100%}
+.box{background:#fff;border:1px solid var(--border);border-radius:22px;box-shadow:var(--shadow);padding:22px;min-width:0}
+.box-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:17px}
+.box-title{font-size:21px;font-weight:950;letter-spacing:-.4px}.box-sub{font-size:12px;color:var(--muted);margin-top:2px;line-height:1.35}
+.box-icon{width:42px;height:42px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0}
+.box.eng .box-icon{background:var(--greenbg);color:var(--green)}.box.month .box-icon{background:var(--purplebg);color:var(--purple)}
+.big-input-label{font-size:12px;font-weight:900;color:var(--text);margin-bottom:8px}
+.big-input{display:flex;align-items:center;background:#f8fafc;border:1px solid var(--border2);border-radius:16px;padding:13px 15px;margin-bottom:18px}
+.big-input:focus-within{border-color:#3b82f6;box-shadow:0 0 0 3px rgba(37,99,235,.10)}
+.big-input .currency{font-weight:950;color:var(--muted);font-size:17px}.big-input input{border:0;background:transparent;outline:none;width:100%;text-align:right;font-family:var(--mono);font-size:24px;font-weight:950;color:var(--text)}
+.options-title{font-size:12px;font-weight:950;color:var(--muted);letter-spacing:.8px;text-transform:uppercase;margin-bottom:10px}
+.table-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:16px}.result-table{width:100%;border-collapse:collapse;min-width:510px}
+.result-table th{background:#f3f7fc;font-size:11px;font-weight:950;color:var(--muted);padding:12px 10px;text-align:center;border-bottom:1px solid var(--border)}
+.result-table th:first-child{text-align:left;width:160px}.result-table td{padding:13px 10px;border-bottom:1px solid var(--border);text-align:center;vertical-align:middle}
+.result-table tr:last-child td{border-bottom:none}.row-label{font-size:12px;font-weight:950;color:var(--text);text-align:left!important}
+.section-label td{background:#fbfdff;padding:11px 10px 7px;border-bottom:0}.section-title{font-size:12px;font-weight:950;color:var(--text)}
+.month-label{font-size:11px;font-weight:950;color:var(--purple);text-align:left!important;line-height:1.25}.month-label small{display:block;color:var(--muted);font-weight:700;margin-top:3px}
+.value{font-family:var(--mono);font-size:15px;font-weight:950;white-space:nowrap;color:var(--text)}.value.sale{color:var(--blue)}.value.dp{color:var(--green)}.value.monthly{color:var(--purple)}
+.dp-line{display:flex;align-items:center;justify-content:center;gap:4px;white-space:nowrap}.dp-percent{font-family:var(--mono);font-size:11px;font-weight:950;color:var(--green);background:var(--greenbg);border:1px solid rgba(5,150,105,.18);border-radius:999px;padding:3px 6px}.equal{font-size:11px;color:var(--muted);font-weight:950}
+.note{margin-top:13px;background:#f8fafc;border:1px solid var(--border);border-radius:14px;padding:12px 13px;font-size:12px;color:var(--muted);line-height:1.45}.note strong{color:var(--text)}
+.cents{font-size:.56em;vertical-align:super;margin-left:1px;font-weight:950}.mobile-tabs{display:none;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.tab{border:1px solid var(--border2);background:#fff;border-radius:12px;padding:10px;font-size:12px;font-weight:900;color:var(--muted);cursor:pointer}.tab.active{background:var(--blue);border-color:var(--blue);color:#fff}
+@media(max-width:980px){.page{padding:18px 16px}.hero{align-items:flex-start;flex-direction:column}.config-grid{grid-template-columns:1fr}.money-grid{grid-template-columns:1fr}.divider{display:none}.box{display:none}.box.mobile-active{display:block}.mobile-tabs{display:grid}.main{margin-left:0;width:100%}.sidebar{display:none}.topbar{padding:0 16px}.result-table{min-width:500px}}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar"><div class="avatar">MM</div><div class="sb-icon">📅</div><div class="sb-icon">◎</div><div class="sb-icon active">👥</div><div class="sb-icon">🧰</div></aside>
+  <main class="main">
+    <header class="topbar"><div><div class="title">Money Box</div><div class="sub">Expediente · Worksheet · Paga usuario</div></div><div class="brand">Saletse</div></header>
+    <section class="page">
+      <div class="back">← Volver a Worksheet</div>
+      <div class="hero"><div><h1>Money Box</h1><p>Opciones rápidas de venta, enganche y mensualidad con todas las mensualidades configuradas.</p></div><div class="status"><span class="pill pro">PRO / Paga usuario</span><span class="pill ok">Activo</span></div></div>
+      <div class="settings-strip">
+        <div class="strip-head" onclick="toggleSettings()"><div><div class="strip-title">Restricciones</div><div class="strip-summary" id="restrictionSummary">Enganche mínimo 30% · Gasto administrativo $0.00 · 3 mensualidades configuradas</div></div><div class="chev" id="chev">⌄</div></div>
+        <div class="settings-body" id="settingsBody"><div class="config-grid">
+          <div class="field"><label>Enganche mínimo</label><div class="input-wrap"><input id="dpPercent" type="number" value="30" min="1" max="100" oninput="recalculate()"><span>%</span></div></div>
+          <div class="field"><label>Gasto administrativo</label><div class="input-wrap"><span>$</span><input id="adminFee" type="number" value="0" min="0" oninput="recalculate()"></div></div>
+          <div class="field"><label>Mensualidades configuradas</label><div class="term-list" id="termList"></div></div>
+        </div></div>
+      </div>
+      <div class="mobile-tabs"><button class="tab active" onclick="setMobileTab('eng')">Enganche</button><button class="tab" onclick="setMobileTab('month')">Mensualidad</button></div>
+      <div class="money-grid">
+        <article class="box eng mobile-active" id="boxEng">
+          <div class="box-head"><div><div class="box-title">Enganche</div><div class="box-sub">El vendedor escribe cuánto puede dejar hoy el cliente.</div></div><div class="box-icon">💵</div></div>
+          <div class="big-input-label">¿Cuánto puede dejar hoy?</div><div class="big-input"><span class="currency">$</span><input id="downInput" type="number" value="2000" oninput="recalculate()"></div>
+          <div class="options-title">Opciones</div><div class="table-wrap"><table class="result-table"><thead><tr><th></th><th>Opción 1</th><th>Opción 2</th><th>Opción 3</th></tr></thead><tbody id="engRows"></tbody></table></div>
+          <div class="note"><strong>Lectura:</strong> la opción 2 usa exactamente el enganche escrito. La opción 1 baja presión y la opción 3 prueba un escenario superior.</div>
+        </article>
+        <div class="divider"></div>
+        <article class="box month" id="boxMonth">
+          <div class="box-head"><div><div class="box-title">Mensualidad</div><div class="box-sub">El vendedor escribe cuánto puede pagar al mes el cliente.</div></div><div class="box-icon">📆</div></div>
+          <div class="big-input-label">¿Cuánto puede pagar al mes?</div><div class="big-input"><span class="currency">$</span><input id="monthlyInput" type="number" value="210" oninput="recalculate()"></div>
+          <div class="options-title">Opciones</div><div class="table-wrap"><table class="result-table"><thead><tr><th></th><th>Opción 1</th><th>Opción 2</th><th>Opción 3</th></tr></thead><tbody id="monthRows"></tbody></table></div>
+          <div class="note"><strong>Lectura:</strong> las opciones muestran venta, enganche y mensualidad en todos los plazos configurados.</div>
+        </article>
+      </div>
+    </section>
+  </main>
+</div>
+<script>
+const monthlyTerms=[{months:36,annualRate:8.9,label:"36 meses / 8.9%",desc:"Mensualidad rápida con menor plazo."},{months:48,annualRate:10.9,label:"48 meses / 10.9%",desc:"Punto medio entre plazo y pago."},{months:60,annualRate:12.9,label:"60 meses / 12.9%",desc:"Mensualidad estándar para venta financiada."}];
+const multipliers=[0.85,1,1.15];
+function factorFor(months,annualRate){const r=(annualRate/100)/12;return r/(1-Math.pow(1+r,-months));}
+function moneyParts(value){const n=Number(value||0);const fixed=Math.abs(n).toFixed(2);const parts=fixed.split(".");const whole=parts[0];const cents=parts[1];const formatted=Number(whole).toLocaleString("en-US");return (n<0?"-":"")+"$"+formatted+"<span class='cents'>"+cents+"</span>";}
+function row(label,values,type){return "<tr><td class='row-label'>"+label+"</td>"+values.map(v=>"<td><span class='value "+type+"'>"+moneyParts(v)+"</span></td>").join("")+"</tr>";}
+function dpRow(dpPercent,values){return "<tr><td class='row-label'>Enganche</td>"+values.map(v=>"<td><div class='dp-line'><span class='dp-percent'>("+dpPercent+"%)</span><span class='equal'>=</span><span class='value dp'>"+moneyParts(v)+"</span></div></td>").join("")+"</tr>";}
+function monthlyRows(results,financePercent){let html="<tr class='section-label'><td><span class='section-title'>Mensualidades</span></td><td></td><td></td><td></td></tr>";monthlyTerms.forEach(term=>{const factor=factorFor(term.months,term.annualRate);const values=results.map(x=>x.sale*financePercent*factor);html+="<tr><td class='month-label'>"+term.label+" = <small>"+term.desc+"</small></td>"+values.map(v=>"<td><span class='value monthly'>"+moneyParts(v)+"</span></td>").join("")+"</tr>";});return html;}
+function generateByDownPayment(input,dpPercent){const baseSale=input/dpPercent;return multipliers.map(m=>{const sale=baseSale*m;return{sale:sale,downPayment:sale*dpPercent};});}
+function generateByMonthly(input,dpPercent,financePercent){const baseTerm=monthlyTerms[monthlyTerms.length-1];const factor=factorFor(baseTerm.months,baseTerm.annualRate);const baseBalance=input/factor;const baseSale=baseBalance/financePercent;return multipliers.map(m=>{const sale=baseSale*m;return{sale:sale,downPayment:sale*dpPercent};});}
+function renderRows(targetId,results,dpPercentDisplay,financePercent){document.getElementById(targetId).innerHTML=row("Venta",results.map(x=>x.sale),"sale")+dpRow(dpPercentDisplay,results.map(x=>x.downPayment))+monthlyRows(results,financePercent);}
+function renderTerms(){document.getElementById("termList").innerHTML=monthlyTerms.map(term=>"<div class='term-chip'><div class='term-name'>"+term.label+"</div><div class='term-desc'>"+term.desc+"</div></div>").join("");}
+function recalculate(){const dpPercentDisplay=Number(document.getElementById("dpPercent").value||30);const dpPercent=dpPercentDisplay/100;const financePercent=1-dpPercent;const downInput=Number(document.getElementById("downInput").value||0);const monthlyInput=Number(document.getElementById("monthlyInput").value||0);const adminFee=Number(document.getElementById("adminFee").value||0);const engResults=generateByDownPayment(downInput,dpPercent);const monthResults=generateByMonthly(monthlyInput,dpPercent,financePercent);renderRows("engRows",engResults,dpPercentDisplay,financePercent);renderRows("monthRows",monthResults,dpPercentDisplay,financePercent);document.getElementById("restrictionSummary").textContent="Enganche mínimo "+dpPercentDisplay+"% · Gasto administrativo $"+adminFee.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})+" · "+monthlyTerms.length+" mensualidades configuradas";}
+function toggleSettings(){document.getElementById("settingsBody").classList.toggle("open");document.getElementById("chev").classList.toggle("open");}
+function setMobileTab(tab){document.querySelectorAll(".tab").forEach(b=>b.classList.remove("active"));document.querySelectorAll(".box").forEach(b=>b.classList.remove("mobile-active"));if(tab==="eng"){document.querySelector(".tab:first-child").classList.add("active");document.getElementById("boxEng").classList.add("mobile-active");}else{document.querySelector(".tab:last-child").classList.add("active");document.getElementById("boxMonth").classList.add("mobile-active");}}
+renderTerms();recalculate();
+</script>
+</body>
+</html>
