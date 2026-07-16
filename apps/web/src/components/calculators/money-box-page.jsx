@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { Navigate } from "react-router-dom";
+import { Wallet, CalendarDays } from "lucide-react";
 import { Topbar } from "@/components/layout/topbar";
 import { PageBack } from "@/components/layout/page-back.jsx";
 import { CollapsibleSection } from "@/components/ui/collapsible-section.jsx";
@@ -7,64 +8,90 @@ import { useFeatureAccess } from "@/hooks/use-feature-access.js";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { useMoney } from "@/hooks/use-money.js";
 import { selectOnFocus } from "@/lib/focus-select.js";
-import { formatMoneyValue, parseMoney } from "@/lib/format/money";
+import { formatMoneyValue, parseMoney, toDisplayAmount } from "@/lib/format/money";
 import { formatDecimalInput } from "@/lib/format/numeric-input.js";
 import {
-  factorFor,
   generateByDownPayment,
   generateByMonthly,
+  monthlyPaymentsForScenarios,
   termsFromWorksheetConfig,
 } from "@/lib/calculations/money-box";
 import { useDbStore } from "@/stores/db-store";
 import { shallow } from "zustand/shallow";
 
-/**
- * Tres escenarios como tarjetas (mismo patrón Worksheet opt-block + Survey vbox),
- * no tabla plana: Venta (azul) → Enganche (verde) → plazos (amarillo).
- */
-function OptionScenarios({ results, dpPercentDisplay, financePercent, terms, t, fmt }) {
+/** Monto con centavos en superíndice; tipografía mono del sistema (td-*). */
+function MoneyAmount({ value, tone = "sale" }) {
+  const { settings } = useMoney();
+  const amount = toDisplayAmount(Number(value || 0), settings);
+  const fixed = Math.abs(amount).toFixed(2);
+  const [whole, cents] = fixed.split(".");
+  const locale = settings.language === "en" ? "en-US" : "es-MX";
+  const formatted = Number(whole).toLocaleString(locale);
+  const toneClass = tone === "dp" ? "td-green" : tone === "monthly" ? "td-purple" : "td-blue";
   return (
-    <div>
-      {results.map((scenario, index) => (
-        <div key={index} className="opt-block">
-          <div className="opt-head no-toggle">
-            <div>
-              <div className="opt-tag">{t("moneyBox.option", { n: index + 1 })}</div>
-            </div>
-          </div>
-          <div className="opt-body" style={{ display: "flex", flexDirection: "column", gap: 12, flexWrap: "nowrap" }}>
-            <div className="vbox blue">
-              <div className="vbox-val">{fmt(scenario.sale)}</div>
-              <div className="vbox-label">{t("moneyBox.sale")}</div>
-            </div>
-            <div className="vbox green">
-              <div className="vbox-val">{fmt(scenario.downPayment)}</div>
-              <div className="vbox-label">{t("moneyBox.downPayment")}</div>
-              <div className="vbox-sub">
-                {t("moneyBox.downPctSub", { pct: dpPercentDisplay })}
-              </div>
-            </div>
-            <div>
-              <div className="card-sub" style={{ marginBottom: 8 }}>
-                {t("moneyBox.monthlySection")}
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {terms.map((term) => {
-                  const monthly =
-                    scenario.sale * financePercent * factorFor(term.months, term.annualRate);
-                  return (
-                    <div key={term.label} className="vbox yellow">
-                      <div className="vbox-val">{fmt(monthly)}</div>
-                      <div className="vbox-label">{term.label}</div>
-                      {term.desc ? <div className="vbox-sub">{term.desc}</div> : null}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        </div>
-      ))}
+    <span className={toneClass} style={{ whiteSpace: "nowrap" }}>
+      {amount < 0 ? "-" : ""}${formatted}
+      <span className="money-cents">{cents}</span>
+    </span>
+  );
+}
+
+function ResultTable({ results, dpPercentDisplay, financePercent, terms, t }) {
+  return (
+    <div className="table-scroll">
+      <table className="dtbl pattern-table">
+        <thead>
+          <tr>
+            <th />
+            <th>{t("moneyBox.option", { n: 1 })}</th>
+            <th>{t("moneyBox.option", { n: 2 })}</th>
+            <th>{t("moneyBox.option", { n: 3 })}</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>{t("moneyBox.sale")}</td>
+            {results.map((r, i) => (
+              <td key={`s-${i}`}><MoneyAmount value={r.sale} tone="sale" /></td>
+            ))}
+          </tr>
+          <tr>
+            <td>{t("moneyBox.downPayment")}</td>
+            {results.map((r, i) => (
+              <td key={`d-${i}`}>
+                <span className="money-box-dp-line">
+                  <span className="network-pill ok money-box-dp-chip">
+                    ({dpPercentDisplay}%)
+                  </span>
+                  <span className="money-box-dp-eq">=</span>
+                  <MoneyAmount value={r.downPayment} tone="dp" />
+                </span>
+              </td>
+            ))}
+          </tr>
+          <tr className="money-box-section-row">
+            <td colSpan={4}>
+              <strong>{t("moneyBox.monthlySection")}</strong>
+            </td>
+          </tr>
+          {terms.map((term) => {
+            const values = monthlyPaymentsForScenarios(results, financePercent, term);
+            return (
+              <tr key={term.label}>
+                <td className="money-box-month-label">
+                  {term.label}
+                  {term.desc ? <small>{term.desc}</small> : null}
+                </td>
+                {values.map((v, i) => (
+                  <td key={`${term.label}-${i}`}>
+                    <MoneyAmount value={v} tone="monthly" />
+                  </td>
+                ))}
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
     </div>
   );
 }
@@ -76,19 +103,28 @@ function MoneyPanel({
   value,
   onChange,
   onBlur,
-  optionsTitle,
+  icon: Icon,
+  iconTone,
   results,
   note,
   dpPercentDisplay,
   financePercent,
   terms,
   t,
-  fmt,
+  mobileActive,
 }) {
   return (
-    <div className="card tool-calc-card">
-      <div className="card-heading">{title}</div>
-      <div className="card-sub">{subtitle}</div>
+    <div className={`card tool-calc-card${mobileActive ? " is-mobile-active" : ""}`}>
+      <div className="money-box-panel-head">
+        <div>
+          <div className="card-heading">{title}</div>
+          <div className="card-sub" style={{ marginBottom: 0 }}>{subtitle}</div>
+        </div>
+        <div className={`tool-icon ${iconTone}`}>
+          <Icon size={20} />
+        </div>
+      </div>
+
       <div className="tool-calc-fields">
         <div className="frow frow-first tool-frow">
           <div className="flabel">{question}</div>
@@ -106,18 +142,18 @@ function MoneyPanel({
         </div>
       </div>
 
-      <div className="card-heading" style={{ marginTop: 18 }}>{optionsTitle}</div>
-      <div className="card-sub">{t("moneyBox.optionsSub")}</div>
-      <OptionScenarios
+      <div className="card-heading" style={{ marginTop: 18, marginBottom: 10 }}>
+        {t("moneyBox.options")}
+      </div>
+      <ResultTable
         results={results}
         dpPercentDisplay={dpPercentDisplay}
         financePercent={financePercent}
         terms={terms}
         t={t}
-        fmt={fmt}
       />
 
-      <div className="card-sub" style={{ marginTop: 16, marginBottom: 0 }}>
+      <div className="hint" style={{ marginTop: 14 }}>
         <strong>{t("moneyBox.reading")}</strong>
         {" "}
         {note}
@@ -128,7 +164,7 @@ function MoneyPanel({
 
 export function MoneyBoxPage({ clientId, shared }) {
   const { t } = useI18n();
-  const { fmt, fmtN2 } = useMoney();
+  const { fmtN2 } = useMoney();
   const { allowed, locked, loading, ready } = useFeatureAccess("money_box");
   const worksheetConfig = useDbStore((s) => s.db.settings?.worksheetConfig, shallow);
 
@@ -136,6 +172,7 @@ export function MoneyBoxPage({ clientId, shared }) {
   const [adminFee, setAdminFee] = useState("0");
   const [downInput, setDownInput] = useState("2000");
   const [monthlyInput, setMonthlyInput] = useState("210");
+  const [mobileTab, setMobileTab] = useState("eng");
 
   const terms = useMemo(
     () => termsFromWorksheetConfig(worksheetConfig, [
@@ -196,6 +233,17 @@ export function MoneyBoxPage({ clientId, shared }) {
           <PageBack inline href={backHref} fallback={backHref} />
         </div>
 
+        <div className="money-box-hero">
+          <div>
+            <div className="card-heading">{t("moneyBox.title")}</div>
+            <div className="card-sub" style={{ marginBottom: 0 }}>{t("moneyBox.heroSub")}</div>
+          </div>
+          <div className="money-box-status">
+            <span className="premium-pro-badge">{t("moneyBox.proPill")}</span>
+            <span className="network-pill ok">{t("moneyBox.active")}</span>
+          </div>
+        </div>
+
         <CollapsibleSection
           className="card"
           title={<div className="card-heading">{t("moneyBox.restrictions")}</div>}
@@ -249,7 +297,26 @@ export function MoneyBoxPage({ clientId, shared }) {
           ))}
         </CollapsibleSection>
 
-        <div className="g2" style={{ marginTop: 16 }}>
+        <div className="money-box-mobile-tabs">
+          <div className="seg">
+            <button
+              type="button"
+              className={`seg-btn${mobileTab === "eng" ? " on" : ""}`}
+              onClick={() => setMobileTab("eng")}
+            >
+              {t("moneyBox.byDown")}
+            </button>
+            <button
+              type="button"
+              className={`seg-btn${mobileTab === "month" ? " on" : ""}`}
+              onClick={() => setMobileTab("month")}
+            >
+              {t("moneyBox.byMonthly")}
+            </button>
+          </div>
+        </div>
+
+        <div className="g2 money-box-panels" style={{ marginTop: 16 }}>
           <MoneyPanel
             title={t("moneyBox.byDown")}
             subtitle={t("moneyBox.byDownSub")}
@@ -257,14 +324,15 @@ export function MoneyBoxPage({ clientId, shared }) {
             value={downInput}
             onChange={setDownInput}
             onBlur={setDownInput}
-            optionsTitle={t("moneyBox.options")}
+            icon={Wallet}
+            iconTone="green"
             results={engResults}
             note={t("moneyBox.byDownNote")}
             dpPercentDisplay={dpPercentDisplay}
             financePercent={financePercent}
             terms={terms}
             t={t}
-            fmt={fmt}
+            mobileActive={mobileTab === "eng"}
           />
           <MoneyPanel
             title={t("moneyBox.byMonthly")}
@@ -273,14 +341,15 @@ export function MoneyBoxPage({ clientId, shared }) {
             value={monthlyInput}
             onChange={setMonthlyInput}
             onBlur={setMonthlyInput}
-            optionsTitle={t("moneyBox.options")}
+            icon={CalendarDays}
+            iconTone="purple"
             results={monthResults}
             note={t("moneyBox.byMonthlyNote")}
             dpPercentDisplay={dpPercentDisplay}
             financePercent={financePercent}
             terms={terms}
             t={t}
-            fmt={fmt}
+            mobileActive={mobileTab === "month"}
           />
         </div>
       </div>

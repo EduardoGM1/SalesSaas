@@ -205,7 +205,9 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
 .td-r{text-align:right;}
 .td-blue{color:var(--blue);font-weight:600;font-family:var(--mono);}
 .td-green{color:var(--green);font-weight:600;font-family:var(--mono);}
+.td-purple{color:var(--purple);font-weight:600;font-family:var(--mono);}
 .td-red{color:var(--red);font-weight:600;font-family:var(--mono);}
+.money-cents{font-size:.56em;vertical-align:super;margin-left:1px;font-weight:600;}
 .pattern-table{table-layout:fixed;}
 .pattern-table th,.pattern-table td{vertical-align:middle;}
 .pattern-table th:first-child,.pattern-table td:first-child{width:26%;text-align:left;}
