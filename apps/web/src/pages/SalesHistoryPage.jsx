@@ -18,6 +18,7 @@ const STATUS_OPTIONS = [
   { value: "pendiente", key: "status.notProcessable" },
   { value: "perdido", key: "status.lost" },
   { value: "cerrado", key: "status.closed" },
+  { value: "cancelada", key: "status.cancelled" },
 ];
 
 const PROCESSING_OPTIONS = [

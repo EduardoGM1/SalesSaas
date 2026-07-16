@@ -5,7 +5,8 @@ const STATUSES = /* @__PURE__ */ new Set([
   "bback",
   "pendiente",
   "perdido",
-  "cerrado"
+  "cerrado",
+  "cancelada"
 ]);
 const ENTRY_TYPES = /* @__PURE__ */ new Set(["venta", "nota", "follow", "descanso"]);
 const TOOLS = /* @__PURE__ */ new Set(["survey", "vacaciones", "worksheet"]);

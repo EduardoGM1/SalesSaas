@@ -27,6 +27,7 @@ const SALE_STATUS_OPTIONS = [
   { value: "venta", key: "exp.sale.statusProcessable" },
   { value: "pendiente", key: "exp.sale.statusNotProcessable" },
   { value: "cerrado", key: "exp.sale.statusProcessed" },
+  { value: "cancelada", key: "exp.sale.statusCancelled" },
 ];
 
 function isProspectFormValid(form) {

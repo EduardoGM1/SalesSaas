@@ -6,8 +6,13 @@
  */
 import assert from "node:assert/strict";
 
+function isSaleCancelled(sale) {
+  return String(sale?.status || "") === "cancelada";
+}
+
 function isSaleCountable(sale) {
   if (sale.tourCuantificable === false) return false;
+  if (isSaleCancelled(sale)) return false;
   return String(sale.status || "venta") !== "pendiente"
     && String(sale.processing || "venta") !== "pendiente";
 }
@@ -60,7 +65,10 @@ const clients = {
     id: "d",
     tipo_tour: "OFV",
     tour_cuantificable: true,
-    sales: [{ saleId: "s1", status: "venta", processing: "venta", vol: 25000 }],
+    sales: [
+      { saleId: "s1", status: "venta", processing: "venta", vol: 25000 },
+      { saleId: "s1c", status: "cancelada", processing: "venta", vol: 25000 },
+    ],
   },
   e: {
     id: "e",
@@ -80,11 +88,12 @@ const tours = countQuantifiableTours(summary);
 const sales = countQuantifiableSales(clients);
 
 assert.equal(tours, 4, "Tours = 4 cuantificables");
-assert.equal(sales, 1, "Ventas = 1 (cuantificable con venta $25,000)");
+assert.equal(sales, 1, "Ventas = 1 (cuantificable con venta $25,000; cancelada no suma)");
+assert.equal(isSaleCountable({ status: "cancelada", processing: "venta" }), false, "cancelada no es countable");
 assert.equal(
   Object.values(summary).reduce((a, r) => a + r.yes, 0),
   tours,
   "Tours == suma columna Sí del resumen",
 );
 
-console.log("ok: validate-tour-summary (4 tours / 1 venta)");
+console.log("ok: validate-tour-summary (4 tours / 1 venta; cancelada excluida)");

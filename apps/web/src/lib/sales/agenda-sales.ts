@@ -1,8 +1,14 @@
 import { clientDisplayName } from "@/lib/clients";
 import { AppDatabase, CalEntry, ClientRecord, SaleRecord } from "@/lib/storage/types";
 
+export function isSaleCancelled(sale: Pick<SaleRecord, "status"> | null | undefined): boolean {
+  return String(sale?.status || "") === "cancelada";
+}
+
+/** Totales Dashboard/producción: excluye pendiente y cancelada (sin saldos negativos). */
 export function isSaleCountable(sale: Pick<SaleRecord, "status" | "processing"> & { tourCuantificable?: boolean }): boolean {
   if (sale.tourCuantificable === false) return false;
+  if (isSaleCancelled(sale)) return false;
   return String(sale.status || "venta") !== "pendiente"
     && String(sale.processing || "venta") !== "pendiente";
 }
@@ -27,12 +33,21 @@ export function findActiveClientSale(
   return undefined;
 }
 
-/** Venta en agenda solo si sigue existiendo en un expediente activo (Clientes = fuente de verdad). */
+/** Venta visible en Agenda: countable o cancelada (rojo). Pendiente no aparece como venta. */
 export function isActiveAgendaSale(db: AppDatabase, entry: CalEntry): boolean {
   if (entry.t !== "venta" || entry.completed) return false;
   if (!entry.saleId) return false;
   const found = findActiveClientSale(db, entry.saleId);
-  return !!found && isSaleCountable(found.sale);
+  if (!found) return false;
+  if (isSaleCancelled(found.sale)) return true;
+  return isSaleCountable(found.sale);
+}
+
+/** Fuente de verdad del color: estado actual de la venta en el expediente. */
+export function isCancelledAgendaSale(db: AppDatabase, entry: CalEntry): boolean {
+  if (entry.t !== "venta" || !entry.saleId) return false;
+  const found = findActiveClientSale(db, entry.saleId);
+  return !!found && isSaleCancelled(found.sale);
 }
 
 export interface MonthSaleItem {

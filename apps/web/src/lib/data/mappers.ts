@@ -121,7 +121,7 @@ export interface SupabaseRows {
 // ---------- Helpers ----------
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const STATUSES = new Set([
-  "venta", "bback", "pendiente", "perdido", "cerrado",
+  "venta", "bback", "pendiente", "perdido", "cerrado", "cancelada",
 ]);
 const TOOLS = ["survey", "vacaciones", "worksheet"] as const;
 

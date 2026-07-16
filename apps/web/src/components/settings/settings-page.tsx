@@ -18,6 +18,7 @@ import { selectOnFocus } from "@/lib/focus-select.js";
 import { fetchExchangeRate } from "@/lib/exchange-rate-sync.js";
 import { useAppStore } from "@/stores/app-store";
 import { collectAllSales } from "@/lib/sales/collect";
+import { isSaleCancelled } from "@/lib/sales/agenda-sales";
 import { useDbStore } from "@/stores/db-store";
 import { shallow } from "zustand/shallow";
 import { useSyncStore } from "@/stores/sync-store";
@@ -119,8 +120,9 @@ export function SettingsPage() {
 
   const clientCount = Object.keys(db.clients).length;
   const allSales = collectAllSales(db);
-  const salesCount = allSales.length;
-  const salesVol = allSales.reduce((a, s) => a + (s.vol || 0), 0);
+  const activeSales = allSales.filter((s) => !isSaleCancelled(s));
+  const salesCount = activeSales.length;
+  const salesVol = activeSales.reduce((a, s) => a + (s.vol || 0), 0);
   const entriesCount = Object.values(db.cal).reduce(
     (a, m) => a + Object.values(m.days || {}).reduce((b, arr) => b + arr.length, 0),
     0

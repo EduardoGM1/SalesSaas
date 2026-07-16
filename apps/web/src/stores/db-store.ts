@@ -52,8 +52,19 @@ function cloneDb(db: AppDatabase): AppDatabase {
   return JSON.parse(JSON.stringify(db));
 }
 
+function isCancelledSale(sale: Pick<SaleRecord, "status">): boolean {
+  return String(sale.status || "") === "cancelada";
+}
+
+/** Cuenta para meta/totales del expediente (no pendiente ni cancelada). */
 function isProcessableSale(sale: Pick<SaleRecord, "status" | "processing">): boolean {
+  if (isCancelledSale(sale)) return false;
   return String(sale.status || "venta") !== "pendiente" && String(sale.processing || "venta") !== "pendiente";
+}
+
+/** En Agenda: ventas activas y canceladas (estas últimas en rojo). */
+function shouldKeepSaleOnAgenda(sale: Pick<SaleRecord, "status" | "processing">): boolean {
+  return isProcessableSale(sale) || isCancelledSale(sale);
 }
 
 function addCalendarEventByDateToDb(db: AppDatabase, dateStr: string, entry: CalEntry): void {
@@ -105,7 +116,16 @@ function recalcClientSaleMeta(client: ClientRecord): void {
 
 function upsertSaleActivity(client: ClientRecord, sale: SaleRecord): void {
   client.activities = client.activities || [];
-  const title = isProcessableSale(sale) ? `Venta $${sale.vol}` : `Venta pendiente $${sale.vol}`;
+  const statusLabel = isCancelledSale(sale)
+    ? "Cancelada"
+    : isProcessableSale(sale)
+      ? "Venta"
+      : "Pendiente";
+  const title = isCancelledSale(sale)
+    ? `Venta cancelada $${sale.vol}`
+    : isProcessableSale(sale)
+      ? `Venta $${sale.vol}`
+      : `Venta pendiente $${sale.vol}`;
   const payload: Omit<ClientActivity, "id" | "ts"> & { ts: number } = {
     type: "venta",
     saleId: sale.saleId,
@@ -116,7 +136,7 @@ function upsertSaleActivity(client: ClientRecord, sale: SaleRecord): void {
     tours: sale.tours,
     ts: sale.ts || Date.now(),
     note: [
-      isProcessableSale(sale) ? "Venta" : "Pendiente",
+      statusLabel,
       sale.tours ? `${sale.tours} tour(s)` : null,
       sale.contract ? `Folio ${sale.contract}` : null,
       sale.note,
@@ -137,7 +157,7 @@ function ensureSaleInClientAndAgenda(db: AppDatabase, clientId: string, sale: Sa
 
   removeCalendarEntriesForSale(db, sale.saleId);
 
-  if (isProcessableSale(sale)) {
+  if (shouldKeepSaleOnAgenda(sale)) {
     addCalendarEventByDateToDb(db, sale.date, {
       id: generateEntryId(),
       t: "venta",

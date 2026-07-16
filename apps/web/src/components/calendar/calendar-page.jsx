@@ -6,7 +6,7 @@ import { PageBack } from "@/components/layout/page-back.jsx";
 import { toast } from "@/lib/toast";
 import { confirmDialog } from "@/lib/confirm";
 import { translate } from "@/lib/i18n.js";
-import { isActiveAgendaSale } from "@/lib/sales/agenda-sales";
+import { isActiveAgendaSale, isCancelledAgendaSale } from "@/lib/sales/agenda-sales";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { useMoney } from "@/hooks/use-money.js";
 import { calKey } from "@/lib/format/dates";
@@ -55,12 +55,19 @@ export function CalendarPage() {
   const renderGroup = (type: string, label, dotClass, items: CalEntry[]) => {
     if (!items.length) return null;
     const open = openGroups[type] ?? false;
-    const totalVol = items.reduce((a, e) => a + (e.vol || 0), 0);
+    const totalVol = items.reduce((a, e) => {
+      if (type === "venta" && isCancelledAgendaSale(db, e)) return a;
+      return a + (e.vol || 0);
+    }, 0);
+    const headDot =
+      type === "venta" && items.every((e) => isCancelledAgendaSale(db, e))
+        ? "sale-cancelled"
+        : dotClass;
     return (
       <div key={type} className="day-group">
         <button type="button" className="dg-head w-full text-left" onClick={() => setOpenGroups((s) => ({ ...s, [type]: !open }))}>
           <div className="dg-left">
-            <span className={`dg-dot ${dotClass}`} />
+            <span className={`dg-dot ${headDot}`} />
             <span className="dg-name">{label}</span>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -79,10 +86,16 @@ export function CalendarPage() {
             {items.map((e, i) => {
               const idx = selDay ? (data.days[selDay] || []).indexOf(e) : -1;
               const clientId = resolveEntryClientId(db, e);
+              const cancelled = type === "venta" && isCancelledAgendaSale(db, e);
               return (
-                <div key={i} className="dg-entry">
+                <div key={i} className={`dg-entry${cancelled ? " is-cancelled" : ""}`}>
                   <div style={{ flex: 1 }}>
-                    {e.t === "venta" && <div className="dg-name">{fmt(e.vol || 0)} — {e.tours || 0} {t("cal.tours")}</div>}
+                    {e.t === "venta" && (
+                      <div className={`dg-name${cancelled ? " is-cancelled" : ""}`}>
+                        {fmt(e.vol || 0)} — {e.tours || 0} {t("cal.tours")}
+                        {cancelled ? ` · ${t("status.cancelled")}` : ""}
+                      </div>
+                    )}
                     {e.note && <div className="dp-date" style={{ color: e.t === "venta" ? undefined : "var(--text)" }}>{e.note}</div>}
                   </div>
                   <div className="dg-entry-actions">
@@ -145,7 +158,8 @@ export function CalendarPage() {
                   >
                     <div className="cal-dn">{d}</div>
                     <div className="cal-dots">
-                      {es.some((e) => isActiveAgendaSale(db, e)) && <span className="cal-dot sale" />}
+                      {es.some((e) => isActiveAgendaSale(db, e) && !isCancelledAgendaSale(db, e)) && <span className="cal-dot sale" />}
+                      {es.some((e) => isCancelledAgendaSale(db, e)) && <span className="cal-dot sale-cancelled" />}
                       {es.some((e) => e.t === "nota") && <span className="cal-dot note" />}
                       {es.some((e) => e.t === "follow") && <span className="cal-dot follow" />}
                       {es.some((e) => e.t === "descanso") && <span className="cal-dot descanso" />}

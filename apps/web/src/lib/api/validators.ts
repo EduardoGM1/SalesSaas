@@ -2,7 +2,7 @@ import { isUuid } from "@/lib/data/mappers";
 import { generateClientId, generateEntryId, generateProspectCode, generateSaleId, generateActivityId } from "@/lib/ids";
 
 const STATUSES = new Set([
-  "venta", "bback", "pendiente", "perdido", "cerrado",
+  "venta", "bback", "pendiente", "perdido", "cerrado", "cancelada",
 ]);
 const ENTRY_TYPES = new Set(["venta", "nota", "follow", "descanso"]);
 const TOOLS = new Set(["survey", "vacaciones", "worksheet"]);

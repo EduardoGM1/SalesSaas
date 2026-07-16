@@ -186,7 +186,7 @@ export async function getOverview(): Promise<AdminOverview> {
   const [usersRes, prospectsRes, salesLiteRes, recentRes] = await Promise.all([
     sb.from("profiles").select("*", { count: "exact", head: true }),
     sb.from("prospects").select("*", { count: "exact", head: true }),
-    sb.from("sales").select("user_id, sale_date, vol"),
+    sb.from("sales").select("user_id, sale_date, vol, status"),
     sb
       .from("sales")
       .select("id, user_id, sale_date, vol, tours, contract, status, prospect_name, prospects(name, name1, prospect_code)")
@@ -194,7 +194,7 @@ export async function getOverview(): Promise<AdminOverview> {
       .limit(8),
   ]);
 
-  const salesRaw = salesLiteRes.data ?? [];
+  const salesRaw = (salesLiteRes.data ?? []).filter((s) => String(s.status || "") !== "cancelada");
   let totalVolume = 0;
   let monthVolume = 0;
   let monthSalesCount = 0;
@@ -247,7 +247,7 @@ export async function getUsers(filters: UserAdminFilters = {}): Promise<UserStat
   const [profilesRes, prospectsRes, salesRes] = await Promise.all([
     profilesQuery,
     sb.from("prospects").select("user_id"),
-    sb.from("sales").select("user_id, vol"),
+    sb.from("sales").select("user_id, vol, status"),
   ]);
 
   const prospectsByUser = new Map<string, number>();
@@ -255,6 +255,7 @@ export async function getUsers(filters: UserAdminFilters = {}): Promise<UserStat
 
   const salesByUser = new Map<string, { count: number; vol: number }>();
   for (const s of salesRes.data ?? []) {
+    if (String(s.status || "") === "cancelada") continue;
     const agg = salesByUser.get(s.user_id) ?? { count: 0, vol: 0 };
     agg.count += 1;
     agg.vol += num(s.vol);

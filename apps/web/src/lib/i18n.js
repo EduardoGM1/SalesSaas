@@ -352,6 +352,7 @@ const ES = {
   "status.notProcessable": "Pendiente",
   "status.lost": "Perdido / cerrado",
   "status.closed": "Cerrado",
+  "status.cancelled": "Cancelada",
   "status.processed": "Procesado",
   ...ES_EXT,
   ...ES_PHASE2,
@@ -707,6 +708,7 @@ const EN = {
   "status.notProcessable": "Pending",
   "status.lost": "Lost / closed",
   "status.closed": "Closed",
+  "status.cancelled": "Cancelled",
   "status.processed": "Closed",
   ...EN_EXT,
   ...EN_PHASE2,
@@ -737,6 +739,7 @@ const STATUS_KEYS = {
   pendiente: "status.notProcessable",
   perdido: "status.lost",
   cerrado: "status.closed",
+  cancelada: "status.cancelled",
 };
 
 export function t(key, lang = "es", vars) {

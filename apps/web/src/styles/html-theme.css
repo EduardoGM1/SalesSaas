@@ -279,6 +279,7 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
 .cal-dots{display:flex;gap:3px;position:absolute;bottom:5px;}
 .cal-dot{width:7px;height:7px;border-radius:50%;box-shadow:0 0 0 1px rgba(255,255,255,.9);}
 .cal-dot.sale{background:var(--green);}
+.cal-dot.sale-cancelled{background:var(--red);}
 .cal-dot.note{background:var(--yellow);}
 .cal-dot.follow{background:var(--purple);}
 .cal-dot.descanso{background:var(--muted2);}
@@ -304,6 +305,10 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
 .dg-left{display:flex;align-items:center;gap:9px;}
 .dg-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
 .dg-dot.sale{background:var(--green);}
+.dg-dot.sale-cancelled{background:var(--red);}
+.dg-entry.is-cancelled .dg-name,
+.dg-name.is-cancelled{color:var(--red);}
+.dg-entry.is-cancelled{border-left:3px solid var(--red);padding-left:8px;}
 .dg-dot.note{background:var(--yellow);}
 .dg-dot.follow{background:var(--purple);}
 .dg-name{font-size:13px;font-weight:700;color:var(--text);}
@@ -454,7 +459,7 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
 .client-status-badge.venta{background:var(--green-lt);border-color:rgba(5,150,105,.25);color:var(--green);}
 .client-status-badge.bback{background:var(--purple-lt);border-color:rgba(124,58,237,.25);color:var(--purple);}
 .client-status-badge.pendiente{background:var(--yellow-lt);border-color:rgba(217,119,6,.25);color:var(--yellow);}
-.client-status-badge.cerrado,.client-status-badge.perdido{background:var(--red-lt);border-color:rgba(220,38,38,.25);color:var(--red);}
+.client-status-badge.cerrado,.client-status-badge.perdido,.client-status-badge.cancelada{background:var(--red-lt);border-color:rgba(220,38,38,.25);color:var(--red);}
 .ethic-box{background:rgba(37,99,235,0.05);border:1px solid rgba(37,99,235,0.15);border-radius:var(--r);padding:12px 14px;font-size:12px;color:var(--text2);line-height:1.5;}
 @media(max-width:760px){.prospect-grid{grid-template-columns:1fr;}.exp-actions{justify-content:stretch;}.exp-actions .btn{flex:1;justify-content:center;}}
 

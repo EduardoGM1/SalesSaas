@@ -9,7 +9,8 @@ const STATUSES = /* @__PURE__ */ new Set([
   "bback",
   "pendiente",
   "perdido",
-  "cerrado"
+  "cerrado",
+  "cancelada"
 ]);
 const TOOLS = ["survey", "vacaciones", "worksheet"];
 function isUuid(v) {
