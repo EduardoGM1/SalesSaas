@@ -256,6 +256,7 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
 .premium-feature-connector{position:absolute;left:18px;top:0;bottom:50%;width:2px;background:var(--border2,#c8d4e5);}
 .premium-feature-connector::after{content:"";position:absolute;left:0;bottom:0;width:14px;height:2px;background:var(--border2,#c8d4e5);}
 .premium-feature-card{min-height:72px!important;padding:14px 16px!important;width:100%;}
+.premium-feature-card.is-loading{opacity:.85;cursor:wait;}
 .premium-feature-card.is-locked{opacity:.72;background:#f8fafc;}
 .premium-feature-card.is-locked:hover{opacity:.9;}
 .premium-feature-copy{min-width:0;flex:1;}

@@ -385,14 +385,13 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
                         description={t("moneyBox.cardDesc")}
                         icon={Wallet}
                         tone="green"
-                        onOpen={() => {
-                          if (sharedRemote) {
-                            if (!contactId) return;
-                            navigate(`/red/contacto/${contactId}/expediente/${id}/money-box`);
-                            return;
-                          }
-                          setToolMode("client", id);
-                          navigate(`/clients/${id}/money-box`);
+                        to={
+                          sharedRemote
+                            ? (contactId ? `/red/contacto/${contactId}/expediente/${id}/money-box` : undefined)
+                            : `/clients/${id}/money-box`
+                        }
+                        onBeforeOpen={() => {
+                          if (!sharedRemote) setToolMode("client", id);
                         }}
                       />
                     )}

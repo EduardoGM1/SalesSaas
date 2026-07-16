@@ -83,7 +83,7 @@ function ResultTable({ results, dpPercentDisplay, financePercent, terms, t }) {
 
 export function MoneyBoxPage({ clientId, shared }) {
   const { t } = useI18n();
-  const { allowed, locked } = useFeatureAccess("money_box");
+  const { allowed, locked, loading, ready } = useFeatureAccess("money_box");
   const worksheetConfig = useDbStore((s) => s.db.settings?.worksheetConfig, shallow);
 
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -119,6 +119,21 @@ export function MoneyBoxPage({ clientId, shared }) {
     : clientId
       ? `/clients/${clientId}`
       : "/tools";
+
+  // No redirigir mientras carga el plan: eso causaba Navigate prematuro al expediente/tools.
+  if (loading || !ready) {
+    return (
+      <>
+        <Topbar title={t("moneyBox.title")} subtitle={t("common.loading")} />
+        <div className="sales-page money-box-page">
+          <div className="page-toolbar">
+            <PageBack inline href={backHref} fallback={backHref} />
+          </div>
+          <div className="admin-embedded-loading">{t("common.loading")}</div>
+        </div>
+      </>
+    );
+  }
 
   if (locked || !allowed) {
     return <Navigate to={backHref} replace />;

@@ -47,10 +47,8 @@ export function ToolsHubPage() {
                     description={t("moneyBox.cardDesc")}
                     icon={Wallet}
                     tone="green"
-                    onOpen={() => {
-                      setToolMode("libre", null);
-                      navigate("/tools/money-box");
-                    }}
+                    to="/tools/money-box"
+                    onBeforeOpen={() => setToolMode("libre", null)}
                   />
                 )}
               </div>
