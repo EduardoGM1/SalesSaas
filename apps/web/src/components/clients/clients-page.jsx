@@ -148,7 +148,7 @@ export function ClientsPage() {
                 <tr>
                   <th>{t("clients.colName")}</th>
                   <th>{t("clients.colDate")}</th>
-                  <th>{t("clients.colTourType")}</th>
+                  <th className="client-th-calif">{t("clients.colTourType")}</th>
                   <th style={{ textAlign: "center" }}>{t("clients.colActions")}</th>
                 </tr>
               </thead>
@@ -190,7 +190,7 @@ export function ClientsPage() {
                         </div>
                       </td>
                       <td>{c.tourDate ? shortDate(c.tourDate, lang) : c.createdYmd ? shortDate(c.createdYmd, lang) : "—"}</td>
-                      <td>{formatQualification(c.tipo_tour)}</td>
+                      <td className="client-td-calif">{formatQualification(c.tipo_tour)}</td>
                       <td>
                         <div className="client-actions" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
                           <Link to={href} className="icon-btn client-action-view" title={t("clients.viewFile")}><Eye size={14} /></Link>
