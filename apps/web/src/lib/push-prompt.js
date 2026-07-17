@@ -1,4 +1,9 @@
-import { canOfferPwaInstall, wasInstallPromptDismissed } from "@/lib/pwa-install.js";
+import {
+  canOfferPwaInstall,
+  isAndroidDevice,
+  isIosDevice,
+  wasInstallPromptDismissed,
+} from "@/lib/pwa-install.js";
 
 const DISMISS_KEY = "push_prompt_dismissed_at";
 const DENIED_KEY = "push_prompt_blocked";
@@ -50,8 +55,13 @@ export function dismissPushPrompt() {
   localStorage.setItem(DISMISS_KEY, String(Date.now()));
 }
 
-/** Evita competir con el banner de instalación PWA en el primer contacto. */
+/**
+ * Evita competir con el banner de instalación PWA en el primer contacto.
+ * Solo en móvil: en desktop Chrome/Edge `BeforeInstallPromptEvent` existe y el
+ * banner de instalar a menudo nunca se dismissa, lo que bloqueaba el permiso push para siempre.
+ */
 export function canOfferPushPromptAlongsidePwa() {
+  if (!isIosDevice() && !isAndroidDevice()) return true;
   if (!canOfferPwaInstall()) return true;
   return wasInstallPromptDismissed();
 }

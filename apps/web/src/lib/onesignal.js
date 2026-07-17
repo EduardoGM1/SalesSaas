@@ -1,11 +1,12 @@
 import { notificationsApi } from "@/lib/notifications-api.js";
 import { createClient } from "@/lib/supabase/client";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
-import { isIosDevice, isStandaloneApp } from "@/lib/pwa-install.js";
+import { getInstallPlatform, isIosDevice, isStandaloneApp } from "@/lib/pwa-install.js";
 import { reportOneSignalLinkIssue } from "@/lib/observability.js";
 import { PushType, resolvePushPathFromPayload } from "@salesapp/shared/push/notification-targets.js";
 import { clearLocalSession } from "@/lib/session-api.js";
 import { playNotificationSound } from "@/lib/notification-sound.js";
+import { toast } from "@/lib/toast";
 
 const SDK_URL = "https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js";
 /** Ruta relativa desde el origen (sin slash inicial), según docs OneSignal Custom Code. */
@@ -523,8 +524,14 @@ export async function setupPushNotificationHandlers({ onNavigate } = {}) {
       clearLocalSession();
       return;
     }
-    // Desktop: el SO suele no reproducir audio en foreground; móvil ya suena nativo.
-    void playNotificationSound();
+    // Desktop: audio + toast in-app; móvil deja el sonido/UI nativos del SO.
+    if (getInstallPlatform() === "desktop") {
+      void playNotificationSound();
+      const title = String(event.notification?.title || "").trim();
+      const body = String(event.notification?.body || "").trim();
+      const line = [title, body].filter(Boolean).join(" — ");
+      if (line) toast.info(line);
+    }
     event.notification.display();
   });
 

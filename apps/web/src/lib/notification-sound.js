@@ -29,6 +29,11 @@ async function resumeContext() {
   return unlocked ? ctx : null;
 }
 
+/** Resume el AudioContext (p. ej. en el mismo clic que acepta el permiso push). */
+export async function unlockNotificationSound() {
+  await resumeContext();
+}
+
 /**
  * Desbloquea audio tras el primer gesto del usuario (política autoplay de navegadores).
  * Idempotente; se puede llamar al montar el provider de push.

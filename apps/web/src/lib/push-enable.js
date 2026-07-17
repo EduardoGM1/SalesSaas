@@ -14,6 +14,7 @@ import {
 } from "@/lib/push-prompt.js";
 import { isSupabaseConfigured } from "@/lib/supabase/config.js";
 import { openInstallPrompt } from "@/lib/pwa-install.js";
+import { unlockNotificationSound } from "@/lib/notification-sound.js";
 import { toast } from "@/lib/toast";
 
 export function notifyPushStatusChanged() {
@@ -27,6 +28,8 @@ export function notifyPushStatusChanged() {
  */
 export async function enablePushNotifications() {
   try {
+    // Mismo gesto del usuario → desbloquea autoplay de audio en desktop.
+    void unlockNotificationSound();
     await subscribeToPush();
     await syncPushIdentityAndSubscription();
     notifyPushStatusChanged();
