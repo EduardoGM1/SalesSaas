@@ -3984,12 +3984,14 @@ body,
 /* KPI cards — valor dominante con tipografía Worksheet (.vbox-val) */
 .dash-kpi-card {
   display: flex;
-  align-items: flex-start;
-  gap: 10px;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 8px;
   background: var(--white, #fff);
   border: 1px solid var(--border);
   border-radius: var(--r);
-  padding: 14px 12px;
+  padding: 14px 10px;
   min-width: 0;
   min-height: 76px;
   height: 100%;
@@ -3999,15 +4001,15 @@ body,
 .dash-kpi-card-icon {
   flex-shrink: 0;
   color: var(--blue);
-  margin-top: 2px;
   line-height: 0;
 }
 
 .dash-kpi-card-body {
   min-width: 0;
-  flex: 1;
+  width: 100%;
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: 4px;
 }
 
@@ -4016,26 +4018,22 @@ body,
   font-weight: 600;
   color: var(--text2, var(--muted));
   line-height: 1.25;
+  text-align: center;
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
   overflow: hidden;
+  width: 100%;
 }
 
-/* Desktop: moneda + monto en una sola línea (sin partir el número) */
+/* Mismo token .vbox-val para moneda y % — una sola línea, sin partir el número */
 .dash-kpi-card-val.vbox-val {
   color: var(--blue);
   line-height: 1.15;
+  text-align: center;
+  width: 100%;
   word-break: normal;
   overflow-wrap: normal;
-  white-space: nowrap;
-}
-
-.dash-kpi-curr {
-  margin-right: 0.28em;
-}
-
-.dash-kpi-amt {
   white-space: nowrap;
 }
 
@@ -4933,7 +4931,7 @@ body,
   }
 
   .dash-page .dash-kpi-card {
-    padding: 10px 8px;
+    padding: 10px 6px;
     gap: 6px;
     min-height: 72px;
   }
@@ -4947,31 +4945,11 @@ body,
     font-size: 10px;
   }
 
-  /*
-   * Móvil: misma tipografía .vbox-val, tamaño menor (clamp).
-   * Si no cabe en 1 línea, moneda arriba y monto completo abajo — nunca "5," / "000".
-   */
+  /* Móvil: misma fuente para los 3 KPIs; se reduce con clamp para caber en 1 línea */
   .dash-page .dash-kpi-card-val.vbox-val {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 1px;
-    white-space: normal;
-    font-size: clamp(11px, 2.9vw, 15px);
-    letter-spacing: -0.55px;
-  }
-
-  .dash-page .dash-kpi-curr {
-    margin-right: 0;
-    font-size: 0.78em;
-    font-weight: 600;
-    line-height: 1.1;
-    opacity: 0.9;
-  }
-
-  .dash-page .dash-kpi-amt {
+    font-size: clamp(10px, 2.7vw, 15px);
+    letter-spacing: -0.6px;
     white-space: nowrap;
-    max-width: 100%;
   }
 
   .dash-page .dash-stat-grid--3 {

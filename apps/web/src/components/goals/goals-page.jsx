@@ -17,7 +17,9 @@ import { shallow } from "zustand/shallow";
 
 export function GoalsPage() {
   const { t, months } = useI18n();
-  const { fmt, fmtN } = useMoney();
+  const { fmt, fmtN, settings: moneySettings } = useMoney();
+  /** Formato KPI: "5,000 USD" (número + espacio + código). */
+  const kpiMoney = (n) => `${fmtN(n)} ${moneySettings.currency || "USD"}`;
   const hydrated = useAppStore((s) => s.hydrated);
   const calYear = useAppStore((s) => s.calYear);
   const calMonth = useAppStore((s) => s.calMonth);
@@ -141,9 +143,9 @@ export function GoalsPage() {
       <div className="dash-data-card dash-kpis-card">
         <div className="dash-card-title"><TrendingUp size={18} color="#2563eb" /> {t("goals.kpisSection")}</div>
         <div className="dash-stat-grid dash-stat-grid--3">
-          <DashboardKpiCard icon={Tag} label={t("goals.avgSale")} value={fmt(vprom)} />
+          <DashboardKpiCard icon={Tag} label={t("goals.avgSale")} value={kpiMoney(vprom)} />
           <DashboardKpiCard icon={Target} label={t("goals.closeRate")} value={`${cierre.toFixed(0)}%`} />
-          <DashboardKpiCard icon={TrendingUp} label={t("goals.efficiency")} value={fmt(efic)} />
+          <DashboardKpiCard icon={TrendingUp} label={t("goals.efficiency")} value={kpiMoney(efic)} />
         </div>
       </div>
     </div>
