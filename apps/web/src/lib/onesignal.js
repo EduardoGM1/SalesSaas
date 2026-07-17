@@ -5,6 +5,7 @@ import { isIosDevice, isStandaloneApp } from "@/lib/pwa-install.js";
 import { reportOneSignalLinkIssue } from "@/lib/observability.js";
 import { PushType, resolvePushPathFromPayload } from "@salesapp/shared/push/notification-targets.js";
 import { clearLocalSession } from "@/lib/session-api.js";
+import { playNotificationSound } from "@/lib/notification-sound.js";
 
 const SDK_URL = "https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js";
 /** Ruta relativa desde el origen (sin slash inicial), según docs OneSignal Custom Code. */
@@ -522,6 +523,8 @@ export async function setupPushNotificationHandlers({ onNavigate } = {}) {
       clearLocalSession();
       return;
     }
+    // Desktop: el SO suele no reproducir audio en foreground; móvil ya suena nativo.
+    void playNotificationSound();
     event.notification.display();
   });
 

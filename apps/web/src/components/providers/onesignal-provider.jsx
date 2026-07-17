@@ -10,6 +10,7 @@ import {
   unlinkOneSignalUser,
 } from "@/lib/onesignal.js";
 import { scheduleAutoPushRequest } from "@/lib/push-enable.js";
+import { bindNotificationSoundUnlock } from "@/lib/notification-sound.js";
 
 /** Inicializa OneSignal y vincula el usuario de Supabase como external_id. */
 export function OneSignalProvider({ children }) {
@@ -23,6 +24,8 @@ export function OneSignalProvider({ children }) {
     let oneSignalInstance = null;
     let cancelled = false;
     let activeUserId = null;
+
+    bindNotificationSoundUnlock();
 
     const resyncOnResume = () => {
       if (!activeUserId || cancelled) return;
