@@ -381,7 +381,7 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
 .dash-table-card{padding:20px 24px;}
 .dash-card-title{font-size:17px;font-weight:800;color:var(--text);letter-spacing:-.25px;margin-bottom:14px;display:flex;align-items:center;gap:8px;}
 .dash-card-title .mini-icon{width:18px;height:18px;color:var(--blue);}
-.dash-data-list{display:flex;flex-direction:column;gap:0;}
+.dash-data-list{display:flex;flex-direction:column;gap:0;padding:10px;}
 .dash-data-row{display:grid;grid-template-columns:12px minmax(0,1fr) auto;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--border);}
 .dash-data-row:last-child{border-bottom:none;}
 .dash-data-dot{width:6px;height:6px;border-radius:999px;background:var(--blue);box-shadow:0 0 0 3px rgba(37,99,235,.08);}
