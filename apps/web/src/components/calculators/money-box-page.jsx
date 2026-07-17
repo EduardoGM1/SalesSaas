@@ -9,7 +9,7 @@ import { useI18n } from "@/hooks/use-i18n.js";
 import { useMoney } from "@/hooks/use-money.js";
 import { selectOnFocus } from "@/lib/focus-select.js";
 import { formatMoneyValue, parseMoney, toDisplayAmount } from "@/lib/format/money";
-import { formatDecimalInput } from "@/lib/format/numeric-input.js";
+import { formatMoneyInput } from "@/lib/format/numeric-input.js";
 import {
   generateByDownPayment,
   generateByMonthly,
@@ -98,7 +98,6 @@ function ResultTable({ results, dpPercentDisplay, financePercent, terms, t }) {
 
 function MoneyPanel({
   title,
-  subtitle,
   question,
   value,
   onChange,
@@ -118,7 +117,6 @@ function MoneyPanel({
       <div className="money-box-panel-head">
         <div>
           <div className="card-heading">{title}</div>
-          <div className="card-sub" style={{ marginBottom: 0 }}>{subtitle}</div>
         </div>
         <div className={`tool-icon ${iconTone}`}>
           <Icon size={20} />
@@ -135,16 +133,14 @@ function MoneyPanel({
               inputMode="decimal"
               value={value}
               onFocus={selectOnFocus}
-              onChange={(e) => onChange(formatDecimalInput(e.target.value))}
+              onChange={(e) => onChange(formatMoneyInput(e.target.value))}
               onBlur={(e) => onBlur(formatMoneyValue(e.target.value))}
             />
           </div>
         </div>
       </div>
 
-      <div className="card-heading" style={{ marginTop: 18, marginBottom: 10 }}>
-        {t("moneyBox.options")}
-      </div>
+      <div className="money-box-options-rule" aria-hidden="true" />
       <ResultTable
         results={results}
         dpPercentDisplay={dpPercentDisplay}
@@ -187,8 +183,8 @@ export function MoneyBoxPage({ clientId, shared }) {
   const financePercent = 1 - dpPercent;
 
   const engResults = useMemo(
-    () => generateByDownPayment(parseMoney(downInput), dpPercent),
-    [downInput, dpPercent],
+    () => generateByDownPayment(parseMoney(downInput), dpPercent, financePercent, terms),
+    [downInput, dpPercent, financePercent, terms],
   );
   const monthResults = useMemo(
     () => generateByMonthly(parseMoney(monthlyInput), dpPercent, financePercent, terms),
@@ -278,7 +274,7 @@ export function MoneyBoxPage({ clientId, shared }) {
                   inputMode="decimal"
                   value={adminFee}
                   onFocus={selectOnFocus}
-                  onChange={(e) => setAdminFee(formatDecimalInput(e.target.value))}
+                  onChange={(e) => setAdminFee(formatMoneyInput(e.target.value))}
                   onBlur={(e) => setAdminFee(formatMoneyValue(e.target.value))}
                 />
               </div>
@@ -319,7 +315,6 @@ export function MoneyBoxPage({ clientId, shared }) {
         <div className="g2 money-box-panels" style={{ marginTop: 16 }}>
           <MoneyPanel
             title={t("moneyBox.byDown")}
-            subtitle={t("moneyBox.byDownSub")}
             question={t("moneyBox.downQuestion")}
             value={downInput}
             onChange={setDownInput}
@@ -336,7 +331,6 @@ export function MoneyBoxPage({ clientId, shared }) {
           />
           <MoneyPanel
             title={t("moneyBox.byMonthly")}
-            subtitle={t("moneyBox.byMonthlySub")}
             question={t("moneyBox.monthlyQuestion")}
             value={monthlyInput}
             onChange={setMonthlyInput}

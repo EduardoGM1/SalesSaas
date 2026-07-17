@@ -52,8 +52,11 @@ export async function listPremiumFeatures(supabase) {
 
 /**
  * Asigna plan (histórico): cancela activa previa e inserta nueva.
+ * @param {string} userId
+ * @param {string} planNombre
+ * @param {{ changedBy?: string | null }} [options]
  */
-export async function assignMembership(userId, planNombre) {
+export async function assignMembership(userId, planNombre, options = {}) {
   const planKey = String(planNombre || "").toLowerCase();
   if (planKey !== "basico" && planKey !== "pro") {
     throw new ServiceError("Plan no válido.", 400);
@@ -70,6 +73,9 @@ export async function assignMembership(userId, planNombre) {
   if (planErr) throw new ServiceError(planErr.message, 500);
   if (!plan) throw new ServiceError("Plan no encontrado.", 404);
 
+  const now = new Date().toISOString();
+  const changedBy = options.changedBy || null;
+
   const { error: cancelErr } = await serviceSb
     .from("membresias")
     .update({ estado: "cancelada" })
@@ -83,9 +89,11 @@ export async function assignMembership(userId, planNombre) {
       usuario_id: userId,
       plan_id: plan.id,
       estado: "activa",
-      fecha_inicio: new Date().toISOString(),
+      fecha_inicio: now,
+      fecha_cambio: now,
+      cambiado_por: changedBy,
     })
-    .select("id, estado, fecha_inicio, fecha_proximo_cobro")
+    .select("id, estado, fecha_inicio, fecha_proximo_cobro, cambiado_por, fecha_cambio")
     .single();
   if (insErr) throw new ServiceError(insErr.message, 400);
 
@@ -95,6 +103,8 @@ export async function assignMembership(userId, planNombre) {
     fecha_inicio: inserted.fecha_inicio,
     fecha_proximo_cobro: inserted.fecha_proximo_cobro ?? null,
     membresia_id: inserted.id,
+    cambiado_por: inserted.cambiado_por ?? changedBy,
+    fecha_cambio: inserted.fecha_cambio ?? now,
   };
 }
 

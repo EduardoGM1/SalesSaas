@@ -1,8 +1,6 @@
 import { WS_DEFAULTS } from "@/lib/constants";
 import { ensureWSConfig } from "@/lib/calculations/worksheet";
 
-export const MONEY_BOX_MULTIPLIERS = [0.85, 1, 1.15] as const;
-
 export interface MoneyBoxTerm {
   months: number;
   annualRate: number;
@@ -13,6 +11,61 @@ export interface MoneyBoxTerm {
 export interface MoneyBoxScenario {
   sale: number;
   downPayment: number;
+}
+
+/** Redondeo a 2 decimales — solo para mostrar, nunca en pasos intermedios. */
+export const round2 = (value: number) => Math.round(value * 100) / 100;
+
+export type MensualidadInput = {
+  mensualidadPerfecta: number;
+  factorFinanciero: number;
+  porcentajeEnganche: number;
+  porcentajeFinanciado: number;
+};
+
+export type EngancheInput = {
+  engancheDisponible: number;
+  factorFinanciero: number;
+  porcentajeEnganche: number;
+  porcentajeFinanciado: number;
+};
+
+export function calcularVentaPorMensualidadPerfecta(input: MensualidadInput) {
+  const { mensualidadPerfecta, factorFinanciero, porcentajeEnganche, porcentajeFinanciado } = input;
+  const balanceFinanciado = mensualidadPerfecta / factorFinanciero;
+  const ventaTotal = balanceFinanciado / porcentajeFinanciado;
+  const enganche = ventaTotal * porcentajeEnganche;
+  return {
+    ventaTotal,
+    enganche,
+    balanceFinanciado,
+    mensualidad: mensualidadPerfecta,
+    display: {
+      ventaTotal: round2(ventaTotal),
+      enganche: round2(enganche),
+      balanceFinanciado: round2(balanceFinanciado),
+      mensualidad: round2(mensualidadPerfecta),
+    },
+  };
+}
+
+export function calcularVentaPorEnganchePerfecto(input: EngancheInput) {
+  const { engancheDisponible, factorFinanciero, porcentajeEnganche, porcentajeFinanciado } = input;
+  const ventaTotal = engancheDisponible / porcentajeEnganche;
+  const balanceFinanciado = ventaTotal * porcentajeFinanciado;
+  const mensualidad = balanceFinanciado * factorFinanciero;
+  return {
+    ventaTotal,
+    enganche: engancheDisponible,
+    balanceFinanciado,
+    mensualidad,
+    display: {
+      ventaTotal: round2(ventaTotal),
+      enganche: round2(engancheDisponible),
+      balanceFinanciado: round2(balanceFinanciado),
+      mensualidad: round2(mensualidad),
+    },
+  };
 }
 
 const GENERIC_DESCS = [
@@ -48,37 +101,55 @@ export function factorFor(months: number, annualRate: number): number {
   return r / (1 - Math.pow(1 + r, -months));
 }
 
+/**
+ * Opción por plazo: venta/enganche idénticos (no dependen del factor);
+ * la mensualidad por fila usa el factor de cada plazo.
+ */
 export function generateByDownPayment(
   input: number,
   dpPercent: number,
-  multipliers: readonly number[] = MONEY_BOX_MULTIPLIERS,
+  financePercent: number,
+  monthlyTerms: MoneyBoxTerm[],
 ): MoneyBoxScenario[] {
-  if (dpPercent <= 0) return multipliers.map(() => ({ sale: 0, downPayment: 0 }));
-  const baseSale = input / dpPercent;
-  return multipliers.map((m) => {
-    const sale = baseSale * m;
-    return { sale, downPayment: sale * dpPercent };
+  if (!monthlyTerms.length || dpPercent <= 0 || financePercent <= 0) {
+    return monthlyTerms.map(() => ({ sale: 0, downPayment: 0 }));
+  }
+  return monthlyTerms.map((term) => {
+    const factor = factorFor(term.months, term.annualRate);
+    if (factor <= 0) return { sale: 0, downPayment: 0 };
+    const calc = calcularVentaPorEnganchePerfecto({
+      engancheDisponible: input,
+      factorFinanciero: factor,
+      porcentajeEnganche: dpPercent,
+      porcentajeFinanciado: financePercent,
+    });
+    return { sale: calc.ventaTotal, downPayment: calc.enganche };
   });
 }
 
+/**
+ * Cada opción usa el factor financiero de SU propio plazo (Worksheet).
+ * No reutiliza el de 12 meses ni multiplicadores artificiales.
+ */
 export function generateByMonthly(
   input: number,
   dpPercent: number,
   financePercent: number,
   monthlyTerms: MoneyBoxTerm[],
-  multipliers: readonly number[] = MONEY_BOX_MULTIPLIERS,
 ): MoneyBoxScenario[] {
-  if (!monthlyTerms.length || financePercent <= 0) {
-    return multipliers.map(() => ({ sale: 0, downPayment: 0 }));
+  if (!monthlyTerms.length || financePercent <= 0 || dpPercent < 0) {
+    return monthlyTerms.map(() => ({ sale: 0, downPayment: 0 }));
   }
-  const baseTerm = monthlyTerms[monthlyTerms.length - 1];
-  const factor = factorFor(baseTerm.months, baseTerm.annualRate);
-  if (factor <= 0) return multipliers.map(() => ({ sale: 0, downPayment: 0 }));
-  const baseBalance = input / factor;
-  const baseSale = baseBalance / financePercent;
-  return multipliers.map((m) => {
-    const sale = baseSale * m;
-    return { sale, downPayment: sale * dpPercent };
+  return monthlyTerms.map((term) => {
+    const factor = factorFor(term.months, term.annualRate);
+    if (factor <= 0) return { sale: 0, downPayment: 0 };
+    const calc = calcularVentaPorMensualidadPerfecta({
+      mensualidadPerfecta: input,
+      factorFinanciero: factor,
+      porcentajeEnganche: dpPercent,
+      porcentajeFinanciado: financePercent,
+    });
+    return { sale: calc.ventaTotal, downPayment: calc.enganche };
   });
 }
 

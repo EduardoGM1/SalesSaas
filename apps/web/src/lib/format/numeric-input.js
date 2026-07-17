@@ -21,3 +21,12 @@ export function formatDecimalInput(value, locale = "en-US") {
   if (decPart == null) return formattedInt;
   return `${formattedInt}.${decPart}`;
 }
+
+/** Entrada monetaria con miles automáticos y máximo 2 decimales (mientras escribe). */
+export function formatMoneyInput(raw, locale = "en-US") {
+  const clean = String(raw ?? "").replace(/[^\d.]/g, "");
+  if (!clean) return "";
+  const [intPart, decPart] = clean.split(".");
+  const withCommas = Number(intPart || "0").toLocaleString(locale);
+  return decPart !== undefined ? `${withCommas}.${decPart.slice(0, 2)}` : withCommas;
+}

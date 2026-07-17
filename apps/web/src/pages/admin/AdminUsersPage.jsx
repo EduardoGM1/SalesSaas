@@ -10,6 +10,7 @@ import { VENDOR_FEATURE_PERMISSIONS } from "@/lib/auth/user-features";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { useMoney } from "@/hooks/use-money.js";
 import { longDate } from "@/lib/format/dates";
+import { notifyAuthChanged } from "@/lib/session-api.js";
 
 const ROLE_KEYS = { vendedor: "admin.users.role.seller", gerente: "admin.users.role.manager", admin: "admin.users.role.admin" };
 const ERROR_KEYS = {
@@ -355,7 +356,7 @@ export function AdminUsersPage() {
                               <button type="submit" className="icon-btn" title={t("admin.users.action.saveRole")} disabled={!u.is_active}><IconSave /></button>
                             </form>
                           )}
-                          {caps.canRole && !u.is_super_admin && (
+                          {caps.canRole && (!u.is_super_admin || isSelf) && (
                             <Link to={userAdminUrl(filters, { editMembership: u.id })} className="btn btn-sm btn-ghost" title={t("admin.users.action.changePlan")}>
                               {t("admin.users.action.changePlan")}
                             </Link>
@@ -405,11 +406,16 @@ export function AdminUsersPage() {
           onDone={(err) => refresh(err)}
         />
       )}
-      {membershipUser && caps.canRole && !membershipUser.is_super_admin && (
+      {membershipUser && caps.canRole && (!membershipUser.is_super_admin || membershipUser.id === session?.userId) && (
         <MembershipModal
           user={membershipUser}
           onClose={() => navigate(returnTo, { replace: true })}
-          onDone={(err) => refresh(err)}
+          onDone={(err) => {
+            if (!err && membershipUser.id === session?.userId) {
+              notifyAuthChanged();
+            }
+            refresh(err);
+          }}
         />
       )}
     </div>

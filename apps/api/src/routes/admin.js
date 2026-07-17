@@ -200,7 +200,11 @@ router.patch("/users/:id/membership", async (req, res) => {
   const body = parseJsonBody(req, res);
   if (!body) return;
   const plan = body.plan ?? body.planNombre ?? body.nombre;
-  await runService(res, () => membershipService.assignMembership(req.params.id, plan), { wrap: "data" });
+  await runService(
+    res,
+    () => membershipService.assignMembership(req.params.id, plan, { changedBy: a.userId }),
+    { wrap: "data" },
+  );
 });
 
 router.get("/support/requests", async (req, res) => {
