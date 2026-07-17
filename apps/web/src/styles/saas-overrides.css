@@ -3949,6 +3949,7 @@ body,
 
 .dash-stat-grid--3 {
   grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: stretch;
 }
 
 .dash-tours-sales-grid {
@@ -3991,6 +3992,7 @@ body,
   padding: 14px 12px;
   min-width: 0;
   min-height: 76px;
+  height: 100%;
   box-shadow: var(--shadow);
 }
 
@@ -4014,12 +4016,27 @@ body,
   font-weight: 600;
   color: var(--text2, var(--muted));
   line-height: 1.25;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
 }
 
+/* Desktop: moneda + monto en una sola línea (sin partir el número) */
 .dash-kpi-card-val.vbox-val {
   color: var(--blue);
   line-height: 1.15;
-  word-break: break-word;
+  word-break: normal;
+  overflow-wrap: normal;
+  white-space: nowrap;
+}
+
+.dash-kpi-curr {
+  margin-right: 0.28em;
+}
+
+.dash-kpi-amt {
+  white-space: nowrap;
 }
 
 .dash-week-axis-caption {
@@ -4916,20 +4933,49 @@ body,
   }
 
   .dash-page .dash-kpi-card {
-    padding: 12px 10px;
-    min-height: 70px;
+    padding: 10px 8px;
+    gap: 6px;
+    min-height: 72px;
+  }
+
+  .dash-page .dash-kpi-card-icon svg {
+    width: 13px;
+    height: 13px;
   }
 
   .dash-page .dash-kpi-card-label {
-    font-size: 11px;
+    font-size: 10px;
   }
 
+  /*
+   * Móvil: misma tipografía .vbox-val, tamaño menor (clamp).
+   * Si no cabe en 1 línea, moneda arriba y monto completo abajo — nunca "5," / "000".
+   */
   .dash-page .dash-kpi-card-val.vbox-val {
-    font-size: 17px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1px;
+    white-space: normal;
+    font-size: clamp(11px, 2.9vw, 15px);
+    letter-spacing: -0.55px;
+  }
+
+  .dash-page .dash-kpi-curr {
+    margin-right: 0;
+    font-size: 0.78em;
+    font-weight: 600;
+    line-height: 1.1;
+    opacity: 0.9;
+  }
+
+  .dash-page .dash-kpi-amt {
+    white-space: nowrap;
+    max-width: 100%;
   }
 
   .dash-page .dash-stat-grid--3 {
-    gap: 8px;
+    gap: 6px;
   }
 
   .dash-page .dash-graph-card,
