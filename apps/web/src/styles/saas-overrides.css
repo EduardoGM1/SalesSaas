@@ -4945,9 +4945,9 @@ body,
     font-size: 10px;
   }
 
-  /* Móvil: misma fuente para los 3 KPIs; se reduce con clamp para caber en 1 línea */
+  /* Móvil: valores KPI (azul) a 1rem — misma tipografía .vbox-val */
   .dash-page .dash-kpi-card-val.vbox-val {
-    font-size: clamp(10px, 2.7vw, 15px);
+    font-size: 1rem;
     letter-spacing: -0.6px;
     white-space: nowrap;
   }
