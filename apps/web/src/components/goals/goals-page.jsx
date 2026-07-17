@@ -3,6 +3,7 @@ import { BarChart3, Calendar, List, Tag, Target, TrendingUp } from "lucide-react
 import { Topbar } from "@/components/layout/topbar";
 import { PageBack } from "@/components/layout/page-back";
 import { DashboardChart } from "@/components/goals/dashboard-chart";
+import { DashboardKpiCard } from "@/components/goals/dashboard-kpi-card.jsx";
 import { CollapsibleSection } from "@/components/ui/collapsible-section.jsx";
 import { getDashboardWeeks, normalizeGoal, workingDaysRemaining } from "@/lib/calculations/calendar";
 import { productionTourSaleCounts } from "@/lib/calculations/tour-summary";
@@ -103,8 +104,7 @@ export function GoalsPage() {
         <div className="dash-data-list">
           {dataRows(volumeRows)}
         </div>
-        <div className="dash-section-divider">{t("goals.accumulated")}</div>
-        <div className="dash-stat-grid dash-stat-grid--2">
+        <div className="dash-stat-grid dash-stat-grid--2 dash-tours-sales-grid">
           <div className="dash-stat-card">
             <span className="dash-stat-label">{t("metas.tours")}</span>
             <span className="dash-stat-val">{fmtN(totals.tours)}</span>
@@ -117,7 +117,7 @@ export function GoalsPage() {
       </div>
 
       <CollapsibleSection
-        defaultOpen={false}
+        defaultOpen
         className="dash-graph-card dash-chart-collapsible"
         title={<div className="dash-card-title"><Target size={18} color="#2563eb" /> {t("goals.targetVsReal")}</div>}
         subtitle={t("goals.chartHint")}
@@ -141,21 +141,9 @@ export function GoalsPage() {
       <div className="dash-data-card dash-kpis-card">
         <div className="dash-card-title"><TrendingUp size={18} color="#2563eb" /> {t("goals.kpisSection")}</div>
         <div className="dash-stat-grid dash-stat-grid--3">
-          <div className="dash-kpi-mini">
-            <Tag size={14} aria-hidden="true" />
-            <span className="dash-kpi-mini-label">{t("goals.avgSale")}</span>
-            <span className="dash-kpi-mini-val">{fmt(vprom)}</span>
-          </div>
-          <div className="dash-kpi-mini">
-            <Target size={14} aria-hidden="true" />
-            <span className="dash-kpi-mini-label">{t("goals.closeRate")}</span>
-            <span className="dash-kpi-mini-val">{cierre.toFixed(0)}%</span>
-          </div>
-          <div className="dash-kpi-mini">
-            <TrendingUp size={14} aria-hidden="true" />
-            <span className="dash-kpi-mini-label">{t("goals.efficiency")}</span>
-            <span className="dash-kpi-mini-val">{fmt(efic)}</span>
-          </div>
+          <DashboardKpiCard icon={Tag} label={t("goals.avgSale")} value={fmt(vprom)} />
+          <DashboardKpiCard icon={Target} label={t("goals.closeRate")} value={`${cierre.toFixed(0)}%`} />
+          <DashboardKpiCard icon={TrendingUp} label={t("goals.efficiency")} value={fmt(efic)} />
         </div>
       </div>
     </div>

@@ -2735,18 +2735,16 @@ body,
   color: var(--red);
 }
 
-.vacation-year-card-amount {
-  font-size: 22px;
-  font-weight: 800;
+/* Montos: tipografía Worksheet (.vbox-val); solo se ajusta tamaño/color de contexto */
+.vacation-amount-val.vbox-val {
   line-height: 1.15;
-  letter-spacing: -0.02em;
 }
 
-.vacation-year-card--current .vacation-year-card-amount {
+.vacation-year-card--current .vacation-amount-val.vbox-val {
   color: var(--blue);
 }
 
-.vacation-year-card--future .vacation-year-card-amount {
+.vacation-year-card--future .vacation-amount-val.vbox-val {
   color: var(--red);
 }
 
@@ -2851,12 +2849,9 @@ body,
   text-align: center;
 }
 
-.vacation-total-amount {
-  font-size: 32px;
-  font-weight: 800;
-  color: #ea580c;
-  letter-spacing: -0.03em;
-  line-height: 1.1;
+.vacation-total-card .vacation-amount-val.vbox-val {
+  color: var(--yellow);
+  font-size: 28px;
 }
 
 .vacation-total-label {
@@ -2887,19 +2882,34 @@ body,
   text-align: center;
 }
 
-.vacation-split-amount {
-  font-size: 20px;
-  font-weight: 800;
-  line-height: 1.15;
-  letter-spacing: -0.02em;
-}
-
-.vacation-panel--base .vacation-split-amount {
+.vacation-panel--base .vacation-amount-val.vbox-val {
   color: var(--blue);
 }
 
-.vacation-panel--impact .vacation-split-amount {
+.vacation-panel--impact .vacation-amount-val.vbox-val {
   color: var(--red);
+}
+
+.vacation-chart-wrap {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+  min-width: 0;
+}
+
+.vacation-chart-title {
+  margin-bottom: 10px;
+}
+
+.vacation-chart-empty {
+  margin-top: 16px;
+  padding: 18px 14px;
+  border-radius: var(--r);
+  border: 1px dashed var(--border);
+  color: var(--muted);
+  font-size: 13px;
+  text-align: center;
+  line-height: 1.4;
 }
 
 /* Legacy vacation helpers kept for shared styles elsewhere */
@@ -3053,6 +3063,53 @@ body,
 .prospect-field input:focus::placeholder,
 .prospect-field textarea:focus::placeholder {
   opacity: 0;
+}
+
+/* Worksheet: guía visual del engrane (Unidad 1 CAMBIOS) */
+.worksheet-options-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 4px;
+}
+.worksheet-options-head .card-heading {
+  margin-bottom: 0;
+  min-width: 0;
+}
+.worksheet-config-guide {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  flex-shrink: 0;
+  max-width: min(200px, 48%);
+}
+.worksheet-config-hint {
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  gap: 4px;
+  text-align: right;
+}
+.worksheet-config-hint-text {
+  font-size: 12px;
+  line-height: 1.25;
+  color: var(--muted);
+  font-weight: 500;
+}
+.worksheet-config-hint-arrow {
+  flex-shrink: 0;
+  color: var(--muted);
+  margin-top: 1px;
+}
+@media (max-width: 700px) {
+  .worksheet-config-guide {
+    max-width: min(160px, 52%);
+  }
+  .worksheet-config-hint-text {
+    font-size: 11px;
+  }
 }
 
 .worksheet-opt-body {
@@ -3488,28 +3545,20 @@ body,
     font-size: 18px;
   }
 
-  .vacation-year-card-amount {
-    font-size: 20px;
-  }
-
   .vacation-year-card {
     padding: 14px 12px;
   }
 
-  .vacation-panel-amount {
-    font-size: 20px;
-  }
-
-  .vacation-total-amount {
-    font-size: 28px;
-  }
-
-  .vacation-split-amount {
-    font-size: 18px;
+  .vacation-total-card .vacation-amount-val.vbox-val {
+    font-size: 24px;
   }
 
   .vacation-panel {
     padding: 14px 12px;
+  }
+
+  .vacation-chart-wrap .recharts-responsive-container {
+    min-height: 240px;
   }
 
   .tool-card {
@@ -3889,26 +3938,6 @@ body,
   line-height: 1.2;
 }
 
-.dash-section-divider {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin: 12px 0 10px;
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.55px;
-  color: var(--muted);
-  text-transform: uppercase;
-}
-
-.dash-section-divider::before,
-.dash-section-divider::after {
-  content: "";
-  flex: 1;
-  height: 1px;
-  background: var(--border);
-}
-
 .dash-stat-grid {
   display: grid;
   gap: 10px;
@@ -3922,17 +3951,22 @@ body,
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+.dash-tours-sales-grid {
+  margin-top: 12px;
+}
+
 .dash-stat-card {
-  background: rgba(37, 99, 235, 0.06);
-  border: 1px solid rgba(37, 99, 235, 0.15);
+  background: var(--white, #fff);
+  border: 1px solid var(--border);
   border-radius: var(--r);
   padding: 12px 10px;
   text-align: center;
+  box-shadow: var(--shadow);
 }
 
 .dash-stat-label {
   display: block;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--muted);
   font-weight: 600;
   margin-bottom: 4px;
@@ -3946,39 +3980,73 @@ body,
   line-height: 1.1;
 }
 
-.dash-kpi-mini {
-  background: rgba(37, 99, 235, 0.06);
-  border: 1px solid rgba(37, 99, 235, 0.12);
+/* KPI cards — valor dominante con tipografía Worksheet (.vbox-val) */
+.dash-kpi-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: var(--white, #fff);
+  border: 1px solid var(--border);
   border-radius: var(--r);
-  padding: 10px 6px;
-  text-align: center;
+  padding: 14px 12px;
+  min-width: 0;
+  min-height: 76px;
+  box-shadow: var(--shadow);
+}
+
+.dash-kpi-card-icon {
+  flex-shrink: 0;
+  color: var(--blue);
+  margin-top: 2px;
+  line-height: 0;
+}
+
+.dash-kpi-card-body {
+  min-width: 0;
+  flex: 1;
   display: flex;
   flex-direction: column;
-  align-items: center;
   gap: 4px;
-  min-width: 0;
 }
 
-.dash-kpi-mini svg {
-  color: var(--blue);
-  opacity: 0.85;
-  flex-shrink: 0;
-}
-
-.dash-kpi-mini-label {
-  font-size: 9px;
-  color: var(--muted);
+.dash-kpi-card-label {
+  font-size: 12px;
   font-weight: 600;
+  color: var(--text2, var(--muted));
   line-height: 1.25;
 }
 
-.dash-kpi-mini-val {
-  font-size: 11px;
-  font-weight: 800;
+.dash-kpi-card-val.vbox-val {
   color: var(--blue);
-  font-family: var(--font-geist-mono), monospace;
-  line-height: 1.2;
+  line-height: 1.15;
   word-break: break-word;
+}
+
+.dash-week-axis-caption {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  width: 100%;
+  margin-top: 6px;
+  padding: 0 8px;
+  box-sizing: border-box;
+}
+
+.dash-week-axis-caption-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  line-height: 1.3;
+}
+
+.dash-week-axis-caption-range {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--muted);
+  line-height: 1.3;
+  margin-top: 1px;
 }
 
 .dash-graph-head {
@@ -4835,10 +4903,6 @@ body,
     margin-top: 0;
   }
 
-  .dash-page .dash-section-divider {
-    margin: 10px 0 8px;
-  }
-
   .dash-page .dash-stat-grid {
     gap: 8px;
   }
@@ -4851,12 +4915,21 @@ body,
     font-size: 20px;
   }
 
-  .dash-page .dash-kpi-mini {
-    padding: 9px 5px;
+  .dash-page .dash-kpi-card {
+    padding: 12px 10px;
+    min-height: 70px;
   }
 
-  .dash-page .dash-kpi-mini-val {
-    font-size: 10px;
+  .dash-page .dash-kpi-card-label {
+    font-size: 11px;
+  }
+
+  .dash-page .dash-kpi-card-val.vbox-val {
+    font-size: 17px;
+  }
+
+  .dash-page .dash-stat-grid--3 {
+    gap: 8px;
   }
 
   .dash-page .dash-graph-card,

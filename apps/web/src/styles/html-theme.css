@@ -535,6 +535,8 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
 .client-table tr:last-child td{border-bottom:none;}
 .client-table tbody tr:hover td{background:rgba(37,99,235,.035);}
 .client-name-link{font-weight:800;color:var(--text);cursor:pointer;display:flex;flex-direction:column;gap:2px;}
+.client-name-text{color:inherit;}
+.client-name-text--sale{color:var(--green);}
 .client-name-link--mobile{display:none;}
 .client-code{font-family:var(--mono);font-size:10px;color:var(--muted);font-weight:600;}
 .client-actions{display:flex;align-items:center;justify-content:center;gap:5px;min-width:0;flex-shrink:0;}

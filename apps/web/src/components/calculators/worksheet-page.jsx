@@ -169,14 +169,20 @@ export function WorksheetPage({ clientId, shared }: WorksheetPageProps) {
           </div>
 
           <div className="card">
-            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
-              <div>
-                <div className="card-heading">{t("tools.worksheet.options")}</div>
-                <div className="card-sub">{t("tools.worksheet.optionsSub")}</div>
+            <div className="worksheet-options-head">
+              <div className="card-heading">{t("tools.worksheet.options")}</div>
+              <div className="worksheet-config-guide">
+                <button type="button" className="config-btn" onClick={() => setConfigOpen(true)} title={t("tools.worksheet.configTitle")} aria-label={t("tools.worksheet.configTitle")} disabled={readOnly}>
+                  <Settings />
+                </button>
+                <div className="worksheet-config-hint">
+                  <span className="worksheet-config-hint-text">{t("tools.worksheet.optionsSub")}</span>
+                  <svg className="worksheet-config-hint-arrow" width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+                    <path d="M3 13C7 13 11 10 12 5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                    <path d="M9.5 5.5L12 5l.5 2.5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </div>
               </div>
-              <button type="button" className="config-btn" onClick={() => setConfigOpen(true)} title={t("tools.worksheet.configTitle")} aria-label={t("tools.worksheet.configTitle")} disabled={readOnly}>
-                <Settings />
-              </button>
             </div>
             {result.options.map((opt, i) => (
               <div key={i} className="opt-block">

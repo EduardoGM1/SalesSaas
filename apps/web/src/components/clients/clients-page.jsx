@@ -9,11 +9,19 @@ import { sharingApi } from "@/lib/network-api.js";
 import { Topbar } from "@/components/layout/topbar";
 import { PageBack } from "@/components/layout/page-back";
 import { clientDisplayName } from "@/lib/clients";
+import { isQuantifiableSaleClient } from "@/lib/calculations/tour-summary";
 import { shortDate } from "@/lib/format/dates";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { selectOnFocus } from "@/lib/focus-select.js";
 import { useAppStore } from "@/stores/app-store";
 import { useClientActions } from "@/hooks/use-client-actions.js";
+
+/** Solo el valor de catálogo (Q, NQ, CT, Member…); sin sufijo "- 1" / "- 0". */
+function formatQualification(tipoTour) {
+  if (!tipoTour) return "—";
+  const cleaned = String(tipoTour).replace(/\s*[-–]\s*\d+\s*$/u, "").trim();
+  return cleaned || "—";
+}
 
 function pinnedToRow(share) {
   const name = share.prospect_name || "—";
@@ -147,6 +155,11 @@ export function ClientsPage() {
               <tbody>
                 {allRows.map((c) => {
                   const href = c.pinned ? c.href : `/clients/${c.id}`;
+                  // Misma fuente de verdad que el recuadro Ventas del Dashboard.
+                  const hasRecognizedSale = !c.pinned && isQuantifiableSaleClient(c);
+                  const nameClass = hasRecognizedSale
+                    ? "client-name-text client-name-text--sale"
+                    : "client-name-text";
                   return (
                     <tr
                       key={c.pinned ? `pin-${c.shareId || c.id}` : c.id}
@@ -158,7 +171,7 @@ export function ClientsPage() {
                           to={href}
                           className="client-name-link client-name-link--desktop"
                         >
-                          <span>
+                          <span className={nameClass}>
                             {clientDisplayName(c)}
                             {c.pinned && (
                               <span className="client-status-badge">{t("clients.pinnedBadge")}</span>
@@ -167,7 +180,7 @@ export function ClientsPage() {
                           <span className="client-code">{c.prospectCode}</span>
                         </Link>
                         <div className="client-name-link client-name-link--mobile">
-                          <span>
+                          <span className={nameClass}>
                             {clientDisplayName(c)}
                             {c.pinned && (
                               <span className="client-status-badge">{t("clients.pinnedBadge")}</span>
@@ -177,7 +190,7 @@ export function ClientsPage() {
                         </div>
                       </td>
                       <td>{c.tourDate ? shortDate(c.tourDate, lang) : c.createdYmd ? shortDate(c.createdYmd, lang) : "—"}</td>
-                      <td>{c.tipo_tour ? String(c.tipo_tour) : "—"}</td>
+                      <td>{formatQualification(c.tipo_tour)}</td>
                       <td>
                         <div className="client-actions" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
                           <Link to={href} className="icon-btn client-action-view" title={t("clients.viewFile")}><Eye size={14} /></Link>

@@ -4,7 +4,8 @@ import { Topbar } from "@/components/layout/topbar";
 import { PageBack } from "@/components/layout/page-back.jsx";
 import { SaveToolModal } from "@/components/calculators/save-tool-modal";
 import { SharedToolBanner } from "@/components/calculators/shared-tool-banner.jsx";
-import { computeVacaciones } from "@/lib/calculations/vacaciones";
+import { VacationCumulativeChart } from "@/components/calculators/vacation-cumulative-chart.jsx";
+import { buildVacacionesCumulativeSeries, computeVacaciones } from "@/lib/calculations/vacaciones";
 import { selectOnFocus } from "@/lib/focus-select.js";
 import { formatDecimalInput } from "@/lib/format/numeric-input.js";
 import { formatMoneyValue } from "@/lib/format/money";
@@ -84,6 +85,10 @@ export function VacacionesPage({ clientId, shared }: VacacionesPageProps) {
   );
 
   const currentYear = new Date().getFullYear();
+  const chartSeries = useMemo(
+    () => buildVacacionesCumulativeSeries(fields, currentYear),
+    [fields, currentYear, moneySettings?.currency, moneySettings?.exchangeRate, moneySettings?.language],
+  );
   const hasProjectionYears = String(fields.va).trim() !== "" && r.anios > 0;
   const futureYear = currentYear + r.anios;
   const inflationImpact = Math.max(0, r.tc - r.ts);
@@ -161,7 +166,7 @@ export function VacacionesPage({ clientId, shared }: VacacionesPageProps) {
                 <div className="vacation-year-row">
                   <div className="vacation-year-card vacation-year-card--current">
                     <div className="vacation-year-card-year">{currentYear}</div>
-                    <div className="vacation-year-card-amount">{t("tools.vacation.perYear", { cost: fmt(r.ga) })}</div>
+                    <div className="vbox-val vacation-amount-val">{fmt(r.ga)}</div>
                     <div className="vacation-year-card-detail">{t("tools.vacation.tripsLine", { cost: fmtN(r.costo), trips: r.viajes })}</div>
                   </div>
                   <div className="vacation-year-arrow" aria-hidden="true" title={t("tools.vacation.inflationAccum")}>→</div>
@@ -169,30 +174,32 @@ export function VacacionesPage({ clientId, shared }: VacacionesPageProps) {
                     {hasProjectionYears && (
                       <div className="vacation-year-card-year">{futureYear}</div>
                     )}
-                    <div className="vacation-year-card-amount">{t("tools.vacation.perYear", { cost: fmt(r.cf) })}</div>
+                    <div className="vbox-val vacation-amount-val">{fmt(r.cf)}</div>
                     <div className="vacation-year-card-detail">{t("tools.vacation.inflationAccum")}</div>
                   </div>
                 </div>
 
                 <div className="vacation-total-card">
-                  <div className="vacation-total-amount">{fmt(r.tc)}</div>
+                  <div className="vbox-val vacation-amount-val">{fmt(r.tc)}</div>
                   <div className="vacation-total-label">{t("tools.vacation.totalInflation")}</div>
                   <div className="vacation-total-sub">{t("tools.vacation.totalInflationSub", { years: r.anios })}</div>
                 </div>
 
                 <div className="vacation-split-row">
                   <div className="vacation-panel vacation-panel--base">
-                    <div className="vacation-split-amount">{fmt(r.ts)}</div>
+                    <div className="vbox-val vacation-amount-val">{fmt(r.ts)}</div>
                     <div className="vacation-panel-label">{t("tools.vacation.withoutInflation")}</div>
                     <div className="vacation-panel-detail">{t("tools.vacation.noInflationLine", { cost: fmtN(r.ga), years: r.anios })}</div>
                   </div>
                   <div className="vacation-panel vacation-panel--impact">
-                    <div className="vacation-split-amount">{fmt(inflationImpact)}</div>
+                    <div className="vbox-val vacation-amount-val">{fmt(inflationImpact)}</div>
                     <div className="vacation-panel-label">{t("tools.vacation.inflationImpact")}</div>
                     <div className="vacation-panel-detail">{t("tools.vacation.inflationExtra")}</div>
                   </div>
                 </div>
               </div>
+
+              <VacationCumulativeChart series={chartSeries} />
             </div>
           </div>
         </div>

@@ -63,10 +63,13 @@ export function DashboardChart({
   const yMax = Math.ceil((maxVal * 1.12) / 10000) * 10000 || maxVal;
   const W = 760;
   const H = 315;
-  const m = { l: 72, r: 26, t: 16, b: 48 };
+  const m = { l: 72, r: 26, t: 16, b: 40 };
   const iw = W - m.l - m.r;
   const ih = H - m.t - m.b;
   const n = Math.max(weeks.length, 1);
+  const weekNos = weeks.map((w) => w.weekNo);
+  const weekFrom = weekNos.length ? Math.min(...weekNos) : 0;
+  const weekTo = weekNos.length ? Math.max(...weekNos) : 0;
   const x = (i: number) => m.l + (n === 1 ? iw / 2 : (iw * i) / (n - 1));
   const y = (v: number) => m.t + ih - (Math.max(0, Math.min(yMax, v)) / yMax) * ih;
 
@@ -143,9 +146,16 @@ export function DashboardChart({
           />
         ))}
         {weeks.map((w, i) => (
-          <text key={`lbl-${w.weekNo}`} x={x(i)} y={H - 14} textAnchor="middle" className="dash-week-label">{w.weekNo}</text>
+          <text key={`lbl-${w.weekNo}`} x={x(i)} y={H - 10} textAnchor="middle" className="dash-week-label">{w.weekNo}</text>
         ))}
       </svg>
+
+      <div className="dash-week-axis-caption">
+        <div className="dash-week-axis-caption-title">{t("goals.weekOfYearLabel")}</div>
+        <div className="dash-week-axis-caption-range">
+          {t("goals.weekOfYearRange", { from: weekFrom, to: weekTo })}
+        </div>
+      </div>
 
       {activeWeek && (
         <div
