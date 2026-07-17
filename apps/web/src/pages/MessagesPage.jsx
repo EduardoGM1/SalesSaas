@@ -66,22 +66,34 @@ export function MessagesPage() {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const threadRef = useRef(null);
+  /** Evita que un poll/load lento sobrescriba un hilo más reciente (carrera sidebar vs chat). */
+  const threadReqIdRef = useRef(0);
+  const activePeerIdRef = useRef(activePeerId);
+  activePeerIdRef.current = activePeerId;
 
   const loadConversations = async () => {
     const data = await messagesApi.conversations();
     setConversations(data);
   };
 
-  const loadThread = async (peerId) => {
+  const loadThread = async (peerId, { silent = false } = {}) => {
     if (!peerId) {
       setMessages([]);
       return;
     }
+    const reqId = ++threadReqIdRef.current;
     const data = await messagesApi.thread(peerId);
+    // Respuesta obsoleta: otro loadThread más nuevo ya corre o el peer cambió.
+    if (reqId !== threadReqIdRef.current || activePeerIdRef.current !== peerId) return;
     setMessages(data);
     await messagesApi.markRead(peerId).catch(() => {});
+    if (reqId !== threadReqIdRef.current || activePeerIdRef.current !== peerId) return;
     notifyUnreadMessagesChanged();
-    loadConversations();
+    try {
+      await loadConversations();
+    } catch (err) {
+      if (!silent) throw err;
+    }
   };
 
   useEffect(() => {
@@ -97,9 +109,21 @@ export function MessagesPage() {
     if (!activePeerId || !isSupabaseConfigured()) return;
     loadThread(activePeerId).catch((err) => toast.error(err.message));
     const timer = window.setInterval(() => {
-      loadThread(activePeerId).catch(() => {});
+      loadThread(activePeerId, { silent: true }).catch(() => {});
     }, 8000);
-    return () => window.clearInterval(timer);
+    const onVisible = () => {
+      if (document.visibilityState === "visible") {
+        loadThread(activePeerId, { silent: true }).catch(() => {});
+      }
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("focus", onVisible);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("focus", onVisible);
+      threadReqIdRef.current += 1; // invalida in-flight al salir del peer
+    };
   }, [activePeerId]);
 
   useEffect(() => {
@@ -117,9 +141,13 @@ export function MessagesPage() {
     if (!text || !activePeerId || sending) return;
     setSending(true);
     try {
-      await messagesApi.send(activePeerId, text);
+      const sent = await messagesApi.send(activePeerId, text);
       setDraft("");
-      await loadThread(activePeerId);
+      // Append inmediato: no esperar al poll/refetch (evita que el sidebar se adelante al hilo).
+      if (sent?.id && activePeerIdRef.current === activePeerId) {
+        setMessages((prev) => (prev.some((m) => m.id === sent.id) ? prev : [...prev, sent]));
+      }
+      await loadThread(activePeerId, { silent: true });
     } catch (err) {
       toast.error(err.message);
     } finally {

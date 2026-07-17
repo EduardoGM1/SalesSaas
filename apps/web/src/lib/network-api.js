@@ -1,8 +1,10 @@
 async function apiFetch(path, options = {}) {
+  const { headers, cache, ...rest } = options;
   const res = await fetch(`/api/v1${path}`, {
     credentials: "include",
-    headers: { "Content-Type": "application/json", ...(options.headers || {}) },
-    ...options,
+    cache: cache ?? "default",
+    headers: { "Content-Type": "application/json", ...(headers || {}) },
+    ...rest,
   });
   const body = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(body.error || "Error de red.");
@@ -26,14 +28,18 @@ export const networkApi = {
 };
 
 export const messagesApi = {
-  conversations: () => apiFetch("/messages/conversations"),
-  thread: (userId) => apiFetch(`/messages?with=${encodeURIComponent(userId)}`),
+  conversations: () => apiFetch("/messages/conversations", { cache: "no-store" }),
+  thread: (userId) => apiFetch(`/messages?with=${encodeURIComponent(userId)}`, { cache: "no-store" }),
   send: (recipientId, body) => apiFetch("/messages", {
     method: "POST",
+    cache: "no-store",
     body: JSON.stringify({ recipient_id: recipientId, body }),
   }),
-  markRead: (userId) => apiFetch(`/messages/read?with=${encodeURIComponent(userId)}`, { method: "PATCH" }),
-  unreadCount: () => apiFetch("/messages/unread-count"),
+  markRead: (userId) => apiFetch(`/messages/read?with=${encodeURIComponent(userId)}`, {
+    method: "PATCH",
+    cache: "no-store",
+  }),
+  unreadCount: () => apiFetch("/messages/unread-count", { cache: "no-store" }),
 };
 
 export const sharingApi = {

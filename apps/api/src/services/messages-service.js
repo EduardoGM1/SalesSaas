@@ -105,15 +105,18 @@ export async function listConversations(supabase, userId) {
 
 export async function listMessagesWithUser(supabase, userId, peerId, { limit = 100 } = {}) {
   if (!isUuid(peerId)) throw new ServiceError("Usuario inválido.");
+  const take = Math.min(Math.max(Number(limit) || 100, 1), 200);
+  // Más recientes primero; luego invertimos para render cronológico ASC.
   const { data, error } = await supabase
     .from("direct_messages")
     .select(MSG_SELECT)
     .or(`and(sender_id.eq.${userId},recipient_id.eq.${peerId}),and(sender_id.eq.${peerId},recipient_id.eq.${userId})`)
-    .order("created_at", { ascending: true })
-    .limit(Math.min(limit, 200));
+    .order("created_at", { ascending: false })
+    .limit(take);
   if (error) throw new ServiceError(error.message, 500);
   const profiles = await loadProfiles(supabase, [userId, peerId]);
-  return (data ?? []).map((row) => mapMessage(row, userId, profiles));
+  const chronological = [...(data ?? [])].reverse();
+  return chronological.map((row) => mapMessage(row, userId, profiles));
 }
 
 export async function sendMessage(supabase, userId, { recipient_id: recipientId, body }) {
