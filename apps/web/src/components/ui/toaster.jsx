@@ -22,6 +22,9 @@ const ICONS = {
   follow_up_reminder: CalendarClock,
   sales_to_process: CircleDollarSign,
   scheduled_note: StickyNote,
+  agenda: CalendarClock,
+  ventas: CircleDollarSign,
+  notas: StickyNote,
   bell: Bell,
 };
 
@@ -33,6 +36,9 @@ const TONE_BY_ICON = {
   follow_up_reminder: "blue",
   sales_to_process: "green",
   scheduled_note: "teal",
+  agenda: "blue",
+  ventas: "green",
+  notas: "teal",
   bell: "blue",
 };
 
@@ -48,10 +54,10 @@ const TONE_BY_ICON = {
  *   avatarUrl: string | null,
  *   href?: string | null,
  *   onClick?: (() => void) | null,
+ *   groupKey?: string | null,
+ *   timer?: number,
  * }} Item
  */
-
-let _id = 0;
 
 export function Toaster() {
   const navigate = useNavigate();
@@ -62,34 +68,57 @@ export function Toaster() {
       const title = String(opts?.title || "").trim();
       const body = String(opts?.body || "").trim();
       const message = String(opts?.message || "").trim();
-      if (!title && !body && !message) return;
+      if (!title && !body && !message) return 0;
 
       const type = opts.type || "info";
       const variant = opts.variant || "default";
-      const id = ++_id;
+      const replaceId = opts._replaceId || null;
+      const groupKey = opts.groupKey || null;
+      let id = replaceId || toast._allocId();
+      const duration = opts.duration
+        ?? (variant === "notification" ? 5500 : type === "error" ? 4500 : 3000);
+
       const item = {
         id,
         msg: message || [title, body].filter(Boolean).join(" — "),
         title: title || (variant === "notification" ? message : ""),
-        body: body || (variant === "notification" && title ? "" : ""),
+        body: body || "",
         type,
         variant,
         icon: opts.icon || null,
         avatarUrl: opts.avatarUrl || null,
         href: opts.href || null,
         onClick: opts.onClick || null,
+        groupKey,
       };
 
       setItems((prev) => {
-        const next = [...prev, item];
+        let next = [...prev];
+        const byId = replaceId ? next.findIndex((i) => i.id === replaceId) : -1;
+        const byGroup = groupKey && byId < 0
+          ? next.findIndex((i) => i.groupKey === groupKey)
+          : -1;
+        const idx = byId >= 0 ? byId : byGroup;
+
+        if (idx >= 0) {
+          const old = next[idx];
+          id = old.id;
+          if (old.timer) window.clearTimeout(old.timer);
+          const timer = window.setTimeout(() => {
+            setItems((p) => p.filter((i) => i.id !== old.id));
+          }, duration);
+          next[idx] = { ...item, id: old.id, timer };
+          return next;
+        }
+
+        const timer = window.setTimeout(() => {
+          setItems((p) => p.filter((i) => i.id !== id));
+        }, duration);
+        next = [...next, { ...item, id, timer }];
         return next.length > MAX_VISIBLE ? next.slice(-MAX_VISIBLE) : next;
       });
 
-      const duration = opts.duration
-        ?? (variant === "notification" ? 5500 : type === "error" ? 4500 : 3000);
-      window.setTimeout(() => {
-        setItems((p) => p.filter((i) => i.id !== id));
-      }, duration);
+      return id;
     });
   }, []);
 
@@ -123,11 +152,7 @@ export function Toaster() {
               }}
             >
               {item.avatarUrl ? (
-                <img
-                  src={item.avatarUrl}
-                  alt=""
-                  className="toast-card-avatar"
-                />
+                <img src={item.avatarUrl} alt="" className="toast-card-avatar" />
               ) : (
                 <div className={`toast-card-icon tone-${tone}`} aria-hidden>
                   <Icon size={18} strokeWidth={2.1} />

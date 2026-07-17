@@ -11,41 +11,55 @@ export type ToastIconKey =
   | "bell";
 
 export type ToastOptions = {
-  /** Mensaje plano (toasts simples success/error/info) */
   message?: string;
-  /** Título de notificación enriquecida */
   title?: string;
-  /** Cuerpo / segunda línea */
   body?: string;
   type?: ToastType;
-  /** `notification` = card con ícono + 2 líneas (Saletse) */
   variant?: "default" | "notification";
   icon?: ToastIconKey | null;
   avatarUrl?: string | null;
   duration?: number;
   href?: string | null;
   onClick?: (() => void) | null;
+  /** Si se repite, el Toaster reemplaza el toast existente en vez de apilar. */
+  groupKey?: string | null;
 };
 
-type Handler = (opts: ToastOptions) => void;
+type Handler = (opts: ToastOptions & { _replaceId?: number | null }) => number;
 
 let _handler: Handler | null = null;
+let _nextId = 0;
 
-function emit(opts: ToastOptions) {
-  _handler?.(opts);
+function emit(opts: ToastOptions & { _replaceId?: number | null }): number {
+  if (!_handler) return 0;
+  return _handler(opts);
 }
 
 export const toast = {
-  success: (msg: string) => emit({ message: msg, type: "success", variant: "default" }),
-  error: (msg: string) => emit({ message: msg, type: "error", variant: "default" }),
-  info: (msg: string) => emit({ message: msg, type: "info", variant: "default" }),
-  /** Toast de notificación in-app (diseño Saletse, 2 líneas, ícono). */
-  notify: (opts: ToastOptions) => emit({
+  success: (msg: string) => {
+    emit({ message: msg, type: "success", variant: "default" });
+  },
+  error: (msg: string) => {
+    emit({ message: msg, type: "error", variant: "default" });
+  },
+  info: (msg: string) => {
+    emit({ message: msg, type: "info", variant: "default" });
+  },
+  /** Toast de notificación in-app. Devuelve id para update/agrupación. */
+  notify: (opts: ToastOptions): number => emit({
     type: "info",
     variant: "notification",
     duration: 5500,
     ...opts,
   }),
-  /** Internal: called by <Toaster /> on mount */
+  /** Actualiza un toast existente (agrupación). */
+  update: (id: number, opts: ToastOptions): number => emit({
+    type: "info",
+    variant: "notification",
+    duration: 5500,
+    ...opts,
+    _replaceId: id,
+  }),
   _register(h: Handler) { _handler = h; },
+  _allocId() { return ++_nextId; },
 };

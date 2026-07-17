@@ -1,20 +1,14 @@
 /**
- * Canal dual desktop: toasts in-app vía Supabase Realtime (sin Web Push).
- * Enriquece con nombre/avatar/expediente para igualar el detalle del push nativo.
+ * Canal dual desktop: toasts in-app vía Supabase Realtime.
+ * Arma data para `armarNotificacion` / `presentarNotificacion`.
  */
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { createClient, primeRealtimeAuth } from "@/lib/supabase/client";
 import { fetchRealtimeSession } from "@/lib/presence-api.js";
 import { ensureRealtimeReady, removeChannelSafe } from "@/lib/presence/realtime.js";
 import { getInstallPlatform } from "@/lib/pwa-install.js";
-import {
-  PushType,
-  presentInAppNotification,
-  messagePath,
-  networkPath,
-  contactPath,
-  sharedProspectPath,
-} from "@/lib/in-app-notifications.js";
+import { sharedProspectPath } from "@salesapp/shared/push/notification-targets.js";
+import { presentarNotificacion } from "@/lib/in-app-notifications.js";
 import { notifyUnreadMessagesChanged } from "@/lib/messages-unread.js";
 
 let channel = null;
@@ -120,17 +114,13 @@ export async function startInAppNotificationsRealtime(userId) {
           void (async () => {
             const row = payload.new || {};
             const senderId = row.sender_id;
-            const body = String(row.body || "").trim();
-            const short = body.length > 120 ? `${body.slice(0, 120)}…` : body;
+            const mensaje = String(row.body || "").trim();
             const profile = await loadProfile(supabase, senderId);
-            const name = profile.full_name || "Nuevo mensaje";
-            presentInAppNotification({
-              type: PushType.MESSAGE,
-              title: name,
-              body: short || "Tienes un mensaje nuevo",
-              path: senderId ? messagePath(senderId) : "/messages",
-              avatarUrl: profile.avatar_url,
-              dedupeKey: `rt-msg:${row.id || `${senderId}:${row.created_at}`}`,
+            presentarNotificacion("mensaje_nuevo", {
+              nombreRemitente: profile.full_name || "Contacto",
+              mensaje: mensaje || "Tienes un mensaje nuevo",
+              avatarRemitente: profile.avatar_url || undefined,
+              chatId: senderId,
             });
             notifyUnreadMessagesChanged();
           })();
@@ -149,14 +139,10 @@ export async function startInAppNotificationsRealtime(userId) {
             const row = payload.new || {};
             if (row.status && row.status !== "pending") return;
             const profile = await loadProfile(supabase, row.requester_id);
-            const name = profile.full_name || "Alguien";
-            presentInAppNotification({
-              type: PushType.CONNECTION_REQUEST,
-              title: "Solicitud de contacto",
-              body: `${name} quiere agregarte a su red`,
-              path: networkPath(),
-              avatarUrl: profile.avatar_url,
-              dedupeKey: `rt-conn-req:${row.id}`,
+            presentarNotificacion("solicitud_contacto", {
+              nombreSolicitante: profile.full_name || "Alguien",
+              avatarSolicitante: profile.avatar_url || undefined,
+              solicitudId: row.id,
             });
           })();
         },
@@ -176,14 +162,11 @@ export async function startInAppNotificationsRealtime(userId) {
             if (row.status !== "accepted" || prev.status === "accepted") return;
             const peerId = row.addressee_id;
             const profile = await loadProfile(supabase, peerId);
-            const name = profile.full_name || "Tu contacto";
-            presentInAppNotification({
-              type: PushType.CONNECTION_ACCEPTED,
-              title: "Solicitud aceptada",
-              body: `${name} aceptó tu solicitud`,
-              path: peerId ? contactPath(peerId) : networkPath(),
-              avatarUrl: profile.avatar_url,
-              dedupeKey: `rt-conn-ok:${row.id}`,
+            presentarNotificacion("solicitud_aceptada", {
+              nombreContacto: profile.full_name || "Tu contacto",
+              avatarContacto: profile.avatar_url || undefined,
+              contactoId: peerId,
+              chatId: peerId,
             });
           })();
         },
@@ -205,18 +188,15 @@ export async function startInAppNotificationsRealtime(userId) {
               loadProfile(supabase, ownerId),
               loadProspectLabel(supabase, prospectId),
             ]);
-            const name = profile.full_name || "Un contacto";
-            const label = prospectLabel || "un expediente";
-            const access = permissionLabel(row.permission);
-            presentInAppNotification({
-              type: PushType.SHARED_PROSPECT,
-              title: "Expediente compartido",
-              body: `${name} te compartió el expediente «${label}» con acceso ${access}`,
-              path: ownerId && prospectId
+            presentarNotificacion("expediente_compartido", {
+              nombreQuienComparte: profile.full_name || "Un contacto",
+              nombreCliente: prospectLabel || "un expediente",
+              nivelAcceso: permissionLabel(row.permission),
+              avatarQuienComparte: profile.avatar_url || undefined,
+              expedienteId: prospectId,
+              rutaDestino: ownerId && prospectId
                 ? sharedProspectPath(ownerId, prospectId)
-                : networkPath(),
-              avatarUrl: profile.avatar_url,
-              dedupeKey: `rt-share:${row.id}`,
+                : "/network",
             });
           })();
         },
