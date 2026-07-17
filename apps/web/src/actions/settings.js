@@ -23,11 +23,18 @@ export async function saveProfileRemote({ fullName, phone, avatarUrl, settings }
     return { ok: true, localOnly: true, settings: nextSettings };
   }
 
+  // Asegura que el nombre visible en red/mensajes no quede vacío en profiles.full_name.
+  const resolvedName = String(fullName || nextSettings.userName || "").trim();
   const res = await fetch("/api/v1/profile", {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     credentials: "include",
-    body: JSON.stringify({ fullName, phone, avatarUrl: avatarUrl || null, settings: nextSettings }),
+    body: JSON.stringify({
+      fullName: resolvedName && resolvedName.toLowerCase() !== "usuario" ? resolvedName : fullName,
+      phone,
+      avatarUrl: avatarUrl || null,
+      settings: nextSettings,
+    }),
   });
   const body = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(body.error ?? "No se pudo guardar el perfil.");

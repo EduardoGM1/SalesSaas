@@ -1,20 +1,17 @@
 import { isUuid } from "@salesapp/shared/data/mappers.js";
 import { ServiceError, assertFound } from "../lib/service-error.js";
+import { profileDisplayName } from "../lib/profile-display-name.js";
 import {
   notifyConnectionAccepted,
   notifyConnectionRequest,
 } from "./push-notifications-service.js";
-
-function profileName(profile) {
-  return profile?.full_name?.trim() || profile?.email?.split("@")[0] || "Usuario";
-}
 
 async function loadProfiles(supabase, ids) {
   const unique = [...new Set(ids.filter(Boolean))];
   if (!unique.length) return new Map();
   const { data, error } = await supabase
     .from("profiles")
-    .select("id, full_name, email, avatar_url, last_seen_at")
+    .select("id, full_name, email, avatar_url, last_seen_at, settings")
     .in("id", unique);
   if (error) throw new ServiceError(error.message, 500);
   return new Map((data ?? []).map((p) => [p.id, p]));
@@ -32,7 +29,7 @@ function mapConnection(row, userId, profiles) {
     updated_at: row.updated_at,
     peer: peer ? {
       id: peer.id,
-      full_name: peer.full_name,
+      full_name: profileDisplayName(peer),
       email: peer.email,
       avatar_url: peer.avatar_url,
       last_seen_at: peer.last_seen_at,
@@ -96,7 +93,7 @@ export async function sendConnectionRequest(supabase, userId, addresseeId) {
   const requester = profiles.get(data.requester_id);
   notifyConnectionRequest(data.addressee_id, {
     requesterId: userId,
-    requesterName: profileName(requester),
+    requesterName: profileDisplayName(requester),
   }).catch(() => {});
   return mapConnection(data, userId, profiles);
 }
@@ -134,7 +131,7 @@ export async function updateConnectionStatus(supabase, userId, connectionId, sta
     const accepter = profiles.get(userId);
     notifyConnectionAccepted(data.requester_id, {
       peerId: userId,
-      peerName: profileName(accepter),
+      peerName: profileDisplayName(accepter),
     }).catch(() => {});
   }
   return mapConnection(data, userId, profiles);

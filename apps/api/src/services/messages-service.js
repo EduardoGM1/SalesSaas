@@ -1,5 +1,6 @@
 import { isUuid } from "@salesapp/shared/data/mappers.js";
 import { ServiceError, assertFound } from "../lib/service-error.js";
+import { profileDisplayName } from "../lib/profile-display-name.js";
 import { notifyNewMessage } from "./push-notifications-service.js";
 
 export const MESSAGE_TYPES = Object.freeze({
@@ -15,19 +16,24 @@ const STRUCTURED_TYPES = new Set([
   MESSAGE_TYPES.PERMISSION_RESPONSE,
 ]);
 
-function profileName(profile) {
-  return profile?.full_name?.trim() || profile?.email?.split("@")[0] || "Usuario";
-}
-
 async function loadProfiles(supabase, ids) {
   const unique = [...new Set(ids.filter(Boolean))];
   if (!unique.length) return new Map();
   const { data, error } = await supabase
     .from("profiles")
-    .select("id, full_name, email, avatar_url")
+    .select("id, full_name, email, avatar_url, settings")
     .in("id", unique);
   if (error) throw new ServiceError(error.message, 500);
   return new Map((data ?? []).map((p) => [p.id, p]));
+}
+
+function peerPublic(profile, peerId) {
+  if (!profile) return { id: peerId, full_name: null, avatar_url: null };
+  return {
+    id: profile.id,
+    full_name: profileDisplayName(profile),
+    avatar_url: profile.avatar_url,
+  };
 }
 
 const MSG_SELECT = "id, sender_id, recipient_id, body, read_at, created_at, message_type, metadata";
@@ -45,7 +51,7 @@ function mapMessage(row, userId, profiles) {
     sender_id: row.sender_id,
     recipient_id: row.recipient_id,
     mine: row.sender_id === userId,
-    peer: peer ? { id: peer.id, full_name: peer.full_name, avatar_url: peer.avatar_url } : { id: peerId, full_name: null, avatar_url: null },
+    peer: peerPublic(peer, peerId),
   };
 }
 
@@ -87,7 +93,7 @@ export async function listConversations(supabase, userId) {
       const unread = row.recipient_id === userId && !row.read_at ? 1 : 0;
       const peer = profiles.get(peerId);
       byPeer.set(peerId, {
-        peer: peer ? { id: peer.id, full_name: peer.full_name, avatar_url: peer.avatar_url } : { id: peerId, full_name: null, avatar_url: null },
+        peer: peerPublic(peer, peerId),
         last_message: {
           body: previewBody(row),
           message_type: row.message_type || MESSAGE_TYPES.TEXT,
@@ -147,7 +153,7 @@ export async function sendMessage(supabase, userId, { recipient_id: recipientId,
   const senderProfile = profiles.get(userId);
   notifyNewMessage(recipientId, {
     senderId: userId,
-    senderName: profileName(senderProfile),
+    senderName: profileDisplayName(senderProfile),
     body: text,
   }).catch(() => {});
   return mapped;
@@ -192,7 +198,7 @@ export async function sendStructuredMessage(client, {
     const profiles = await loadProfiles(client, [senderId]);
     notifyNewMessage(recipientId, {
       senderId,
-      senderName: profileName(profiles.get(senderId)),
+      senderName: profileDisplayName(profiles.get(senderId)),
       body: text,
     }).catch(() => {});
   }

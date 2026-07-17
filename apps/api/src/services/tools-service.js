@@ -1,6 +1,7 @@
 import { isUuid } from "@salesapp/shared/data/mappers.js";
 import { bodyToToolUpsert } from "@salesapp/shared/api/validators.js";
 import { ServiceError } from "../lib/service-error.js";
+import { profileDisplayName } from "../lib/profile-display-name.js";
 import { notifyProspectSectionChanged } from "./push-notifications-service.js";
 
 const SECTION_TOOLS = new Set(["survey", "vacaciones", "worksheet"]);
@@ -50,10 +51,10 @@ async function notifyOwnerToolCollaborators(supabase, { actorId, prospectId, sec
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("full_name, email")
+    .select("full_name, email, settings")
     .eq("id", actorId)
     .maybeSingle();
-  const actorName = profile?.full_name?.trim() || profile?.email?.split("@")[0] || "Alguien";
+  const actorName = profileDisplayName(profile, "Alguien");
 
   await notifyProspectSectionChanged({
     actorId,

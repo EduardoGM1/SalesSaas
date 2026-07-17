@@ -22,15 +22,25 @@ export function buildProfilePatch(body) {
 
 export async function updateProfile(supabase, userId, body) {
   const patch = buildProfilePatch(body);
+  const { data: current, error: readErr } = await supabase
+    .from("profiles")
+    .select("full_name, settings")
+    .eq("id", userId)
+    .maybeSingle();
+  if (readErr) throw new ServiceError(readErr.message, 500);
+
   if (patch.settings) {
-    const { data: current, error: readErr } = await supabase
-      .from("profiles")
-      .select("settings")
-      .eq("id", userId)
-      .maybeSingle();
-    if (readErr) throw new ServiceError(readErr.message, 500);
     patch.settings = { ...(current?.settings ?? {}), ...patch.settings };
   }
+
+  // Evita cuentas con settings.userName real pero full_name vacío → se ven como "Usuario".
+  const settingsName = String(patch.settings?.userName ?? current?.settings?.userName ?? "").trim();
+  const nextFullName = patch.full_name !== undefined ? String(patch.full_name ?? "").trim() : null;
+  const currentFullName = String(current?.full_name ?? "").trim();
+  if (!currentFullName && !nextFullName && settingsName && settingsName.toLowerCase() !== "usuario") {
+    patch.full_name = settingsName;
+  }
+
   const { data, error } = await supabase
     .from("profiles")
     .update(patch)

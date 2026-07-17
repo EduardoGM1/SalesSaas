@@ -3,7 +3,13 @@ import { useI18n } from "@/hooks/use-i18n.js";
 import { formatLastSeen } from "@/lib/presence/format-last-seen.js";
 
 function displayName(user, fallback = "Usuario") {
-  return user?.full_name?.trim() || user?.email?.split("@")[0] || fallback;
+  const fromColumn = String(user?.full_name ?? "").trim();
+  if (fromColumn) return fromColumn;
+  const fromSettings = String(user?.settings?.userName ?? "").trim();
+  if (fromSettings && fromSettings.toLowerCase() !== "usuario") return fromSettings;
+  const email = String(user?.email ?? "").trim();
+  const fromEmail = email.includes("@") ? email.split("@")[0].trim() : "";
+  return fromEmail || fallback;
 }
 
 export function NetworkUserAvatar({ user, label, size = "md", showPresence = false }) {

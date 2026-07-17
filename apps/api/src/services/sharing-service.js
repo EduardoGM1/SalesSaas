@@ -6,16 +6,14 @@ import { createServiceSupabaseClient } from "../lib/supabase-server.js";
 import { notifyProspectShared, notifyProspectSectionChanged } from "./push-notifications-service.js";
 import { MESSAGE_TYPES, sendStructuredMessage } from "./messages-service.js";
 
-function profileName(profile) {
-  return profile?.full_name?.trim() || profile?.email?.split("@")[0] || "Usuario";
-}
+import { profileDisplayName } from "../lib/profile-display-name.js";
 
 async function loadProfiles(supabase, ids) {
   const unique = [...new Set(ids.filter(Boolean))];
   if (!unique.length) return new Map();
   const { data, error } = await supabase
     .from("profiles")
-    .select("id, full_name, email, avatar_url")
+    .select("id, full_name, email, avatar_url, settings")
     .in("id", unique);
   if (error) throw new ServiceError(error.message, 500);
   return new Map((data ?? []).map((p) => [p.id, p]));
@@ -257,7 +255,7 @@ export async function createShare(supabase, userId, prospectId, { shared_with_id
     const owner = profiles.get(userId);
     notifyProspectShared(sharedWithId, {
       ownerId: userId,
-      ownerName: profileName(owner),
+      ownerName: profileDisplayName(owner),
       prospectId,
       prospectName: mapped.prospect_name,
     }).catch(() => {});
@@ -576,7 +574,7 @@ export async function redeemShareInvite(supabase, userId, token) {
   const profiles = await loadProfiles(writeClient, [invite.owner_id, userId]);
   notifyProspectShared(userId, {
     ownerId: invite.owner_id,
-    ownerName: profileName(profiles.get(invite.owner_id)),
+    ownerName: profileDisplayName(profiles.get(invite.owner_id)),
     prospectId: invite.prospect_id,
     prospectName,
   }).catch(() => {});
@@ -854,7 +852,7 @@ async function notifyCollaboratorsSectionChanged(supabase, { actorId, prospectId
     .select("full_name, email")
     .eq("id", actorId)
     .maybeSingle();
-  const actorName = profileName(profile);
+  const actorName = profileDisplayName(profile);
 
   await notifyProspectSectionChanged({
     actorId,

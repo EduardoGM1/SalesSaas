@@ -36,17 +36,27 @@ async function ensureBrowserSession(supabase) {
   }
 }
 
+function resolveProfileName(data) {
+  const fromColumn = String(data?.full_name ?? "").trim();
+  if (fromColumn) return fromColumn;
+  const fromSettings = String(data?.settings?.userName ?? "").trim();
+  if (fromSettings && fromSettings.toLowerCase() !== "usuario") return fromSettings;
+  const email = String(data?.email ?? "").trim();
+  const fromEmail = email.includes("@") ? email.split("@")[0].trim() : "";
+  return fromEmail || null;
+}
+
 async function loadProfile(supabase, userId) {
   if (!userId) return { full_name: null, avatar_url: null };
   if (profileCache.has(userId)) return profileCache.get(userId);
   try {
     const { data } = await supabase
       .from("profiles")
-      .select("full_name, avatar_url")
+      .select("full_name, email, avatar_url, settings")
       .eq("id", userId)
       .maybeSingle();
     const profile = {
-      full_name: data?.full_name || null,
+      full_name: resolveProfileName(data),
       avatar_url: data?.avatar_url || null,
     };
     profileCache.set(userId, profile);
