@@ -5,24 +5,34 @@ import { useI18n } from "@/hooks/use-i18n.js";
 import { enablePushNotifications, toastPushEnableResult } from "@/lib/push-enable.js";
 import {
   canOfferPushPromptAlongsidePwa,
+  clearAutoPushRequested,
   dismissPushPrompt,
+  wasAutoPushRequested,
   wasPushPromptSnoozed,
 } from "@/lib/push-prompt.js";
 import { getPushStatus, isPushSupported, needsIosPwaInstall } from "@/lib/push-notifications.js";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
+import { getInstallPlatform } from "@/lib/pwa-install.js";
 
 async function shouldShowPushPrompt({ contextual = false } = {}) {
   if (!isSupabaseConfigured() || !isPushSupported() || needsIosPwaInstall()) {
     return false;
   }
   if (wasPushPromptSnoozed({ contextual })) return false;
-  if (!contextual && wasAutoPushRequested()) return false;
   if (!canOfferPushPromptAlongsidePwa()) return false;
 
   const status = await getPushStatus();
   if (!status.pushConfigured) return false;
   if (status.subscribed) return false;
   if (status.permission === "denied") return false;
+
+  // Flag antiguo incorrecto: permiso sigue default → permitir banner.
+  if (wasAutoPushRequested() && status.permission === "default") {
+    clearAutoPushRequested();
+  } else if (!contextual && wasAutoPushRequested()) {
+    return false;
+  }
+
   if (status.needsResync) return true;
   return status.permission === "default";
 }
@@ -52,6 +62,16 @@ export function PushPermissionPrompt() {
       void evaluate(event.detail || {});
     };
     window.addEventListener("push:nudge", onNudge);
+    // Desktop: evaluar al montar (el auto nativo a menudo falla sin gesto).
+    if (getInstallPlatform() === "desktop") {
+      const timer = window.setTimeout(() => {
+        void evaluate({ contextual: true });
+      }, 1200);
+      return () => {
+        window.clearTimeout(timer);
+        window.removeEventListener("push:nudge", onNudge);
+      };
+    }
     return () => window.removeEventListener("push:nudge", onNudge);
   }, [evaluate]);
 

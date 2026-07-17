@@ -7,8 +7,10 @@ import {
 } from "@/lib/push-notifications.js";
 import {
   canOfferPushPromptAlongsidePwa,
+  clearAutoPushRequested,
   markAutoPushRequested,
   markPushPromptPermanentlyBlocked,
+  nudgePushPrompt,
   wasAutoPushRequested,
   wasPushPromptPermanentlyBlocked,
 } from "@/lib/push-prompt.js";
@@ -24,20 +26,22 @@ export function notifyPushStatusChanged() {
 
 /**
  * Activa push (permiso del navegador + suscripción OneSignal).
+ * Debe llamarse desde un gesto de usuario (click/pointerdown) para el diálogo nativo.
  * @returns {Promise<{ ok: true } | { ok: false, code: string }>}
  */
 export async function enablePushNotifications() {
   try {
-    // Mismo gesto del usuario → desbloquea autoplay de audio en desktop.
     void unlockNotificationSound();
     await subscribeToPush();
     await syncPushIdentityAndSubscription();
+    markAutoPushRequested();
     notifyPushStatusChanged();
     return { ok: true };
   } catch (err) {
     const code = err?.code || "UNKNOWN";
     if (code === "PERMISSION_DENIED") {
       markPushPromptPermanentlyBlocked();
+      markAutoPushRequested();
     }
     notifyPushStatusChanged();
     return { ok: false, code };
@@ -45,8 +49,8 @@ export async function enablePushNotifications() {
 }
 
 /**
- * Solicita permiso nativo una sola vez (primer uso / tras login).
- * Reutiliza enablePushNotifications — misma ruta que el botón manual en Settings.
+ * Auto-enable. Preferir llamar desde gesto con delayMs=0 (ver AutoPushCoordinator).
+ * No marca "ya pedido" si el permiso sigue en default (diálogo nunca mostrado).
  */
 export async function maybeAutoEnablePushNotifications({ reason = "auto" } = {}) {
   if (typeof window === "undefined") {
@@ -58,37 +62,72 @@ export async function maybeAutoEnablePushNotifications({ reason = "auto" } = {})
   if (needsIosPwaInstall()) {
     return { skipped: true, code: "IOS_PWA_REQUIRED" };
   }
-  if (wasAutoPushRequested() || wasPushPromptPermanentlyBlocked()) {
+  if (wasPushPromptPermanentlyBlocked()) {
     return { skipped: true, code: "ALREADY_REQUESTED" };
   }
   if (!canOfferPushPromptAlongsidePwa()) {
     return { skipped: true, code: "PWA_FIRST" };
   }
 
-  const status = await getPushStatus();
-  if (!status.pushConfigured) {
-    return { skipped: true, code: "NOT_CONFIGURED" };
-  }
-  if (status.subscribed) {
-    markAutoPushRequested();
-    return { skipped: true, code: "ALREADY_SUBSCRIBED" };
-  }
-  if (status.permission === "denied") {
+  // Checks síncronos de permiso ANTES de awaits (preservar gesto de usuario).
+  if (typeof Notification !== "undefined" && Notification.permission === "denied") {
     markPushPromptPermanentlyBlocked();
     markAutoPushRequested();
     return { skipped: true, code: "DENIED" };
   }
 
-  markAutoPushRequested();
+  if (wasAutoPushRequested() && Notification.permission === "default") {
+    clearAutoPushRequested();
+  } else if (wasAutoPushRequested()) {
+    return { skipped: true, code: "ALREADY_REQUESTED" };
+  }
+
+  // Si aún hay gesto: pedir permiso ya (subscribeToPush también lo hace primero).
   const result = await enablePushNotifications();
+
+  if (result.ok || result.code === "PERMISSION_DENIED") {
+    markAutoPushRequested();
+  }
+
+  // Validar configuración solo para telemetría de skip codes en callers.
+  if (!result.ok && result.code === "ONESIGNAL_NOT_CONFIGURED") {
+    return { skipped: false, reason, ...result };
+  }
+
+  try {
+    const status = await getPushStatus();
+    if (status.subscribed) markAutoPushRequested();
+  } catch {
+    // ignore
+  }
+
   return { skipped: false, reason, ...result };
 }
 
-export function scheduleAutoPushRequest({ reason = "auto", delayMs = 800 } = {}) {
+/**
+ * @param {{ reason?: string, delayMs?: number, preferBanner?: boolean }} opts
+ */
+export function scheduleAutoPushRequest({ reason = "auto", delayMs = 0, preferBanner = false } = {}) {
   if (typeof window === "undefined") return;
-  window.setTimeout(() => {
-    void maybeAutoEnablePushNotifications({ reason });
-  }, delayMs);
+
+  const run = () => {
+    if (preferBanner) {
+      nudgePushPrompt({ contextual: true });
+      return;
+    }
+    void maybeAutoEnablePushNotifications({ reason }).then((result) => {
+      if (result?.ok) return;
+      if (typeof Notification !== "undefined" && Notification.permission === "default") {
+        nudgePushPrompt({ contextual: true });
+      }
+    });
+  };
+
+  if (!delayMs) {
+    run();
+    return;
+  }
+  window.setTimeout(run, delayMs);
 }
 
 export function toastPushEnableResult(result, t) {

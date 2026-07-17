@@ -1,21 +1,36 @@
-
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { toast } from "@/lib/toast";
 
-type ToastType = "success" | "error" | "info";
-type Item = { id: number; msg; type: ToastType };
+const MAX_VISIBLE = 3;
+
+/**
+ * @typedef {{ id: number, msg: string, type: string, href?: string | null, onClick?: (() => void) | null }} Item
+ */
 
 let _id = 0;
 
 export function Toaster() {
-  const [items, setItems] = useState<Item[]>([]);
+  const navigate = useNavigate();
+  const [items, setItems] = useState(/** @type {Item[]} */ ([]));
 
   useEffect(() => {
-    toast._register((msg, type) => {
+    toast._register((opts) => {
+      const message = String(opts?.message || "").trim();
+      if (!message) return;
+      const type = opts.type || "info";
       const id = ++_id;
-      setItems((p) => [...p, { id, msg, type }]);
-      const duration = type === "error" ? 4500 : 3000;
-      setTimeout(() => setItems((p) => p.filter((i) => i.id !== id)), duration);
+      const href = opts.href || null;
+      const onClick = opts.onClick || null;
+      setItems((prev) => {
+        const next = [...prev, { id, msg: message, type, href, onClick }];
+        return next.length > MAX_VISIBLE ? next.slice(-MAX_VISIBLE) : next;
+      });
+      const duration = opts.duration
+        ?? (type === "error" ? 4500 : type === "info" ? 5500 : 3000);
+      window.setTimeout(() => {
+        setItems((p) => p.filter((i) => i.id !== id));
+      }, duration);
     });
   }, []);
 
@@ -23,11 +38,34 @@ export function Toaster() {
 
   return (
     <div className="toaster">
-      {items.map((item) => (
-        <div key={item.id} className={`toast-item toast-${item.type}`}>
-          {item.msg}
-        </div>
-      ))}
+      {items.map((item) => {
+        const clickable = Boolean(item.href || item.onClick);
+        return (
+          <div
+            key={item.id}
+            role={clickable ? "button" : "status"}
+            tabIndex={clickable ? 0 : undefined}
+            className={`toast-item toast-${item.type}${clickable ? " toast-item--action" : ""}`}
+            onClick={() => {
+              if (item.onClick) {
+                item.onClick();
+                return;
+              }
+              if (item.href) navigate(item.href);
+            }}
+            onKeyDown={(e) => {
+              if (!clickable) return;
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                if (item.onClick) item.onClick();
+                else if (item.href) navigate(item.href);
+              }
+            }}
+          >
+            {item.msg}
+          </div>
+        );
+      })}
     </div>
   );
 }

@@ -40,6 +40,12 @@ export function markAutoPushRequested() {
   localStorage.setItem(AUTO_REQUEST_KEY, "1");
 }
 
+/** Permite reintentar tras un auto-request que nunca mostró el diálogo nativo. */
+export function clearAutoPushRequested() {
+  if (typeof localStorage === "undefined") return;
+  localStorage.removeItem(AUTO_REQUEST_KEY);
+}
+
 export function wasPushPromptSnoozed({ contextual = false } = {}) {
   if (wasPushPromptPermanentlyBlocked()) return true;
   const dismissedAt = readDismissedAt();

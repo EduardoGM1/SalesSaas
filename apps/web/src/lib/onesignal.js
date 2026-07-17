@@ -5,8 +5,7 @@ import { getInstallPlatform, isIosDevice, isStandaloneApp } from "@/lib/pwa-inst
 import { reportOneSignalLinkIssue } from "@/lib/observability.js";
 import { PushType, resolvePushPathFromPayload } from "@salesapp/shared/push/notification-targets.js";
 import { clearLocalSession } from "@/lib/session-api.js";
-import { playNotificationSound } from "@/lib/notification-sound.js";
-import { toast } from "@/lib/toast";
+import { presentFromPushNotification } from "@/lib/in-app-notifications.js";
 
 const SDK_URL = "https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js";
 /** Ruta relativa desde el origen (sin slash inicial), según docs OneSignal Custom Code. */
@@ -524,15 +523,13 @@ export async function setupPushNotificationHandlers({ onNavigate } = {}) {
       clearLocalSession();
       return;
     }
-    // Desktop: audio + toast in-app; móvil deja el sonido/UI nativos del SO.
+    // Desktop: toast+sonido in-app (también llega por Realtime). Móvil: solo nativo.
     if (getInstallPlatform() === "desktop") {
-      void playNotificationSound();
-      const title = String(event.notification?.title || "").trim();
-      const body = String(event.notification?.body || "").trim();
-      const line = [title, body].filter(Boolean).join(" — ");
-      if (line) toast.info(line);
+      presentFromPushNotification(event.notification);
     }
-    event.notification.display();
+    if (typeof Notification !== "undefined" && Notification.permission === "granted") {
+      event.notification.display();
+    }
   });
 
   OneSignal.Notifications.addEventListener("click", (event) => {
@@ -558,16 +555,36 @@ export async function subscribeToPush() {
     throw new Error("Este navegador no admite notificaciones push.");
   }
 
+  if (Notification.permission === "denied") {
+    const err = new Error("PERMISSION_DENIED");
+    err.code = "PERMISSION_DENIED";
+    throw err;
+  }
+
+  // Pedir permiso ANTES de cualquier await largo: Chrome/Edge exigen gesto de usuario.
+  // Si se espera a SW/OneSignal.init, el diálogo nativo no aparece (queda en "default").
+  if (Notification.permission === "default") {
+    try {
+      await Notification.requestPermission();
+    } catch {
+      // Algunos entornos solo aceptan el método del SDK; se reintenta abajo.
+    }
+  }
+  if (Notification.permission === "denied") {
+    const err = new Error("PERMISSION_DENIED");
+    err.code = "PERMISSION_DENIED";
+    throw err;
+  }
+  if (Notification.permission !== "granted") {
+    const err = new Error("PERMISSION_DISMISSED");
+    err.code = "PERMISSION_DISMISSED";
+    throw err;
+  }
+
   const configured = await resolveServerPushConfigured();
   if (!configured) {
     const err = new Error("ONESIGNAL_NOT_CONFIGURED");
     err.code = "ONESIGNAL_NOT_CONFIGURED";
-    throw err;
-  }
-
-  if (Notification.permission === "denied") {
-    const err = new Error("PERMISSION_DENIED");
-    err.code = "PERMISSION_DENIED";
     throw err;
   }
 
@@ -587,6 +604,7 @@ export async function subscribeToPush() {
     }
   }
 
+  // Refuerzo por si el permiso se concedió vía OneSignal en builds antiguos.
   const granted = await requestBrowserPermission(OneSignal);
   if (!granted) {
     const err = new Error(Notification.permission === "denied" ? "PERMISSION_DENIED" : "PERMISSION_DISMISSED");

@@ -74,7 +74,8 @@ export function OneSignalProvider({ children }) {
           if (session?.user?.id) {
             await syncIdentity(session.user.id);
             if (event === "SIGNED_IN") {
-              scheduleAutoPushRequest({ reason: "signed-in", delayMs: 900 });
+              // Sin gesto de usuario fiable tras auth async → banner con botón.
+              scheduleAutoPushRequest({ reason: "signed-in", delayMs: 700, preferBanner: true });
             }
           } else if (event === "SIGNED_OUT") {
             await unlinkOneSignalUser();
