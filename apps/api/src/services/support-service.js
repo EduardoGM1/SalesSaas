@@ -55,6 +55,23 @@ function parseAppArea(stored) {
   return { id: raw.slice(0, pipe), label: raw.slice(pipe + 1) };
 }
 
+function isMissingColumnError(error, column) {
+  const msg = String(error?.message || error || "");
+  return msg.includes(`support_requests.${column}`) || msg.includes(`column ${column}`) || msg.includes(`'${column}'`);
+}
+
+function resolveAppAreaLabel(row) {
+  if (row?.app_area_label) return row.app_area_label;
+  const parsed = parseAppArea(row?.app_area);
+  const opt = findSupportAreaOption(parsed.id, "es");
+  return opt?.pathLabel || parsed.label || parsed.id || "";
+}
+
+const SUPPORT_LIST_SELECT_FULL =
+  "id, user_id, request_type, app_area, app_area_label, platform, description, screenshot_path, screenshot_purged_at, status, created_at, updated_at";
+const SUPPORT_LIST_SELECT_BASE =
+  "id, user_id, request_type, app_area, platform, description, screenshot_path, status, created_at, updated_at";
+
 async function createSignedUrl(serviceSb, path, expiresIn) {
   if (!path || !serviceSb) return null;
   const buckets = [BUCKET, LEGACY_BUCKET];
@@ -143,21 +160,33 @@ export async function createSupportRequest(supabase, userId, body = {}) {
     }
   }
 
-  const { data, error } = await supabase
+  const baseRow = {
+    user_id: userId,
+    request_type: requestType,
+    app_area: appArea,
+    platform,
+    description,
+    screenshot_path: screenshotPath,
+    user_agent: userAgent ? String(userAgent).slice(0, 500) : null,
+    app_version: appVersion ? String(appVersion).slice(0, 80) : null,
+  };
+
+  let data = null;
+  let error = null;
+  ({ data, error } = await supabase
     .from("support_requests")
-    .insert({
-      user_id: userId,
-      request_type: requestType,
-      app_area: appArea,
-      app_area_label: appAreaLabel.slice(0, 200),
-      platform,
-      description,
-      screenshot_path: screenshotPath,
-      user_agent: userAgent ? String(userAgent).slice(0, 500) : null,
-      app_version: appVersion ? String(appVersion).slice(0, 80) : null,
-    })
+    .insert({ ...baseRow, app_area_label: appAreaLabel.slice(0, 200) })
     .select("id, created_at, status, app_area, app_area_label, request_type, platform, screenshot_path")
-    .single();
+    .single());
+
+  // Compat: BD sin migración 0035 (columna app_area_label).
+  if (error && isMissingColumnError(error, "app_area_label")) {
+    ({ data, error } = await supabase
+      .from("support_requests")
+      .insert(baseRow)
+      .select("id, created_at, status, app_area, request_type, platform, screenshot_path")
+      .single());
+  }
 
   if (error) {
     if (screenshotPath) {
@@ -199,17 +228,23 @@ export async function listSupportRequestsForAdmin(supabase, { status, limit = 50
   const take = Math.min(Math.max(Number(limit) || 50, 1), 100);
   const skip = Math.max(Number(offset) || 0, 0);
 
-  let q = supabase
-    .from("support_requests")
-    .select("id, user_id, request_type, app_area, app_area_label, platform, description, screenshot_path, screenshot_purged_at, status, created_at, updated_at", { count: "exact" })
-    .order("created_at", { ascending: false })
-    .range(skip, skip + take - 1);
+  const buildQuery = (columns) => {
+    let q = supabase
+      .from("support_requests")
+      .select(columns, { count: "exact" })
+      .order("created_at", { ascending: false })
+      .range(skip, skip + take - 1);
+    if (status && status !== "all") q = q.eq("status", status);
+    return q;
+  };
 
-  if (status && status !== "all") {
-    q = q.eq("status", status);
+  let { data, error, count } = await buildQuery(SUPPORT_LIST_SELECT_FULL);
+  if (
+    error &&
+    (isMissingColumnError(error, "app_area_label") || isMissingColumnError(error, "screenshot_purged_at"))
+  ) {
+    ({ data, error, count } = await buildQuery(SUPPORT_LIST_SELECT_BASE));
   }
-
-  const { data, error, count } = await q;
   if (error) throw new ServiceError(error.message, 500);
 
   const rows = data || [];
@@ -227,7 +262,7 @@ export async function listSupportRequestsForAdmin(supabase, { status, limit = 50
   const items = [];
   for (const row of rows) {
     const profile = profilesById[row.user_id] || {};
-    const area = row.app_area_label || parseAppArea(row.app_area).label;
+    const area = resolveAppAreaLabel(row);
     let screenshotUrl = null;
     if (row.screenshot_path && !row.screenshot_purged_at) {
       screenshotUrl = await createSignedUrl(serviceSb, row.screenshot_path, ADMIN_SIGNED_TTL_SEC);
