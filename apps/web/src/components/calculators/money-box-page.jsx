@@ -14,15 +14,16 @@ import {
   generateByDownPayment,
   generateByMonthly,
   monthlyPaymentsForScenarios,
+  round2,
   termsFromWorksheetConfig,
 } from "@/lib/calculations/money-box";
 import { useDbStore } from "@/stores/db-store";
 import { shallow } from "zustand/shallow";
 
-/** Monto con centavos en superíndice; tipografía mono del sistema (td-*). */
+/** Monto con centavos en superíndice; tipografía mono del sistema (td-*). Redondeo solo al mostrar. */
 function MoneyAmount({ value, tone = "sale" }) {
   const { settings } = useMoney();
-  const amount = toDisplayAmount(Number(value || 0), settings);
+  const amount = round2(toDisplayAmount(Number(value || 0), settings));
   const fixed = Math.abs(amount).toFixed(2);
   const [whole, cents] = fixed.split(".");
   const locale = settings.language === "en" ? "en-US" : "es-MX";
@@ -36,7 +37,7 @@ function MoneyAmount({ value, tone = "sale" }) {
   );
 }
 
-function ResultTable({ results, dpPercentDisplay, financePercent, terms, t }) {
+function ResultTable({ results, dpPercentDisplay, financePercent, terms, t, perfectMonthly = null }) {
   return (
     <div className="table-scroll">
       <table className="dtbl pattern-table">
@@ -74,7 +75,7 @@ function ResultTable({ results, dpPercentDisplay, financePercent, terms, t }) {
               <strong>{t("moneyBox.monthlySection")}</strong>
             </td>
           </tr>
-          {terms.map((term) => {
+          {terms.map((term, termIdx) => {
             const values = monthlyPaymentsForScenarios(results, financePercent, term);
             return (
               <tr key={term.label}>
@@ -84,7 +85,10 @@ function ResultTable({ results, dpPercentDisplay, financePercent, terms, t }) {
                 </td>
                 {values.map((v, i) => (
                   <td key={`${term.label}-${i}`}>
-                    <MoneyAmount value={v} tone="monthly" />
+                    <MoneyAmount
+                      value={perfectMonthly != null && i === termIdx ? perfectMonthly : v}
+                      tone="monthly"
+                    />
                   </td>
                 ))}
               </tr>
@@ -111,6 +115,7 @@ function MoneyPanel({
   terms,
   t,
   mobileActive,
+  perfectMonthly = null,
 }) {
   return (
     <div className={`card tool-calc-card${mobileActive ? " is-mobile-active" : ""}`}>
@@ -147,6 +152,7 @@ function MoneyPanel({
         financePercent={financePercent}
         terms={terms}
         t={t}
+        perfectMonthly={perfectMonthly}
       />
 
       <div className="hint" style={{ marginTop: 14 }}>
@@ -344,6 +350,7 @@ export function MoneyBoxPage({ clientId, shared }) {
             terms={terms}
             t={t}
             mobileActive={mobileTab === "month"}
+            perfectMonthly={parseMoney(monthlyInput)}
           />
         </div>
       </div>
