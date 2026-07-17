@@ -67,7 +67,7 @@ export async function getUsers(sb, filters = {}) {
 
   let profilesQuery = sb
     .from("profiles")
-    .select("id, full_name, email, role, created_at, is_active, is_super_admin, admin_permissions, user_permissions")
+    .select("id, full_name, email, role, role_id, created_at, is_active, is_super_admin, admin_permissions, user_permissions")
     .order("created_at", { ascending: true });
 
   if (filters.role) profilesQuery = profilesQuery.eq("role", filters.role);
@@ -78,12 +78,29 @@ export async function getUsers(sb, filters = {}) {
     if (q) profilesQuery = profilesQuery.or(`full_name.ilike.%${q}%,email.ilike.%${q}%`);
   }
 
-  const [profilesRes, statsRes] = await Promise.all([
+  let [profilesRes, statsRes] = await Promise.all([
     profilesQuery,
     sb.rpc("admin_user_stats"),
   ]);
 
+  if (profilesRes.error) {
+    // Fallback si role_id aún no existe
+    let legacyQuery = sb
+      .from("profiles")
+      .select("id, full_name, email, role, created_at, is_active, is_super_admin, admin_permissions, user_permissions")
+      .order("created_at", { ascending: true });
+    if (filters.role) legacyQuery = legacyQuery.eq("role", filters.role);
+    if (filters.state === "active") legacyQuery = legacyQuery.eq("is_active", true);
+    if (filters.state === "inactive") legacyQuery = legacyQuery.eq("is_active", false);
+    if (filters.q) {
+      const q = filters.q.replace(/[%_]/g, "");
+      if (q) legacyQuery = legacyQuery.or(`full_name.ilike.%${q}%,email.ilike.%${q}%`);
+    }
+    profilesRes = await legacyQuery;
+  }
+
   if (statsRes.error) throw new Error(statsRes.error.message || "No se pudieron cargar estadísticas.");
+  if (profilesRes.error) throw new Error(profilesRes.error.message || "No se pudieron cargar usuarios.");
 
   const statsByUser = new Map();
   for (const row of statsRes.data ?? []) {
@@ -102,14 +119,27 @@ export async function getUsers(sb, filters = {}) {
     memberships = new Map();
   }
 
+  const roleIds = [...new Set(profiles.map((p) => p.role_id).filter(Boolean))];
+  const roleNameById = new Map();
+  if (roleIds.length) {
+    const { data: roleRows, error: rolesErr } = await sb.from("roles").select("id, nombre, slug").in("id", roleIds);
+    if (!rolesErr) {
+      for (const r of roleRows ?? []) roleNameById.set(r.id, r);
+    }
+  }
+
   return profiles.map((p) => {
     const stats = statsByUser.get(p.id) ?? { prospects: 0, sales: 0, volume: 0 };
     const mem = memberships.get(p.id) || { plan: "basico", status: "activa" };
+    const roleMeta = p.role_id ? roleNameById.get(p.role_id) : null;
     return {
       id: p.id,
       name: p.full_name || p.email || `Usuario ${String(p.id).slice(0, 8)}`,
       email: p.email ?? null,
       role: p.role ?? "vendedor",
+      role_id: p.role_id ?? null,
+      role_nombre: roleMeta?.nombre ?? null,
+      role_slug: roleMeta?.slug ?? null,
       created_at: p.created_at ?? null,
       is_active: p.is_active ?? true,
       is_super_admin: p.is_super_admin ?? false,

@@ -20,6 +20,7 @@ import { parseJsonBody, runService } from "./route-utils.js";
 import * as adminUsersService from "../services/admin-users-service.js";
 import * as supportService from "../services/support-service.js";
 import * as membershipService from "../services/membership-service.js";
+import * as rolesService from "../services/roles-service.js";
 
 const router = Router();
 
@@ -37,12 +38,31 @@ async function adminAuth(req, res, perm) {
   return a;
 }
 
+/** Roles CRUD / role_id: solo Superadmin. */
+async function requireSuperAdminApi(req, res) {
+  const base = await authenticateApi(req, res);
+  if (!base.ok) {
+    apiError(res, base.message, base.status);
+    return null;
+  }
+  const { data: profile } = await base.supabase
+    .from("profiles")
+    .select("id, role, is_super_admin, admin_permissions")
+    .eq("id", base.userId)
+    .single();
+  if (!profile || !isSuperAdmin(profile)) {
+    apiError(res, "No autorizado.", 403);
+    return null;
+  }
+  return { ...base, profile };
+}
+
 router.get("/me", async (req, res) => {
   const base = await authenticateApi(req, res);
   if (!base.ok) return apiError(res, base.message, base.status);
   const { data: profile, error } = await base.supabase
     .from("profiles")
-    .select("id, role, is_super_admin, admin_permissions")
+    .select("id, role, is_super_admin, admin_permissions, role_id, user_permissions")
     .eq("id", base.userId)
     .single();
   if (error || !profile || profile.role !== "admin") {
@@ -57,12 +77,71 @@ router.get("/me", async (req, res) => {
   if (!hasAnyAdminAccess(adminProfile)) {
     return apiError(res, "No autorizado.", 403);
   }
+  let permissionKeys = effectivePermissions(adminProfile);
+  try {
+    const ctx = await rolesService.loadUserPermissionContext(base.supabase, base.userId);
+    if (ctx?.permission_keys?.length) permissionKeys = ctx.permission_keys;
+  } catch {
+    // fallback legacy
+  }
+  if (isSuperAdmin(adminProfile) && !permissionKeys.includes("admin:roles")) {
+    permissionKeys = [...permissionKeys, "admin:roles"];
+  }
   json(res, {
-    profile: adminProfile,
-    permissions: effectivePermissions(adminProfile),
+    profile: { ...adminProfile, role_id: profile.role_id ?? null },
+    permissions: permissionKeys,
     isSuperAdmin: isSuperAdmin(adminProfile),
     userId: base.userId,
   });
+});
+
+router.get("/roles", async (req, res) => {
+  const a = await requireSuperAdminApi(req, res);
+  if (!a) return;
+  await runService(res, () => rolesService.listRoles(a.supabase, a.profile), { wrap: "data" });
+});
+
+router.get("/permissions-catalog", async (req, res) => {
+  const a = await requireSuperAdminApi(req, res);
+  if (!a) return;
+  json(res, { data: await rolesService.listPermissionCatalog() });
+});
+
+router.post("/roles", async (req, res) => {
+  const a = await requireSuperAdminApi(req, res);
+  if (!a) return;
+  const body = parseJsonBody(req, res);
+  if (!body) return;
+  await runService(res, () => rolesService.createRole(a.supabase, a.profile, body), { wrap: "data" });
+});
+
+router.patch("/roles/:id", async (req, res) => {
+  const a = await requireSuperAdminApi(req, res);
+  if (!a) return;
+  const body = parseJsonBody(req, res);
+  if (!body) return;
+  await runService(res, () => rolesService.updateRole(a.supabase, a.profile, req.params.id, body), { wrap: "data" });
+});
+
+router.delete("/roles/:id", async (req, res) => {
+  const a = await requireSuperAdminApi(req, res);
+  if (!a) return;
+  await runService(res, () => rolesService.deleteRole(a.supabase, a.profile, req.params.id), { wrap: "data" });
+});
+
+router.patch("/users/:id/role-id", async (req, res) => {
+  const a = await requireSuperAdminApi(req, res);
+  if (!a) return;
+  const body = parseJsonBody(req, res);
+  if (!body) return;
+  const roleId = body.role_id ?? body.roleId;
+  await runService(res, () => rolesService.setUserRoleId(a.supabase, a.profile, req.params.id, roleId), { wrap: "data" });
+});
+
+router.get("/users/:id/permission-context", async (req, res) => {
+  const a = await adminAuth(req, res, "users:read");
+  if (!a) return;
+  await runService(res, () => rolesService.loadUserPermissionContext(a.supabase, req.params.id), { wrap: "data" });
 });
 
 router.get("/overview", async (req, res) => {

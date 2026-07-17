@@ -7,18 +7,21 @@ import { NewClientModal } from "@/components/clients/new-client-modal.jsx";
 import { PremiumFeatureCard } from "@/components/premium/premium-feature-card.jsx";
 import { useAppStore } from "@/stores/app-store.js";
 import { useI18n } from "@/hooks/use-i18n.js";
+import { useUserPermissions } from "@/hooks/use-user-permissions.js";
+import { TOOL_PERMISSION_KEYS } from "@/lib/auth/tool-permissions.js";
 
 export function ToolsHubPage() {
   const navigate = useNavigate();
   const setToolMode = useAppStore((s) => s.setToolMode);
   const { t } = useI18n();
+  const { can } = useUserPermissions();
   const [newClientOpen, setNewClientOpen] = useState(false);
 
   const TOOLS = [
-    { href: "/tools/survey", labelKey: "tools.survey", descKey: "tools.surveyDesc", icon: FileText, tone: "blue" },
-    { href: "/tools/vacaciones", labelKey: "tools.vacation", descKey: "tools.vacationDesc", icon: Palmtree, tone: "green" },
-    { href: "/tools/worksheet", labelKey: "tools.worksheet", descKey: "tools.worksheetDesc", icon: DollarSign, tone: "purple", nestMoneyBox: true },
-  ];
+    { href: "/tools/survey", tool: "survey", labelKey: "tools.survey", descKey: "tools.surveyDesc", icon: FileText, tone: "blue" },
+    { href: "/tools/vacaciones", tool: "vacaciones", labelKey: "tools.vacation", descKey: "tools.vacationDesc", icon: Palmtree, tone: "green" },
+    { href: "/tools/worksheet", tool: "worksheet", labelKey: "tools.worksheet", descKey: "tools.worksheetDesc", icon: DollarSign, tone: "purple" },
+  ].filter((tool) => can(TOOL_PERMISSION_KEYS[tool.tool]));
 
   return (
     <>
@@ -40,7 +43,7 @@ export function ToolsHubPage() {
                   </div>
                   <div style={{ color: "var(--muted2)", marginLeft: "auto", fontSize: 18 }}>›</div>
                 </Link>
-                {tool.nestMoneyBox && (
+                {tool.tool === "worksheet" && (
                   <PremiumFeatureCard
                     featureKey="money_box"
                     title={t("moneyBox.title")}
@@ -54,6 +57,19 @@ export function ToolsHubPage() {
               </div>
             );
           })}
+          {!TOOLS.some((tool) => tool.tool === "worksheet") && (
+            <div className="tool-card-stack">
+              <PremiumFeatureCard
+                featureKey="money_box"
+                title={t("moneyBox.title")}
+                description={t("moneyBox.cardDesc")}
+                icon={Wallet}
+                tone="green"
+                to="/tools/money-box"
+                onBeforeOpen={() => setToolMode("libre", null)}
+              />
+            </div>
+          )}
         </div>
         <div className="tools-hub-cta">
           <button type="button" className="btn btn-primary btn-sm" onClick={() => setNewClientOpen(true)}>

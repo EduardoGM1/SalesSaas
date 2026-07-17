@@ -23,6 +23,7 @@ import { ContactPage } from "@/pages/ContactPage.jsx";
 import { MessagesPage } from "@/pages/MessagesPage.jsx";
 import { ToolsHubPage } from "@/pages/ToolsHubPage.jsx";
 import { AdminSection } from "@/layouts/AdminSection.jsx";
+import { ToolPermissionGate } from "@/components/auth/ToolPermissionGate.jsx";
 import {
   SurveyPage,
   VacacionesPage,
@@ -34,6 +35,7 @@ import {
   AdminGoalsPage,
   AdminToolsUsagePage,
   AdminSupportPage,
+  AdminRolesPage,
   AdminLegacyRedirect,
 } from "@/routes/lazy-pages.js";
 
@@ -46,24 +48,29 @@ function ClientDetailRoute() {
   return <ClientDetail id={id} />;
 }
 
+function gatedTool(tool, page) {
+  if (tool === "money-box") return page;
+  return <ToolPermissionGate tool={tool}>{page}</ToolPermissionGate>;
+}
+
 function ClientToolRoute({ tool }) {
   const { id } = useParams();
-  if (tool === "survey") return <Lazy><SurveyPage clientId={id} /></Lazy>;
-  if (tool === "vacaciones") return <Lazy><VacacionesPage clientId={id} /></Lazy>;
-  if (tool === "worksheet") return <Lazy><WorksheetPage clientId={id} /></Lazy>;
+  if (tool === "survey") return gatedTool(tool, <Lazy><SurveyPage clientId={id} /></Lazy>);
+  if (tool === "vacaciones") return gatedTool(tool, <Lazy><VacacionesPage clientId={id} /></Lazy>);
+  if (tool === "worksheet") return gatedTool(tool, <Lazy><WorksheetPage clientId={id} /></Lazy>);
   if (tool === "money-box") return <Lazy><MoneyBoxPage clientId={id} /></Lazy>;
-  if (tool === "analysis") return <Lazy><AnalysisPage clientId={id} /></Lazy>;
+  if (tool === "analysis") return gatedTool(tool, <Lazy><AnalysisPage clientId={id} /></Lazy>);
   return null;
 }
 
 function SharedToolRoute({ tool }) {
   const { contactId, prospectId } = useParams();
   const shared = { prospectId, contactId };
-  if (tool === "survey") return <Lazy><SurveyPage shared={shared} /></Lazy>;
-  if (tool === "vacaciones") return <Lazy><VacacionesPage shared={shared} /></Lazy>;
-  if (tool === "worksheet") return <Lazy><WorksheetPage shared={shared} /></Lazy>;
+  if (tool === "survey") return gatedTool(tool, <Lazy><SurveyPage shared={shared} /></Lazy>);
+  if (tool === "vacaciones") return gatedTool(tool, <Lazy><VacacionesPage shared={shared} /></Lazy>);
+  if (tool === "worksheet") return gatedTool(tool, <Lazy><WorksheetPage shared={shared} /></Lazy>);
   if (tool === "money-box") return <Lazy><MoneyBoxPage shared={shared} /></Lazy>;
-  if (tool === "analysis") return <Lazy><AnalysisPage shared={shared} /></Lazy>;
+  if (tool === "analysis") return gatedTool(tool, <Lazy><AnalysisPage shared={shared} /></Lazy>);
   return null;
 }
 
@@ -120,14 +127,15 @@ export function AppRoutes() {
         <Route path="network/shared/:id" element={<Navigate to="/network" replace />} />
         <Route path="messages" element={<MessagesPage />} />
         <Route path="tools" element={<ToolsHubPage />} />
-        <Route path="tools/survey" element={<Lazy><SurveyPage /></Lazy>} />
-        <Route path="tools/vacaciones" element={<Lazy><VacacionesPage /></Lazy>} />
-        <Route path="tools/worksheet" element={<Lazy><WorksheetPage /></Lazy>} />
+        <Route path="tools/survey" element={gatedTool("survey", <Lazy><SurveyPage /></Lazy>)} />
+        <Route path="tools/vacaciones" element={gatedTool("vacaciones", <Lazy><VacacionesPage /></Lazy>)} />
+        <Route path="tools/worksheet" element={gatedTool("worksheet", <Lazy><WorksheetPage /></Lazy>)} />
         <Route path="tools/money-box" element={<Lazy><MoneyBoxPage /></Lazy>} />
         <Route path="settings" element={<SettingsPage />} />
         <Route path="admin" element={<AdminSection />}>
           <Route index element={<Lazy><AdminOverviewPage /></Lazy>} />
           <Route path="users" element={<Lazy><AdminUsersPage /></Lazy>} />
+          <Route path="roles" element={<Lazy><AdminRolesPage /></Lazy>} />
           <Route path="goals" element={<Lazy><AdminGoalsPage /></Lazy>} />
           <Route path="tools" element={<Lazy><AdminToolsUsagePage /></Lazy>} />
           <Route path="support" element={<Lazy><AdminSupportPage /></Lazy>} />

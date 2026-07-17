@@ -14,7 +14,7 @@ export const DELEGATABLE_ADMIN_PERMISSIONS = [
 
 export type DelegatablePermission = (typeof DELEGATABLE_ADMIN_PERMISSIONS)[number]["key"];
 
-export const SUPER_ADMIN_ONLY_PERMISSIONS = ["users:role", "users:permissions"] as const;
+export const SUPER_ADMIN_ONLY_PERMISSIONS = ["users:role", "users:permissions", "admin:roles"] as const;
 
 export type AdminPermission = DelegatablePermission | (typeof SUPER_ADMIN_ONLY_PERMISSIONS)[number];
 
@@ -80,6 +80,7 @@ export const ADMIN_NAV_PERMISSIONS: Record<string, AdminPermission> = {
   "/admin/goals": "goals:read",
   "/admin/tools": "tools:analytics",
   "/admin/support": "support:read",
+  "/admin/roles": "admin:roles",
 };
 
 export function canAccessAdminPath(profile: AdminAccessProfile, pathname: string): boolean {
@@ -92,6 +93,7 @@ export function canAccessAdminPath(profile: AdminAccessProfile, pathname: string
   if (pathname.startsWith("/admin/tools")) return hasPermission(profile, "tools:analytics");
   if (pathname.startsWith("/admin/support")) return hasPermission(profile, "support:read");
   if (pathname.startsWith("/admin/goals")) return hasPermission(profile, "goals:read");
+  if (pathname.startsWith("/admin/roles")) return hasPermission(profile, "admin:roles");
   if (pathname === "/admin") return hasPermission(profile, "dashboard:read");
   return isSuperAdmin(profile);
 }

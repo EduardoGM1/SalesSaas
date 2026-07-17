@@ -45,23 +45,35 @@ export function useAdminSession() {
 }
 
 export function useAdminFetch(path, search = "") {
-  const [state, setState] = useState({ loading: true, data: null, error: null });
+  const [state, setState] = useState({ loading: Boolean(path), data: null, error: null });
 
   useEffect(() => {
+    if (!path) {
+      setState({ loading: false, data: null, error: null });
+      return undefined;
+    }
     setState({ loading: true, data: null, error: null });
     const url = `/api/v1/admin/${path}${search}`;
+    let cancelled = false;
     fetch(url, { credentials: "include" })
       .then(async (r) => {
         const body = await r.json().catch(() => ({}));
         if (!r.ok) throw new Error(body.error ?? "Error al cargar datos.");
         return body.data;
       })
-      .then((data) => setState({ loading: false, data, error: null }))
-      .catch((err) => setState({
-        loading: false,
-        data: null,
-        error: err instanceof Error ? err.message : "Error",
-      }));
+      .then((data) => {
+        if (!cancelled) setState({ loading: false, data, error: null });
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setState({
+            loading: false,
+            data: null,
+            error: err instanceof Error ? err.message : "Error",
+          });
+        }
+      });
+    return () => { cancelled = true; };
   }, [path, search]);
 
   return state;

@@ -10,6 +10,8 @@
     "./api/validators.js": "./src/api/validators.js",
     "./auth/permissions.js": "./src/auth/permissions.js",
     "./auth/user-features.js": "./src/auth/user-features.js",
+    "./auth/permission-catalog.js": "./src/auth/permission-catalog.js",
+    "./auth/resolve-permissions.js": "./src/auth/resolve-permissions.js",
     "./storage/types.js": "./src/storage/types.js",
     "./ids.js": "./src/ids.js",
     "./constants.js": "./src/constants.js",

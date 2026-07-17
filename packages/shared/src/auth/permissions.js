@@ -8,7 +8,7 @@ const DELEGATABLE_ADMIN_PERMISSIONS = [
   { key: "tools:analytics", label: "Ver uso de herramientas (agregado)" },
   { key: "support:read", label: "Ver tickets de Atención a usuario" }
 ];
-const SUPER_ADMIN_ONLY_PERMISSIONS = ["users:role", "users:permissions"];
+const SUPER_ADMIN_ONLY_PERMISSIONS = ["users:role", "users:permissions", "admin:roles"];
 const DELEGATABLE_KEYS = new Set(DELEGATABLE_ADMIN_PERMISSIONS.map((p) => p.key));
 const LEGACY_PERMISSION_MAP = {
   "worksheets:read": "tools:analytics",
@@ -39,7 +39,7 @@ function effectivePermissions(profile) {
   if (isSuperAdmin(profile)) {
     return [
       ...DELEGATABLE_ADMIN_PERMISSIONS.map((p) => p.key),
-      ...SUPER_ADMIN_ONLY_PERMISSIONS
+      ...SUPER_ADMIN_ONLY_PERMISSIONS,
     ];
   }
   return profile.admin_permissions.filter((p) => DELEGATABLE_KEYS.has(p));
@@ -52,7 +52,8 @@ const ADMIN_NAV_PERMISSIONS = {
   "/admin/users": "users:read",
   "/admin/goals": "goals:read",
   "/admin/tools": "tools:analytics",
-  "/admin/support": "support:read"
+  "/admin/support": "support:read",
+  "/admin/roles": "admin:roles"
 };
 function canAccessAdminPath(profile, pathname) {
   if (!hasAnyAdminAccess(profile)) return false;
@@ -64,6 +65,7 @@ function canAccessAdminPath(profile, pathname) {
   if (pathname.startsWith("/admin/tools")) return hasPermission(profile, "tools:analytics");
   if (pathname.startsWith("/admin/support")) return hasPermission(profile, "support:read");
   if (pathname.startsWith("/admin/goals")) return hasPermission(profile, "goals:read");
+  if (pathname.startsWith("/admin/roles")) return hasPermission(profile, "admin:roles");
   if (pathname === "/admin") return hasPermission(profile, "dashboard:read");
   return isSuperAdmin(profile);
 }

@@ -20,6 +20,8 @@ import { formatMoneyValue, parseMoney } from "@/lib/format/money";
 import { statusLabel } from "@/lib/format/status";
 import { useMoney } from "@/hooks/use-money.js";
 import { useI18n } from "@/hooks/use-i18n.js";
+import { useUserPermissions } from "@/hooks/use-user-permissions.js";
+import { TOOL_PERMISSION_KEYS } from "@/lib/auth/tool-permissions.js";
 import { useDbStore } from "@/stores/db-store";
 import { useAppStore } from "@/stores/app-store";
 import { shallow } from "zustand/shallow";
@@ -52,6 +54,7 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
   const { saveNoteForClient } = useCalendarActions();
   const { fmt } = useMoney();
   const { t, lang } = useI18n();
+  const { can } = useUserPermissions();
 
   const [shareOpen, setShareOpen] = useState(false);
   const [recordModal, setRecordModal] = useState(null);
@@ -300,22 +303,24 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
   const toolCards = isQuick
     ? [saleCard, notesCard].filter(Boolean)
     : [
-        ...TOOL_DEFS.map((tool) => ({
-          toolKey: tool.key,
-          label: t(tool.labelKey),
-          desc: t(tool.descKey),
-          icon: tool.icon,
-          tone: tool.tone,
-          onClick: sharedRemote
-            ? () => {
-                if (!contactId) return;
-                navigate(`/red/contacto/${contactId}/expediente/${id}/${tool.href}`);
-              }
-            : () => {
-                setToolMode("client", id);
-                navigate(`/clients/${id}/${tool.href}`);
-              },
-        })),
+        ...TOOL_DEFS
+          .filter((tool) => can(TOOL_PERMISSION_KEYS[tool.key]))
+          .map((tool) => ({
+            toolKey: tool.key,
+            label: t(tool.labelKey),
+            desc: t(tool.descKey),
+            icon: tool.icon,
+            tone: tool.tone,
+            onClick: sharedRemote
+              ? () => {
+                  if (!contactId) return;
+                  navigate(`/red/contacto/${contactId}/expediente/${id}/${tool.href}`);
+                }
+              : () => {
+                  setToolMode("client", id);
+                  navigate(`/clients/${id}/${tool.href}`);
+                },
+          })),
         ...(saleCard ? [saleCard] : []),
         ...(notesCard ? [notesCard] : []),
       ];
@@ -402,6 +407,25 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
                   </div>
                 );
               })}
+              {!isQuick && !toolCards.some((card) => card.toolKey === "worksheet") && (
+                <div className="tool-card-stack">
+                  <PremiumFeatureCard
+                    featureKey="money_box"
+                    title={t("moneyBox.title")}
+                    description={t("moneyBox.cardDesc")}
+                    icon={Wallet}
+                    tone="green"
+                    to={
+                      sharedRemote
+                        ? (contactId ? `/red/contacto/${contactId}/expediente/${id}/money-box` : undefined)
+                        : `/clients/${id}/money-box`
+                    }
+                    onBeforeOpen={() => {
+                      if (!sharedRemote) setToolMode("client", id);
+                    }}
+                  />
+                </div>
+              )}
               {isQuick && (
                 <button type="button" className="tool-card" onClick={() => {
                   completeClientExpedient(id);

@@ -1,9 +1,9 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useOutletContext, useSearchParams } from "react-router-dom";
 import { AdminUsersFilters } from "@/components/admin/admin-users-filters.jsx";
 import { IconSave, IconUserCheck, IconUserX } from "@/components/admin/admin-users-icons.jsx";
 import { useAdminFetch } from "@/hooks/use-admin-session.js";
-import { hasPermission } from "@/lib/auth/permissions";
+import { hasPermission, isSuperAdmin } from "@/lib/auth/permissions";
 import { parseUserAdminFilters, userAdminUrl, userFiltersToSearchParams } from "@/lib/admin/filters";
 import { DELEGATABLE_ADMIN_PERMISSIONS } from "@/lib/auth/permissions";
 import { VENDOR_FEATURE_PERMISSIONS } from "@/lib/auth/user-features";
@@ -31,17 +31,17 @@ async function patchAdmin(path, body) {
   if (!res.ok) throw new Error(data.error ?? "Error");
 }
 
-function ConfirmModal({ kind, user, newRole, onClose, onDone }) {
+function ConfirmModal({ kind, user, newRoleId, newRoleLabel, onClose, onDone }) {
   const { t } = useI18n();
   const [pending, setPending] = useState(false);
-  const roleUnchanged = kind === "role" && user.role === newRole;
+  const roleUnchanged = kind === "role" && (user.role_id === newRoleId || (!user.role_id && !newRoleId));
   const roleLabel = (r) => t(ROLE_KEYS[r] ?? r);
 
   const submit = async () => {
     setPending(true);
     try {
       if (kind === "role") {
-        await patchAdmin(`users/${user.id}/role`, { role: newRole });
+        await patchAdmin(`users/${user.id}/role-id`, { role_id: newRoleId });
       } else {
         await patchAdmin(`users/${user.id}/status`, { is_active: kind === "activate" });
       }
@@ -67,7 +67,10 @@ function ConfirmModal({ kind, user, newRole, onClose, onDone }) {
         </div>
         <p className="admin-confirm-body">
           {kind === "role" && roleUnchanged && t("admin.users.confirm.roleSameBody")}
-          {kind === "role" && !roleUnchanged && t("admin.users.confirm.roleChange", { current: roleLabel(user.role), next: roleLabel(newRole) })}
+          {kind === "role" && !roleUnchanged && t("admin.users.confirm.roleChange", {
+            current: user.role_nombre || roleLabel(user.role),
+            next: newRoleLabel || newRoleId,
+          })}
           {kind === "deactivate" && t("admin.users.confirm.deactivateBody", { name: user.name })}
           {kind === "activate" && t("admin.users.confirm.activateBody", { name: user.name })}
         </p>
@@ -134,23 +137,58 @@ function MembershipModal({ user, onClose, onDone }) {
 function VendorFeaturesModal({ user, onClose, onDone }) {
   const { t } = useI18n();
   const [pending, setPending] = useState(false);
-  const current = new Set(user.user_permissions || []);
+  const [loading, setLoading] = useState(true);
+  const [checked, setChecked] = useState(() => new Set(VENDOR_FEATURE_PERMISSIONS.map((p) => p.key)));
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    fetch(`/api/v1/admin/users/${user.id}/permission-context`, { credentials: "include" })
+      .then(async (res) => {
+        const body = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(body.error || "Error");
+        const allow = Array.isArray(body.data?.feature_allowlist)
+          ? body.data.feature_allowlist
+          : VENDOR_FEATURE_PERMISSIONS.map((p) => p.key);
+        if (!cancelled) setChecked(new Set(allow));
+      })
+      .catch(() => {
+        const legacy = new Set(user.user_permissions || []);
+        if (!cancelled) {
+          setChecked(new Set(
+            VENDOR_FEATURE_PERMISSIONS
+              .filter((p) => legacy.size === 0 || legacy.has(p.key) || p.key.startsWith("herramientas:"))
+              .map((p) => p.key),
+          ));
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [user.id, user.user_permissions]);
 
   const submit = async (e) => {
     e.preventDefault();
     setPending(true);
-    const fd = new FormData(e.currentTarget);
-    const features = fd.getAll("features").map(String);
-    if (!features.length) return;
-    const payload = features.length === VENDOR_FEATURE_PERMISSIONS.length ? [] : features;
+    const features = [...checked];
     try {
-      await patchAdmin(`users/${user.id}/features`, { features: payload });
+      await patchAdmin(`users/${user.id}/features`, { features });
       onDone();
     } catch {
       onDone("permissions");
     } finally {
       setPending(false);
     }
+  };
+
+  const toggle = (key) => {
+    setChecked((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
   };
 
   return (
@@ -162,20 +200,28 @@ function VendorFeaturesModal({ user, onClose, onDone }) {
           <span className="admin-confirm-sub">{user.name}</span>
         </div>
         <p className="admin-confirm-body">{t("admin.users.features.hint")}</p>
-        <form onSubmit={submit}>
-          <div className="admin-perms-grid">
-            {VENDOR_FEATURE_PERMISSIONS.map((p) => (
-              <label key={p.key} className="admin-perm-item">
-                <input type="checkbox" name="features" value={p.key} defaultChecked={current.size === 0 || current.has(p.key)} />
-                <span>{t(p.labelKey)}</span>
-              </label>
-            ))}
-          </div>
-          <div className="btn-row">
-            <button type="button" className="btn btn-ghost" onClick={onClose}>{t("common.cancel")}</button>
-            <button type="submit" className="btn btn-primary" disabled={pending}>{pending ? t("admin.users.confirm.saving") : t("admin.users.features.save")}</button>
-          </div>
-        </form>
+        {loading ? (
+          <p className="admin-confirm-body">{t("admin.users.confirm.saving")}</p>
+        ) : (
+          <form onSubmit={submit}>
+            <div className="admin-perms-grid">
+              {VENDOR_FEATURE_PERMISSIONS.map((p) => (
+                <label key={p.key} className="admin-perm-item">
+                  <input
+                    type="checkbox"
+                    checked={checked.has(p.key)}
+                    onChange={() => toggle(p.key)}
+                  />
+                  <span>{t(p.labelKey)}</span>
+                </label>
+              ))}
+            </div>
+            <div className="btn-row">
+              <button type="button" className="btn btn-ghost" onClick={onClose}>{t("common.cancel")}</button>
+              <button type="submit" className="btn btn-primary" disabled={pending}>{pending ? t("admin.users.confirm.saving") : t("admin.users.features.save")}</button>
+            </div>
+          </form>
+        )}
       </div>
     </>
   );
@@ -231,11 +277,6 @@ function PermissionsModal({ user, onClose, onDone }) {
 export function AdminUsersPage() {
   const { t } = useI18n();
   const { fmt, fmtN } = useMoney();
-  const roles = [
-    { value: "vendedor", label: t("admin.users.role.seller") },
-    { value: "admin", label: t("admin.users.role.admin") },
-  ];
-  const roleLabel = (r) => t(ROLE_KEYS[r] ?? r);
   const session = useOutletContext();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -244,6 +285,8 @@ export function AdminUsersPage() {
   const qs = searchParams.toString();
   const search = qs ? `?${qs}&_=${reloadKey}` : `?_=${reloadKey}`;
   const { loading, data, error } = useAdminFetch("users", search);
+  const canManageRoles = Boolean(session?.profile && isSuperAdmin(session.profile));
+  const { data: rolesData } = useAdminFetch(canManageRoles ? "roles" : null, canManageRoles ? `?_=${reloadKey}` : "");
 
   const profile = session?.profile;
   const caps = {
@@ -253,9 +296,14 @@ export function AdminUsersPage() {
     canPermissions: hasPermission(profile, "users:permissions"),
   };
 
+  const assignableRoles = useMemo(() => {
+    const list = Array.isArray(rolesData) ? rolesData : [];
+    return list.filter((r) => r.slug !== "superadmin");
+  }, [rolesData]);
+
   const confirmKind = searchParams.get("confirm");
   const confirmUserId = searchParams.get("userId");
-  const newRole = searchParams.get("newRole");
+  const newRoleId = searchParams.get("newRoleId");
   const editPermsId = searchParams.get("editPerms");
   const editFeaturesId = searchParams.get("editFeatures");
   const editMembershipId = searchParams.get("editMembership");
@@ -268,6 +316,7 @@ export function AdminUsersPage() {
   const permsUser = editPermsId ? users.find((u) => u.id === editPermsId) : undefined;
   const featuresUser = editFeaturesId ? users.find((u) => u.id === editFeaturesId) : undefined;
   const membershipUser = editMembershipId ? users.find((u) => u.id === editMembershipId) : undefined;
+  const newRoleLabel = assignableRoles.find((r) => r.id === newRoleId)?.nombre;
 
   const planLabel = (p) => t(p === "pro" ? "admin.users.plan.pro" : "admin.users.plan.basico");
   const membershipLabel = (s) => {
@@ -275,6 +324,7 @@ export function AdminUsersPage() {
     const translated = t(key);
     return translated === key ? (s || "activa") : translated;
   };
+  const displayRole = (u) => u.role_nombre || t(ROLE_KEYS[u.role] ?? u.role);
 
   const refresh = (err) => {
     const url = err ? `${returnTo}${returnTo.includes("?") ? "&" : "?"}error=${err}` : returnTo;
@@ -326,10 +376,18 @@ export function AdminUsersPage() {
                     <td className="admin-cell-email" title={u.email ?? undefined}>{u.email ?? "—"}</td>
                     <td className="admin-cell-role">
                       {roleReadOnly ? (
-                        <span className="admin-role-readonly">{roleLabel(u.role)}</span>
+                        <span className="admin-role-readonly">{displayRole(u)}</span>
                       ) : (
-                        <select form={formId} name="newRole" defaultValue={u.role} className="admin-role-select" disabled={!u.is_active}>
-                          {roles.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
+                        <select
+                          form={formId}
+                          name="newRoleId"
+                          defaultValue={u.role_id || ""}
+                          className="admin-role-select"
+                          disabled={!u.is_active || assignableRoles.length === 0}
+                        >
+                          {assignableRoles.map((r) => (
+                            <option key={r.id} value={r.id}>{r.nombre}</option>
+                          ))}
                         </select>
                       )}
                     </td>
@@ -352,7 +410,18 @@ export function AdminUsersPage() {
                       <td className="admin-cell-actions">
                         <div className="admin-table-actions">
                           {caps.canRole && !roleReadOnly && (
-                            <form id={formId} onSubmit={(e) => { e.preventDefault(); const fd = new FormData(e.currentTarget); navigate(userAdminUrl(filters, { confirm: "role", userId: u.id, newRole: fd.get("newRole") })); }}>
+                            <form
+                              id={formId}
+                              onSubmit={(e) => {
+                                e.preventDefault();
+                                const fd = new FormData(e.currentTarget);
+                                navigate(userAdminUrl(filters, {
+                                  confirm: "role",
+                                  userId: u.id,
+                                  newRoleId: fd.get("newRoleId"),
+                                }));
+                              }}
+                            >
                               <button type="submit" className="icon-btn" title={t("admin.users.action.saveRole")} disabled={!u.is_active}><IconSave /></button>
                             </form>
                           )}
@@ -370,7 +439,7 @@ export function AdminUsersPage() {
                           {caps.canPermissions && u.role === "admin" && !u.is_super_admin && (
                             <Link to={userAdminUrl(filters, { editPerms: u.id })} className="btn btn-sm btn-ghost">{t("admin.users.action.permissions")}</Link>
                           )}
-                          {caps.canPermissions && u.role !== "admin" && !u.is_super_admin && (
+                          {caps.canPermissions && !u.is_super_admin && (
                             <Link to={userAdminUrl(filters, { editFeatures: u.id })} className="btn btn-sm btn-ghost">{t("admin.users.action.features")}</Link>
                           )}
                         </div>
@@ -387,7 +456,8 @@ export function AdminUsersPage() {
         <ConfirmModal
           kind={confirmKind}
           user={confirmUser}
-          newRole={newRole ?? confirmUser.role}
+          newRoleId={newRoleId ?? confirmUser.role_id}
+          newRoleLabel={newRoleLabel}
           onClose={() => navigate(returnTo, { replace: true })}
           onDone={(err) => refresh(err)}
         />
@@ -399,7 +469,7 @@ export function AdminUsersPage() {
           onDone={(err) => refresh(err)}
         />
       )}
-      {featuresUser && caps.canPermissions && featuresUser.role !== "admin" && !featuresUser.is_super_admin && (
+      {featuresUser && caps.canPermissions && !featuresUser.is_super_admin && (
         <VendorFeaturesModal
           user={featuresUser}
           onClose={() => navigate(returnTo, { replace: true })}
