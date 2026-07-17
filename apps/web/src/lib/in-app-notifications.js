@@ -1,4 +1,10 @@
-import { PushType, messagePath, networkPath, contactPath, sharedProspectPath } from "@salesapp/shared/push/notification-targets.js";
+import {
+  PushType,
+  messagePath,
+  networkPath,
+  contactPath,
+  sharedProspectPath,
+} from "@salesapp/shared/push/notification-targets.js";
 import { getInstallPlatform } from "@/lib/pwa-install.js";
 import { playNotificationSound } from "@/lib/notification-sound.js";
 import { toast } from "@/lib/toast";
@@ -7,6 +13,7 @@ import { useDbStore } from "@/stores/db-store";
 const recent = new Map();
 const DEDUPE_MS = 8_000;
 
+/** Misma clave que `loadNotificationPrefs` en el API / Configuración → Notificaciones. */
 const TYPE_TO_PREF = {
   [PushType.MESSAGE]: "messages",
   [PushType.CONNECTION_REQUEST]: "connection_requests",
@@ -18,12 +25,27 @@ const TYPE_TO_PREF = {
   [PushType.SCHEDULED_NOTE]: "scheduled_notes",
 };
 
+const TYPE_TO_ICON = {
+  [PushType.MESSAGE]: "message",
+  [PushType.CONNECTION_REQUEST]: "connection_request",
+  [PushType.CONNECTION_ACCEPTED]: "connection_accepted",
+  [PushType.SHARED_PROSPECT]: "shared_prospect",
+  [PushType.PROSPECT_SECTION_CHANGED]: "shared_prospect",
+  [PushType.FOLLOW_UP_REMINDER]: "follow_up_reminder",
+  [PushType.SALES_TO_PROCESS]: "sales_to_process",
+  [PushType.SCHEDULED_NOTE]: "scheduled_note",
+};
+
 function prune(now) {
   for (const [k, t] of recent) {
     if (now - t > 30_000) recent.delete(k);
   }
 }
 
+/**
+ * Fuente de verdad local = `profiles.settings.notifications` hidratado en el store
+ * (mismo JSON que el servidor lee al filtrar push).
+ */
 export function getNotificationPrefs() {
   const notifications = useDbStore.getState()?.db?.settings?.notifications ?? {};
   return {
@@ -41,12 +63,11 @@ export function isNotificationTypeEnabled(type) {
   if (!type || type === PushType.SESSION_REVOKED) return true;
   const prefKey = TYPE_TO_PREF[type];
   if (!prefKey) return true;
-  return getNotificationPrefs()[prefKey] !== false;
+  return Boolean(getNotificationPrefs()[prefKey]);
 }
 
 /**
  * Toast in-app (siempre) + sonido en desktop.
- * Independiente de Notification.permission / OneSignal.
  * @returns {boolean} true si se mostró
  */
 export function presentInAppNotification({
@@ -56,16 +77,19 @@ export function presentInAppNotification({
   path,
   dedupeKey,
   playSound = true,
+  avatarUrl = null,
 } = {}) {
   if (typeof window === "undefined") return false;
   if (type === PushType.SESSION_REVOKED) return false;
   if (!isNotificationTypeEnabled(type)) return false;
 
-  const line = [String(title || "").trim(), String(body || "").trim()].filter(Boolean).join(" — ");
-  if (!line) return false;
+  const t = String(title || "").trim();
+  const b = String(body || "").trim();
+  if (!t && !b) return false;
 
   const now = Date.now();
   prune(now);
+  const line = [t, b].filter(Boolean).join(" — ");
   const key = String(dedupeKey || `${type}:${line}`).slice(0, 180);
   const windowKey = `win:${type}:${line.slice(0, 100)}`;
   if (recent.has(key) && now - recent.get(key) < DEDUPE_MS) return false;
@@ -74,7 +98,10 @@ export function presentInAppNotification({
   recent.set(windowKey, now);
 
   toast.notify({
-    message: line,
+    title: t || b,
+    body: t ? b : "",
+    icon: TYPE_TO_ICON[type] || "bell",
+    avatarUrl: avatarUrl || null,
     duration: 5500,
     href: typeof path === "string" && path.startsWith("/") ? path : null,
   });
@@ -89,6 +116,7 @@ export function presentInAppNotification({
 export function presentFromPushNotification(notification) {
   const data = notification?.additionalData || {};
   const type = data.type || null;
+  // Mismo payload que OneSignal / móvil: title + body del push.
   const title = notification?.title || "";
   const body = notification?.body || "";
   const path = data.path
@@ -106,4 +134,4 @@ export function presentFromPushNotification(notification) {
   });
 }
 
-export { messagePath, networkPath, contactPath, sharedProspectPath, PushType };
+export { messagePath, networkPath, contactPath, sharedProspectPath, PushType, TYPE_TO_PREF };
