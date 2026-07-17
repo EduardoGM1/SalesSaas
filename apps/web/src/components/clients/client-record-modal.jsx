@@ -5,7 +5,8 @@ import { CountryCitySelects } from "@/components/clients/country-city-selects.js
 import { selectOnFocus } from "@/lib/focus-select.js";
 import { formatSingleNameInput, isValidSingleName, SINGLE_NAME_MAX_LENGTH } from "@/lib/format/single-name-input.js";
 import { isSaleFormValid, resolveSaleProcessDate } from "@/lib/sales/form-valid";
-import { parseMoney } from "@/lib/format/money";
+import { formatMoneyValue, parseMoney } from "@/lib/format/money";
+import { formatMoneyInput } from "@/lib/format/numeric-input.js";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { DEFAULT_TOUR_TYPES } from "@/lib/store-empty.js";
 import { useDbStore } from "@/stores/db-store";
@@ -139,7 +140,18 @@ function SaleFields({ saleForm, onChange, t, showErrors }) {
       <div className="prospect-geo-row">
         <div className={requiredFieldClass(showErrors, missingVolume)}>
           <label className="field-required">{t("exp.sale.volume")}</label>
-          <div className="mfield"><span className="mpfx">$</span><input type="text" placeholder="0" value={saleForm.vol} onFocus={selectOnFocus} onChange={(e) => onChange({ ...saleForm, vol: e.target.value })} /></div>
+          <div className="mfield">
+            <span className="mpfx">$</span>
+            <input
+              type="text"
+              inputMode="decimal"
+              placeholder="0"
+              value={saleForm.vol}
+              onFocus={selectOnFocus}
+              onChange={(e) => onChange({ ...saleForm, vol: formatMoneyInput(e.target.value) })}
+              onBlur={(e) => onChange({ ...saleForm, vol: formatMoneyValue(e.target.value) })}
+            />
+          </div>
         </div>
         <div className="prospect-field">
           <label>{t("exp.sale.tours")}</label>

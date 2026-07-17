@@ -16,7 +16,7 @@ import { Topbar } from "@/components/layout/topbar";
 import { PageBack } from "@/components/layout/page-back";
 import { clientDisplayName, ensureProspectIdentity } from "@/lib/clients";
 import { longDate, ymdToday } from "@/lib/format/dates";
-import { parseMoney } from "@/lib/format/money";
+import { formatMoneyValue, parseMoney } from "@/lib/format/money";
 import { statusLabel } from "@/lib/format/status";
 import { useMoney } from "@/hooks/use-money.js";
 import { useI18n } from "@/hooks/use-i18n.js";
@@ -146,7 +146,11 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
     setForm({ ...c });
     setSaleForm({
       date: resolvedSale?.date || ymdToday(),
-      vol: resolvedSale ? String(resolvedSale.vol || "") : worksheetVol ? String(worksheetVol) : "",
+      vol: resolvedSale
+        ? formatMoneyValue(resolvedSale.vol || "")
+        : worksheetVol
+          ? formatMoneyValue(worksheetVol)
+          : "",
       tours: String(resolvedSale?.tours || 1),
       contract: resolvedSale?.contract || c?.contract || "",
       status: resolvedSale?.status === "pendiente" ? "pendiente" : "venta",

@@ -109,7 +109,7 @@ export function VacacionesPage({ clientId, shared }: VacacionesPageProps) {
         <div className="page-toolbar page-toolbar--between">
           <PageBack inline href={backHref} hasUnsavedChanges={() => dirtyKeysRef.current.size > 0} />
           {!readOnly && (
-            <button type="button" className="btn btn-ghost btn-sm" onClick={handleClear}>{t("common.clear")}</button>
+            <button type="button" className="page-back-btn" onClick={handleClear}>{t("common.clear")}</button>
           )}
         </div>
 
