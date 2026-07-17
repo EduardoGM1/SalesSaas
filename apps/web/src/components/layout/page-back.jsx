@@ -5,7 +5,7 @@ import { confirmDialog } from "@/lib/confirm";
 
 /**
  * Botón global «← Volver» (SDD-02).
- * Flecha + texto siempre juntos; historial real con fallback; confirma si hay cambios sin guardar.
+ * Flecha + texto juntos por defecto; también sirve para acciones del mismo estilo (ej. Limpiar) con showIcon={false}.
  */
 export function PageBack({
   href,
@@ -16,6 +16,7 @@ export function PageBack({
   hasUnsavedChanges = false,
   unsavedMessage,
   className = "",
+  showIcon = true,
 }) {
   const { t } = useI18n();
   const navigate = useNavigate();
@@ -51,12 +52,17 @@ export function PageBack({
   };
 
   const classes = ["page-back-btn", className].filter(Boolean).join(" ");
+  const content = (
+    <>
+      {showIcon ? <ArrowLeft size={18} strokeWidth={2.25} aria-hidden="true" /> : null}
+      <span>{visibleLabel}</span>
+    </>
+  );
 
   if (href !== undefined && !onClick && !hasUnsavedChanges) {
     const linkBtn = (
       <Link to={href} className={classes}>
-        <ArrowLeft size={18} strokeWidth={2.25} aria-hidden="true" />
-        <span>{visibleLabel}</span>
+        {content}
       </Link>
     );
     return inline ? linkBtn : <div className="page-back-row">{linkBtn}</div>;
@@ -64,8 +70,7 @@ export function PageBack({
 
   const btn = (
     <button type="button" className={classes} onClick={() => void goBack()}>
-      <ArrowLeft size={18} strokeWidth={2.25} aria-hidden="true" />
-      <span>{visibleLabel}</span>
+      {content}
     </button>
   );
   return inline ? btn : <div className="page-back-row">{btn}</div>;

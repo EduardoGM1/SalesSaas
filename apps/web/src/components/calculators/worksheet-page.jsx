@@ -126,7 +126,7 @@ export function WorksheetPage({ clientId, shared }: WorksheetPageProps) {
         <div className="page-toolbar page-toolbar--between">
           <PageBack inline href={backHref} hasUnsavedChanges={() => dirtyKeysRef.current.size > 0} />
           {!readOnly && (
-            <button type="button" className="btn btn-ghost btn-sm" onClick={handleClear}>{t("common.clear")}</button>
+            <PageBack inline label={t("common.clear")} onClick={handleClear} showIcon={false} />
           )}
         </div>
 
