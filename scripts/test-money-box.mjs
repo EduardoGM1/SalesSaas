@@ -66,6 +66,16 @@ try {
   const {
     round2,
     factorFor,
+    annuityFactor,
+    toCents,
+    roundSaleDown,
+    selectThree,
+    buildPlanMatrix,
+    generateDownProposals,
+    generateMonthlyProposals,
+    generateCombinedProposals,
+    defaultPolicyConfig,
+    mensualidadPara,
     calcularVentaPorMensualidadPerfecta,
     calcularVentaPorEnganchePerfecto,
     generateByMonthly,
@@ -316,6 +326,86 @@ try {
   // round2 sanity (regla de display)
   assert(round2(167.75958328875666) === 167.76, "round2(167.75958…) === 167.76");
   assert(round2(16607.787239618126) === 16607.79, "round2 venta caso 1");
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // CASO 5 — Algoritmo 3 paneles (centavos + Worksheet terms)
+  // ═══════════════════════════════════════════════════════════════════════
+  console.log("\n=== CASO 5 — 3 paneles / matriz / selectThree ===");
+  {
+    const term = { months: 12, annualRate: 5.9, label: "12m", id: "t12" };
+    const af = annuityFactor(term);
+    const ff = factorFor(term.months, term.annualRate);
+    assertNear(af * ff, 1, "annuityFactor * factorFor ≈ 1", 1e-9);
+
+    const saleCents = toCents(10000);
+    const downCents = toCents(3000);
+    const m = mensualidadPara(saleCents, downCents, 0, term);
+    assert(m === Math.round((saleCents - downCents) * ff), "mensualidadPara = financed * factorFor");
+
+    assert(roundSaleDown(123456, 50000) === 100000, "roundSaleDown a $500");
+    assert(roundSaleDown(123456, 1) === 123456, "roundSaleDown exacto");
+
+    const candidates = [
+      { saleCents: 100000, downCents: 30000, downPct: 0.3, totalTodayCents: 30000, originPlanId: null },
+      { saleCents: 90000, downCents: 27000, downPct: 0.3, totalTodayCents: 27000, originPlanId: null },
+      { saleCents: 80000, downCents: 24000, downPct: 0.3, totalTodayCents: 24000, originPlanId: null },
+      { saleCents: 70000, downCents: 21000, downPct: 0.3, totalTodayCents: 21000, originPlanId: null },
+      { saleCents: 60000, downCents: 18000, downPct: 0.3, totalTodayCents: 18000, originPlanId: null },
+    ];
+    const s0 = selectThree(candidates, 0, 0.1);
+    const s1 = selectThree(candidates, 1, 0.1);
+    assert(s0.length === 3, "selectThree → 3");
+    assert(s0[0].saleCents >= s0[1].saleCents && s0[1].saleCents >= s0[2].saleCents, "curva descendente");
+    assert(
+      s0.map((x) => x.saleCents).join(",") !== s1.map((x) => x.saleCents).join(","),
+      "refreshIndex cambia el set",
+    );
+
+    const wsTerms = termsFromWorksheetConfig({
+      wo1m: "12", wo1r: "5.9",
+      wo2m: "24", wo2r: "7.9",
+      wo3m: "48", wo3r: "8.9",
+    });
+    const config = defaultPolicyConfig({
+      minDownPct: 0.3,
+      maxDownPct: 0.5,
+      maxSaleCents: toCents(150000),
+      roundStepCents: 1,
+    });
+    const downs = generateDownProposals(toCents(2000), 0, config, wsTerms, 0);
+    assert(downs.length > 0 && downs.length <= 3, "generateDownProposals ≤3");
+    assert(downs[0].plans.length === wsTerms.length, "matriz: todos los plazos Worksheet");
+    assert(downs[0].plans.every((p) => typeof p.feasible === "boolean"), "cada plan tiene feasible");
+
+    const configRound = defaultPolicyConfig({
+      ...config,
+      roundStepCents: 50000,
+    });
+    const downsR = generateDownProposals(toCents(2000), 0, configRound, wsTerms, 0);
+    for (const p of downsR) {
+      assert(p.saleCents % 50000 === 0, `venta múltiplo de $500: ${p.saleCents}`);
+    }
+
+    const monthly = generateMonthlyProposals(toCents(210), 0, config, wsTerms, 0);
+    assert(monthly.length <= 3, "generateMonthlyProposals ≤3");
+    const combined = generateCombinedProposals(toCents(2000), toCents(210), config, wsTerms, 0);
+    assert(combined.length <= 3, "generateCombinedProposals ≤3");
+
+    // Plan incumplidor sigue en matriz (mensualidad cap baja)
+    const matrix = buildPlanMatrix({
+      saleCents: toCents(50000),
+      downCents: toCents(15000),
+      originPlanId: null,
+      monthlyCapCents: 50,
+      cashCapCents: 0,
+      config,
+      terms: wsTerms,
+    });
+    assert(matrix.length === wsTerms.length, "matriz no oculta planes");
+    assert(matrix.some((p) => !p.feasible && p.reason.includes("mensualidad")), "motivo supera mensualidad");
+
+    console.log("✓ CASO 5 OK");
+  }
 
   console.log("\n══════════════════════════════════════");
   console.log(`RESULTADO: ${passed} aserciones OK, ${failed} fallos`);

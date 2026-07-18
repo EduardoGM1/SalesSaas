@@ -6480,17 +6480,50 @@ body,
   display: none;
   margin-top: 16px;
 }
+.money-box-panels-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 16px;
+}
+.money-box-plan-ok {
+  background: rgba(16, 185, 129, 0.08);
+}
+.money-box-plan-bad {
+  background: rgba(220, 38, 38, 0.07);
+}
+.money-box-plan-cell {
+  vertical-align: top;
+}
+.money-box-plan-reason {
+  display: block;
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--muted);
+  font-weight: 500;
+  line-height: 1.35;
+}
+.money-box-plan-bad .money-box-plan-reason {
+  color: #b91c1c;
+}
+.money-box-feasibility {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.money-box-panel-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
 @media (max-width: 700px) {
   .money-box-mobile-tabs {
     display: block;
   }
-  .money-box-panels.g2 {
-    grid-template-columns: 1fr;
-  }
-  .money-box-panels > .card {
+  .money-box-panels-stack > .card {
     display: none;
   }
-  .money-box-panels > .card.is-mobile-active {
+  .money-box-panels-stack > .card.is-mobile-active {
     display: block;
   }
 }
