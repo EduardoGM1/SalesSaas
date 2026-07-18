@@ -6,7 +6,6 @@ import {
   diagnosePushSubscription,
   ensureOneSignal,
   resolveOneSignalAppId,
-  restorePushSubscriptionIfNeeded,
   setupPushNotificationHandlers,
   syncPushIdentityAndSubscription,
   unlinkOneSignalUser,
@@ -14,14 +13,28 @@ import {
 import { scheduleAutoPushRequest } from "@/lib/push-enable.js";
 import { clearAutoPushRequested } from "@/lib/push-prompt.js";
 import { bindNotificationSoundUnlock } from "@/lib/notification-sound.js";
-import { getInstallPlatform } from "@/lib/pwa-install.js";
+import { usesOneSignalPush } from "@/lib/desktop-notifications.js";
 
-/** Inicializa OneSignal y vincula el usuario de Supabase como external_id. */
+/** Inicializa OneSignal (solo móvil). En desktop no carga el SDK. */
 export function OneSignalProvider({ children }) {
   const navigate = useNavigate();
 
   useEffect(() => {
     if (!isSupabaseConfigured()) return undefined;
+
+    bindNotificationSoundUnlock();
+
+    // Desktop: sin OneSignal (Realtime + Notification API local).
+    if (!usesOneSignalPush()) {
+      window.__diagnosePush = async () => ({
+        provider: "desktop-local",
+        permission: typeof Notification !== "undefined" ? Notification.permission : "unsupported",
+        note: "OneSignal disabled on desktop web",
+      });
+      return () => {
+        if (window.__diagnosePush) delete window.__diagnosePush;
+      };
+    }
 
     let authSubscription = null;
     let pushSubscriptionListener = null;
@@ -29,14 +42,10 @@ export function OneSignalProvider({ children }) {
     let cancelled = false;
     let activeUserId = null;
 
-    bindNotificationSoundUnlock();
-
-    // Diagnóstico manual en consola: await __diagnosePush()
     window.__diagnosePush = diagnosePushSubscription;
 
     const resyncOnResume = () => {
       if (!activeUserId || cancelled) return;
-      // Solo re-vincular / registrar device; no martillar optIn.
       void syncPushIdentityAndSubscription();
     };
 
@@ -69,18 +78,6 @@ export function OneSignalProvider({ children }) {
 
         if (activeUserId) {
           await syncIdentity(activeUserId);
-          // Desktop needsResync: un solo restore silencioso por sesión (el botón es el camino principal).
-          if (
-            getInstallPlatform() === "desktop"
-            && typeof Notification !== "undefined"
-            && Notification.permission === "granted"
-          ) {
-            void restorePushSubscriptionIfNeeded({ force: false }).then((result) => {
-              if (result?.restored || result?.alreadySubscribed) {
-                window.dispatchEvent(new CustomEvent("push:status-changed"));
-              }
-            });
-          }
         }
 
         pushSubscriptionListener = async () => {
@@ -95,10 +92,6 @@ export function OneSignalProvider({ children }) {
             await syncIdentity(session.user.id);
             if (event === "SIGNED_IN") {
               const permission = typeof Notification !== "undefined" ? Notification.permission : "default";
-              if (permission === "granted" && getInstallPlatform() === "desktop") {
-                // Ya intentamos restore 1× en setup; no repetir en SIGNED_IN.
-                return;
-              }
               if (permission === "default") {
                 clearAutoPushRequested();
                 scheduleAutoPushRequest({ reason: "signed-in", delayMs: 500, preferBanner: true });

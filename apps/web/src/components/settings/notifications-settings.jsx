@@ -18,6 +18,7 @@ import {
 } from "@/lib/push-notifications.js";
 import { ensurePushRuntimeReady } from "@/lib/onesignal.js";
 import { enablePushNotifications, toastPushEnableResult } from "@/lib/push-enable.js";
+import { usesOneSignalPush } from "@/lib/desktop-notifications.js";
 import { openInstallPrompt, isAndroidDevice } from "@/lib/pwa-install.js";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { toast } from "@/lib/toast";
@@ -158,6 +159,11 @@ export function NotificationsSettings({
   }, []);
 
   useEffect(() => {
+    // Desktop no depende del runtime OneSignal.
+    if (!usesOneSignalPush()) {
+      setRuntimeReady(true);
+      return undefined;
+    }
     let cancelled = false;
     ensurePushRuntimeReady()
       .then((runtime) => {
@@ -253,18 +259,24 @@ export function NotificationsSettings({
 
   return (
     <div className="notif-panel">
-      {!status.pushConfigured && (
+      {usesOneSignalPush() && !status.pushConfigured && (
         <div className="auth-error" style={{ marginBottom: 12 }}>
           {t("settings.notifications.serverNotConfigured")}
         </div>
       )}
 
-      {status.needsResync && (
+      {usesOneSignalPush() && status.needsResync && (
         <div className="auth-error" style={{ marginBottom: 12 }}>
           {status.pushServiceFailed
             ? t("settings.notifications.needsResyncPushService")
             : t("settings.notifications.needsResync")}
         </div>
+      )}
+
+      {!usesOneSignalPush() && (
+        <p className="settings-help" style={{ marginBottom: 12 }}>
+          {t("settings.notifications.desktopLocalHelp")}
+        </p>
       )}
 
       <div className="notif-status-card">
@@ -285,10 +297,12 @@ export function NotificationsSettings({
             type="button"
             className="btn btn-primary btn-sm"
             data-push-enable
-            disabled={pending || !status.pushConfigured || !runtimeReady}
+            disabled={pending || (usesOneSignalPush() && (!status.pushConfigured || !runtimeReady))}
             onClick={handleEnable}
           >
-            {pending || !runtimeReady ? t("common.loading") : t("settings.notifications.enable")}
+            {pending || (usesOneSignalPush() && !runtimeReady)
+              ? t("common.loading")
+              : t("settings.notifications.enable")}
           </button>
         ) : (
           <button type="button" className="btn btn-ghost btn-sm" disabled={pending} onClick={handleDisable}>

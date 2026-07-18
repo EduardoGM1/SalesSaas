@@ -15,6 +15,7 @@ export async function unlockNotificationSound() {
   if (!Ctx) return;
 
   try {
+    // Crear solo dentro del gesto; resume inmediato reduce el warning de autoplay.
     if (!audioCtx || audioCtx.state === "closed") {
       audioCtx = new Ctx();
     }
@@ -23,6 +24,7 @@ export async function unlockNotificationSound() {
     }
     unlocked = audioCtx.state === "running";
   } catch {
+    // Chrome puede rechazar create/resume fuera de gesto; no spamear.
     unlocked = false;
   }
 }

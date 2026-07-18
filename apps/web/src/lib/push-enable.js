@@ -19,6 +19,10 @@ import { openInstallPrompt } from "@/lib/pwa-install.js";
 import { unlockNotificationSound } from "@/lib/notification-sound.js";
 import { toast } from "@/lib/toast";
 import { reportOneSignalPushIssue } from "@/lib/observability.js";
+import {
+  enableDesktopLocalNotifications,
+  usesOneSignalPush,
+} from "@/lib/desktop-notifications.js";
 
 const KNOWN_PUSH_CODES = new Set([
   "PERMISSION_DENIED",
@@ -49,9 +53,10 @@ function normalizePushErrorCode(err) {
 }
 
 /**
- * Activa push (permiso del navegador + suscripción OneSignal).
+ * Activa notificaciones:
+ * - Desktop: permiso local + Realtime (sin OneSignal / Web Push).
+ * - Móvil: permiso + suscripción OneSignal.
  * Debe llamarse desde un gesto de usuario (click/pointerdown) para el diálogo nativo.
- * Single-flight: llamadas concurrentes comparten la misma Promise.
  * @returns {Promise<{ ok: true } | { ok: false, code: string, detail?: string|null }>}
  */
 export async function enablePushNotifications() {
@@ -60,24 +65,33 @@ export async function enablePushNotifications() {
   enableInFlight = (async () => {
     try {
       void unlockNotificationSound();
-      // Camino explícito del botón: siempre intenta subscribe (bypass límite silent-restore).
+
+      if (!usesOneSignalPush()) {
+        await enableDesktopLocalNotifications();
+        markAutoPushRequested();
+        notifyPushStatusChanged();
+        return { ok: true, provider: "desktop-local" };
+      }
+
       await subscribeToPush();
       await syncPushIdentityAndSubscription();
       markAutoPushRequested();
       notifyPushStatusChanged();
-      return { ok: true };
+      return { ok: true, provider: "onesignal" };
     } catch (err) {
       const code = normalizePushErrorCode(err);
       const detail = err?.detail || err?.message || null;
       console.error("[push] enablePushNotifications failed:", code, detail, err);
-      void reportOneSignalPushIssue({
-        stage: "enablePushNotifications",
-        code,
-        detail,
-        permission: typeof Notification !== "undefined" ? Notification.permission : null,
-        error: err instanceof Error ? err : new Error(String(detail || code)),
-        message: `Push enable failed: ${code}${detail ? ` — ${detail}` : ""}`,
-      });
+      if (usesOneSignalPush()) {
+        void reportOneSignalPushIssue({
+          stage: "enablePushNotifications",
+          code,
+          detail,
+          permission: typeof Notification !== "undefined" ? Notification.permission : null,
+          error: err instanceof Error ? err : new Error(String(detail || code)),
+          message: `Push enable failed: ${code}${detail ? ` — ${detail}` : ""}`,
+        });
+      }
       if (code === "PERMISSION_DENIED") {
         markPushPromptPermanentlyBlocked();
         markAutoPushRequested();

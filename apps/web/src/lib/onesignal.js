@@ -2,6 +2,10 @@ import { notificationsApi } from "@/lib/notifications-api.js";
 import { createClient } from "@/lib/supabase/client";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { getInstallPlatform, isIosDevice, isStandaloneApp } from "@/lib/pwa-install.js";
+import {
+  getDesktopLocalNotificationStatus,
+  usesOneSignalPush,
+} from "@/lib/desktop-notifications.js";
 import { reportOneSignalLinkIssue, reportOneSignalPushIssue } from "@/lib/observability.js";
 import { PushType, resolvePushPathFromPayload } from "@salesapp/shared/push/notification-targets.js";
 import { clearLocalSession } from "@/lib/session-api.js";
@@ -170,9 +174,13 @@ export function isOneSignalConfigured() {
 }
 
 export function isPushSupported() {
-  if (!isBrowserPushCapable() || !isSupabaseConfigured()) return false;
+  if (!isSupabaseConfigured()) return false;
   if (isIosDevice() && !isStandaloneApp()) return false;
-  return true;
+  // Desktop: avisos locales (Notification API + Realtime), sin OneSignal/Web Push.
+  if (!usesOneSignalPush()) {
+    return typeof window !== "undefined" && "Notification" in window;
+  }
+  return isBrowserPushCapable();
 }
 
 export function needsIosPwaInstall() {
@@ -369,6 +377,12 @@ export async function ensurePushRuntimeReady() {
 
 export async function diagnosePushSubscription() {
   const permission = typeof Notification !== "undefined" ? Notification.permission : "unsupported";
+  if (!usesOneSignalPush()) {
+    const status = getDesktopLocalNotificationStatus();
+    const diag = { ...status, origin: typeof window !== "undefined" ? window.location.origin : null };
+    console.info("[onesignal:diagnose]", diag);
+    return diag;
+  }
   let sdk = null;
   try {
     sdk = await ensureOneSignal();
@@ -522,6 +536,9 @@ async function ensureOneSignalServiceWorkerRegistered() {
 }
 
 export async function ensureOneSignal() {
+  if (!usesOneSignalPush()) {
+    throw codedError("PUSH_UNSUPPORTED", "OneSignal is disabled on desktop web");
+  }
   const appId = await resolveOneSignalAppId();
   if (!appId) {
     throw codedError("ONESIGNAL_NOT_CONFIGURED", "Missing OneSignal appId");
@@ -819,6 +836,10 @@ export async function setupPushNotificationHandlers({ onNavigate } = {}) {
 }
 
 async function subscribeToPushInternal() {
+  if (!usesOneSignalPush()) {
+    throw codedError("PUSH_UNSUPPORTED", "Use enableDesktopLocalNotifications on desktop");
+  }
+
   if (needsIosPwaInstall()) {
     throw codedError("IOS_PWA_REQUIRED");
   }
@@ -1011,6 +1032,7 @@ export async function subscribeToPush() {
  * @param {{ force?: boolean }} [opts] force=true ignora el límite de 1 restore/sesión (botón Activar).
  */
 export async function restorePushSubscriptionIfNeeded({ force = false } = {}) {
+  if (!usesOneSignalPush()) return { restored: false, skipped: true, reason: "desktop_local" };
   if (!isBrowserPushCapable() || !isSupabaseConfigured()) return { restored: false };
   if (Notification.permission !== "granted") return { restored: false };
 
@@ -1051,12 +1073,19 @@ export async function restorePushSubscriptionIfNeeded({ force = false } = {}) {
 }
 
 export async function unsubscribeFromPush() {
+  if (!usesOneSignalPush()) {
+    const { disableDesktopLocalNotifications } = await import("@/lib/desktop-notifications.js");
+    return disableDesktopLocalNotifications();
+  }
   const OneSignal = await ensureOneSignal();
   await OneSignal.User.PushSubscription.optOut();
   return { ok: true };
 }
 
 export async function syncPushIdentityAndSubscription() {
+  if (!usesOneSignalPush()) {
+    return { ok: true, linked: false, subscribed: getDesktopLocalNotificationStatus().subscribed, provider: "desktop-local" };
+  }
   if (!isBrowserPushCapable() || !isSupabaseConfigured()) {
     return { ok: false, reason: "unsupported" };
   }
@@ -1123,6 +1152,14 @@ export async function getPushStatus() {
       needsIosPwa: true,
       provider: "onesignal",
     };
+  }
+
+  // Desktop: sin OneSignal (evita AbortError push service error de Chrome/FCM).
+  if (!usesOneSignalPush()) {
+    if (!isSupabaseConfigured()) {
+      return { supported: false, subscribed: false, permission: "unsupported", pushConfigured: false };
+    }
+    return getDesktopLocalNotificationStatus();
   }
 
   if (!isBrowserPushCapable() || !isSupabaseConfigured()) {

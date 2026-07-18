@@ -1,5 +1,6 @@
 import { PushType } from "@salesapp/shared/push/notification-targets.js";
 import { getInstallPlatform } from "@/lib/pwa-install.js";
+import { showDesktopLocalNotification } from "@/lib/desktop-notifications.js";
 import { playNotificationSound } from "@/lib/notification-sound.js";
 import { toast } from "@/lib/toast";
 import { useDbStore } from "@/stores/db-store";
@@ -110,6 +111,12 @@ function emitToast(payload, { toastId = null, playSound = true, groupKey = null 
 
   if (playSound && getInstallPlatform() === "desktop") {
     void playNotificationSound();
+    // Si la pestaña está en segundo plano: Notification API local (sin OneSignal/FCM).
+    showDesktopLocalNotification({
+      title: payload.titulo,
+      body: payload.cuerpo,
+      href: payload.rutaDestino || null,
+    });
   }
   return id;
 }
