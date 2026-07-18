@@ -6410,8 +6410,8 @@ body,
 
 /* Money Box — layout helpers con tokens Saletse (sin paleta del prototipo) */
 .money-box-round-select {
-  width: max-content;
-  min-width: 12.5rem;
+  width: 100%;
+  min-width: 0;
   max-width: 100%;
   box-sizing: border-box;
   padding: 7px 32px 7px 12px;
@@ -6433,8 +6433,41 @@ body,
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
   background-color: #fff;
 }
-.money-box-round-row {
-  padding-bottom: 0;
+.money-box-field {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  min-width: 0;
+}
+.money-box-field .flabel {
+  flex: none;
+}
+.money-box-field .mfield,
+.money-box-field .frow-inline {
+  width: 100%;
+}
+.money-box-field .frow-inline .tool-num-input {
+  flex: 1;
+  width: auto;
+  min-width: 0;
+  max-width: none;
+}
+.money-box-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.money-box-fields--multi {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px 16px;
+}
+.money-box-restrictions-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px 16px;
+  align-items: start;
 }
 .money-box-terms-block {
   margin-top: 12px;
@@ -6606,6 +6639,10 @@ body,
   gap: 8px;
 }
 @media (max-width: 700px) {
+  .money-box-fields--multi,
+  .money-box-restrictions-grid {
+    grid-template-columns: 1fr;
+  }
   .money-box-mobile-tabs {
     display: block;
   }

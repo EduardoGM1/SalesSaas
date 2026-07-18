@@ -177,9 +177,9 @@ function MoneyPanel({
         </div>
       </div>
 
-      <div className="tool-calc-fields">
-        {fields.map((field, idx) => (
-          <div key={field.id} className={`frow${idx === 0 ? " frow-first" : ""} tool-frow`}>
+      <div className={`money-box-fields${fields.length > 1 ? " money-box-fields--multi" : ""}`}>
+        {fields.map((field) => (
+          <div key={field.id} className="money-box-field">
             <div className="flabel">{field.label}</div>
             <div className="mfield">
               <span className="mpfx">$</span>
@@ -344,8 +344,8 @@ export function MoneyBoxPage({ clientId, shared }) {
           subtitle={summary}
           defaultOpen={false}
         >
-          <div className="tool-calc-fields">
-            <div className="frow frow-first tool-frow">
+          <div className="money-box-restrictions-grid">
+            <div className="money-box-field">
               <div className="flabel">{t("moneyBox.minDown")}</div>
               <div className="frow-inline">
                 <input
@@ -361,7 +361,7 @@ export function MoneyBoxPage({ clientId, shared }) {
                 <span className="frow-suffix">%</span>
               </div>
             </div>
-            <div className="frow tool-frow">
+            <div className="money-box-field">
               <div className="flabel">{t("moneyBox.maxDown")}</div>
               <div className="frow-inline">
                 <input
@@ -377,7 +377,7 @@ export function MoneyBoxPage({ clientId, shared }) {
                 <span className="frow-suffix">%</span>
               </div>
             </div>
-            <div className="frow tool-frow">
+            <div className="money-box-field">
               <div className="flabel">{t("moneyBox.cargoHoy")}</div>
               <div className="mfield">
                 <span className="mpfx">$</span>
@@ -391,7 +391,7 @@ export function MoneyBoxPage({ clientId, shared }) {
                 />
               </div>
             </div>
-            <div className="frow tool-frow">
+            <div className="money-box-field">
               <div className="flabel">{t("moneyBox.cargoFinanciable")}</div>
               <div className="mfield">
                 <span className="mpfx">$</span>
@@ -405,7 +405,7 @@ export function MoneyBoxPage({ clientId, shared }) {
                 />
               </div>
             </div>
-            <div className="frow tool-frow">
+            <div className="money-box-field">
               <div className="flabel">{t("moneyBox.maxSale")}</div>
               <div className="mfield">
                 <span className="mpfx">$</span>
@@ -419,7 +419,7 @@ export function MoneyBoxPage({ clientId, shared }) {
                 />
               </div>
             </div>
-            <div className="frow tool-frow money-box-round-row">
+            <div className="money-box-field">
               <div className="flabel">{t("moneyBox.roundStep")}</div>
               <select
                 className="money-box-round-select"
