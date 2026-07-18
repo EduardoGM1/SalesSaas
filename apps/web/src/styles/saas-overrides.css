@@ -6441,10 +6441,13 @@ body,
   overscroll-behavior-x: contain;
 }
 .money-box-matrix {
-  /* Evita table-layout:fixed al 100% que comprime columnas hasta solapar texto. */
+  /* min-width fuerza scroll en .table-scroll cuando la tarjeta es angosta (p. ej. grid 2 col). */
   table-layout: fixed;
   width: 100%;
-  min-width: 0;
+  min-width: 560px;
+}
+.money-box-pair-grid .money-box-matrix {
+  min-width: 640px;
 }
 .money-box-matrix th:first-child,
 .money-box-matrix td:first-child {
@@ -6519,6 +6522,12 @@ body,
   gap: 16px;
   margin-top: 16px;
 }
+.money-box-pair-grid {
+  align-items: start;
+}
+.money-box-pair-grid > .card {
+  min-width: 0;
+}
 .money-box-plan-ok {
   background: rgba(16, 185, 129, 0.08);
 }
@@ -6562,11 +6571,19 @@ body,
   .money-box-mobile-tabs {
     display: block;
   }
-  .money-box-panels-stack > .card {
+  .money-box-panels-stack > .card,
+  .money-box-pair-grid > .card {
     display: none;
   }
-  .money-box-panels-stack > .card.is-mobile-active {
+  .money-box-panels-stack > .card.is-mobile-active,
+  .money-box-pair-grid > .card.is-mobile-active {
     display: block;
+  }
+  .money-box-pair-grid:has(> .card.is-mobile-active) {
+    display: grid;
+  }
+  .money-box-pair-grid:not(:has(> .card.is-mobile-active)) {
+    display: none;
   }
 
   /* Scroll horizontal: misma solución que client-table / table-scroll en calculadoras. */

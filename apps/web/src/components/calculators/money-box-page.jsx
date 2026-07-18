@@ -475,44 +475,46 @@ export function MoneyBoxPage({ clientId, shared }) {
         </div>
 
         <div className="money-box-panels-stack">
-          <MoneyPanel
-            title={t("moneyBox.byDown")}
-            fields={[{
-              id: "down",
-              label: t("moneyBox.downQuestion"),
-              value: downInput,
-              onChange: setDownInput,
-              onBlur: setDownInput,
-            }]}
-            icon={Wallet}
-            iconTone="green"
-            proposals={downProposals}
-            terms={terms}
-            showTotalToday={showTotalToday}
-            note={t("moneyBox.byDownNoteV2")}
-            t={t}
-            mobileActive={mobileTab === "eng"}
-            onRefresh={() => setRefreshDown((n) => n + 1)}
-          />
-          <MoneyPanel
-            title={t("moneyBox.byMonthly")}
-            fields={[{
-              id: "monthly",
-              label: t("moneyBox.monthlyQuestion"),
-              value: monthlyInput,
-              onChange: setMonthlyInput,
-              onBlur: setMonthlyInput,
-            }]}
-            icon={CalendarDays}
-            iconTone="purple"
-            proposals={monthlyProposals}
-            terms={terms}
-            showTotalToday={showTotalToday}
-            note={t("moneyBox.byMonthlyNoteV2")}
-            t={t}
-            mobileActive={mobileTab === "month"}
-            onRefresh={() => setRefreshMonthly((n) => n + 1)}
-          />
+          <div className="g2 money-box-pair-grid">
+            <MoneyPanel
+              title={t("moneyBox.byDown")}
+              fields={[{
+                id: "down",
+                label: t("moneyBox.downQuestion"),
+                value: downInput,
+                onChange: setDownInput,
+                onBlur: setDownInput,
+              }]}
+              icon={Wallet}
+              iconTone="green"
+              proposals={downProposals}
+              terms={terms}
+              showTotalToday={showTotalToday}
+              note={t("moneyBox.byDownNoteV2")}
+              t={t}
+              mobileActive={mobileTab === "eng"}
+              onRefresh={() => setRefreshDown((n) => n + 1)}
+            />
+            <MoneyPanel
+              title={t("moneyBox.byMonthly")}
+              fields={[{
+                id: "monthly",
+                label: t("moneyBox.monthlyQuestion"),
+                value: monthlyInput,
+                onChange: setMonthlyInput,
+                onBlur: setMonthlyInput,
+              }]}
+              icon={CalendarDays}
+              iconTone="purple"
+              proposals={monthlyProposals}
+              terms={terms}
+              showTotalToday={showTotalToday}
+              note={t("moneyBox.byMonthlyNoteV2")}
+              t={t}
+              mobileActive={mobileTab === "month"}
+              onRefresh={() => setRefreshMonthly((n) => n + 1)}
+            />
+          </div>
           <MoneyPanel
             title={t("moneyBox.byCombined")}
             fields={[
