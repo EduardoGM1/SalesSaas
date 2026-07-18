@@ -895,6 +895,65 @@
 .admin-confirm-panel { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 9998; background: #fff; border: 1px solid var(--border); border-radius: var(--r-lg); width: calc(100% - 40px); max-width: 420px; box-shadow: 0 16px 48px rgba(15,32,68,0.22); }
 .admin-confirm-panel .btn-row { padding: 16px 20px 20px; }
 .admin-table-actions { display: flex; align-items: center; justify-content: flex-end; gap: 6px; flex-shrink: 0; }
+.admin-overflow { position: relative; display: inline-flex; }
+.admin-overflow-role-form { display: none; }
+.admin-overflow-menu {
+  position: fixed;
+  z-index: 1200;
+  min-width: 200px;
+  max-width: min(280px, calc(100vw - 16px));
+  padding: 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  background: var(--white);
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.14);
+}
+.admin-overflow-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 10px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+.admin-overflow-item:hover,
+.admin-overflow-item:focus-visible {
+  background: var(--surface2);
+  color: var(--blue);
+  outline: none;
+}
+.admin-overflow-item.is-danger {
+  color: #b91c1c;
+}
+.admin-overflow-item.is-danger:hover,
+.admin-overflow-item.is-danger:focus-visible {
+  background: #fef2f2;
+  color: #b91c1c;
+}
+.admin-overflow-item.is-disabled,
+.admin-overflow-item:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.admin-overflow-item-icon {
+  display: inline-flex;
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  align-items: center;
+  justify-content: center;
+  color: inherit;
+}
 
 /* Admin — Atención a usuario */
 .admin-support-page { max-width: 920px; }
@@ -1024,7 +1083,7 @@
 .admin-users-table .admin-cell-status { min-width: 100px; white-space: nowrap; }
 .admin-users-table .admin-cell-date { min-width: 140px; white-space: nowrap; }
 .admin-users-table .admin-cell-num { min-width: 72px; white-space: nowrap; }
-.admin-users-table .admin-cell-actions { min-width: 120px; white-space: nowrap; }
+.admin-users-table .admin-cell-actions { min-width: 52px; width: 52px; white-space: nowrap; text-align: right; }
 .admin-role-select { min-width: 100px; max-width: 130px; }
 
 a.icon-btn { text-decoration: none; color: inherit; }

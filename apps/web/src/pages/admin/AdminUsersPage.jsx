@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate, useOutletContext, useSearchParams } from "react-router-dom";
+import { useNavigate, useOutletContext, useSearchParams } from "react-router-dom";
+import { AdminOverflowMenu } from "@/components/admin/admin-overflow-menu.jsx";
 import { AdminUsersFilters } from "@/components/admin/admin-users-filters.jsx";
 import { IconSave, IconUserCheck, IconUserX } from "@/components/admin/admin-users-icons.jsx";
+import { CreditCard, Layers, Shield } from "lucide-react";
 import { useAdminFetch } from "@/hooks/use-admin-session.js";
 import { hasPermission, isSuperAdmin } from "@/lib/auth/permissions";
 import { parseUserAdminFilters, userAdminUrl, userFiltersToSearchParams } from "@/lib/admin/filters";
@@ -409,9 +411,10 @@ export function AdminUsersPage() {
                     {hasActions && (
                       <td className="admin-cell-actions">
                         <div className="admin-table-actions">
-                          {caps.canRole && !roleReadOnly && (
+                          {caps.canRole && !roleReadOnly ? (
                             <form
                               id={formId}
+                              className="admin-overflow-role-form"
                               onSubmit={(e) => {
                                 e.preventDefault();
                                 const fd = new FormData(e.currentTarget);
@@ -422,26 +425,55 @@ export function AdminUsersPage() {
                                 }));
                               }}
                             >
-                              <button type="submit" className="icon-btn" title={t("admin.users.action.saveRole")} disabled={!u.is_active}><IconSave /></button>
+                              <button type="submit" tabIndex={-1} aria-hidden="true" />
                             </form>
-                          )}
-                          {caps.canRole && (!u.is_super_admin || isSelf) && (
-                            <Link to={userAdminUrl(filters, { editMembership: u.id })} className="btn btn-sm btn-ghost" title={t("admin.users.action.changePlan")}>
-                              {t("admin.users.action.changePlan")}
-                            </Link>
-                          )}
-                          {!isSelf && !u.is_super_admin && caps.canDeactivate && u.is_active && (
-                            <Link to={userAdminUrl(filters, { confirm: "deactivate", userId: u.id })} className="icon-btn admin-icon-btn-danger" title={t("admin.users.action.deactivate")}><IconUserX /></Link>
-                          )}
-                          {!isSelf && !u.is_super_admin && caps.canActivate && !u.is_active && (
-                            <Link to={userAdminUrl(filters, { confirm: "activate", userId: u.id })} className="icon-btn" title={t("admin.users.action.activate")}><IconUserCheck /></Link>
-                          )}
-                          {caps.canPermissions && u.role === "admin" && !u.is_super_admin && (
-                            <Link to={userAdminUrl(filters, { editPerms: u.id })} className="btn btn-sm btn-ghost">{t("admin.users.action.permissions")}</Link>
-                          )}
-                          {caps.canPermissions && !u.is_super_admin && (
-                            <Link to={userAdminUrl(filters, { editFeatures: u.id })} className="btn btn-sm btn-ghost">{t("admin.users.action.features")}</Link>
-                          )}
+                          ) : null}
+                          <AdminOverflowMenu
+                            label={t("admin.users.action.more")}
+                            items={[
+                              caps.canRole && !roleReadOnly && {
+                                id: "save-role",
+                                label: t("admin.users.action.saveRole"),
+                                icon: <IconSave size={15} />,
+                                disabled: !u.is_active,
+                                onSelect: () => {
+                                  const form = document.getElementById(formId);
+                                  if (form instanceof HTMLFormElement) form.requestSubmit();
+                                },
+                              },
+                              caps.canRole && (!u.is_super_admin || isSelf) && {
+                                id: "change-plan",
+                                label: t("admin.users.action.changePlan"),
+                                icon: <CreditCard size={15} />,
+                                href: userAdminUrl(filters, { editMembership: u.id }),
+                              },
+                              !isSelf && !u.is_super_admin && caps.canDeactivate && u.is_active && {
+                                id: "deactivate",
+                                label: t("admin.users.action.deactivate"),
+                                icon: <IconUserX size={15} />,
+                                href: userAdminUrl(filters, { confirm: "deactivate", userId: u.id }),
+                                danger: true,
+                              },
+                              !isSelf && !u.is_super_admin && caps.canActivate && !u.is_active && {
+                                id: "activate",
+                                label: t("admin.users.action.activate"),
+                                icon: <IconUserCheck size={15} />,
+                                href: userAdminUrl(filters, { confirm: "activate", userId: u.id }),
+                              },
+                              caps.canPermissions && u.role === "admin" && !u.is_super_admin && {
+                                id: "permissions",
+                                label: t("admin.users.action.permissions"),
+                                icon: <Shield size={15} />,
+                                href: userAdminUrl(filters, { editPerms: u.id }),
+                              },
+                              caps.canPermissions && !u.is_super_admin && {
+                                id: "features",
+                                label: t("admin.users.action.features"),
+                                icon: <Layers size={15} />,
+                                href: userAdminUrl(filters, { editFeatures: u.id }),
+                              },
+                            ]}
+                          />
                         </div>
                       </td>
                     )}
