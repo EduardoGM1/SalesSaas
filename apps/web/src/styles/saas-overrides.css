@@ -6463,11 +6463,46 @@ body,
   grid-template-columns: 1fr 1fr;
   gap: 14px 16px;
 }
+/* Restricciones: label izq. + inputs en una sola columna vertical (sin space-between). */
 .money-box-restrictions-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.money-box-restrictions-grid > .money-box-field {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 14px 16px;
-  align-items: start;
+  grid-template-columns: 15.5rem max-content;
+  column-gap: 16px;
+  align-items: center;
+  justify-content: start;
+  gap: 0 16px;
+  padding: 10px 0;
+  border-top: 1px solid var(--border);
+}
+.money-box-restrictions-grid > .money-box-field:first-child {
+  border-top: none;
+  padding-top: 0;
+}
+.money-box-restrictions-grid > .money-box-field .flabel {
+  text-align: left;
+}
+.money-box-restrictions-grid > .money-box-field .mfield,
+.money-box-restrictions-grid > .money-box-field .frow-inline {
+  width: auto;
+  justify-self: start;
+}
+.money-box-restrictions-grid > .money-box-field .frow-inline .tool-num-input {
+  flex: none;
+  width: 80px;
+  max-width: none;
+}
+.money-box-restrictions-grid > .money-box-field .mfield {
+  width: 148px;
+}
+.money-box-restrictions-grid > .money-box-field .money-box-round-select {
+  width: max-content;
+  min-width: 12.5rem;
+  max-width: none;
 }
 .money-box-terms-block {
   margin-top: 12px;
@@ -6639,9 +6674,11 @@ body,
   gap: 8px;
 }
 @media (max-width: 700px) {
-  .money-box-fields--multi,
-  .money-box-restrictions-grid {
+  .money-box-fields--multi {
     grid-template-columns: 1fr;
+  }
+  .money-box-restrictions-grid > .money-box-field {
+    grid-template-columns: minmax(9.5rem, 15.5rem) max-content;
   }
   .money-box-mobile-tabs {
     display: block;
