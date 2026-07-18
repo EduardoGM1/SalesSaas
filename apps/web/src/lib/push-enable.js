@@ -25,6 +25,7 @@ const KNOWN_PUSH_CODES = new Set([
   "PERMISSION_DISMISSED",
   "IOS_PWA_REQUIRED",
   "ONESIGNAL_NOT_CONFIGURED",
+  "ONESIGNAL_SDK_LOAD_FAILED",
   "PUSH_SERVICE_ERROR",
   "SW_UNREACHABLE",
   "SW_REGISTER_FAILED",
@@ -192,6 +193,10 @@ export function toastPushEnableResult(result, t) {
       break;
     case "ONESIGNAL_NOT_CONFIGURED":
       toast.error(t("settings.notifications.serverNotConfigured"), { groupKey: TOAST_GROUP });
+      break;
+    case "ONESIGNAL_SDK_LOAD_FAILED":
+      toast.error(t("settings.notifications.sdkLoadFailed"), { groupKey: TOAST_GROUP });
+      if (result.detail) console.error("[push] ONESIGNAL_SDK_LOAD_FAILED detail:", result.detail);
       break;
     case "PUSH_SERVICE_ERROR":
       toast.error(t("settings.notifications.pushServiceError"), { groupKey: TOAST_GROUP });

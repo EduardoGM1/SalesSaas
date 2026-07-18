@@ -7,7 +7,10 @@ import { PushType, resolvePushPathFromPayload } from "@salesapp/shared/push/noti
 import { clearLocalSession } from "@/lib/session-api.js";
 import { presentFromPushNotification } from "@/lib/in-app-notifications.js";
 
-const SDK_URL = "https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js";
+/** Page SDK autohosteado (cdn.onesignal.com suele estar bloqueado por adblock/uBlock). */
+const SDK_LOCAL_URL = "/onesignal/OneSignalSDK.page.js";
+const SDK_CDN_URL = "https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js";
+const SDK_PAGE_ES6_PATH = "/onesignal/OneSignalSDK.page.es6.js";
 /** Ruta relativa desde el origen (sin slash inicial), según docs OneSignal Custom Code. */
 const SW_PATH = "onesignal/OneSignalSDKWorker.js";
 /** Scope dedicado para no chocar con el SW de la PWA (Workbox en `/`). */
@@ -32,19 +35,59 @@ function getBuildAppId() {
   return import.meta.env.VITE_ONESIGNAL_APP_ID || null;
 }
 
-function loadScript(src) {
+function loadScript(src, { timeoutMs = 20_000 } = {}) {
   return new Promise((resolve, reject) => {
-    if (document.querySelector(`script[src="${src}"]`)) {
+    const existing = document.querySelector(`script[data-onesignal-sdk="1"][src="${src}"]`);
+    if (existing?.dataset.onesignalLoaded === "1") {
       resolve();
       return;
     }
+    if (existing) existing.remove();
+
     const script = document.createElement("script");
     script.src = src;
     script.defer = true;
-    script.onload = () => resolve();
-    script.onerror = () => reject(new Error("No se pudo cargar OneSignal."));
+    script.dataset.onesignalSdk = "1";
+    let settled = false;
+    const finish = (err) => {
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(timer);
+      if (err) {
+        script.remove();
+        reject(err);
+        return;
+      }
+      script.dataset.onesignalLoaded = "1";
+      resolve();
+    };
+    const timer = window.setTimeout(() => {
+      finish(codedError("ONESIGNAL_SDK_LOAD_FAILED", `Timeout loading ${src}`));
+    }, timeoutMs);
+    script.onload = () => finish(null);
+    script.onerror = () => finish(codedError("ONESIGNAL_SDK_LOAD_FAILED", `Failed to load ${src}`));
     document.head.appendChild(script);
   });
+}
+
+async function loadOneSignalPageSdk() {
+  // Preferir el ES6 real en mismo origen (el shim CDN solo redirige a este archivo).
+  const candidates = [SDK_PAGE_ES6_PATH, SDK_LOCAL_URL, SDK_CDN_URL];
+  const errors = [];
+  for (const src of candidates) {
+    try {
+      await loadScript(src);
+      console.info("[onesignal] page SDK loaded", src);
+      return src;
+    } catch (err) {
+      errors.push(`${src}: ${err?.detail || err?.message || err}`);
+      console.warn("[onesignal] page SDK candidate failed:", src, err?.detail || err?.message || err);
+    }
+  }
+  throw codedError(
+    "ONESIGNAL_SDK_LOAD_FAILED",
+    `Could not load OneSignal page SDK. ${errors.join(" | ")}`,
+  );
 }
 
 let resolvedSafariWebId = null;
@@ -520,11 +563,24 @@ export async function ensureOneSignal() {
       try {
         await cleanupLegacyWebPushSubscription();
         await preflightOneSignalServiceWorker();
+        await fetchStaticJs(SDK_PAGE_ES6_PATH);
       } catch (err) {
-        console.warn("[onesignal] SW pre-init checks:", err?.detail || err?.message || err);
+        console.warn("[onesignal] SW/SDK pre-init checks:", err?.detail || err?.message || err);
       }
-      await loadScript(SDK_URL);
-      return new Promise((resolve, reject) => {
+
+      // Encolar ANTES de cargar el script (patrón oficial OneSignalDeferred).
+      const ready = new Promise((resolve, reject) => {
+        let settled = false;
+        const timer = window.setTimeout(() => {
+          if (settled) return;
+          settled = true;
+          initPromise = null;
+          reject(codedError(
+            "ONESIGNAL_SDK_LOAD_FAILED",
+            "OneSignalDeferred never invoked after loading page SDK (blocked script or unsupported browser)",
+          ));
+        }, 25_000);
+
         window.OneSignalDeferred = window.OneSignalDeferred || [];
         window.OneSignalDeferred.push(async (OneSignal) => {
           try {
@@ -539,20 +595,33 @@ export async function ensureOneSignal() {
               autoResubscribe: true,
             });
             sdkReady = OneSignal;
-            // Confirmar que el SDK dejó el SW activo en /onesignal/.
             try {
               await ensureOneSignalServiceWorkerRegistered();
             } catch (swErr) {
               console.warn("[onesignal] post-init SW check:", swErr?.detail || swErr?.message || swErr);
             }
-            resolve(OneSignal);
+            if (!settled) {
+              settled = true;
+              window.clearTimeout(timer);
+              resolve(OneSignal);
+            }
           } catch (err) {
-            initPromise = null;
-            reject(err);
+            if (!settled) {
+              settled = true;
+              window.clearTimeout(timer);
+              initPromise = null;
+              reject(err);
+            }
           }
         });
       });
-    })();
+
+      await loadOneSignalPageSdk();
+      return ready;
+    })().catch((err) => {
+      initPromise = null;
+      throw err;
+    });
   }
 
   return initPromise;
