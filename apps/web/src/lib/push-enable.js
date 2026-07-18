@@ -60,6 +60,7 @@ export async function enablePushNotifications() {
   enableInFlight = (async () => {
     try {
       void unlockNotificationSound();
+      // Camino explícito del botón: siempre intenta subscribe (bypass límite silent-restore).
       await subscribeToPush();
       await syncPushIdentityAndSubscription();
       markAutoPushRequested();

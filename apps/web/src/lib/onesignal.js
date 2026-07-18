@@ -5,8 +5,6 @@ import { getInstallPlatform, isIosDevice, isStandaloneApp } from "@/lib/pwa-inst
 import { reportOneSignalLinkIssue, reportOneSignalPushIssue } from "@/lib/observability.js";
 import { PushType, resolvePushPathFromPayload } from "@salesapp/shared/push/notification-targets.js";
 import { clearLocalSession } from "@/lib/session-api.js";
-import { presentFromPushNotification } from "@/lib/in-app-notifications.js";
-
 /** Page SDK autohosteado (cdn.onesignal.com suele estar bloqueado por adblock/uBlock). */
 const SDK_LOCAL_URL = "/onesignal/OneSignalSDK.page.js";
 const SDK_CDN_URL = "https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js";
@@ -24,8 +22,12 @@ let initPromise = null;
 let sdkReady = null;
 let resolvedAppId = null;
 let serverConfigured = null;
-/** Evita optIn concurrentes (botón + restore automático). */
+/** Evita optIn/restore/sync concurrentes (botón + auto-restore). */
 let subscribeInFlight = null;
+/** Restore silencioso: máximo 1 intento automático por carga de página (desktop). */
+let silentRestoreAttempted = false;
+/** Último fallo de suscripción (para banner needsResync accionable). */
+let lastSubscribeError = null;
 
 function getBuildSafariWebId() {
   return import.meta.env.VITE_ONESIGNAL_SAFARI_WEB_ID || null;
@@ -279,39 +281,6 @@ async function waitForWorkerActivation(registration, timeoutMs = 8_000) {
   return registration.active || worker;
 }
 
-async function waitForOneSignalId(OneSignal, timeoutMs = 12_000) {
-  if (OneSignal.User?.onesignalId) return String(OneSignal.User.onesignalId);
-
-  return new Promise((resolve) => {
-    let done = false;
-    const finish = (value) => {
-      if (done) return;
-      done = true;
-      try {
-        OneSignal.User.removeEventListener("change", onChange);
-      } catch {
-        // ignore
-      }
-      clearTimeout(timer);
-      resolve(value);
-    };
-
-    const onChange = () => {
-      if (OneSignal.User?.onesignalId) finish(String(OneSignal.User.onesignalId));
-    };
-
-    try {
-      OneSignal.User.addEventListener("change", onChange);
-    } catch {
-      // ignore
-    }
-    const timer = window.setTimeout(
-      () => finish(OneSignal.User?.onesignalId ? String(OneSignal.User.onesignalId) : null),
-      timeoutMs,
-    );
-  });
-}
-
 async function waitForPushSubscription(OneSignal, timeoutMs = 25_000) {
   if (readSubscriptionState(OneSignal).subscribed) return true;
 
@@ -342,32 +311,6 @@ async function waitForPushSubscription(OneSignal, timeoutMs = 25_000) {
   });
 }
 
-/**
- * Si hubo login(external_id) sin suscripción push, el SDK puede quedar en un estado
- * donde optIn no obtiene subscription id (needsResync eterno / missing onesignalId).
- * Solo entonces volvemos a usuario anónimo antes de crear el push token.
- */
-async function resetIdentityIfSubscriptionMissing(OneSignal) {
-  const state = readSubscriptionState(OneSignal);
-  if (state.subscribed) return { reset: false };
-
-  const externalId = readExternalId(OneSignal);
-  if (!externalId) return { reset: false };
-
-  const onesignalId = OneSignal.User?.onesignalId || null;
-  console.warn("[onesignal] resetting identity before optIn", { externalId, onesignalId });
-  try {
-    if (typeof OneSignal.logout === "function") {
-      await OneSignal.logout();
-    }
-  } catch (err) {
-    console.warn("[onesignal] logout before optIn failed:", err);
-  }
-
-  await waitForOneSignalId(OneSignal, 10_000);
-  return { reset: true, previousExternalId: externalId };
-}
-
 async function readNativePushOnOneSignalSw() {
   try {
     const registration = await navigator.serviceWorker.getRegistration(SW_SCOPE);
@@ -380,6 +323,34 @@ async function readNativePushOnOneSignalSw() {
   } catch {
     return { hasNative: false };
   }
+}
+
+/** Limpia una suscripción push nativa rota en el SW OneSignal (recovery push service error). */
+async function clearNativePushOnOneSignalSw() {
+  try {
+    const registration = await navigator.serviceWorker.getRegistration(SW_SCOPE);
+    const sub = await registration?.pushManager?.getSubscription();
+    if (sub) {
+      console.warn("[onesignal] unsubscribing broken native push on /onesignal/");
+      await sub.unsubscribe();
+    }
+  } catch (err) {
+    console.warn("[onesignal] clearNativePushOnOneSignalSw:", err);
+  }
+}
+
+function isPushServiceFailure(err) {
+  const name = err?.name || "";
+  const message = err instanceof Error ? err.message : String(err || "");
+  return /push service|registration failed|AbortError/i.test(`${name} ${message}`);
+}
+
+function rememberSubscribeError(code, detail) {
+  lastSubscribeError = { code, detail: detail || null, at: Date.now() };
+}
+
+function clearSubscribeError() {
+  lastSubscribeError = null;
 }
 
 /** Listo para pulsar «Activar»: init resuelto + SW activated en /onesignal/. */
@@ -810,7 +781,6 @@ export async function setupPushNotificationHandlers({ onNavigate } = {}) {
   OneSignal.Notifications.addEventListener("foregroundWillDisplay", (event) => {
     const data = event.notification?.additionalData || {};
     if (data.type === PushType.SESSION_REVOKED) {
-      // No molestar con banner: cerrar sesión local al instante.
       try {
         event.preventDefault();
       } catch {
@@ -819,10 +789,18 @@ export async function setupPushNotificationHandlers({ onNavigate } = {}) {
       clearLocalSession();
       return;
     }
-    // Desktop: toast+sonido in-app (también llega por Realtime). Móvil: solo nativo.
+
+    // Desktop + app abierta: Realtime → toast es el canal primario (evitar doble nativo/toast).
     if (getInstallPlatform() === "desktop") {
-      presentFromPushNotification(event.notification);
+      try {
+        event.preventDefault();
+      } catch {
+        // ignore
+      }
+      return;
     }
+
+    // Móvil / PWA: notificación nativa del SO.
     if (typeof Notification !== "undefined" && Notification.permission === "granted") {
       event.notification.display();
     }
@@ -854,12 +832,11 @@ async function subscribeToPushInternal() {
   }
 
   // Pedir permiso ANTES de cualquier await largo: Chrome/Edge exigen gesto de usuario.
-  // Si se espera a SW/OneSignal.init, el diálogo nativo no aparece (queda en "default").
   if (Notification.permission === "default") {
     try {
       await Notification.requestPermission();
     } catch {
-      // Algunos entornos solo aceptan el método del SDK; se reintenta abajo.
+      // reintento vía SDK abajo
     }
   }
   if (Notification.permission === "denied") {
@@ -874,7 +851,8 @@ async function subscribeToPushInternal() {
     throw codedError("ONESIGNAL_NOT_CONFIGURED", "Server reports push_configured=false");
   }
 
-  // Init + SW activated ANTES de optIn. No llamar login() todavía.
+  // Flujo lineal: init + SW → optIn → token/id → login → registerDevice.
+  // No exigir onesignalId ni logout preventivo antes del optIn.
   const runtime = await ensurePushRuntimeReady();
   const OneSignal = runtime.OneSignal;
   if (!runtime.ready) {
@@ -899,20 +877,12 @@ async function subscribeToPushInternal() {
   }
 
   const userId = await resolveUserId();
-
-  // CRÍTICO: login(external_id) ANTES de tener push deja al SDK sin onesignalId usable
-  // (processSubscriptionModel: missing onesignalId) → needsResync eterno.
-  await resetIdentityIfSubscriptionMissing(OneSignal);
-  const onesignalId = await waitForOneSignalId(OneSignal, 12_000);
-  if (!onesignalId) {
-    void reportOneSignalPushIssue({
-      stage: "waitForOneSignalId",
-      code: "PUSH_SERVICE_ERROR",
-      detail: "No onesignalId after identity reset",
-      permission: Notification.permission,
-      message: "OneSignal user identity never became ready before optIn",
-    });
-    throw codedError("PUSH_SERVICE_ERROR", "OneSignal user identity (onesignalId) not ready before optIn");
+  const already = readSubscriptionState(OneSignal);
+  if (already.subscribed) {
+    clearSubscribeError();
+    if (userId) await linkOneSignalUser(userId);
+    await registerDeviceSubscription(already.subscriptionId);
+    return already;
   }
 
   const runOptIn = async () => {
@@ -932,40 +902,66 @@ async function subscribeToPushInternal() {
       error: err instanceof Error ? err : new Error(message),
       message: `OneSignal optIn threw: ${message}`,
     });
+
     if (/service worker|failed to register|bad HTTP|unsupported MIME|redirect|SecurityError/i.test(message)) {
       try {
         await cleanupLegacyWebPushSubscription();
         await ensureOneSignalServiceWorkerRegistered();
         await runOptIn();
       } catch (retryErr) {
+        rememberSubscribeError("SW_REGISTER_FAILED", retryErr?.detail || retryErr?.message || message);
         throw mapServiceWorkerError(retryErr || err, "SW_REGISTER_FAILED");
       }
-    } else if (/push service|registration failed|AbortError|NotAllowedError|missing onesignalId/i.test(message)) {
-      throw mapServiceWorkerError(err, "PUSH_SERVICE_ERROR");
+    } else if (isPushServiceFailure(err) || /NotAllowedError|missing onesignalId/i.test(message)) {
+      // Recovery puntual: limpiar push nativo roto y un solo reintento.
+      try {
+        await clearNativePushOnOneSignalSw();
+        await cleanupLegacyWebPushSubscription();
+        await ensureOneSignalServiceWorkerRegistered();
+        // Solo si hay external_id sin push: logout para desbloquear el modelo del SDK.
+        if (readExternalId(OneSignal) && !readSubscriptionState(OneSignal).subscribed) {
+          try {
+            await OneSignal.logout();
+          } catch {
+            // ignore
+          }
+        }
+        await delay(400);
+        await runOptIn();
+      } catch (retryErr) {
+        rememberSubscribeError("PUSH_SERVICE_ERROR", retryErr?.message || message);
+        throw mapServiceWorkerError(retryErr || err, "PUSH_SERVICE_ERROR");
+      }
     } else {
+      rememberSubscribeError("PUSH_SERVICE_ERROR", message);
       throw codedError("PUSH_SERVICE_ERROR", message, err);
     }
   }
 
   let subscribed = await waitForPushSubscription(OneSignal, 25_000);
 
-  // Reintento controlado (una vez): optOut → optIn si el permiso está granted pero no hay token/id.
   if (!subscribed) {
-    console.warn("[onesignal] optIn produced no subscription; retrying once via optOut/optIn");
+    console.warn("[onesignal] optIn produced no subscription; one recovery via clear+optIn");
     try {
-      await OneSignal.User.PushSubscription.optOut();
+      await clearNativePushOnOneSignalSw();
+      try {
+        await OneSignal.User.PushSubscription.optOut();
+      } catch {
+        // ignore
+      }
       await delay(500);
       await runOptIn();
       subscribed = await waitForPushSubscription(OneSignal, 20_000);
     } catch (retryErr) {
-      console.warn("[onesignal] optOut/optIn retry failed:", retryErr);
+      console.warn("[onesignal] push recovery retry failed:", retryErr);
     }
   }
 
   if (!subscribed) {
     const state = readSubscriptionState(OneSignal);
     const native = await readNativePushOnOneSignalSw();
-    const detail = `optIn ok but subscribed=false (optedIn=${state.optedIn}, id=${state.subscriptionId}, token=${Boolean(state.token)}, nativePush=${native.hasNative}, onesignalId=${OneSignal.User?.onesignalId || null}, origin=${window.location.origin}, appId=${resolvedAppId})`;
+    const detail = `Chrome/FCM push service did not yield a subscription (optedIn=${state.optedIn}, id=${state.subscriptionId}, token=${Boolean(state.token)}, nativePush=${native.hasNative}, onesignalId=${OneSignal.User?.onesignalId || null}, origin=${window.location.origin}, appId=${resolvedAppId}). Check OneSignal Site URL and Identity Verification.`;
+    rememberSubscribeError("PUSH_SERVICE_ERROR", detail);
     void reportOneSignalPushIssue({
       stage: "waitForPushSubscription",
       code: "PUSH_SERVICE_ERROR",
@@ -974,17 +970,17 @@ async function subscribeToPushInternal() {
       optedIn: state.optedIn,
       subscriptionId: state.subscriptionId,
       hasToken: Boolean(state.token),
-      message: "OneSignal optIn completed without subscription id/token",
+      message: "Push subscription missing after optIn (push service error)",
     });
     console.error("[onesignal] subscription missing after optIn", { state, native, appId: resolvedAppId });
     throw codedError("PUSH_SERVICE_ERROR", detail);
   }
 
-  // Vincular external_id SOLO cuando ya hay suscripción real.
+  clearSubscribeError();
+
   if (userId) {
     const linkResult = await linkOneSignalUser(userId);
     if (!linkResult.ok) {
-      // La suscripción ya existe: no tumbar el enable por un fallo de vínculo.
       console.warn("[onesignal] subscription ok but external_id link failed:", linkResult.error);
       void reportOneSignalLinkIssue({
         stage: "subscribeToPush:postOptInLink",
@@ -1000,7 +996,6 @@ async function subscribeToPushInternal() {
   }
 
   await registerDeviceSubscription(readSubscriptionState(OneSignal).subscriptionId);
-
   return readSubscriptionState(OneSignal);
 }
 
@@ -1012,15 +1007,22 @@ export async function subscribeToPush() {
   return subscribeInFlight;
 }
 
-export async function restorePushSubscriptionIfNeeded() {
+/**
+ * @param {{ force?: boolean }} [opts] force=true ignora el límite de 1 restore/sesión (botón Activar).
+ */
+export async function restorePushSubscriptionIfNeeded({ force = false } = {}) {
   if (!isBrowserPushCapable() || !isSupabaseConfigured()) return { restored: false };
   if (Notification.permission !== "granted") return { restored: false };
+
+  if (!force && silentRestoreAttempted) {
+    return { restored: false, skipped: true, reason: "already_attempted" };
+  }
+  if (!force) silentRestoreAttempted = true;
 
   const configured = await resolveServerPushConfigured();
   if (!configured) return { restored: false };
 
   try {
-    // Si ya hay un subscribeToPush en curso, esperar ese resultado en vez de un segundo optIn.
     if (subscribeInFlight) {
       try {
         await subscribeInFlight;
@@ -1031,21 +1033,20 @@ export async function restorePushSubscriptionIfNeeded() {
     }
 
     const OneSignal = await ensureOneSignal();
-    await ensureOneSignalServiceWorkerRegistered();
     const before = readSubscriptionState(OneSignal);
     if (before.subscribed) {
       const userId = await resolveUserId();
       if (userId) await linkOneSignalUser(userId);
       await registerDeviceSubscription(before.subscriptionId);
+      clearSubscribeError();
       return { restored: false, alreadySubscribed: true };
     }
 
-    // Reutilizar el mismo camino tipado (single-flight interno).
     await subscribeToPush();
     return { restored: true };
   } catch (err) {
     console.warn("[onesignal] restorePushSubscriptionIfNeeded:", err?.detail || err?.message || err);
-    return { restored: false };
+    return { restored: false, error: err?.code || err?.message || "unknown" };
   }
 }
 
@@ -1060,6 +1061,15 @@ export async function syncPushIdentityAndSubscription() {
     return { ok: false, reason: "unsupported" };
   }
 
+  // Compartir mutex con subscribe/restore para no spamear SW ready / optIn.
+  if (subscribeInFlight) {
+    try {
+      await subscribeInFlight;
+    } catch {
+      // ignore
+    }
+  }
+
   const userId = await resolveUserId();
   if (!userId) return { ok: false, reason: "no_session" };
 
@@ -1071,14 +1081,9 @@ export async function syncPushIdentityAndSubscription() {
   }
 
   const beforeLinked = readExternalId(OneSignal) === String(userId);
-  let pushState = readSubscriptionState(OneSignal);
+  const pushState = readSubscriptionState(OneSignal);
 
-  // NUNCA hacer login(external_id) sin suscripción push: rompe onesignalId y bloquea optIn.
-  if (!pushState.subscribed && Notification.permission === "granted") {
-    await restorePushSubscriptionIfNeeded();
-    pushState = readSubscriptionState(OneSignal);
-  }
-
+  // Solo vincular si ya hay suscripción. El restore automático lo hace el provider 1×/sesión.
   let linkResult = { ok: beforeLinked };
   if (pushState.subscribed) {
     linkResult = await linkOneSignalUser(userId);
@@ -1150,6 +1155,10 @@ export async function getPushStatus() {
     }
   }
 
+  const pushServiceFailed = Boolean(
+    lastSubscribeError?.code === "PUSH_SERVICE_ERROR" && permission === "granted" && !subscribed,
+  );
+
   return {
     supported: true,
     subscribed,
@@ -1158,6 +1167,8 @@ export async function getPushStatus() {
     permission,
     pushConfigured: pushConfigured && Boolean(appId),
     needsResync: permission === "granted" && !subscribed,
+    pushServiceFailed,
+    lastSubscribeError: lastSubscribeError ? { ...lastSubscribeError } : null,
     needsExternalIdLink: permission === "granted" && subscribed && !externalId,
     provider: "onesignal",
   };

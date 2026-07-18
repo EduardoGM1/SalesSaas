@@ -14,6 +14,7 @@ import {
 import { scheduleAutoPushRequest } from "@/lib/push-enable.js";
 import { clearAutoPushRequested } from "@/lib/push-prompt.js";
 import { bindNotificationSoundUnlock } from "@/lib/notification-sound.js";
+import { getInstallPlatform } from "@/lib/pwa-install.js";
 
 /** Inicializa OneSignal y vincula el usuario de Supabase como external_id. */
 export function OneSignalProvider({ children }) {
@@ -35,6 +36,7 @@ export function OneSignalProvider({ children }) {
 
     const resyncOnResume = () => {
       if (!activeUserId || cancelled) return;
+      // Solo re-vincular / registrar device; no martillar optIn.
       void syncPushIdentityAndSubscription();
     };
 
@@ -67,6 +69,18 @@ export function OneSignalProvider({ children }) {
 
         if (activeUserId) {
           await syncIdentity(activeUserId);
+          // Desktop needsResync: un solo restore silencioso por sesión (el botón es el camino principal).
+          if (
+            getInstallPlatform() === "desktop"
+            && typeof Notification !== "undefined"
+            && Notification.permission === "granted"
+          ) {
+            void restorePushSubscriptionIfNeeded({ force: false }).then((result) => {
+              if (result?.restored || result?.alreadySubscribed) {
+                window.dispatchEvent(new CustomEvent("push:status-changed"));
+              }
+            });
+          }
         }
 
         pushSubscriptionListener = async () => {
@@ -81,19 +95,11 @@ export function OneSignalProvider({ children }) {
             await syncIdentity(session.user.id);
             if (event === "SIGNED_IN") {
               const permission = typeof Notification !== "undefined" ? Notification.permission : "default";
-              // Permiso ya concedido (caso desktop needsResync): restaurar en segundo plano,
-              // sin competir con el botón «Activar» ni generar toasts.
-              if (permission === "granted") {
-                void restorePushSubscriptionIfNeeded().then((result) => {
-                  if (result?.restored || result?.alreadySubscribed) {
-                    window.dispatchEvent(new CustomEvent("push:status-changed"));
-                  }
-                });
+              if (permission === "granted" && getInstallPlatform() === "desktop") {
+                // Ya intentamos restore 1× en setup; no repetir en SIGNED_IN.
                 return;
               }
               if (permission === "default") {
-                // Chrome/Edge exigen gesto de usuario: limpiar flag y pedir en el próximo pointerdown
-                // (AutoPushCoordinator). Banner visible como CTA si el usuario no interactúa aún.
                 clearAutoPushRequested();
                 scheduleAutoPushRequest({ reason: "signed-in", delayMs: 500, preferBanner: true });
               }

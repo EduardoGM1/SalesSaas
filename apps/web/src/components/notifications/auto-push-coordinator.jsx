@@ -1,7 +1,6 @@
 import { useEffect } from "react";
 import { isSupabaseConfigured } from "@/lib/supabase/config.js";
 import { scheduleAutoPushRequest } from "@/lib/push-enable.js";
-import { restorePushSubscriptionIfNeeded } from "@/lib/onesignal.js";
 import {
   clearAutoPushRequested,
   wasAutoPushRequested,
@@ -18,6 +17,9 @@ function isExplicitPushEnableTarget(target) {
 /**
  * Dispara el permiso nativo en el mismo gesto del usuario (pointerdown),
  * no tras setTimeout — Chrome/Edge ignoran requestPermission sin user activation.
+ *
+ * Desktop con permiso granted: NO auto-restore aquí (el provider hace 1×/sesión;
+ * el botón «Activar» es el camino explícito).
  */
 export function AutoPushCoordinator() {
   useEffect(() => {
@@ -25,18 +27,12 @@ export function AutoPushCoordinator() {
 
     const onAuthChanged = () => {
       if (typeof Notification !== "undefined" && Notification.permission === "granted") {
-        // Silencioso: no competir con el botón «Activar» ni apilar toasts.
-        void restorePushSubscriptionIfNeeded().then((result) => {
-          if (result?.restored || result?.alreadySubscribed) {
-            window.dispatchEvent(new CustomEvent("push:status-changed"));
-          }
-        });
+        // Desktop: sin restore en cascada. Móvil: el provider/sync cubre vínculo.
         return;
       }
       if (typeof Notification !== "undefined" && Notification.permission === "default") {
         clearAutoPushRequested();
       }
-      // Tras login: banner; el pointerdown siguiente abre el diálogo nativo (gesto real).
       scheduleAutoPushRequest({ reason: "auth-changed", delayMs: 600, preferBanner: true });
     };
 
@@ -45,11 +41,8 @@ export function AutoPushCoordinator() {
       void unlockNotificationSound();
 
       if (wasPushPromptPermanentlyBlocked()) return;
-
-      // El botón «Activar notificaciones» maneja su propio enable + toast.
       if (isExplicitPushEnableTarget(event?.target)) return;
 
-      // Recuperar flag basura del bug anterior (marcado sin haber pedido permiso).
       if (
         wasAutoPushRequested()
         && typeof Notification !== "undefined"
@@ -58,23 +51,17 @@ export function AutoPushCoordinator() {
         clearAutoPushRequested();
       }
 
-      // Desktop: permiso granted → completar suscripción en segundo plano (sin toast).
+      // Desktop + granted: no competir con el botón; Realtime cubre app abierta.
       if (
         getInstallPlatform() === "desktop"
         && typeof Notification !== "undefined"
         && Notification.permission === "granted"
       ) {
-        void restorePushSubscriptionIfNeeded().then((result) => {
-          if (result?.restored || result?.alreadySubscribed) {
-            window.dispatchEvent(new CustomEvent("push:status-changed"));
-          }
-        });
         return;
       }
 
       if (wasAutoPushRequested()) return;
 
-      // delayMs=0: requestPermission corre en el stack del gesto.
       scheduleAutoPushRequest({ reason: "first-interaction", delayMs: 0 });
     };
 

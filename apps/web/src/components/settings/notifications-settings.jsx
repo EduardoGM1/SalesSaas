@@ -135,6 +135,7 @@ export function NotificationsSettings({
     pushConfigured: true,
     needsIosPwa: false,
     needsResync: false,
+    pushServiceFailed: false,
   });
   const [pending, setPending] = useState(false);
   const [runtimeReady, setRuntimeReady] = useState(false);
@@ -260,7 +261,9 @@ export function NotificationsSettings({
 
       {status.needsResync && (
         <div className="auth-error" style={{ marginBottom: 12 }}>
-          {t("settings.notifications.needsResync")}
+          {status.pushServiceFailed
+            ? t("settings.notifications.needsResyncPushService")
+            : t("settings.notifications.needsResync")}
         </div>
       )}
 
