@@ -357,7 +357,7 @@ export const ES_EXT = {
   "moneyBox.round500": "Bajar a $500",
   "moneyBox.round1000": "Bajar a $1,000",
   "moneyBox.configuredTerms": "Mensualidades configuradas",
-  "moneyBox.termsFromWorksheet": "Planes tomados de Configuración → Worksheet (no del catálogo fijo del prototipo).",
+  "moneyBox.termsFromWorksheet": "Planes tomados de Configuración → Worksheet.",
   "moneyBox.byDown": "Enganche",
   "moneyBox.byDownSub": "El vendedor escribe cuánto puede dejar hoy el cliente.",
   "moneyBox.downQuestion": "¿Cuánto puede dejar hoy?",
