@@ -222,7 +222,6 @@ const ROUND_OPTIONS = [
 
 export function MoneyBoxPage({ clientId, shared }) {
   const { t } = useI18n();
-  const { fmtN2 } = useMoney();
   const { allowed, locked, loading, ready } = useFeatureAccess("money_box");
   const worksheetConfig = useDbStore((s) => s.db.settings?.worksheetConfig, shallow);
 
@@ -310,10 +309,6 @@ export function MoneyBoxPage({ clientId, shared }) {
   }
 
   const summary = t("moneyBox.restrictionSummaryV2", {
-    min: minDownPct || "0",
-    max: maxDownPct || "0",
-    fc: fmtN2(parseMoney(fcInput)),
-    ff: fmtN2(parseMoney(ffInput)),
     count: terms.length,
   });
 
