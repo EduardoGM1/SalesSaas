@@ -5,33 +5,26 @@ let audioCtx = null;
 let unlockBound = false;
 let unlocked = false;
 
-function getAudioContext() {
-  if (typeof window === "undefined") return null;
-  const Ctx = window.AudioContext || window.webkitAudioContext;
-  if (!Ctx) return null;
-  if (!audioCtx || audioCtx.state === "closed") {
-    audioCtx = new Ctx();
-  }
-  return audioCtx;
-}
-
-async function resumeContext() {
-  const ctx = getAudioContext();
-  if (!ctx) return null;
-  if (ctx.state === "suspended") {
-    try {
-      await ctx.resume();
-    } catch {
-      return null;
-    }
-  }
-  unlocked = ctx.state === "running";
-  return unlocked ? ctx : null;
-}
-
-/** Resume el AudioContext (p. ej. en el mismo clic que acepta el permiso push). */
+/**
+ * Solo crea/resume AudioContext tras un gesto de usuario.
+ * Crear el contexto al boot dispara el warning de autoplay de Chrome.
+ */
 export async function unlockNotificationSound() {
-  await resumeContext();
+  if (typeof window === "undefined") return;
+  const Ctx = window.AudioContext || window.webkitAudioContext;
+  if (!Ctx) return;
+
+  try {
+    if (!audioCtx || audioCtx.state === "closed") {
+      audioCtx = new Ctx();
+    }
+    if (audioCtx.state === "suspended") {
+      await audioCtx.resume();
+    }
+    unlocked = audioCtx.state === "running";
+  } catch {
+    unlocked = false;
+  }
 }
 
 /**
@@ -43,7 +36,7 @@ export function bindNotificationSoundUnlock() {
   unlockBound = true;
 
   const unlock = () => {
-    void resumeContext().finally(() => {
+    void unlockNotificationSound().finally(() => {
       if (unlocked) {
         window.removeEventListener("pointerdown", unlock, true);
         window.removeEventListener("keydown", unlock, true);
@@ -63,10 +56,10 @@ export async function playNotificationSound() {
   if (typeof window === "undefined") return;
   if (getInstallPlatform() !== "desktop") return;
   if (document.visibilityState !== "visible") return;
+  // Sin gesto previo no crear AudioContext (evita spam del warning de Chrome).
+  if (!unlocked || !audioCtx || audioCtx.state !== "running") return;
 
-  const ctx = await resumeContext();
-  if (!ctx) return;
-
+  const ctx = audioCtx;
   const now = ctx.currentTime;
   const master = ctx.createGain();
   master.gain.setValueAtTime(0.0001, now);

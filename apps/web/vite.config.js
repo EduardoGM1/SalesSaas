@@ -51,11 +51,17 @@ export default defineConfig({
           /OneSignalSDKWorker\.js$/,
         ],
         cleanupOutdatedCaches: true,
-        globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
+        skipWaiting: true,
+        clientsClaim: true,
+        // HTML siempre fresco: un index.html precacheado deja al usuario en chunks 404.
+        globPatterns: ["**/*.{js,css,ico,png,svg,woff2}"],
         globIgnores: [
           "**/onesignal/**",
           "**/OneSignalSDKWorker.js",
           "**/OneSignalSDK.sw.js",
+          "**/OneSignalSDK.page.js",
+          "**/OneSignalSDK.page.es6.js",
+          "index.html",
         ],
         runtimeCaching: [
           {
@@ -64,6 +70,7 @@ export default defineConfig({
               url.pathname.startsWith("/onesignal/")
               || /OneSignalSDKWorker\.js$/i.test(url.pathname)
               || /OneSignalSDK\.sw\.js$/i.test(url.pathname)
+              || /OneSignalSDK\.page(\.es6)?\.js$/i.test(url.pathname)
               || url.hostname === "cdn.onesignal.com",
             handler: "NetworkOnly",
           },
@@ -73,7 +80,7 @@ export default defineConfig({
             options: {
               cacheName: "html-navigate",
               networkTimeoutSeconds: 3,
-              expiration: { maxEntries: 8, maxAgeSeconds: 60 * 60 * 24 },
+              expiration: { maxEntries: 4, maxAgeSeconds: 60 * 5 },
             },
           },
           {

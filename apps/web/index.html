@@ -17,6 +17,32 @@
   </head>
   <body>
     <div id="root"></div>
+    <!-- Recupera shells PWA obsoletos (HTML/SW cacheados con chunks 404 tras deploy). -->
+    <script>
+      (function () {
+        if (!("serviceWorker" in navigator)) return;
+        var current = document.querySelector('script[type="module"][src*="/assets/"]');
+        if (!current) return;
+        var currentSrc = current.getAttribute("src") || "";
+        fetch("/index.html?__fresh=" + Date.now(), { cache: "no-store", credentials: "same-origin" })
+          .then(function (r) { return r.ok ? r.text() : Promise.reject(); })
+          .then(function (html) {
+            var match = html.match(/\/assets\/index-[^"']+\.js/);
+            if (!match || !match[0] || currentSrc.indexOf(match[0]) !== -1) return;
+            console.warn("[pwa] outdated shell detected, clearing SW caches", currentSrc, match[0]);
+            return navigator.serviceWorker.getRegistrations()
+              .then(function (regs) {
+                return Promise.all(regs.map(function (reg) { return reg.unregister(); }));
+              })
+              .then(function () { return caches.keys(); })
+              .then(function (keys) {
+                return Promise.all(keys.map(function (key) { return caches.delete(key); }));
+              })
+              .then(function () { location.reload(); });
+          })
+          .catch(function () {});
+      })();
+    </script>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
