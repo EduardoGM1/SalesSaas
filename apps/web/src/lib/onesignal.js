@@ -236,7 +236,40 @@ async function waitForWorkerActivation(registration, timeoutMs = 8_000) {
   return registration.active || worker;
 }
 
-async function waitForPushSubscription(OneSignal, timeoutMs = 15_000) {
+async function waitForOneSignalId(OneSignal, timeoutMs = 12_000) {
+  if (OneSignal.User?.onesignalId) return String(OneSignal.User.onesignalId);
+
+  return new Promise((resolve) => {
+    let done = false;
+    const finish = (value) => {
+      if (done) return;
+      done = true;
+      try {
+        OneSignal.User.removeEventListener("change", onChange);
+      } catch {
+        // ignore
+      }
+      clearTimeout(timer);
+      resolve(value);
+    };
+
+    const onChange = () => {
+      if (OneSignal.User?.onesignalId) finish(String(OneSignal.User.onesignalId));
+    };
+
+    try {
+      OneSignal.User.addEventListener("change", onChange);
+    } catch {
+      // ignore
+    }
+    const timer = window.setTimeout(
+      () => finish(OneSignal.User?.onesignalId ? String(OneSignal.User.onesignalId) : null),
+      timeoutMs,
+    );
+  });
+}
+
+async function waitForPushSubscription(OneSignal, timeoutMs = 25_000) {
   if (readSubscriptionState(OneSignal).subscribed) return true;
 
   return new Promise((resolve) => {
@@ -246,6 +279,7 @@ async function waitForPushSubscription(OneSignal, timeoutMs = 15_000) {
       done = true;
       OneSignal.User.PushSubscription.removeEventListener("change", onChange);
       clearTimeout(timer);
+      clearInterval(poll);
       resolve(value);
     };
 
@@ -254,11 +288,98 @@ async function waitForPushSubscription(OneSignal, timeoutMs = 15_000) {
     };
 
     OneSignal.User.PushSubscription.addEventListener("change", onChange);
+    // El evento "change" a veces no dispara aunque el token ya exista; sondear.
+    const poll = window.setInterval(() => {
+      if (readSubscriptionState(OneSignal).subscribed) finish(true);
+    }, 400);
     const timer = window.setTimeout(
       () => finish(readSubscriptionState(OneSignal).subscribed),
       timeoutMs,
     );
   });
+}
+
+/**
+ * Si hubo login(external_id) sin suscripción push, el SDK puede quedar en un estado
+ * donde optIn no obtiene subscription id (needsResync eterno / missing onesignalId).
+ * Solo entonces volvemos a usuario anónimo antes de crear el push token.
+ */
+async function resetIdentityIfSubscriptionMissing(OneSignal) {
+  const state = readSubscriptionState(OneSignal);
+  if (state.subscribed) return { reset: false };
+
+  const externalId = readExternalId(OneSignal);
+  if (!externalId) return { reset: false };
+
+  const onesignalId = OneSignal.User?.onesignalId || null;
+  console.warn("[onesignal] resetting identity before optIn", { externalId, onesignalId });
+  try {
+    if (typeof OneSignal.logout === "function") {
+      await OneSignal.logout();
+    }
+  } catch (err) {
+    console.warn("[onesignal] logout before optIn failed:", err);
+  }
+
+  await waitForOneSignalId(OneSignal, 10_000);
+  return { reset: true, previousExternalId: externalId };
+}
+
+async function readNativePushOnOneSignalSw() {
+  try {
+    const registration = await navigator.serviceWorker.getRegistration(SW_SCOPE);
+    const sub = await registration?.pushManager?.getSubscription();
+    if (!sub) return { hasNative: false };
+    return {
+      hasNative: true,
+      endpoint: sub.endpoint ? `${String(sub.endpoint).slice(0, 48)}…` : null,
+    };
+  } catch {
+    return { hasNative: false };
+  }
+}
+
+/** Listo para pulsar «Activar»: init resuelto + SW activated en /onesignal/. */
+export async function ensurePushRuntimeReady() {
+  const OneSignal = await ensureOneSignal();
+  const registration = await ensureOneSignalServiceWorkerRegistered();
+  const activated = Boolean(registration?.active && registration.active.state === "activated");
+  return {
+    ready: activated,
+    OneSignal,
+    registration,
+    appId: resolvedAppId,
+    onesignalId: OneSignal.User?.onesignalId || null,
+  };
+}
+
+export async function diagnosePushSubscription() {
+  const permission = typeof Notification !== "undefined" ? Notification.permission : "unsupported";
+  let sdk = null;
+  try {
+    sdk = await ensureOneSignal();
+  } catch (err) {
+    return { permission, error: err?.message || String(err) };
+  }
+  const state = readSubscriptionState(sdk);
+  const native = await readNativePushOnOneSignalSw();
+  const registration = await navigator.serviceWorker.getRegistration(SW_SCOPE);
+  const diag = {
+    permission,
+    appId: resolvedAppId,
+    origin: typeof window !== "undefined" ? window.location.origin : null,
+    onesignalId: sdk.User?.onesignalId || null,
+    externalId: readExternalId(sdk),
+    ...state,
+    nativePush: native,
+    sw: {
+      scope: registration?.scope || null,
+      scriptURL: registrationScriptUrl(registration) || null,
+      state: registration?.active?.state || null,
+    },
+  };
+  console.info("[onesignal:diagnose]", diag);
+  return diag;
 }
 
 async function requestBrowserPermission(OneSignal) {
@@ -684,12 +805,12 @@ async function subscribeToPushInternal() {
     throw codedError("ONESIGNAL_NOT_CONFIGURED", "Server reports push_configured=false");
   }
 
-  // Init debe resolverse y el SW de /onesignal/ debe estar activated antes de optIn.
-  const OneSignal = await ensureOneSignal();
-  const registration = await ensureOneSignalServiceWorkerRegistered();
-  if (!registration?.active || registration.active.state !== "activated") {
+  // Init + SW activated ANTES de optIn. No llamar login() todavía.
+  const runtime = await ensurePushRuntimeReady();
+  const OneSignal = runtime.OneSignal;
+  if (!runtime.ready) {
     throw mapServiceWorkerError(
-      new Error(`Service worker not activated (state=${registration?.active?.state || "none"})`),
+      new Error(`Service worker not activated (state=${runtime.registration?.active?.state || "none"})`),
       "SW_REGISTER_FAILED",
     );
   }
@@ -701,7 +822,6 @@ async function subscribeToPushInternal() {
     }
   }
 
-  // Refuerzo por si el permiso se concedió vía OneSignal en builds antiguos.
   const granted = await requestBrowserPermission(OneSignal);
   if (!granted) {
     throw codedError(
@@ -710,17 +830,28 @@ async function subscribeToPushInternal() {
   }
 
   const userId = await resolveUserId();
-  // Soft-login antes del optIn: ayuda a asociar la suscripción al usuario sin bloquear.
-  if (userId) {
-    try {
-      await OneSignal.login(String(userId));
-    } catch (err) {
-      console.warn("[onesignal] soft login before optIn:", err);
-    }
+
+  // CRÍTICO: login(external_id) ANTES de tener push deja al SDK sin onesignalId usable
+  // (processSubscriptionModel: missing onesignalId) → needsResync eterno.
+  await resetIdentityIfSubscriptionMissing(OneSignal);
+  const onesignalId = await waitForOneSignalId(OneSignal, 12_000);
+  if (!onesignalId) {
+    void reportOneSignalPushIssue({
+      stage: "waitForOneSignalId",
+      code: "PUSH_SERVICE_ERROR",
+      detail: "No onesignalId after identity reset",
+      permission: Notification.permission,
+      message: "OneSignal user identity never became ready before optIn",
+    });
+    throw codedError("PUSH_SERVICE_ERROR", "OneSignal user identity (onesignalId) not ready before optIn");
   }
 
-  try {
+  const runOptIn = async () => {
     await OneSignal.User.PushSubscription.optIn();
+  };
+
+  try {
+    await runOptIn();
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     console.warn("[onesignal] optIn failed:", message, err);
@@ -733,45 +864,69 @@ async function subscribeToPushInternal() {
       message: `OneSignal optIn threw: ${message}`,
     });
     if (/service worker|failed to register|bad HTTP|unsupported MIME|redirect|SecurityError/i.test(message)) {
-      // Reintento único tras limpiar conflictos de scope (caso típico desktop + Workbox).
       try {
         await cleanupLegacyWebPushSubscription();
         await ensureOneSignalServiceWorkerRegistered();
-        await OneSignal.User.PushSubscription.optIn();
+        await runOptIn();
       } catch (retryErr) {
         throw mapServiceWorkerError(retryErr || err, "SW_REGISTER_FAILED");
       }
-    } else if (/push service|registration failed|AbortError|NotAllowedError/i.test(message)) {
+    } else if (/push service|registration failed|AbortError|NotAllowedError|missing onesignalId/i.test(message)) {
       throw mapServiceWorkerError(err, "PUSH_SERVICE_ERROR");
     } else {
       throw codedError("PUSH_SERVICE_ERROR", message, err);
     }
   }
 
-  const subscribed = await waitForPushSubscription(OneSignal, 20_000);
+  let subscribed = await waitForPushSubscription(OneSignal, 25_000);
+
+  // Reintento controlado (una vez): optOut → optIn si el permiso está granted pero no hay token/id.
+  if (!subscribed) {
+    console.warn("[onesignal] optIn produced no subscription; retrying once via optOut/optIn");
+    try {
+      await OneSignal.User.PushSubscription.optOut();
+      await delay(500);
+      await runOptIn();
+      subscribed = await waitForPushSubscription(OneSignal, 20_000);
+    } catch (retryErr) {
+      console.warn("[onesignal] optOut/optIn retry failed:", retryErr);
+    }
+  }
+
   if (!subscribed) {
     const state = readSubscriptionState(OneSignal);
+    const native = await readNativePushOnOneSignalSw();
+    const detail = `optIn ok but subscribed=false (optedIn=${state.optedIn}, id=${state.subscriptionId}, token=${Boolean(state.token)}, nativePush=${native.hasNative}, onesignalId=${OneSignal.User?.onesignalId || null}, origin=${window.location.origin}, appId=${resolvedAppId})`;
     void reportOneSignalPushIssue({
       stage: "waitForPushSubscription",
       code: "PUSH_SERVICE_ERROR",
-      detail: "optIn resolved but no subscription id/token within timeout",
+      detail,
       permission: Notification.permission,
       optedIn: state.optedIn,
       subscriptionId: state.subscriptionId,
       hasToken: Boolean(state.token),
       message: "OneSignal optIn completed without subscription id/token",
     });
-    throw codedError(
-      "PUSH_SERVICE_ERROR",
-      `optIn ok but subscribed=false (optedIn=${state.optedIn}, id=${state.subscriptionId}, token=${Boolean(state.token)})`,
-    );
+    console.error("[onesignal] subscription missing after optIn", { state, native, appId: resolvedAppId });
+    throw codedError("PUSH_SERVICE_ERROR", detail);
   }
 
-  // Vincular external_id DESPUÉS de que exista la suscripción (playerId/subscription id).
+  // Vincular external_id SOLO cuando ya hay suscripción real.
   if (userId) {
     const linkResult = await linkOneSignalUser(userId);
     if (!linkResult.ok) {
-      throw codedError("EXTERNAL_ID_LINK_FAILED", linkResult.error?.message || "login/external_id verify failed");
+      // La suscripción ya existe: no tumbar el enable por un fallo de vínculo.
+      console.warn("[onesignal] subscription ok but external_id link failed:", linkResult.error);
+      void reportOneSignalLinkIssue({
+        stage: "subscribeToPush:postOptInLink",
+        userId,
+        externalId: readExternalId(OneSignal),
+        onesignalId: OneSignal.User.onesignalId || null,
+        subscriptionId: readSubscriptionState(OneSignal).subscriptionId,
+        subscribed: true,
+        error: linkResult.error,
+        message: linkResult.error?.message || "login/external_id verify failed after optIn",
+      });
     }
   }
 
@@ -847,27 +1002,31 @@ export async function syncPushIdentityAndSubscription() {
   }
 
   const beforeLinked = readExternalId(OneSignal) === String(userId);
-  const pushState = readSubscriptionState(OneSignal);
+  let pushState = readSubscriptionState(OneSignal);
 
-  // Auto-corrección: re-vincular en cada apertura de sesión si hay suscripción pero external_id no coincide.
+  // NUNCA hacer login(external_id) sin suscripción push: rompe onesignalId y bloquea optIn.
+  if (!pushState.subscribed && Notification.permission === "granted") {
+    await restorePushSubscriptionIfNeeded();
+    pushState = readSubscriptionState(OneSignal);
+  }
+
   let linkResult = { ok: beforeLinked };
-  if (!beforeLinked || pushState.subscribed) {
+  if (pushState.subscribed) {
     linkResult = await linkOneSignalUser(userId);
+    if (!linkResult.ok) {
+      await delay(800);
+      linkResult = await linkOneSignalUser(userId, { retries: 2 });
+    }
   }
 
-  if (pushState.subscribed && !linkResult.ok) {
-    await delay(800);
-    linkResult = await linkOneSignalUser(userId, { retries: 2 });
-  }
-
-  await restorePushSubscriptionIfNeeded();
   const state = await getPushStatus();
   if (state.subscribed && state.subscriptionId) {
     await registerDeviceSubscription(state.subscriptionId);
   }
   notifyPushStatusChanged();
 
-  const linked = linkResult.ok || readExternalId(OneSignal) === String(userId);
+  const linked = Boolean(state.subscribed)
+    && (linkResult.ok || readExternalId(OneSignal) === String(userId));
 
   return {
     ok: true,

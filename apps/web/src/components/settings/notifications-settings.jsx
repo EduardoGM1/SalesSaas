@@ -16,6 +16,7 @@ import {
   needsIosPwaInstall,
   unsubscribeFromPush,
 } from "@/lib/push-notifications.js";
+import { ensurePushRuntimeReady } from "@/lib/onesignal.js";
 import { enablePushNotifications, toastPushEnableResult } from "@/lib/push-enable.js";
 import { openInstallPrompt, isAndroidDevice } from "@/lib/pwa-install.js";
 import { useI18n } from "@/hooks/use-i18n.js";
@@ -136,6 +137,7 @@ export function NotificationsSettings({
     needsResync: false,
   });
   const [pending, setPending] = useState(false);
+  const [runtimeReady, setRuntimeReady] = useState(false);
   const pendingRef = useRef(false);
 
   const notifications = {
@@ -152,6 +154,20 @@ export function NotificationsSettings({
     const onStatus = () => refreshStatus();
     window.addEventListener("push:status-changed", onStatus);
     return () => window.removeEventListener("push:status-changed", onStatus);
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    ensurePushRuntimeReady()
+      .then((runtime) => {
+        if (!cancelled) setRuntimeReady(Boolean(runtime?.ready));
+      })
+      .catch(() => {
+        if (!cancelled) setRuntimeReady(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const setPref = (key, value) => {
@@ -266,10 +282,10 @@ export function NotificationsSettings({
             type="button"
             className="btn btn-primary btn-sm"
             data-push-enable
-            disabled={pending || !status.pushConfigured}
+            disabled={pending || !status.pushConfigured || !runtimeReady}
             onClick={handleEnable}
           >
-            {pending ? t("common.loading") : t("settings.notifications.enable")}
+            {pending || !runtimeReady ? t("common.loading") : t("settings.notifications.enable")}
           </button>
         ) : (
           <button type="button" className="btn btn-ghost btn-sm" disabled={pending} onClick={handleDisable}>

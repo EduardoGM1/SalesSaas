@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { createClient } from "@/lib/supabase/client";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import {
+  diagnosePushSubscription,
   ensureOneSignal,
   resolveOneSignalAppId,
   restorePushSubscriptionIfNeeded,
@@ -28,6 +29,9 @@ export function OneSignalProvider({ children }) {
     let activeUserId = null;
 
     bindNotificationSoundUnlock();
+
+    // Diagnóstico manual en consola: await __diagnosePush()
+    window.__diagnosePush = diagnosePushSubscription;
 
     const resyncOnResume = () => {
       if (!activeUserId || cancelled) return;
@@ -107,6 +111,9 @@ export function OneSignalProvider({ children }) {
 
     return () => {
       cancelled = true;
+      if (window.__diagnosePush === diagnosePushSubscription) {
+        delete window.__diagnosePush;
+      }
       authSubscription?.unsubscribe();
       window.removeEventListener("auth:resume", resyncOnResume);
       document.removeEventListener("visibilitychange", onVisibility);
