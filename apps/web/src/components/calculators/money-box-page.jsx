@@ -419,13 +419,12 @@ export function MoneyBoxPage({ clientId, shared }) {
                 />
               </div>
             </div>
-            <div className="frow tool-frow">
+            <div className="frow tool-frow money-box-round-row">
               <div className="flabel">{t("moneyBox.roundStep")}</div>
               <select
-                className="tool-num-input"
+                className="money-box-round-select"
                 value={roundStep}
                 onChange={(e) => setRoundStep(e.target.value)}
-                style={{ minWidth: 140 }}
               >
                 <option value="0.01">{t("moneyBox.roundExact")}</option>
                 <option value="100">{t("moneyBox.round100")}</option>
@@ -434,18 +433,20 @@ export function MoneyBoxPage({ clientId, shared }) {
               </select>
             </div>
           </div>
-          <div className="card-heading" style={{ marginTop: 16 }}>{t("moneyBox.configuredTerms")}</div>
-          <p className="card-sub" style={{ marginBottom: 8 }}>{t("moneyBox.termsFromWorksheet")}</p>
-          {terms.map((term) => (
-            <div key={term.id || term.label} className="opt-block">
-              <div className="opt-head no-toggle">
-                <div>
-                  <div className="opt-tag">{term.label}</div>
-                  {term.desc ? <div className="opt-info">{term.desc}</div> : null}
+          <div className="money-box-terms-block">
+            <div className="card-heading">{t("moneyBox.configuredTerms")}</div>
+            <p className="card-sub money-box-terms-sub">{t("moneyBox.termsFromWorksheet")}</p>
+            {terms.map((term) => (
+              <div key={term.id || term.label} className="opt-block">
+                <div className="opt-head no-toggle">
+                  <div>
+                    <div className="opt-tag">{term.label}</div>
+                    {term.desc ? <div className="opt-info">{term.desc}</div> : null}
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </CollapsibleSection>
 
         <div className="money-box-mobile-tabs">

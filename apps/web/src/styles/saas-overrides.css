@@ -6409,6 +6409,44 @@ body,
 }
 
 /* Money Box — layout helpers con tokens Saletse (sin paleta del prototipo) */
+.money-box-round-select {
+  width: max-content;
+  min-width: 12.5rem;
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: 7px 32px 7px 12px;
+  border: 1px solid var(--border2);
+  border-radius: var(--r-sm);
+  background-color: var(--surface2);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.3;
+  text-align: left;
+  text-align-last: left;
+  cursor: pointer;
+  outline: none;
+}
+.money-box-round-select:focus {
+  border-color: var(--blue-lt);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+  background-color: #fff;
+}
+.money-box-round-row {
+  padding-bottom: 0;
+}
+.money-box-terms-block {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+.money-box-terms-block .card-heading {
+  margin-bottom: 4px;
+}
+.money-box-terms-sub {
+  margin-bottom: 8px !important;
+}
 .money-box-hero {
   display: flex;
   align-items: flex-start;
