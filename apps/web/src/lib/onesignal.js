@@ -158,19 +158,73 @@ async function resolveUserId() {
   }
 }
 
+function registrationScriptUrl(registration) {
+  return (
+    registration?.active?.scriptURL
+    || registration?.waiting?.scriptURL
+    || registration?.installing?.scriptURL
+    || ""
+  );
+}
+
+function isOneSignalWorkerScript(scriptURL) {
+  return /OneSignalSDKWorker\.js/i.test(String(scriptURL || ""));
+}
+
+/**
+ * Limpia suscripciones VAPID legacy y registros OneSignal en scope incorrecto (p. ej. `/`).
+ * Un SW OneSignal en scope raíz pelea con Workbox (PWA) y en desktop suele acabar en
+ * "Failed to register a ServiceWorker" / optIn rechazado.
+ */
 async function cleanupLegacyWebPushSubscription() {
   if (!("serviceWorker" in navigator)) return;
   try {
     const registrations = await navigator.serviceWorker.getRegistrations();
     for (const registration of registrations) {
       const scope = registration.scope || "";
-      if (scope.includes("/onesignal/")) continue;
+      const scriptURL = registrationScriptUrl(registration);
+      const onesignalScript = isOneSignalWorkerScript(scriptURL);
+      const onesignalScope = scope.includes("/onesignal/");
+
+      // OneSignal fuera de /onesignal/ → conflicto con el SW de la PWA.
+      if (onesignalScript && !onesignalScope) {
+        console.warn("[onesignal] unregistering conflicting OneSignal SW", { scope, scriptURL });
+        await registration.unregister();
+        continue;
+      }
+
+      if (onesignalScope) continue;
+
       const sub = await registration.pushManager?.getSubscription();
       if (sub) await sub.unsubscribe();
     }
-  } catch {
-    // Suscripción legacy de VAPID u otro proveedor.
+  } catch (err) {
+    console.warn("[onesignal] cleanupLegacyWebPushSubscription:", err);
   }
+}
+
+function mapServiceWorkerError(err, code = "SW_REGISTER_FAILED") {
+  const name = err?.name || "Error";
+  const message = err?.message || String(err || "unknown");
+  console.error(`[onesignal] ${code}:`, name, message, err);
+  const mapped = new Error(code);
+  mapped.code = code;
+  mapped.cause = err;
+  mapped.detail = `${name}: ${message}`;
+  return mapped;
+}
+
+async function waitForWorkerActivation(registration, timeoutMs = 8_000) {
+  const worker = registration.installing || registration.waiting || registration.active;
+  if (!worker || worker.state === "activated") return registration.active || worker;
+  await new Promise((resolve) => {
+    const done = () => resolve();
+    worker.addEventListener("statechange", () => {
+      if (worker.state === "activated" || worker.state === "redundant") done();
+    });
+    window.setTimeout(done, timeoutMs);
+  });
+  return registration.active || worker;
 }
 
 async function waitForPushSubscription(OneSignal, timeoutMs = 15_000) {
@@ -247,7 +301,7 @@ async function preflightOneSignalServiceWorker() {
   return true;
 }
 
-/** Registra el SW de OneSignal en scope dedicado y espera activación. */
+/** Registra el SW de OneSignal en scope dedicado `/onesignal/` y espera activación. */
 async function ensureOneSignalServiceWorkerRegistered() {
   if (!("serviceWorker" in navigator)) {
     const mapped = new Error("PUSH_UNSUPPORTED");
@@ -255,28 +309,43 @@ async function ensureOneSignalServiceWorkerRegistered() {
     throw mapped;
   }
 
+  await cleanupLegacyWebPushSubscription();
   await preflightOneSignalServiceWorker();
 
-  let registration;
-  try {
-    registration = await navigator.serviceWorker.register(SW_URL, { scope: SW_SCOPE });
-  } catch (err) {
-    console.warn("[onesignal] SW register failed:", err);
-    const mapped = new Error("SW_REGISTER_FAILED");
-    mapped.code = "SW_REGISTER_FAILED";
-    mapped.cause = err;
-    throw mapped;
+  // Reutilizar registro sano; si el script no coincide, recrear.
+  let registration = await navigator.serviceWorker.getRegistration(SW_SCOPE);
+  const existingScript = registrationScriptUrl(registration);
+  if (registration && existingScript && !existingScript.includes(SW_PATH)) {
+    console.warn("[onesignal] replacing SW with unexpected script at scope", SW_SCOPE, existingScript);
+    await registration.unregister();
+    registration = null;
   }
 
-  const worker = registration.installing || registration.waiting || registration.active;
-  if (worker && worker.state !== "activated") {
-    await new Promise((resolve) => {
-      const done = () => resolve();
-      worker.addEventListener("statechange", () => {
-        if (worker.state === "activated" || worker.state === "redundant") done();
-      });
-      window.setTimeout(done, 8_000);
+  try {
+    registration = await navigator.serviceWorker.register(SW_URL, {
+      scope: SW_SCOPE,
+      updateViaCache: "none",
     });
+  } catch (err) {
+    // Un intento de limpieza + re-registro cubre SW huérfano / scope inválido residual.
+    try {
+      const stale = await navigator.serviceWorker.getRegistration(SW_SCOPE);
+      if (stale) await stale.unregister();
+      registration = await navigator.serviceWorker.register(SW_URL, {
+        scope: SW_SCOPE,
+        updateViaCache: "none",
+      });
+    } catch (retryErr) {
+      throw mapServiceWorkerError(retryErr || err, "SW_REGISTER_FAILED");
+    }
+  }
+
+  const active = await waitForWorkerActivation(registration);
+  if (!active || active.state === "redundant") {
+    throw mapServiceWorkerError(
+      new Error("Service worker became redundant before activation"),
+      "SW_REGISTER_FAILED",
+    );
   }
 
   try {
@@ -284,6 +353,12 @@ async function ensureOneSignalServiceWorkerRegistered() {
   } catch {
     // update() puede fallar offline; el registro existente basta.
   }
+
+  console.info("[onesignal] SW ready", {
+    scope: registration.scope,
+    scriptURL: registrationScriptUrl(registration),
+    state: registration.active?.state,
+  });
 
   return registration;
 }
@@ -297,10 +372,12 @@ export async function ensureOneSignal() {
 
   if (!initPromise) {
     initPromise = (async () => {
+      // Registrar SW dedicado ANTES del init (evita que el SDK intente scope `/` contra Workbox).
       try {
-        await navigator.serviceWorker?.register(SW_URL, { scope: SW_SCOPE });
+        await ensureOneSignalServiceWorkerRegistered();
       } catch (err) {
-        console.warn("[onesignal] early SW register skipped:", err);
+        console.warn("[onesignal] SW pre-init register:", err?.detail || err?.message || err);
+        // Continuar: subscribeToPush volverá a intentar con el mismo helper.
       }
       await loadScript(SDK_URL);
       return new Promise((resolve, reject) => {
@@ -588,9 +665,7 @@ export async function subscribeToPush() {
     throw err;
   }
 
-  await cleanupLegacyWebPushSubscription();
-
-  // Asegura SW OneSignal activo antes de optIn (crítico en Android PWA + Workbox).
+  // Asegura SW OneSignal activo en /onesignal/ antes de optIn (crítico vs Workbox en desktop).
   await ensureOneSignalServiceWorkerRegistered();
 
   const OneSignal = await ensureOneSignal();
@@ -619,19 +694,20 @@ export async function subscribeToPush() {
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     console.warn("[onesignal] optIn failed:", message, err);
-    if (/service worker|failed to register|bad HTTP|unsupported MIME|redirect/i.test(message)) {
-      const mapped = new Error("SW_REGISTER_FAILED");
-      mapped.code = "SW_REGISTER_FAILED";
-      mapped.cause = err;
-      throw mapped;
+    if (/service worker|failed to register|bad HTTP|unsupported MIME|redirect|SecurityError/i.test(message)) {
+      // Reintento único tras limpiar conflictos de scope (caso típico desktop + Workbox).
+      try {
+        await cleanupLegacyWebPushSubscription();
+        await ensureOneSignalServiceWorkerRegistered();
+        await OneSignal.User.PushSubscription.optIn();
+      } catch (retryErr) {
+        throw mapServiceWorkerError(retryErr || err, "SW_REGISTER_FAILED");
+      }
+    } else if (/push service|registration failed/i.test(message)) {
+      throw mapServiceWorkerError(err, "PUSH_SERVICE_ERROR");
+    } else {
+      throw err;
     }
-    if (/push service|registration failed/i.test(message)) {
-      const mapped = new Error("PUSH_SERVICE_ERROR");
-      mapped.code = "PUSH_SERVICE_ERROR";
-      mapped.cause = err;
-      throw mapped;
-    }
-    throw err;
   }
 
   const subscribed = await waitForPushSubscription(OneSignal);

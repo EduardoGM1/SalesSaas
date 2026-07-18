@@ -9,7 +9,8 @@ import {
   syncPushIdentityAndSubscription,
   unlinkOneSignalUser,
 } from "@/lib/onesignal.js";
-import { scheduleAutoPushRequest } from "@/lib/push-enable.js";
+import { enablePushNotifications, scheduleAutoPushRequest } from "@/lib/push-enable.js";
+import { clearAutoPushRequested } from "@/lib/push-prompt.js";
 import { bindNotificationSoundUnlock } from "@/lib/notification-sound.js";
 
 /** Inicializa OneSignal y vincula el usuario de Supabase como external_id. */
@@ -74,8 +75,18 @@ export function OneSignalProvider({ children }) {
           if (session?.user?.id) {
             await syncIdentity(session.user.id);
             if (event === "SIGNED_IN") {
-              // Sin gesto de usuario fiable tras auth async → banner con botón.
-              scheduleAutoPushRequest({ reason: "signed-in", delayMs: 700, preferBanner: true });
+              const permission = typeof Notification !== "undefined" ? Notification.permission : "default";
+              // Permiso ya concedido (caso desktop needsResync): reintentar suscripción real sin diálogo.
+              if (permission === "granted") {
+                void enablePushNotifications();
+                return;
+              }
+              if (permission === "default") {
+                // Chrome/Edge exigen gesto de usuario: limpiar flag y pedir en el próximo pointerdown
+                // (AutoPushCoordinator). Banner visible como CTA si el usuario no interactúa aún.
+                clearAutoPushRequested();
+                scheduleAutoPushRequest({ reason: "signed-in", delayMs: 500, preferBanner: true });
+              }
             }
           } else if (event === "SIGNED_OUT") {
             await unlinkOneSignalUser();

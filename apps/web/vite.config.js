@@ -55,6 +55,14 @@ export default defineConfig({
         globIgnores: ["**/onesignal/**", "**/OneSignalSDKWorker.js"],
         runtimeCaching: [
           {
+            // OneSignal SW + CDN: nunca cachear ni reescribir (evita rechazo de registro en desktop).
+            urlPattern: ({ url }) =>
+              url.pathname.startsWith("/onesignal/")
+              || /OneSignalSDKWorker\.js$/i.test(url.pathname)
+              || url.hostname === "cdn.onesignal.com",
+            handler: "NetworkOnly",
+          },
+          {
             urlPattern: ({ request }) => request.mode === "navigate",
             handler: "NetworkFirst",
             options: {

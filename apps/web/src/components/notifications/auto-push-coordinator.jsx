@@ -1,11 +1,12 @@
 import { useEffect } from "react";
 import { isSupabaseConfigured } from "@/lib/supabase/config.js";
-import { scheduleAutoPushRequest } from "@/lib/push-enable.js";
+import { enablePushNotifications, scheduleAutoPushRequest } from "@/lib/push-enable.js";
 import {
   clearAutoPushRequested,
   wasAutoPushRequested,
   wasPushPromptPermanentlyBlocked,
 } from "@/lib/push-prompt.js";
+import { getInstallPlatform } from "@/lib/pwa-install.js";
 import { unlockNotificationSound } from "@/lib/notification-sound.js";
 
 /**
@@ -17,7 +18,14 @@ export function AutoPushCoordinator() {
     if (!isSupabaseConfigured()) return undefined;
 
     const onAuthChanged = () => {
-      // Tras login no hay gesto fiable → banner con botón (el click sí tiene gesto).
+      if (typeof Notification !== "undefined" && Notification.permission === "granted") {
+        void enablePushNotifications();
+        return;
+      }
+      if (typeof Notification !== "undefined" && Notification.permission === "default") {
+        clearAutoPushRequested();
+      }
+      // Tras login: banner; el pointerdown siguiente abre el diálogo nativo (gesto real).
       scheduleAutoPushRequest({ reason: "auth-changed", delayMs: 600, preferBanner: true });
     };
 
@@ -34,6 +42,16 @@ export function AutoPushCoordinator() {
         && Notification.permission === "default"
       ) {
         clearAutoPushRequested();
+      }
+
+      // Desktop: si el permiso ya está granted tras login, completar suscripción OneSignal.
+      if (
+        getInstallPlatform() === "desktop"
+        && typeof Notification !== "undefined"
+        && Notification.permission === "granted"
+      ) {
+        void enablePushNotifications();
+        return;
       }
 
       if (wasAutoPushRequested()) return;

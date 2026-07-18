@@ -143,10 +143,12 @@ VITE_ONESIGNAL_APP_ID=tu-app-id
 
 ```bash
 curl -sI https://TU-DOMINIO/onesignal/OneSignalSDKWorker.js
-# Esperado: 200, Content-Type: application/javascript, Service-Worker-Allowed: /
+# Esperado: 200, Content-Type: application/javascript (NO usar Service-Worker-Allowed: /)
 curl -s https://TU-DOMINIO/onesignal/OneSignalSDKWorker.js
 # Esperado: importScripts("https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.sw.js");
 ```
+
+**Desktop vs PWA (importante):** el SW de OneSignal vive solo en scope `/onesignal/`. No debe usar `Service-Worker-Allowed: /` porque eso permite pelear el scope raíz con Workbox y en Chrome/Edge desktop acaba en rechazo de registro (`SW_REGISTER_FAILED`). Safari desktop tiene soporte Web Push más limitado (macOS 13+ / Safari 16+); validar en Chrome y Edge.
 
 Confirmado en `sales-app-nine-gamma.vercel.app` y `sales-saas-api.vercel.app`: el archivo existe y responde JS válido. Si en tu dominio custom falla, revisa rewrites de la SPA.
 
@@ -160,10 +162,11 @@ Confirmado en `sales-app-nine-gamma.vercel.app` y `sales-saas-api.vercel.app`: e
 
 - `serviceWorkerPath`: `onesignal/OneSignalSDKWorker.js`
 - `serviceWorkerParam.scope`: `/onesignal/` (dedicado; el SW de la PWA/Workbox usa `/`)
-- Workbox excluye `/onesignal/` del `navigateFallback` y del precache
-- Antes de `optIn`, la app hace preflight + `navigator.serviceWorker.register` del SW OneSignal
+- Workbox excluye `/onesignal/` del `navigateFallback`, precache y usa `NetworkOnly` para OneSignal/CDN
+- Antes de `optIn`, la app limpia SW OneSignal en scope incorrecto, hace preflight y registra `/onesignal/`
+- Tras login en desktop: si el permiso ya es `granted`, se reintenta la suscripción; si es `default`, el próximo gesto pide el permiso nativo
 
-**Recuperación para usuarios ya afectados (Android PWA):**
+**Recuperación para usuarios ya afectados (Android PWA / desktop con SW conflictivo):**
 
 1. Desplegar el fix.
 2. En el teléfono: desinstalar la PWA (icono → desinstalar).

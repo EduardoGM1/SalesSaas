@@ -44,7 +44,7 @@ export async function enablePushNotifications() {
       markAutoPushRequested();
     }
     notifyPushStatusChanged();
-    return { ok: false, code };
+    return { ok: false, code, detail: err?.detail || err?.message || null };
   }
 }
 
@@ -157,6 +157,7 @@ export function toastPushEnableResult(result, t) {
       break;
     case "SW_REGISTER_FAILED":
       toast.error(t("settings.notifications.swRegisterFailed"));
+      if (result.detail) console.error("[push] SW_REGISTER_FAILED detail:", result.detail);
       break;
     case "PUSH_UNSUPPORTED":
       toast.error(t("settings.notifications.pushUnsupported"));
