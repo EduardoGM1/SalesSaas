@@ -210,6 +210,31 @@ export async function startInAppNotificationsRealtime(userId) {
             });
           })();
         },
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "support_request_replies",
+        },
+        (payload) => {
+          void (async () => {
+            const row = payload.new || {};
+            if (!row.ticket_id || row.autor_id === userId) return;
+            const { data: ticket } = await supabase
+              .from("support_requests")
+              .select("id, user_id")
+              .eq("id", row.ticket_id)
+              .maybeSingle();
+            if (!ticket || ticket.user_id !== userId) return;
+            presentarNotificacion("respuesta_soporte", {
+              ticketId: row.ticket_id,
+              replyId: row.id,
+              fragmento: String(row.cuerpo || "").trim(),
+            });
+          })();
+        },
       );
 
     await new Promise((resolve) => {

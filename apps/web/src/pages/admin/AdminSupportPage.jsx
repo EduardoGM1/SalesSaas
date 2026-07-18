@@ -3,6 +3,7 @@ import { useOutletContext, useSearchParams } from "react-router-dom";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { longDate } from "@/lib/format/dates";
 import { PageBack } from "@/components/layout/page-back";
+import { hasPermission } from "@/lib/auth/permissions";
 
 const STATUS_OPTIONS = [
   { id: "all", labelKey: "admin.support.filterAll" },
@@ -32,9 +33,28 @@ async function patchStatus(id, status) {
   return body.data ?? body;
 }
 
+async function fetchReplies(id) {
+  const res = await fetch(`/api/v1/admin/support/requests/${id}/replies`, { credentials: "include" });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(body.error || "Error al cargar respuestas.");
+  return Array.isArray(body.data) ? body.data : [];
+}
+
+async function postReply(id, cuerpo) {
+  const res = await fetch(`/api/v1/admin/support/requests/${id}/replies`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ cuerpo }),
+  });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(body.error || "No se pudo enviar la respuesta.");
+  return body.data ?? body;
+}
+
 export function AdminSupportPage() {
   const { t, lang } = useI18n();
-  useOutletContext();
+  const session = useOutletContext();
   const [searchParams, setSearchParams] = useSearchParams();
   const highlightId = searchParams.get("ticket");
   const [status, setStatus] = useState(highlightId ? "all" : "open");
@@ -42,6 +62,12 @@ export function AdminSupportPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [pendingId, setPendingId] = useState(null);
+  const [repliesByTicket, setRepliesByTicket] = useState({});
+  const [replyDraft, setReplyDraft] = useState({});
+  const [replyBusy, setReplyBusy] = useState(null);
+
+  const canReply = hasPermission(session?.profile, "responder_tickets_soporte")
+    || hasPermission(session?.profile, "support:read");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -65,6 +91,9 @@ export function AdminSupportPage() {
     if (!highlightId || loading) return;
     const el = document.getElementById(`ticket-${highlightId}`);
     if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+    fetchReplies(highlightId)
+      .then((list) => setRepliesByTicket((prev) => ({ ...prev, [highlightId]: list })))
+      .catch(() => {});
   }, [highlightId, loading, items]);
 
   const onStatusChange = async (id, next) => {
@@ -76,6 +105,31 @@ export function AdminSupportPage() {
       setError(err instanceof Error ? err.message : t("admin.support.updateError"));
     } finally {
       setPendingId(null);
+    }
+  };
+
+  const loadReplies = async (id) => {
+    try {
+      const list = await fetchReplies(id);
+      setRepliesByTicket((prev) => ({ ...prev, [id]: list }));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t("admin.support.loadError"));
+    }
+  };
+
+  const onReply = async (id) => {
+    const cuerpo = String(replyDraft[id] || "").trim();
+    if (!cuerpo) return;
+    setReplyBusy(id);
+    try {
+      await postReply(id, cuerpo);
+      setReplyDraft((prev) => ({ ...prev, [id]: "" }));
+      await loadReplies(id);
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t("admin.support.replyError"));
+    } finally {
+      setReplyBusy(null);
     }
   };
 
@@ -116,6 +170,7 @@ export function AdminSupportPage() {
         <div className="admin-support-list">
           {items.map((ticket) => {
             const active = highlightId === ticket.id;
+            const replies = repliesByTicket[ticket.id] || [];
             return (
               <article
                 key={ticket.id}
@@ -164,6 +219,56 @@ export function AdminSupportPage() {
                 ) : ticket.screenshot_available ? (
                   <p className="admin-support-purged">{t("admin.support.shotUnavailable")}</p>
                 ) : null}
+
+                <div style={{ marginTop: 12 }}>
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-sm"
+                    onClick={() => void loadReplies(ticket.id)}
+                  >
+                    {t("admin.support.showReplies")} ({replies.length})
+                  </button>
+                  {replies.length > 0 && (
+                    <ul style={{ marginTop: 8, paddingLeft: 18 }}>
+                      {replies.map((r) => (
+                        <li key={r.id} style={{ marginBottom: 8 }}>
+                          <div className="admin-cell-muted" style={{ fontSize: 12 }}>
+                            {r.created_at ? longDate(String(r.created_at).slice(0, 10), lang) : ""}
+                          </div>
+                          <div>{r.cuerpo}</div>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+
+                {canReply && (
+                  <div style={{ marginTop: 12 }}>
+                    <label className="admin-support-filter-label" htmlFor={`reply-${ticket.id}`}>
+                      {t("admin.support.replyLabel")}
+                    </label>
+                    <textarea
+                      id={`reply-${ticket.id}`}
+                      className="auth-input"
+                      rows={3}
+                      style={{ width: "100%", marginTop: 6 }}
+                      value={replyDraft[ticket.id] || ""}
+                      onChange={(e) => setReplyDraft((prev) => ({ ...prev, [ticket.id]: e.target.value }))}
+                      placeholder={t("admin.support.replyPlaceholder")}
+                    />
+                    <div className="btn-row" style={{ marginTop: 8 }}>
+                      <button
+                        type="button"
+                        className="btn btn-primary btn-sm"
+                        disabled={replyBusy === ticket.id || !String(replyDraft[ticket.id] || "").trim()}
+                        onClick={() => void onReply(ticket.id)}
+                      >
+                        {replyBusy === ticket.id ? t("admin.users.confirm.saving") : t("admin.support.replySend")}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 {active && (
                   <button
                     type="button"

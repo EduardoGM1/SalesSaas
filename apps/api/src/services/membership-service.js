@@ -76,6 +76,16 @@ export async function assignMembership(userId, planNombre, options = {}) {
   const now = new Date().toISOString();
   const changedBy = options.changedBy || null;
 
+  const { data: prevMem } = await serviceSb
+    .from("membresias")
+    .select("plan_id, planes(nombre)")
+    .eq("usuario_id", userId)
+    .in("estado", ["activa", "en_prueba"])
+    .order("fecha_inicio", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const planAnterior = prevMem?.planes?.nombre ?? null;
+
   const { error: cancelErr } = await serviceSb
     .from("membresias")
     .update({ estado: "cancelada" })
@@ -96,6 +106,25 @@ export async function assignMembership(userId, planNombre, options = {}) {
     .select("id, estado, fecha_inicio, fecha_proximo_cobro, cambiado_por, fecha_cambio")
     .single();
   if (insErr) throw new ServiceError(insErr.message, 400);
+
+  if (changedBy) {
+    try {
+      const { ADMIN_AUDIT_ACTIONS, writeAdminLog } = await import("./admin-audit-service.js");
+      await writeAdminLog(serviceSb, {
+        actorId: changedBy,
+        accion: ADMIN_AUDIT_ACTIONS.CAMBIO_PLAN,
+        entidadAfectada: "usuario",
+        entidadId: userId,
+        detalle: {
+          de: planAnterior,
+          a: plan.nombre,
+          membresia_id: inserted.id,
+        },
+      });
+    } catch (err) {
+      console.warn("[membership] audit log:", err instanceof Error ? err.message : err);
+    }
+  }
 
   return {
     plan: plan.nombre,

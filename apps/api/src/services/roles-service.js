@@ -10,6 +10,7 @@ import {
   overridesFromFeatureAllowlist,
   resolveUserPermissions,
 } from "@salesapp/shared/auth/resolve-permissions.js";
+import { ADMIN_AUDIT_ACTIONS, writeAdminLog } from "./admin-audit-service.js";
 
 function assertSuperAdmin(profile) {
   if (!isSuperAdmin(profile)) throw new ServiceError("No autorizado.", 403);
@@ -26,7 +27,7 @@ export async function listPermissionCatalog() {
   return PERMISSION_CATALOG;
 }
 
-export async function createRole(supabase, adminProfile, { nombre, permission_keys: keys }) {
+export async function createRole(supabase, adminProfile, { nombre, permission_keys: keys }, actorId = null) {
   assertSuperAdmin(adminProfile);
   const name = String(nombre ?? "").trim();
   if (!name) throw new ServiceError("Nombre requerido.");
@@ -36,10 +37,20 @@ export async function createRole(supabase, adminProfile, { nombre, permission_ke
     p_permission_keys: clean,
   });
   if (error) throw new ServiceError(error.message, 400);
-  return { id: data };
+  const roleId = data;
+  if (actorId) {
+    await writeAdminLog(supabase, {
+      actorId,
+      accion: ADMIN_AUDIT_ACTIONS.CREACION_ROL,
+      entidadAfectada: "rol",
+      entidadId: roleId,
+      detalle: { nombre: name, permission_keys: clean },
+    });
+  }
+  return { id: roleId };
 }
 
-export async function updateRole(supabase, adminProfile, roleId, { nombre, permission_keys: keys }) {
+export async function updateRole(supabase, adminProfile, roleId, { nombre, permission_keys: keys }, actorId = null) {
   assertSuperAdmin(adminProfile);
   if (!roleId) throw new ServiceError("Rol inválido.");
   const clean = (Array.isArray(keys) ? keys : []).filter((k) => ALL_PERMISSION_KEYS.includes(k));
@@ -49,20 +60,49 @@ export async function updateRole(supabase, adminProfile, roleId, { nombre, permi
     p_permission_keys: clean,
   });
   if (error) throw new ServiceError(error.message, 400);
+  if (actorId) {
+    await writeAdminLog(supabase, {
+      actorId,
+      accion: ADMIN_AUDIT_ACTIONS.EDICION_ROL,
+      entidadAfectada: "rol",
+      entidadId: roleId,
+      detalle: { nombre: nombre ?? null, permission_keys: clean },
+    });
+  }
   return { ok: true };
 }
 
-export async function deleteRole(supabase, adminProfile, roleId) {
+export async function deleteRole(supabase, adminProfile, roleId, actorId = null) {
   assertSuperAdmin(adminProfile);
   if (!roleId) throw new ServiceError("Rol inválido.");
+  const { data: before } = await supabase.from("roles").select("id, nombre, slug").eq("id", roleId).maybeSingle();
   const { error } = await supabase.rpc("admin_delete_role", { p_rol_id: roleId });
   if (error) throw new ServiceError(error.message, 400);
+  if (actorId) {
+    await writeAdminLog(supabase, {
+      actorId,
+      accion: ADMIN_AUDIT_ACTIONS.ELIMINACION_ROL,
+      entidadAfectada: "rol",
+      entidadId: roleId,
+      detalle: { nombre: before?.nombre ?? null, slug: before?.slug ?? null },
+    });
+  }
   return { ok: true };
 }
 
-export async function setUserRoleId(supabase, adminProfile, targetId, roleId) {
+export async function setUserRoleId(supabase, adminProfile, targetId, roleId, actorId = null) {
   assertSuperAdmin(adminProfile);
   if (!targetId || !roleId) throw new ServiceError("Datos inválidos.");
+  const { data: before } = await supabase
+    .from("profiles")
+    .select("role, role_id")
+    .eq("id", targetId)
+    .maybeSingle();
+  let nombreDe = before?.role || null;
+  if (before?.role_id) {
+    const { data: r } = await supabase.from("roles").select("nombre").eq("id", before.role_id).maybeSingle();
+    if (r?.nombre) nombreDe = r.nombre;
+  }
   const { error } = await supabase.rpc("admin_set_user_role_id", {
     p_target_id: targetId,
     p_rol_id: roleId,
@@ -73,10 +113,29 @@ export async function setUserRoleId(supabase, adminProfile, targetId, roleId) {
     .select("id, role, role_id, admin_permissions, user_permissions")
     .eq("id", targetId)
     .single();
+  let nombreA = data?.role || null;
+  if (data?.role_id) {
+    const { data: r2 } = await supabase.from("roles").select("nombre").eq("id", data.role_id).maybeSingle();
+    if (r2?.nombre) nombreA = r2.nombre;
+  }
+  if (actorId) {
+    await writeAdminLog(supabase, {
+      actorId,
+      accion: ADMIN_AUDIT_ACTIONS.CAMBIO_ROL,
+      entidadAfectada: "usuario",
+      entidadId: targetId,
+      detalle: {
+        de: nombreDe,
+        a: nombreA,
+        role_id_de: before?.role_id ?? null,
+        role_id_a: data?.role_id ?? roleId,
+      },
+    });
+  }
   return data;
 }
 
-export async function setUserOverrides(supabase, adminProfile, targetId, overrides) {
+export async function setUserOverrides(supabase, adminProfile, targetId, overrides, actorId = null, { skipAudit = false } = {}) {
   assertSuperAdmin(adminProfile);
   if (!targetId) throw new ServiceError("Usuario inválido.");
   const list = Array.isArray(overrides) ? overrides : [];
@@ -85,16 +144,24 @@ export async function setUserOverrides(supabase, adminProfile, targetId, overrid
     p_overrides: list,
   });
   if (error) throw new ServiceError(error.message, 400);
+  if (actorId && !skipAudit) {
+    await writeAdminLog(supabase, {
+      actorId,
+      accion: ADMIN_AUDIT_ACTIONS.EDICION_PERMISOS_USUARIO,
+      entidadAfectada: "usuario",
+      entidadId: targetId,
+      detalle: { tipo: "overrides", overrides: list },
+    });
+  }
   return { ok: true };
 }
 
 /** Allowlist UI → mergea overrides de features overridables sin borrar otros. */
-export async function setUserFeatureAllowlist(supabase, adminProfile, targetId, enabledKeys) {
+export async function setUserFeatureAllowlist(supabase, adminProfile, targetId, enabledKeys, options = {}) {
   assertSuperAdmin(adminProfile);
   const raw = (Array.isArray(enabledKeys) ? enabledKeys : []).filter((k) =>
     OVERRIDABLE_APP_FEATURES.includes(k),
   );
-  // Vacío o todas on → sin overrides de features (defaults del rol).
   const allOn = raw.length === 0 || OVERRIDABLE_APP_FEATURES.every((k) => raw.includes(k));
   const featureOverrides = allOn ? [] : overridesFromFeatureAllowlist(raw);
   const featureSet = new Set(OVERRIDABLE_APP_FEATURES);
@@ -112,7 +179,9 @@ export async function setUserFeatureAllowlist(supabase, adminProfile, targetId, 
     }
   }
   merged.push(...featureOverrides);
-  return setUserOverrides(supabase, adminProfile, targetId, merged);
+  return setUserOverrides(supabase, adminProfile, targetId, merged, options.actorId || null, {
+    skipAudit: options.skipAudit === true,
+  });
 }
 
 export async function loadUserPermissionContext(supabase, userId) {

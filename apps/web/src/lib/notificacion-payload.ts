@@ -10,7 +10,8 @@ export type NotificacionTipo =
   | "expediente_compartido"
   | "followup_pendiente"
   | "venta_pendiente"
-  | "nota_programada";
+  | "nota_programada"
+  | "respuesta_soporte";
 
 export type NotificacionPayload = {
   tipo: NotificacionTipo;
@@ -135,6 +136,20 @@ export function armarNotificacion(
         iconoCategoria: "notas",
         rutaDestino: `/clients/${encodeURIComponent(String(data.expedienteId ?? ""))}`,
         entidadId: String(data.expedienteId ?? ""),
+      };
+
+    case "respuesta_soporte":
+      return {
+        tipo,
+        titulo: "Respuesta de soporte",
+        cuerpo: data.fragmento
+          ? `Soporte respondió: ${truncar(String(data.fragmento), 80)}`
+          : "Soporte respondió a tu solicitud",
+        iconoCategoria: "notas",
+        rutaDestino: data.ticketId
+          ? `/settings?supportTicket=${encodeURIComponent(String(data.ticketId))}`
+          : "/settings",
+        entidadId: String(data.ticketId ?? data.replyId ?? ""),
       };
 
     default: {

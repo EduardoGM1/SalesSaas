@@ -21,6 +21,7 @@ import * as adminUsersService from "../services/admin-users-service.js";
 import * as supportService from "../services/support-service.js";
 import * as membershipService from "../services/membership-service.js";
 import * as rolesService from "../services/roles-service.js";
+import * as adminAuditService from "../services/admin-audit-service.js";
 
 const router = Router();
 
@@ -84,8 +85,16 @@ router.get("/me", async (req, res) => {
   } catch {
     // fallback legacy
   }
-  if (isSuperAdmin(adminProfile) && !permissionKeys.includes("admin:roles")) {
-    permissionKeys = [...permissionKeys, "admin:roles"];
+  if (isSuperAdmin(adminProfile)) {
+    for (const k of ["admin:roles", "ver_logs_administracion", "ver_tickets_soporte", "responder_tickets_soporte"]) {
+      if (!permissionKeys.includes(k)) permissionKeys = [...permissionKeys, k];
+    }
+  }
+  // Expandir legacy support:read para nav/gates
+  if (permissionKeys.includes("support:read")) {
+    for (const k of ["ver_tickets_soporte", "responder_tickets_soporte"]) {
+      if (!permissionKeys.includes(k)) permissionKeys = [...permissionKeys, k];
+    }
   }
   json(res, {
     profile: { ...adminProfile, role_id: profile.role_id ?? null },
@@ -112,7 +121,7 @@ router.post("/roles", async (req, res) => {
   if (!a) return;
   const body = parseJsonBody(req, res);
   if (!body) return;
-  await runService(res, () => rolesService.createRole(a.supabase, a.profile, body), { wrap: "data" });
+  await runService(res, () => rolesService.createRole(a.supabase, a.profile, body, a.userId), { wrap: "data" });
 });
 
 router.patch("/roles/:id", async (req, res) => {
@@ -120,13 +129,13 @@ router.patch("/roles/:id", async (req, res) => {
   if (!a) return;
   const body = parseJsonBody(req, res);
   if (!body) return;
-  await runService(res, () => rolesService.updateRole(a.supabase, a.profile, req.params.id, body), { wrap: "data" });
+  await runService(res, () => rolesService.updateRole(a.supabase, a.profile, req.params.id, body, a.userId), { wrap: "data" });
 });
 
 router.delete("/roles/:id", async (req, res) => {
   const a = await requireSuperAdminApi(req, res);
   if (!a) return;
-  await runService(res, () => rolesService.deleteRole(a.supabase, a.profile, req.params.id), { wrap: "data" });
+  await runService(res, () => rolesService.deleteRole(a.supabase, a.profile, req.params.id, a.userId), { wrap: "data" });
 });
 
 router.patch("/users/:id/role-id", async (req, res) => {
@@ -135,7 +144,40 @@ router.patch("/users/:id/role-id", async (req, res) => {
   const body = parseJsonBody(req, res);
   if (!body) return;
   const roleId = body.role_id ?? body.roleId;
-  await runService(res, () => rolesService.setUserRoleId(a.supabase, a.profile, req.params.id, roleId), { wrap: "data" });
+  await runService(res, () => rolesService.setUserRoleId(a.supabase, a.profile, req.params.id, roleId, a.userId), { wrap: "data" });
+});
+
+router.get("/logs", async (req, res) => {
+  const a = await adminAuth(req, res, "ver_logs_administracion");
+  if (!a) return;
+  const filters = {
+    from: typeof req.query.from === "string" ? req.query.from : undefined,
+    to: typeof req.query.to === "string" ? req.query.to : undefined,
+    actorId: typeof req.query.actor === "string" ? req.query.actor : undefined,
+    accion: typeof req.query.accion === "string" ? req.query.accion : undefined,
+    limit: req.query.limit,
+    offset: req.query.offset,
+  };
+  await runService(res, () => adminAuditService.listAdminLogs(a.supabase, a.profile, filters), { wrap: "data" });
+});
+
+router.get("/export/logs", async (req, res) => {
+  const a = await adminAuth(req, res, "ver_logs_administracion");
+  if (!a) return;
+  try {
+    const filters = {
+      from: typeof req.query.from === "string" ? req.query.from : undefined,
+      to: typeof req.query.to === "string" ? req.query.to : undefined,
+      actorId: typeof req.query.actor === "string" ? req.query.actor : undefined,
+      accion: typeof req.query.accion === "string" ? req.query.accion : undefined,
+    };
+    const csv = await adminAuditService.exportAdminLogsCsv(a.supabase, a.profile, filters);
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader("Content-Disposition", 'attachment; filename="logs-administracion.csv"');
+    res.send(csv);
+  } catch (err) {
+    apiError(res, err instanceof Error ? err.message : "Error al exportar.", 500);
+  }
 });
 
 router.get("/users/:id/permission-context", async (req, res) => {
@@ -163,7 +205,7 @@ router.get("/sellers", async (req, res) => {
     const data = await getSellerOptions(a.supabase);
     return json(res, { data });
   }
-  for (const perm of ["goals:read", "tools:analytics", "users:read"]) {
+  for (const perm of ["goals:read", "tools:analytics", "users:read", "ver_logs_administracion"]) {
     const alt = await requireApiAdmin(base, perm);
     if (alt.ok) {
       const data = await getSellerOptions(alt.supabase);
@@ -239,7 +281,7 @@ router.patch("/users/:id/role", async (req, res) => {
   const body = parseJsonBody(req, res);
   if (!body) return;
   const role = typeof body.role === "string" ? body.role : "";
-  await runService(res, () => adminUsersService.updateUserRole(a.supabase, req.params.id, role), { wrap: "data" });
+  await runService(res, () => adminUsersService.updateUserRole(a.supabase, req.params.id, role, a.userId), { wrap: "data" });
 });
 
 router.patch("/users/:id/status", async (req, res) => {
@@ -251,7 +293,7 @@ router.patch("/users/:id/status", async (req, res) => {
   const perm = isActive ? "users:activate" : "users:deactivate";
   const a = await requireApiAdmin(base, perm);
   if (!a.ok) return apiError(res, a.message, a.status);
-  await runService(res, () => adminUsersService.updateUserStatus(a.supabase, req.params.id, isActive), { wrap: "data" });
+  await runService(res, () => adminUsersService.updateUserStatus(a.supabase, req.params.id, isActive, a.userId), { wrap: "data" });
 });
 
 router.patch("/users/:id/permissions", async (req, res) => {
@@ -260,7 +302,7 @@ router.patch("/users/:id/permissions", async (req, res) => {
   const body = parseJsonBody(req, res);
   if (!body) return;
   const raw = Array.isArray(body.permissions) ? body.permissions : [];
-  await runService(res, () => adminUsersService.updateUserPermissions(a.supabase, a.profile, req.params.id, raw), { wrap: "data" });
+  await runService(res, () => adminUsersService.updateUserPermissions(a.supabase, a.profile, req.params.id, raw, a.userId), { wrap: "data" });
 });
 
 router.patch("/users/:id/features", async (req, res) => {
@@ -269,7 +311,7 @@ router.patch("/users/:id/features", async (req, res) => {
   const body = parseJsonBody(req, res);
   if (!body) return;
   const raw = Array.isArray(body.features) ? body.features : Array.isArray(body.permissions) ? body.permissions : [];
-  await runService(res, () => adminUsersService.updateUserFeatures(a.supabase, a.profile, req.params.id, raw), { wrap: "data" });
+  await runService(res, () => adminUsersService.updateUserFeatures(a.supabase, a.profile, req.params.id, raw, a.userId), { wrap: "data" });
 });
 
 /** Asignar plan basico/pro (histórico de membresías). */
@@ -287,7 +329,7 @@ router.patch("/users/:id/membership", async (req, res) => {
 });
 
 router.get("/support/requests", async (req, res) => {
-  const a = await adminAuth(req, res, "support:read");
+  const a = await adminAuth(req, res, "ver_tickets_soporte");
   if (!a) return;
   const status = typeof req.query.status === "string" ? req.query.status : "all";
   const limit = req.query.limit;
@@ -300,14 +342,35 @@ router.get("/support/requests", async (req, res) => {
 });
 
 router.patch("/support/requests/:id", async (req, res) => {
-  const a = await adminAuth(req, res, "support:read");
+  const a = await adminAuth(req, res, "ver_tickets_soporte");
   if (!a) return;
   const body = parseJsonBody(req, res);
   if (!body) return;
   const status = body.status;
   await runService(
     res,
-    () => supportService.updateSupportRequestStatus(a.supabase, req.params.id, status),
+    () => supportService.updateSupportRequestStatus(a.supabase, req.params.id, status, a.userId),
+    { wrap: "data" },
+  );
+});
+
+router.get("/support/requests/:id/replies", async (req, res) => {
+  const a = await adminAuth(req, res, "ver_tickets_soporte");
+  if (!a) return;
+  await runService(res, () => supportService.listSupportReplies(a.supabase, req.params.id), { wrap: "data" });
+});
+
+router.post("/support/requests/:id/replies", async (req, res) => {
+  const a = await adminAuth(req, res, "responder_tickets_soporte");
+  if (!a) return;
+  const body = parseJsonBody(req, res);
+  if (!body) return;
+  await runService(
+    res,
+    () => supportService.replyToSupportRequest(a.supabase, req.params.id, {
+      actorId: a.userId,
+      cuerpo: body.cuerpo ?? body.body ?? body.reply,
+    }),
     { wrap: "data" },
   );
 });

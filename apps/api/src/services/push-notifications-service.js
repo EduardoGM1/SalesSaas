@@ -377,6 +377,22 @@ export async function notifyConnectionAccepted(requesterId, { peerId, peerName }
  * Aviso de seguridad: sesión cerrada en otro dispositivo.
  * No respeta prefs de usuario (debe llegar aunque estén silenciadas otras notifs).
  */
+/** Notifica al usuario que reportó un ticket cuando hay respuesta de soporte. */
+export async function notifySupportReply(userId, { ticketId, replyId, cuerpo }) {
+  const serviceSb = createServiceSupabaseClient();
+  if (!serviceSb || !userId) return { ok: false, reason: "no_client" };
+  const fragment = String(cuerpo || "").trim().slice(0, 120);
+  const path = `/settings?supportTicket=${encodeURIComponent(String(ticketId || ""))}`;
+  return sendToUser(serviceSb, userId, {
+    title: "Respuesta de soporte",
+    body: fragment ? `Soporte respondió: ${fragment}` : "Soporte respondió a tu solicitud",
+    url: pushUrl(primaryWebOrigin(), path),
+    path,
+    type: PushType.SUPPORT_REPLY,
+    tag: pushTag("support", ticketId, replyId),
+  });
+}
+
 export async function notifySessionRevoked(userId) {
   if (!userId || !isPushConfigured()) return { ok: false, reason: "not_configured" };
   const serviceSb = createServiceSupabaseClient();

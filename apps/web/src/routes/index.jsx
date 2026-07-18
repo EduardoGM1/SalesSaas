@@ -36,6 +36,7 @@ import {
   AdminToolsUsagePage,
   AdminSupportPage,
   AdminRolesPage,
+  AdminLogsPage,
   AdminLegacyRedirect,
 } from "@/routes/lazy-pages.js";
 
@@ -136,6 +137,7 @@ export function AppRoutes() {
           <Route index element={<Lazy><AdminOverviewPage /></Lazy>} />
           <Route path="users" element={<Lazy><AdminUsersPage /></Lazy>} />
           <Route path="roles" element={<Lazy><AdminRolesPage /></Lazy>} />
+          <Route path="logs" element={<Lazy><AdminLogsPage /></Lazy>} />
           <Route path="goals" element={<Lazy><AdminGoalsPage /></Lazy>} />
           <Route path="tools" element={<Lazy><AdminToolsUsagePage /></Lazy>} />
           <Route path="support" element={<Lazy><AdminSupportPage /></Lazy>} />

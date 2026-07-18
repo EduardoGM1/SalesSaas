@@ -292,21 +292,117 @@ export async function listSupportRequestsForAdmin(supabase, { status, limit = 50
   return { items, total: count ?? items.length, limit: take, offset: skip };
 }
 
-export async function updateSupportRequestStatus(supabase, ticketId, status) {
+export async function updateSupportRequestStatus(supabase, ticketId, status, actorId = null) {
   const allowed = new Set(["open", "in_progress", "resolved", "closed"]);
   const next = String(status || "").trim();
   if (!allowed.has(next)) throw new ServiceError("Estado no válido.", 400);
+
+  const { data: before } = await supabase
+    .from("support_requests")
+    .select("id, status, user_id")
+    .eq("id", ticketId)
+    .maybeSingle();
 
   const { data, error } = await supabase
     .from("support_requests")
     .update({ status: next })
     .eq("id", ticketId)
-    .select("id, status, updated_at")
+    .select("id, status, updated_at, user_id")
     .maybeSingle();
 
   if (error) throw new ServiceError(error.message, 400);
   if (!data) throw new ServiceError("Ticket no encontrado.", 404);
+
+  if (actorId && before?.status !== next) {
+    try {
+      const { ADMIN_AUDIT_ACTIONS, writeAdminLog } = await import("./admin-audit-service.js");
+      await writeAdminLog(supabase, {
+        actorId,
+        accion: ADMIN_AUDIT_ACTIONS.CAMBIO_ESTADO_TICKET,
+        entidadAfectada: "ticket",
+        entidadId: ticketId,
+        detalle: { de: before?.status ?? null, a: next, reporter_id: data.user_id },
+      });
+    } catch (err) {
+      console.warn("[support] audit status:", err instanceof Error ? err.message : err);
+    }
+  }
   return data;
+}
+
+/**
+ * Responde un ticket: guarda reply, notifica al reportero y registra log.
+ */
+export async function replyToSupportRequest(supabase, ticketId, { actorId, cuerpo }) {
+  const body = String(cuerpo || "").trim();
+  if (!actorId) throw new ServiceError("Autor requerido.", 400);
+  if (body.length < 1 || body.length > 4000) {
+    throw new ServiceError("La respuesta debe tener entre 1 y 4000 caracteres.", 400);
+  }
+
+  const { data: ticket, error: tErr } = await supabase
+    .from("support_requests")
+    .select("id, user_id, status, request_type, description")
+    .eq("id", ticketId)
+    .maybeSingle();
+  if (tErr) throw new ServiceError(tErr.message, 500);
+  if (!ticket) throw new ServiceError("Ticket no encontrado.", 404);
+
+  const { data: reply, error } = await supabase
+    .from("support_request_replies")
+    .insert({
+      ticket_id: ticketId,
+      autor_id: actorId,
+      cuerpo: body,
+    })
+    .select("id, ticket_id, autor_id, cuerpo, created_at")
+    .single();
+  if (error) throw new ServiceError(error.message, 400);
+
+  // Si estaba abierto, pasar a en progreso
+  if (ticket.status === "open") {
+    await supabase.from("support_requests").update({ status: "in_progress" }).eq("id", ticketId);
+  }
+
+  try {
+    const { ADMIN_AUDIT_ACTIONS, writeAdminLog } = await import("./admin-audit-service.js");
+    await writeAdminLog(supabase, {
+      actorId,
+      accion: ADMIN_AUDIT_ACTIONS.RESPUESTA_TICKET_SOPORTE,
+      entidadAfectada: "ticket",
+      entidadId: ticketId,
+      detalle: {
+        reply_id: reply.id,
+        reporter_id: ticket.user_id,
+        fragmento: body.slice(0, 160),
+      },
+    });
+  } catch (err) {
+    console.warn("[support] audit reply:", err instanceof Error ? err.message : err);
+  }
+
+  try {
+    const { notifySupportReply } = await import("./push-notifications-service.js");
+    await notifySupportReply(ticket.user_id, {
+      ticketId,
+      replyId: reply.id,
+      cuerpo: body,
+    });
+  } catch (err) {
+    console.warn("[support] notify reply:", err instanceof Error ? err.message : err);
+  }
+
+  return reply;
+}
+
+export async function listSupportReplies(supabase, ticketId) {
+  const { data, error } = await supabase
+    .from("support_request_replies")
+    .select("id, ticket_id, autor_id, cuerpo, created_at")
+    .eq("ticket_id", ticketId)
+    .order("created_at", { ascending: true });
+  if (error) throw new ServiceError(error.message, 500);
+  return data ?? [];
 }
 
 /**

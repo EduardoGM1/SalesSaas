@@ -10,6 +10,8 @@ export const PushType = {
   SCHEDULED_NOTE: "scheduled_note",
   /** Logout en otro dispositivo: forzar cierre local / ir a login. */
   SESSION_REVOKED: "session_revoked",
+  /** Respuesta del equipo de soporte a un ticket. */
+  SUPPORT_REPLY: "respuesta_soporte",
 };
 
 export function networkPath() {
@@ -84,6 +86,8 @@ export function resolvePushPathFromPayload(payload = {}) {
       return calendarPath();
     case PushType.SALES_TO_PROCESS:
       return salesPath();
+    case PushType.SUPPORT_REPLY:
+      return typeof payload.path === "string" ? payload.path : "/settings";
     case PushType.PROSPECT_SECTION_CHANGED:
     case PushType.SHARED_PROSPECT:
       return typeof payload.path === "string" ? payload.path : null;

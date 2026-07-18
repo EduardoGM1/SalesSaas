@@ -54,7 +54,10 @@ export const PERMISSION_CATALOG = [
   { clave: "users:permissions", nombre_visible: "Admin: editar permisos", modulo: "admin", capa: "admin" },
   { clave: "goals:read", nombre_visible: "Admin: ver metas globales", modulo: "admin", capa: "admin" },
   { clave: "tools:analytics", nombre_visible: "Admin: analytics de herramientas", modulo: "admin", capa: "admin" },
-  { clave: "support:read", nombre_visible: "Admin: ver soporte", modulo: "admin", capa: "admin" },
+  { clave: "support:read", nombre_visible: "Admin: ver soporte (legacy)", modulo: "admin", capa: "admin" },
+  { clave: "ver_tickets_soporte", nombre_visible: "Ver tickets de soporte", modulo: "admin", capa: "admin" },
+  { clave: "responder_tickets_soporte", nombre_visible: "Responder tickets de soporte", modulo: "admin", capa: "admin" },
+  { clave: "ver_logs_administracion", nombre_visible: "Ver logs de administración", modulo: "admin", capa: "admin" },
   { clave: "admin:roles", nombre_visible: "Admin: gestionar roles", modulo: "admin", capa: "admin" },
 ];
 
@@ -80,7 +83,7 @@ export const VENDEDOR_DEFAULT_PERMISSIONS = APP_PERMISSION_KEYS.filter(
   (k) => !k.endsWith(":ver_equipo"),
 );
 
-/** Admin sistema: app completa + admin delegables (sin users:role/permissions/admin:roles). */
+/** Admin sistema: app completa + admin delegables (sin users:role/permissions/admin:roles/logs). */
 export const ADMIN_DEFAULT_PERMISSIONS = [
   ...VENDEDOR_DEFAULT_PERMISSIONS,
   "dashboard:read",
@@ -91,9 +94,33 @@ export const ADMIN_DEFAULT_PERMISSIONS = [
   "goals:read",
   "tools:analytics",
   "support:read",
+  "ver_tickets_soporte",
+  "responder_tickets_soporte",
 ];
 
-export const SUPERADMIN_ONLY_KEYS = ["users:role", "users:permissions", "admin:roles"];
+/** Rol sistema Soporte: app base + solo tickets. */
+export const SOPORTE_DEFAULT_PERMISSIONS = [
+  ...VENDEDOR_DEFAULT_PERMISSIONS,
+  "ver_tickets_soporte",
+  "responder_tickets_soporte",
+  "support:read",
+];
+
+export const SUPERADMIN_ONLY_KEYS = ["users:role", "users:permissions", "admin:roles", "ver_logs_administracion"];
+
+/** Acciones de auditoría admin (claves estables). */
+export const ADMIN_AUDIT_ACTIONS = {
+  CAMBIO_ROL: "cambio_rol",
+  CAMBIO_PLAN: "cambio_plan",
+  CREACION_ROL: "creacion_rol",
+  EDICION_ROL: "edicion_rol",
+  ELIMINACION_ROL: "eliminacion_rol",
+  EDICION_PERMISOS_USUARIO: "edicion_permisos_usuario",
+  ACTIVACION_CUENTA: "activacion_cuenta",
+  DESACTIVACION_CUENTA: "desactivacion_cuenta",
+  RESPUESTA_TICKET_SOPORTE: "respuesta_ticket_soporte",
+  CAMBIO_ESTADO_TICKET: "cambio_estado_ticket",
+};
 
 export function permissionsByModule() {
   const map = new Map();

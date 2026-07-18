@@ -33,6 +33,7 @@ const PUSH_TO_TIPO = {
   [PushType.FOLLOW_UP_REMINDER]: "followup_pendiente",
   [PushType.SALES_TO_PROCESS]: "venta_pendiente",
   [PushType.SCHEDULED_NOTE]: "nota_programada",
+  [PushType.SUPPORT_REPLY]: "respuesta_soporte",
 };
 
 const ICONO_CATEGORIA_TO_TOAST = {
@@ -285,6 +286,17 @@ function buildFallbackData(tipo, { title, body, path, avatarUrl, type }) {
         contenidoNota: b || "",
         expedienteId: "nota",
       };
+    case "respuesta_soporte": {
+      let ticketId = "support";
+      try {
+        const u = new URL(path || "", "https://app.local");
+        ticketId = u.searchParams.get("supportTicket") || ticketId;
+      } catch {
+        // ignore
+      }
+      const frag = b.replace(/^Soporte respondió:\s*/i, "").trim() || b;
+      return { ticketId, fragmento: frag };
+    }
     default:
       return null;
   }
