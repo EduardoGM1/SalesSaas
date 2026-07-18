@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   MessageSquare,
   UserPlus,
@@ -136,6 +136,7 @@ export function NotificationsSettings({
     needsResync: false,
   });
   const [pending, setPending] = useState(false);
+  const pendingRef = useRef(false);
 
   const notifications = {
     ...DEFAULT_PREFS,
@@ -161,6 +162,8 @@ export function NotificationsSettings({
   };
 
   const handleEnable = async () => {
+    if (pendingRef.current) return;
+
     if (needsIosPwaInstall()) {
       toast.error(t("settings.notifications.iosPwaRequired"));
       openInstallPrompt();
@@ -172,6 +175,7 @@ export function NotificationsSettings({
       return;
     }
 
+    pendingRef.current = true;
     setPending(true);
     try {
       const result = await enablePushNotifications();
@@ -179,6 +183,7 @@ export function NotificationsSettings({
       toastPushEnableResult(result, t);
       if (result.ok) await onSave?.();
     } finally {
+      pendingRef.current = false;
       setPending(false);
     }
   };
@@ -260,6 +265,7 @@ export function NotificationsSettings({
           <button
             type="button"
             className="btn btn-primary btn-sm"
+            data-push-enable
             disabled={pending || !status.pushConfigured}
             onClick={handleEnable}
           >

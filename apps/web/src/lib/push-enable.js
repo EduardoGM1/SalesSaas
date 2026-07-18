@@ -18,34 +18,76 @@ import { isSupabaseConfigured } from "@/lib/supabase/config.js";
 import { openInstallPrompt } from "@/lib/pwa-install.js";
 import { unlockNotificationSound } from "@/lib/notification-sound.js";
 import { toast } from "@/lib/toast";
+import { reportOneSignalPushIssue } from "@/lib/observability.js";
+
+const KNOWN_PUSH_CODES = new Set([
+  "PERMISSION_DENIED",
+  "PERMISSION_DISMISSED",
+  "IOS_PWA_REQUIRED",
+  "ONESIGNAL_NOT_CONFIGURED",
+  "PUSH_SERVICE_ERROR",
+  "SW_UNREACHABLE",
+  "SW_REGISTER_FAILED",
+  "PUSH_UNSUPPORTED",
+  "EXTERNAL_ID_LINK_FAILED",
+]);
+
+/** Una sola suscripción en vuelo: evita carreras pointerdown + click + login. */
+let enableInFlight = null;
 
 export function notifyPushStatusChanged() {
   if (typeof window === "undefined") return;
   window.dispatchEvent(new CustomEvent("push:status-changed"));
 }
 
+function normalizePushErrorCode(err) {
+  if (err?.code && KNOWN_PUSH_CODES.has(err.code)) return err.code;
+  const message = typeof err?.message === "string" ? err.message : "";
+  if (KNOWN_PUSH_CODES.has(message)) return message;
+  return "UNKNOWN";
+}
+
 /**
  * Activa push (permiso del navegador + suscripción OneSignal).
  * Debe llamarse desde un gesto de usuario (click/pointerdown) para el diálogo nativo.
- * @returns {Promise<{ ok: true } | { ok: false, code: string }>}
+ * Single-flight: llamadas concurrentes comparten la misma Promise.
+ * @returns {Promise<{ ok: true } | { ok: false, code: string, detail?: string|null }>}
  */
 export async function enablePushNotifications() {
-  try {
-    void unlockNotificationSound();
-    await subscribeToPush();
-    await syncPushIdentityAndSubscription();
-    markAutoPushRequested();
-    notifyPushStatusChanged();
-    return { ok: true };
-  } catch (err) {
-    const code = err?.code || "UNKNOWN";
-    if (code === "PERMISSION_DENIED") {
-      markPushPromptPermanentlyBlocked();
+  if (enableInFlight) return enableInFlight;
+
+  enableInFlight = (async () => {
+    try {
+      void unlockNotificationSound();
+      await subscribeToPush();
+      await syncPushIdentityAndSubscription();
       markAutoPushRequested();
+      notifyPushStatusChanged();
+      return { ok: true };
+    } catch (err) {
+      const code = normalizePushErrorCode(err);
+      const detail = err?.detail || err?.message || null;
+      console.error("[push] enablePushNotifications failed:", code, detail, err);
+      void reportOneSignalPushIssue({
+        stage: "enablePushNotifications",
+        code,
+        detail,
+        permission: typeof Notification !== "undefined" ? Notification.permission : null,
+        error: err instanceof Error ? err : new Error(String(detail || code)),
+        message: `Push enable failed: ${code}${detail ? ` — ${detail}` : ""}`,
+      });
+      if (code === "PERMISSION_DENIED") {
+        markPushPromptPermanentlyBlocked();
+        markAutoPushRequested();
+      }
+      notifyPushStatusChanged();
+      return { ok: false, code, detail };
+    } finally {
+      enableInFlight = null;
     }
-    notifyPushStatusChanged();
-    return { ok: false, code, detail: err?.detail || err?.message || null };
-  }
+  })();
+
+  return enableInFlight;
 }
 
 /**
@@ -130,43 +172,46 @@ export function scheduleAutoPushRequest({ reason = "auto", delayMs = 0, preferBa
   window.setTimeout(run, delayMs);
 }
 
+const TOAST_GROUP = "push-enable-result";
+
 export function toastPushEnableResult(result, t) {
   if (result.ok) {
-    toast.success(t("settings.notifications.enabled"));
+    toast.success(t("settings.notifications.enabled"), { groupKey: TOAST_GROUP });
     return;
   }
   switch (result.code) {
     case "PERMISSION_DENIED":
-      toast.error(t("settings.notifications.deniedHelp"));
+      toast.error(t("settings.notifications.deniedHelp"), { groupKey: TOAST_GROUP });
       break;
     case "PERMISSION_DISMISSED":
-      toast.info(t("settings.notifications.dismissed"));
+      toast.info(t("settings.notifications.dismissed"), { groupKey: TOAST_GROUP });
       break;
     case "IOS_PWA_REQUIRED":
-      toast.error(t("settings.notifications.iosPwaRequired"));
+      toast.error(t("settings.notifications.iosPwaRequired"), { groupKey: TOAST_GROUP });
       openInstallPrompt({ force: true });
       break;
     case "ONESIGNAL_NOT_CONFIGURED":
-      toast.error(t("settings.notifications.serverNotConfigured"));
+      toast.error(t("settings.notifications.serverNotConfigured"), { groupKey: TOAST_GROUP });
       break;
     case "PUSH_SERVICE_ERROR":
-      toast.error(t("settings.notifications.pushServiceError"));
+      toast.error(t("settings.notifications.pushServiceError"), { groupKey: TOAST_GROUP });
       break;
     case "SW_UNREACHABLE":
-      toast.error(t("settings.notifications.swUnreachable"));
+      toast.error(t("settings.notifications.swUnreachable"), { groupKey: TOAST_GROUP });
       break;
     case "SW_REGISTER_FAILED":
-      toast.error(t("settings.notifications.swRegisterFailed"));
+      toast.error(t("settings.notifications.swRegisterFailed"), { groupKey: TOAST_GROUP });
       if (result.detail) console.error("[push] SW_REGISTER_FAILED detail:", result.detail);
       break;
     case "PUSH_UNSUPPORTED":
-      toast.error(t("settings.notifications.pushUnsupported"));
+      toast.error(t("settings.notifications.pushUnsupported"), { groupKey: TOAST_GROUP });
       break;
     case "EXTERNAL_ID_LINK_FAILED":
-      toast.error(t("settings.notifications.externalIdLinkError"));
+      toast.error(t("settings.notifications.externalIdLinkError"), { groupKey: TOAST_GROUP });
       break;
     default:
-      toast.error(t("settings.notifications.error"));
+      toast.error(t("settings.notifications.error"), { groupKey: TOAST_GROUP });
+      if (result.detail) console.error("[push] UNKNOWN detail:", result.detail);
       break;
   }
 }

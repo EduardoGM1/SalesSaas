@@ -36,14 +36,14 @@ function emit(opts: ToastOptions & { _replaceId?: number | null }): number {
 }
 
 export const toast = {
-  success: (msg: string) => {
-    emit({ message: msg, type: "success", variant: "default" });
+  success: (msg: string, opts?: Pick<ToastOptions, "groupKey" | "duration">) => {
+    emit({ message: msg, type: "success", variant: "default", ...opts });
   },
-  error: (msg: string) => {
-    emit({ message: msg, type: "error", variant: "default" });
+  error: (msg: string, opts?: Pick<ToastOptions, "groupKey" | "duration">) => {
+    emit({ message: msg, type: "error", variant: "default", ...opts });
   },
-  info: (msg: string) => {
-    emit({ message: msg, type: "info", variant: "default" });
+  info: (msg: string, opts?: Pick<ToastOptions, "groupKey" | "duration">) => {
+    emit({ message: msg, type: "info", variant: "default", ...opts });
   },
   /** Toast de notificación in-app. Devuelve id para update/agrupación. */
   notify: (opts: ToastOptions): number => emit({

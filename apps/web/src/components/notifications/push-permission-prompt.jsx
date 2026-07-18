@@ -43,6 +43,7 @@ export function PushPermissionPrompt() {
   const [visible, setVisible] = useState(false);
   const [pending, setPending] = useState(false);
   const evaluatingRef = useRef(false);
+  const pendingRef = useRef(false);
 
   const evaluate = useCallback(async ({ contextual = false } = {}) => {
     if (evaluatingRef.current) return;
@@ -81,6 +82,8 @@ export function PushPermissionPrompt() {
   };
 
   const handleEnable = async () => {
+    if (pendingRef.current) return;
+    pendingRef.current = true;
     setPending(true);
     try {
       const result = await enablePushNotifications();
@@ -93,6 +96,7 @@ export function PushPermissionPrompt() {
         setVisible(false);
       }
     } finally {
+      pendingRef.current = false;
       setPending(false);
     }
   };
@@ -111,6 +115,7 @@ export function PushPermissionPrompt() {
       <button
         type="button"
         className="btn btn-primary btn-sm push-permission-banner-btn"
+        data-push-enable
         onClick={handleEnable}
         disabled={pending}
       >

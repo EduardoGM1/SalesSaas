@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { isSupabaseConfigured } from "@/lib/supabase/config.js";
-import { enablePushNotifications, scheduleAutoPushRequest } from "@/lib/push-enable.js";
+import { scheduleAutoPushRequest } from "@/lib/push-enable.js";
+import { restorePushSubscriptionIfNeeded } from "@/lib/onesignal.js";
 import {
   clearAutoPushRequested,
   wasAutoPushRequested,
@@ -8,6 +9,11 @@ import {
 } from "@/lib/push-prompt.js";
 import { getInstallPlatform } from "@/lib/pwa-install.js";
 import { unlockNotificationSound } from "@/lib/notification-sound.js";
+
+function isExplicitPushEnableTarget(target) {
+  if (!(target instanceof Element)) return false;
+  return Boolean(target.closest("[data-push-enable]"));
+}
 
 /**
  * Dispara el permiso nativo en el mismo gesto del usuario (pointerdown),
@@ -19,7 +25,12 @@ export function AutoPushCoordinator() {
 
     const onAuthChanged = () => {
       if (typeof Notification !== "undefined" && Notification.permission === "granted") {
-        void enablePushNotifications();
+        // Silencioso: no competir con el botón «Activar» ni apilar toasts.
+        void restorePushSubscriptionIfNeeded().then((result) => {
+          if (result?.restored || result?.alreadySubscribed) {
+            window.dispatchEvent(new CustomEvent("push:status-changed"));
+          }
+        });
         return;
       }
       if (typeof Notification !== "undefined" && Notification.permission === "default") {
@@ -29,11 +40,14 @@ export function AutoPushCoordinator() {
       scheduleAutoPushRequest({ reason: "auth-changed", delayMs: 600, preferBanner: true });
     };
 
-    const onFirstInteraction = () => {
+    const onFirstInteraction = (event) => {
       window.removeEventListener("pointerdown", onFirstInteraction, true);
       void unlockNotificationSound();
 
       if (wasPushPromptPermanentlyBlocked()) return;
+
+      // El botón «Activar notificaciones» maneja su propio enable + toast.
+      if (isExplicitPushEnableTarget(event?.target)) return;
 
       // Recuperar flag basura del bug anterior (marcado sin haber pedido permiso).
       if (
@@ -44,13 +58,17 @@ export function AutoPushCoordinator() {
         clearAutoPushRequested();
       }
 
-      // Desktop: si el permiso ya está granted tras login, completar suscripción OneSignal.
+      // Desktop: permiso granted → completar suscripción en segundo plano (sin toast).
       if (
         getInstallPlatform() === "desktop"
         && typeof Notification !== "undefined"
         && Notification.permission === "granted"
       ) {
-        void enablePushNotifications();
+        void restorePushSubscriptionIfNeeded().then((result) => {
+          if (result?.restored || result?.alreadySubscribed) {
+            window.dispatchEvent(new CustomEvent("push:status-changed"));
+          }
+        });
         return;
       }
 

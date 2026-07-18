@@ -5,11 +5,12 @@ import { isSupabaseConfigured } from "@/lib/supabase/config";
 import {
   ensureOneSignal,
   resolveOneSignalAppId,
+  restorePushSubscriptionIfNeeded,
   setupPushNotificationHandlers,
   syncPushIdentityAndSubscription,
   unlinkOneSignalUser,
 } from "@/lib/onesignal.js";
-import { enablePushNotifications, scheduleAutoPushRequest } from "@/lib/push-enable.js";
+import { scheduleAutoPushRequest } from "@/lib/push-enable.js";
 import { clearAutoPushRequested } from "@/lib/push-prompt.js";
 import { bindNotificationSoundUnlock } from "@/lib/notification-sound.js";
 
@@ -76,9 +77,14 @@ export function OneSignalProvider({ children }) {
             await syncIdentity(session.user.id);
             if (event === "SIGNED_IN") {
               const permission = typeof Notification !== "undefined" ? Notification.permission : "default";
-              // Permiso ya concedido (caso desktop needsResync): reintentar suscripción real sin diálogo.
+              // Permiso ya concedido (caso desktop needsResync): restaurar en segundo plano,
+              // sin competir con el botón «Activar» ni generar toasts.
               if (permission === "granted") {
-                void enablePushNotifications();
+                void restorePushSubscriptionIfNeeded().then((result) => {
+                  if (result?.restored || result?.alreadySubscribed) {
+                    window.dispatchEvent(new CustomEvent("push:status-changed"));
+                  }
+                });
                 return;
               }
               if (permission === "default") {
