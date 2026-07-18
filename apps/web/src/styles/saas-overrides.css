@@ -6408,6 +6408,20 @@ body,
   }
 }
 
+/* .mfield: el input con flex:1 necesita min-width:0 o no puede encoger bajo su contenido. */
+.mfield {
+  min-width: 0;
+  box-sizing: border-box;
+}
+.mfield .mpfx {
+  flex-shrink: 0;
+}
+.mfield input {
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+
 /* Money Box — layout helpers con tokens Saletse (sin paleta del prototipo) */
 .money-box-round-select {
   width: 100%;
@@ -6463,7 +6477,7 @@ body,
   grid-template-columns: 1fr 1fr;
   gap: 14px 16px;
 }
-/* Restricciones: label izq. + inputs en una sola columna vertical (sin space-between). */
+/* Restricciones: label izq. + controles alineados; columna de control flexible (sin width fijo frágil). */
 .money-box-restrictions-grid {
   display: flex;
   flex-direction: column;
@@ -6471,7 +6485,7 @@ body,
 }
 .money-box-restrictions-grid > .money-box-field {
   display: grid;
-  grid-template-columns: 15.5rem max-content;
+  grid-template-columns: minmax(10rem, 15.5rem) minmax(12.5rem, 18rem);
   column-gap: 16px;
   align-items: center;
   justify-content: start;
@@ -6487,22 +6501,22 @@ body,
   text-align: left;
 }
 .money-box-restrictions-grid > .money-box-field .mfield,
-.money-box-restrictions-grid > .money-box-field .frow-inline {
-  width: auto;
-  justify-self: start;
+.money-box-restrictions-grid > .money-box-field .frow-inline,
+.money-box-restrictions-grid > .money-box-field .money-box-round-select {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  justify-self: stretch;
 }
 .money-box-restrictions-grid > .money-box-field .frow-inline .tool-num-input {
-  flex: none;
-  width: 80px;
+  flex: 1 1 auto;
+  width: auto;
+  min-width: 0;
   max-width: none;
 }
-.money-box-restrictions-grid > .money-box-field .mfield {
-  width: 148px;
-}
-.money-box-restrictions-grid > .money-box-field .money-box-round-select {
-  width: max-content;
-  min-width: 12.5rem;
-  max-width: none;
+.money-box-restrictions-grid > .money-box-field .mfield input {
+  min-width: 0;
+  width: 100%;
 }
 .money-box-terms-block {
   margin-top: 12px;
@@ -6678,7 +6692,7 @@ body,
     grid-template-columns: 1fr;
   }
   .money-box-restrictions-grid > .money-box-field {
-    grid-template-columns: minmax(9.5rem, 15.5rem) max-content;
+    grid-template-columns: minmax(8.5rem, 12rem) minmax(11rem, 1fr);
   }
   .money-box-mobile-tabs {
     display: block;
