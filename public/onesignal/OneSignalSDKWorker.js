@@ -1,1 +1,2 @@
-importScripts("https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.sw.js");
+/* OneSignal SW entry — mismo origen, sin CDN en importScripts (evita "script evaluation failed"). */
+importScripts("./OneSignalSDK.sw.js");

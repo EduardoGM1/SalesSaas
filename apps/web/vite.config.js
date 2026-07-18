@@ -52,13 +52,18 @@ export default defineConfig({
         ],
         cleanupOutdatedCaches: true,
         globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
-        globIgnores: ["**/onesignal/**", "**/OneSignalSDKWorker.js"],
+        globIgnores: [
+          "**/onesignal/**",
+          "**/OneSignalSDKWorker.js",
+          "**/OneSignalSDK.sw.js",
+        ],
         runtimeCaching: [
           {
-            // OneSignal SW + CDN: nunca cachear ni reescribir (evita rechazo de registro en desktop).
+            // OneSignal SW (entry + runtime autohosteado) y CDN: NetworkOnly.
             urlPattern: ({ url }) =>
               url.pathname.startsWith("/onesignal/")
               || /OneSignalSDKWorker\.js$/i.test(url.pathname)
+              || /OneSignalSDK\.sw\.js$/i.test(url.pathname)
               || url.hostname === "cdn.onesignal.com",
             handler: "NetworkOnly",
           },

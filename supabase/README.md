@@ -145,10 +145,12 @@ VITE_ONESIGNAL_APP_ID=tu-app-id
 curl -sI https://TU-DOMINIO/onesignal/OneSignalSDKWorker.js
 # Esperado: 200, Content-Type: application/javascript (NO usar Service-Worker-Allowed: /)
 curl -s https://TU-DOMINIO/onesignal/OneSignalSDKWorker.js
-# Esperado: importScripts("https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.sw.js");
+# Esperado: importScripts("./OneSignalSDK.sw.js");
+curl -sI https://TU-DOMINIO/onesignal/OneSignalSDK.sw.js
+# Esperado: 200, application/javascript, body ~40KB (runtime SDK autohosteado)
 ```
 
-**Desktop vs PWA (importante):** el SW de OneSignal vive solo en scope `/onesignal/`. No debe usar `Service-Worker-Allowed: /` porque eso permite pelear el scope raíz con Workbox y en Chrome/Edge desktop acaba en rechazo de registro (`SW_REGISTER_FAILED`). Safari desktop tiene soporte Web Push más limitado (macOS 13+ / Safari 16+); validar en Chrome y Edge.
+**Desktop — `ServiceWorker script evaluation failed`:** el entry en producción ya era el oficial de 1 línea; el fallo ocurre al ejecutar `importScripts` hacia el CDN (bloqueado por extensiones/filtros en desktop) o al registrar el SW dos veces (nosotros sin query + OneSignal con `?appId=`). Solución: runtime en `/onesignal/OneSignalSDK.sw.js` (mismo origen) y dejar el `register()` al SDK. No usar `Service-Worker-Allowed: /`. Safari desktop: soporte limitado (Safari 16+ / macOS 13+).
 
 Confirmado en `sales-app-nine-gamma.vercel.app` y `sales-saas-api.vercel.app`: el archivo existe y responde JS válido. Si en tu dominio custom falla, revisa rewrites de la SPA.
 

@@ -1,1 +1,2 @@
-importScripts("https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.sw.js");
+/* Legacy root entry — redirige al worker canónico en /onesignal/. */
+importScripts("/onesignal/OneSignalSDK.sw.js");

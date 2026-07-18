@@ -13,6 +13,9 @@ const SW_PATH = "onesignal/OneSignalSDKWorker.js";
 /** Scope dedicado para no chocar con el SW de la PWA (Workbox en `/`). */
 const SW_SCOPE = "/onesignal/";
 const SW_URL = `/${SW_PATH}`;
+/** Runtime del SDK autohosteado (evita importScripts al CDN bloqueado por extensiones). */
+const SW_RUNTIME_PATH = "onesignal/OneSignalSDK.sw.js";
+const SW_RUNTIME_URL = `/${SW_RUNTIME_PATH}`;
 
 let initPromise = null;
 let sdkReady = null;
@@ -265,12 +268,8 @@ async function requestBrowserPermission(OneSignal) {
   return Notification.permission === "granted";
 }
 
-/**
- * Comprueba que el SW de OneSignal se sirve como JS (no HTML de la SPA).
- * Fallo típico: rewrite catch-all → index.html → registration failed.
- */
-async function preflightOneSignalServiceWorker() {
-  const url = `${window.location.origin}${SW_URL}?preflight=${Date.now()}`;
+async function fetchStaticJs(pathname) {
+  const url = `${window.location.origin}${pathname}?preflight=${Date.now()}`;
   let res;
   try {
     res = await fetch(url, { method: "GET", cache: "no-store", credentials: "same-origin" });
@@ -280,14 +279,12 @@ async function preflightOneSignalServiceWorker() {
     mapped.cause = err;
     throw mapped;
   }
-
   const contentType = String(res.headers.get("content-type") || "").toLowerCase();
   const text = await res.text();
-  const looksLikeJs = /importScripts\s*\(/.test(text) && !/<!DOCTYPE html|<html/i.test(text);
   const okType = contentType.includes("javascript") || contentType.includes("ecmascript") || contentType === "";
-
-  if (!res.ok || !looksLikeJs || (!okType && contentType.includes("html"))) {
-    console.warn("[onesignal] SW preflight failed:", {
+  const looksLikeHtml = /<!DOCTYPE html|<html/i.test(text);
+  if (!res.ok || looksLikeHtml || (!okType && contentType.includes("html"))) {
+    console.warn("[onesignal] static JS preflight failed:", {
       url,
       status: res.status,
       contentType,
@@ -297,11 +294,42 @@ async function preflightOneSignalServiceWorker() {
     mapped.code = "SW_UNREACHABLE";
     throw mapped;
   }
+  return text;
+}
+
+/**
+ * Comprueba worker + runtime autohosteados (no HTML de la SPA).
+ * El entry debe importar ./OneSignalSDK.sw.js (mismo origen), no el CDN.
+ */
+async function preflightOneSignalServiceWorker() {
+  const entry = await fetchStaticJs(SW_URL);
+  const hasImport = /importScripts\s*\(\s*["']\.\/OneSignalSDK\.sw\.js["']\s*\)/.test(entry)
+    || /importScripts\s*\(\s*["']\/onesignal\/OneSignalSDK\.sw\.js["']\s*\)/.test(entry)
+    || /importScripts\s*\(\s*["']https:\/\/cdn\.onesignal\.com\//.test(entry);
+  if (!hasImport) {
+    console.warn("[onesignal] SW entry missing importScripts:", entry.slice(0, 160));
+    const mapped = new Error("SW_UNREACHABLE");
+    mapped.code = "SW_UNREACHABLE";
+    throw mapped;
+  }
+
+  const runtime = await fetchStaticJs(SW_RUNTIME_URL);
+  // Runtime minificado del SDK (~40kb); no debe ser HTML ni un stub vacío.
+  if (runtime.length < 1000 || !/addEventListener\s*\(\s*["']push["']/.test(runtime)) {
+    console.warn("[onesignal] SW runtime looks invalid", { length: runtime.length });
+    const mapped = new Error("SW_UNREACHABLE");
+    mapped.code = "SW_UNREACHABLE";
+    throw mapped;
+  }
 
   return true;
 }
 
-/** Registra el SW de OneSignal en scope dedicado `/onesignal/` y espera activación. */
+/**
+ * Prepara el scope OneSignal y espera el registro que hace el SDK (con ?appId=&sdkVersion=).
+ * No registramos nosotros con la URL "pelada": eso provoca "script evaluation failed"
+ * al pelear con el segundo register() del SDK.
+ */
 async function ensureOneSignalServiceWorkerRegistered() {
   if (!("serviceWorker" in navigator)) {
     const mapped = new Error("PUSH_UNSUPPORTED");
@@ -312,32 +340,27 @@ async function ensureOneSignalServiceWorkerRegistered() {
   await cleanupLegacyWebPushSubscription();
   await preflightOneSignalServiceWorker();
 
-  // Reutilizar registro sano; si el script no coincide, recrear.
   let registration = await navigator.serviceWorker.getRegistration(SW_SCOPE);
   const existingScript = registrationScriptUrl(registration);
-  if (registration && existingScript && !existingScript.includes(SW_PATH)) {
-    console.warn("[onesignal] replacing SW with unexpected script at scope", SW_SCOPE, existingScript);
+  if (registration && existingScript && !/OneSignalSDKWorker\.js/i.test(existingScript)) {
+    console.warn("[onesignal] replacing unexpected SW at scope", SW_SCOPE, existingScript);
     await registration.unregister();
     registration = null;
   }
 
-  try {
-    registration = await navigator.serviceWorker.register(SW_URL, {
-      scope: SW_SCOPE,
-      updateViaCache: "none",
-    });
-  } catch (err) {
-    // Un intento de limpieza + re-registro cubre SW huérfano / scope inválido residual.
-    try {
-      const stale = await navigator.serviceWorker.getRegistration(SW_SCOPE);
-      if (stale) await stale.unregister();
-      registration = await navigator.serviceWorker.register(SW_URL, {
-        scope: SW_SCOPE,
-        updateViaCache: "none",
-      });
-    } catch (retryErr) {
-      throw mapServiceWorkerError(retryErr || err, "SW_REGISTER_FAILED");
-    }
+  // Si aún no hay registro, OneSignal.init() debe crearlo. Esperamos un rato.
+  const deadline = Date.now() + 12_000;
+  while (!registration && Date.now() < deadline) {
+    registration = await navigator.serviceWorker.getRegistration(SW_SCOPE);
+    if (registration) break;
+    await delay(200);
+  }
+
+  if (!registration) {
+    throw mapServiceWorkerError(
+      new Error("OneSignal did not register a service worker at /onesignal/"),
+      "SW_REGISTER_FAILED",
+    );
   }
 
   const active = await waitForWorkerActivation(registration);
@@ -346,12 +369,6 @@ async function ensureOneSignalServiceWorkerRegistered() {
       new Error("Service worker became redundant before activation"),
       "SW_REGISTER_FAILED",
     );
-  }
-
-  try {
-    await registration.update();
-  } catch {
-    // update() puede fallar offline; el registro existente basta.
   }
 
   console.info("[onesignal] SW ready", {
@@ -372,12 +389,12 @@ export async function ensureOneSignal() {
 
   if (!initPromise) {
     initPromise = (async () => {
-      // Registrar SW dedicado ANTES del init (evita que el SDK intente scope `/` contra Workbox).
+      // Solo limpieza + preflight; el register lo hace OneSignal.init (URL con appId/sdkVersion).
       try {
-        await ensureOneSignalServiceWorkerRegistered();
+        await cleanupLegacyWebPushSubscription();
+        await preflightOneSignalServiceWorker();
       } catch (err) {
-        console.warn("[onesignal] SW pre-init register:", err?.detail || err?.message || err);
-        // Continuar: subscribeToPush volverá a intentar con el mismo helper.
+        console.warn("[onesignal] SW pre-init checks:", err?.detail || err?.message || err);
       }
       await loadScript(SDK_URL);
       return new Promise((resolve, reject) => {
@@ -395,6 +412,12 @@ export async function ensureOneSignal() {
               autoResubscribe: true,
             });
             sdkReady = OneSignal;
+            // Confirmar que el SDK dejó el SW activo en /onesignal/.
+            try {
+              await ensureOneSignalServiceWorkerRegistered();
+            } catch (swErr) {
+              console.warn("[onesignal] post-init SW check:", swErr?.detail || swErr?.message || swErr);
+            }
             resolve(OneSignal);
           } catch (err) {
             initPromise = null;
@@ -665,10 +688,9 @@ export async function subscribeToPush() {
     throw err;
   }
 
-  // Asegura SW OneSignal activo en /onesignal/ antes de optIn (crítico vs Workbox en desktop).
-  await ensureOneSignalServiceWorkerRegistered();
-
+  // Init registra el SW (URL canónica del SDK). Luego verificamos activación en /onesignal/.
   const OneSignal = await ensureOneSignal();
+  await ensureOneSignalServiceWorkerRegistered();
 
   if (typeof OneSignal.Notifications?.isPushSupported === "function") {
     const supported = await OneSignal.Notifications.isPushSupported();
