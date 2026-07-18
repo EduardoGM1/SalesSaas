@@ -49,14 +49,14 @@ function ProposalMatrix({ proposals, terms, showTotalToday, t }) {
   }
 
   return (
-    <div className="table-scroll">
-      <table className="dtbl pattern-table">
+    <div className="table-scroll money-box-matrix-scroll">
+      <table className="dtbl pattern-table money-box-matrix">
         <thead>
           <tr>
-            <th />
+            <th className="money-box-matrix-sticky" />
             {columns.map((p, i) => (
               <th key={`h-${i}`}>
-                {t("moneyBox.option", { n: i + 1 })}
+                <span className="money-box-option-title">{t("moneyBox.option", { n: i + 1 })}</span>
                 {p ? (
                   <div className="money-box-feasibility">
                     {t("moneyBox.plansOk", {
@@ -71,7 +71,7 @@ function ProposalMatrix({ proposals, terms, showTotalToday, t }) {
         </thead>
         <tbody>
           <tr>
-            <td>{t("moneyBox.sale")}</td>
+            <td className="money-box-matrix-sticky">{t("moneyBox.sale")}</td>
             {columns.map((p, i) => (
               <td key={`s-${i}`}>
                 {p ? <MoneyAmount value={fromCents(p.saleCents)} tone="sale" /> : "—"}
@@ -79,7 +79,7 @@ function ProposalMatrix({ proposals, terms, showTotalToday, t }) {
             ))}
           </tr>
           <tr>
-            <td>{t("moneyBox.downPayment")}</td>
+            <td className="money-box-matrix-sticky">{t("moneyBox.downPayment")}</td>
             {columns.map((p, i) => (
               <td key={`d-${i}`}>
                 {p ? (
@@ -96,7 +96,7 @@ function ProposalMatrix({ proposals, terms, showTotalToday, t }) {
           </tr>
           {showTotalToday ? (
             <tr>
-              <td>{t("moneyBox.totalToday")}</td>
+              <td className="money-box-matrix-sticky">{t("moneyBox.totalToday")}</td>
               {columns.map((p, i) => (
                 <td key={`tt-${i}`}>
                   {p ? <MoneyAmount value={fromCents(p.totalTodayCents)} tone="dp" /> : "—"}
@@ -111,7 +111,7 @@ function ProposalMatrix({ proposals, terms, showTotalToday, t }) {
           </tr>
           {terms.map((term) => (
             <tr key={term.id || term.label}>
-              <td className="money-box-month-label">
+              <td className="money-box-month-label money-box-matrix-sticky">
                 {term.label}
                 {term.desc ? <small>{term.desc}</small> : null}
               </td>
