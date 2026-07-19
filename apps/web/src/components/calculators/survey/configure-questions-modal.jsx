@@ -24,6 +24,13 @@ import { saveSurveyUserOverrides } from "@/lib/survey/survey-questions-api.js";
 const SECTION_IDS = ["motivaciones", "timeshare"];
 const MOVE_FLASH_MS = 900;
 
+/** Escapa para selectores de atributo. No usar CSS.escape: choca con el CSS de @dnd-kit/utilities. */
+function escapeAttrSelector(value) {
+  const api = typeof globalThis !== "undefined" ? globalThis.CSS : null;
+  if (api && typeof api.escape === "function") return api.escape(String(value));
+  return String(value).replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+}
+
 function useDesktopDnD() {
   const [enabled, setEnabled] = useState(false);
   useEffect(() => {
@@ -292,7 +299,7 @@ export function ConfigureQuestionsModal({
   useLayoutEffect(() => {
     if (!moveFlash.clave || !listRef.current) return;
     const list = listRef.current;
-    const el = list.querySelector(`[data-disc-clave="${CSS.escape(moveFlash.clave)}"]`);
+    const el = list.querySelector(`[data-disc-clave="${escapeAttrSelector(moveFlash.clave)}"]`);
     if (!el) return;
     const listRect = list.getBoundingClientRect();
     const elRect = el.getBoundingClientRect();
