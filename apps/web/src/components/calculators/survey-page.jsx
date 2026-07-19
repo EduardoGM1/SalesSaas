@@ -70,7 +70,6 @@ export function SurveyPage({ clientId, shared }: SurveyPageProps) {
   const [futureType, setFutureType] = useState<"real" | "dream">("real");
   const [tab, setTab] = useState("motivaciones");
   const [saved, setSaved] = useState(false);
-  const [autoSaved, setAutoSaved] = useState(false);
   const [configOpen, setConfigOpen] = useState(false);
   const [configSection, setConfigSection] = useState("motivaciones");
   const [saveToolOpen, setSaveToolOpen] = useState(false);
@@ -210,9 +209,6 @@ export function SurveyPage({ clientId, shared }: SurveyPageProps) {
     if (!silent) {
       setSaved(true);
       setTimeout(() => setSaved(false), 1600);
-    } else {
-      setAutoSaved(true);
-      setTimeout(() => setAutoSaved(false), 1600);
     }
   };
 
@@ -242,8 +238,6 @@ export function SurveyPage({ clientId, shared }: SurveyPageProps) {
     const timer = setTimeout(() => {
       void (async () => {
         await saveBucket("survey", { ...data, stype: sType, futureType });
-        setAutoSaved(true);
-        setTimeout(() => setAutoSaved(false), 1600);
       })();
     }, 700);
     return () => clearTimeout(timer);
@@ -467,9 +461,6 @@ export function SurveyPage({ clientId, shared }: SurveyPageProps) {
 
         {!readOnly && (
           <div className="save-footer disc-save-footer">
-            <span className={`save-confirm${autoSaved || saved ? " show" : ""}`}>
-              {t("tools.survey.autosaveHint")}
-            </span>
             <div className="disc-save-footer-actions">
               <span className={`save-confirm${saved ? " show" : ""}`}>{t("common.saved")}</span>
               <button type="button" className="btn btn-primary disc-save-btn" onClick={handleSave}>
