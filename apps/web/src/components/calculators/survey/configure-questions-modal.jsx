@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   DndContext,
   closestCenter,
@@ -22,6 +22,7 @@ import { questionLabelKey, questionTitleKey } from "@/lib/survey/discovery-quest
 import { saveSurveyUserOverrides } from "@/lib/survey/survey-questions-api.js";
 
 const SECTION_IDS = ["motivaciones", "timeshare"];
+const MOVE_FLASH_MS = 900;
 
 function useDesktopDnD() {
   const [enabled, setEnabled] = useState(false);
@@ -84,6 +85,8 @@ function QuestionRow({
   isDropTarget = false,
   insertEdge = null,
   numberLive = false,
+  isJustMoved = false,
+  moveFlashToken = 0,
   onToggle,
   onMove,
   isFirst,
@@ -92,9 +95,26 @@ function QuestionRow({
 }) {
   const active = row.activa !== false;
   const label = questionLabel(row, t);
+  const localRef = useRef(null);
+
+  const setRefs = (node) => {
+    localRef.current = node;
+    setNodeRef?.(node);
+  };
+
+  // Reinicia la animación en movimientos consecutivos de la misma fila.
+  useLayoutEffect(() => {
+    if (!isJustMoved || !localRef.current) return;
+    const el = localRef.current;
+    el.classList.remove("disc-config-row--just-moved");
+    void el.offsetWidth;
+    el.classList.add("disc-config-row--just-moved");
+  }, [isJustMoved, moveFlashToken]);
+
   return (
     <div
-      ref={setNodeRef}
+      ref={setRefs}
+      data-disc-clave={row.clave}
       style={style}
       className={[
         "disc-config-row",
@@ -103,6 +123,7 @@ function QuestionRow({
         isDropTarget ? "disc-config-row--drop-target" : "",
         insertEdge === "before" ? "disc-config-row--insert-before" : "",
         insertEdge === "after" ? "disc-config-row--insert-after" : "",
+        isJustMoved ? "disc-config-row--just-moved" : "",
       ].filter(Boolean).join(" ")}
     >
       {showGrip && (
@@ -216,12 +237,37 @@ export function ConfigureQuestionsModal({
   const [liveMessage, setLiveMessage] = useState("");
   const [activeId, setActiveId] = useState(null);
   const [overId, setOverId] = useState(null);
+  const [moveFlash, setMoveFlash] = useState({ clave: null, token: 0 });
+  const moveFlashTimerRef = useRef(null);
+  const listRef = useRef(null);
   const canDrag = useDesktopDnD();
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
+
+  const clearMoveFlash = () => {
+    if (moveFlashTimerRef.current) {
+      clearTimeout(moveFlashTimerRef.current);
+      moveFlashTimerRef.current = null;
+    }
+    setMoveFlash((prev) => (prev.clave == null ? prev : { clave: null, token: prev.token }));
+  };
+
+  const pulseMovedRow = (clave) => {
+    if (!clave) return;
+    setMoveFlash((prev) => ({ clave, token: prev.token + 1 }));
+    if (moveFlashTimerRef.current) clearTimeout(moveFlashTimerRef.current);
+    moveFlashTimerRef.current = setTimeout(() => {
+      setMoveFlash((prev) => (prev.clave === clave ? { clave: null, token: prev.token } : prev));
+      moveFlashTimerRef.current = null;
+    }, MOVE_FLASH_MS);
+  };
+
+  useEffect(() => () => {
+    if (moveFlashTimerRef.current) clearTimeout(moveFlashTimerRef.current);
+  }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -230,6 +276,7 @@ export function ConfigureQuestionsModal({
     setLiveMessage("");
     setActiveId(null);
     setOverId(null);
+    clearMoveFlash();
   }, [open, initialSection]);
 
   useEffect(() => {
@@ -239,7 +286,21 @@ export function ConfigureQuestionsModal({
       .map((r) => ({ ...r }));
     list.sort((a, b) => a.orden - b.orden || String(a.clave).localeCompare(String(b.clave)));
     setRows(list);
+    clearMoveFlash();
   }, [open, section, mergedAll]);
+
+  useLayoutEffect(() => {
+    if (!moveFlash.clave || !listRef.current) return;
+    const list = listRef.current;
+    const el = list.querySelector(`[data-disc-clave="${CSS.escape(moveFlash.clave)}"]`);
+    if (!el) return;
+    const listRect = list.getBoundingClientRect();
+    const elRect = el.getBoundingClientRect();
+    const outOfView = elRect.top < listRect.top + 4 || elRect.bottom > listRect.bottom - 4;
+    if (outOfView) {
+      el.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    }
+  }, [moveFlash.clave, moveFlash.token]);
 
   const sectionLabel = section === "timeshare"
     ? t("tools.survey.tab.timeshare")
@@ -277,14 +338,17 @@ export function ConfigureQuestionsModal({
   };
 
   const move = (index, dir) => {
+    const j = index + dir;
+    if (j < 0 || j >= rows.length) return;
+    const movedClave = rows[index]?.clave;
+    if (!movedClave) return;
     setRows((prev) => {
-      const j = index + dir;
-      if (j < 0 || j >= prev.length) return prev;
-      const movedClave = prev[index].clave;
-      const next = arrayMove(prev, index, j).map((r, i) => ({ ...r, orden: (i + 1) * 10 }));
+      if (index + dir < 0 || index + dir >= prev.length) return prev;
+      const next = arrayMove(prev, index, index + dir).map((r, i) => ({ ...r, orden: (i + 1) * 10 }));
       announceOrder(next, movedClave);
       return next;
     });
+    pulseMovedRow(movedClave);
   };
 
   const toggle = (clave) => {
@@ -363,6 +427,8 @@ export function ConfigureQuestionsModal({
       isDropTarget: isDraggingList && overId === row.clave && activeId !== row.clave,
       insertEdge,
       numberLive: isDraggingList,
+      isJustMoved: moveFlash.clave === row.clave,
+      moveFlashToken: moveFlash.token,
       onToggle: toggle,
       onMove: move,
       isFirst: index === 0,
@@ -406,7 +472,7 @@ export function ConfigureQuestionsModal({
           onDragCancel={clearDragState}
         >
           <SortableContext items={sortableIds} strategy={verticalListSortingStrategy}>
-            <div className="disc-config-list">
+            <div className="disc-config-list" ref={listRef}>
               {rows.map((row, index) => (
                 <SortableQuestionRow key={row.clave} {...rowProps(row, index)} />
               ))}
@@ -420,7 +486,7 @@ export function ConfigureQuestionsModal({
           </DragOverlay>
         </DndContext>
       ) : (
-        <div className="disc-config-list">
+        <div className="disc-config-list" ref={listRef}>
           {rows.map((row, index) => (
             <QuestionRow key={row.clave} {...rowProps(row, index)} showGrip={false} />
           ))}
