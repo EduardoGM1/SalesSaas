@@ -18,14 +18,14 @@ export function TimesharePanel({ discovery, disabled, onPatch, onConfigClick }) 
     <div className="disc-panel">
       <div className="disc-section-head">
         <div>
-          <h2 className="disc-section-title">2. Timeshare Information</h2>
-          <p className="disc-section-sub">
+          <h2 className="card-heading">2. Timeshare Information</h2>
+          <p className="card-sub">
             Preguntas de experiencia primero; después, registro detallado de cada membresía.
           </p>
         </div>
         <button
           type="button"
-          className="disc-config-btn"
+          className="btn btn-ghost btn-sm"
           disabled={disabled}
           title="La configuración de preguntas aún no está disponible en la app"
           onClick={onConfigClick}
@@ -49,10 +49,12 @@ export function TimesharePanel({ discovery, disabled, onPatch, onConfigClick }) 
       </div>
 
       <div className="disc-subsection-head">
-        <h2 className="disc-section-title">Membresías / Timeshare del cliente</h2>
-        <p className="disc-section-sub">
-          Registra todas las propiedades, clubes o membresías que tenga o haya tenido.
-        </p>
+        <div>
+          <h2 className="card-heading">Membresías / Timeshare del cliente</h2>
+          <p className="card-sub">
+            Registra todas las propiedades, clubes o membresías que tenga o haya tenido.
+          </p>
+        </div>
       </div>
 
       <div className="disc-questions">

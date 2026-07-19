@@ -22,14 +22,14 @@ export function MotivacionesPanel({ discovery, disabled, onPatch, onConfigClick 
     <div className="disc-panel">
       <div className="disc-section-head">
         <div>
-          <h2 className="disc-section-title">1. Motivaciones</h2>
-          <p className="disc-section-sub">
+          <h2 className="card-heading">1. Motivaciones</h2>
+          <p className="card-sub">
             Abre la conversación y conoce qué busca, qué valora, qué le frena y cómo decide.
           </p>
         </div>
         <button
           type="button"
-          className="disc-config-btn"
+          className="btn btn-ghost btn-sm"
           disabled={disabled}
           title="La configuración de preguntas aún no está disponible en la app"
           onClick={onConfigClick}

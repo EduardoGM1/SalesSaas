@@ -383,22 +383,22 @@ export function SurveyPage({ clientId, shared }: SurveyPageProps) {
           </div>
 
           <div className="disc-progress-bar" aria-live="polite">
-            <span>
+            <span className="card-sub" style={{ marginBottom: 0 }}>
               {answered} de {totalQuestions} respondidas · {progressPct}%
             </span>
-            <div className="disc-progress-track">
-              <div className="disc-progress-fill" style={{ width: `${progressPct}%` }} />
+            <div className="progress" aria-hidden>
+              <div className="progress-fill" style={{ width: `${progressPct}%` }} />
             </div>
           </div>
 
-          <div className="disc-tabs" role="tablist" aria-label="Secciones del Discovery">
+          <div className="seg disc-tabs" role="tablist" aria-label="Secciones del Discovery">
             {TABS.map((item) => (
               <button
                 key={item.id}
                 type="button"
                 role="tab"
                 aria-selected={tab === item.id}
-                className={`disc-tab${tab === item.id ? " on" : ""}`}
+                className={`seg-btn${tab === item.id ? " on" : ""}`}
                 onClick={() => setTab(item.id)}
               >
                 {t(item.labelKey)}
@@ -448,7 +448,7 @@ export function SurveyPage({ clientId, shared }: SurveyPageProps) {
           </div>
 
           {configNotice && (
-            <div className="disc-config-notice" role="status">
+            <div className="hint" role="status">
               Configurar preguntas: pendiente. No existe aún un sistema de edición de preguntas por sección;
               el botón queda como placeholder hasta definirlo con el equipo.
             </div>
@@ -457,7 +457,7 @@ export function SurveyPage({ clientId, shared }: SurveyPageProps) {
 
         {!readOnly && (
           <div className="save-footer disc-save-footer">
-            <span className={`disc-autosave-status${autoSaved || saved ? " show" : ""}`}>
+            <span className={`save-confirm${autoSaved || saved ? " show" : ""}`} style={{ marginRight: "auto" }}>
               {t("tools.survey.autosaveHint")}
             </span>
             <span className={`save-confirm${saved ? " show" : ""}`}>{t("common.saved")}</span>

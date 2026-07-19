@@ -28,8 +28,8 @@ export function GastosPanel({
     <div className="disc-panel disc-gastos-panel">
       <div className="disc-section-head">
         <div>
-          <h2 className="disc-section-title">3. Gastos de viaje</h2>
-          <p className="disc-section-sub">
+          <h2 className="card-heading">3. Gastos de viaje</h2>
+          <p className="card-sub">
             Captura el viaje actual, sus últimas vacaciones y sus viajes futuros.
           </p>
         </div>

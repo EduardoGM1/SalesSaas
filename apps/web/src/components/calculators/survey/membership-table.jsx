@@ -1,6 +1,6 @@
 import { emptyMembership, MEMBERSHIP_TYPES, YES_NO } from "@/lib/survey/discovery-questions.js";
 
-/** Tabla dinámica de membresías/timeshare. Incluye eliminar por fila (necesario en prod; no estaba en el HTML). */
+/** Tabla dinámica de membresías — tipografía vía `.mtbl` del tema. */
 export function MembershipTable({ rows = [], disabled = false, onChange }) {
   const setRows = (next) => onChange?.(next);
 
@@ -14,7 +14,7 @@ export function MembershipTable({ rows = [], disabled = false, onChange }) {
 
   return (
     <div className="disc-membership">
-      <div className="table-scroll disc-membership-scroll">
+      <div className="table-scroll">
         <table className="mtbl disc-membership-table">
           <thead>
             <tr>
@@ -34,8 +34,10 @@ export function MembershipTable({ rows = [], disabled = false, onChange }) {
           <tbody>
             {rows.length === 0 && (
               <tr>
-                <td colSpan={11} className="disc-membership-empty">
-                  Sin membresías registradas. Usa “+ Agregar membresía”.
+                <td colSpan={11}>
+                  <span className="card-sub" style={{ marginBottom: 0 }}>
+                    Sin membresías registradas. Usa “+ Agregar membresía”.
+                  </span>
                 </td>
               </tr>
             )}
@@ -136,7 +138,7 @@ export function MembershipTable({ rows = [], disabled = false, onChange }) {
                 <td>
                   <button
                     type="button"
-                    className="disc-row-remove"
+                    className="btn btn-danger btn-sm"
                     disabled={disabled}
                     title="Eliminar membresía"
                     aria-label={`Eliminar membresía ${idx + 1}`}
@@ -151,10 +153,12 @@ export function MembershipTable({ rows = [], disabled = false, onChange }) {
         </table>
       </div>
       <div className="disc-table-actions">
-        <button type="button" className="btn disc-add-btn" disabled={disabled} onClick={addRow}>
+        <button type="button" className="btn btn-ghost btn-sm" disabled={disabled} onClick={addRow}>
           + Agregar membresía
         </button>
-        <span className="disc-status-hint">Se pueden agregar tantas filas como sean necesarias.</span>
+        <span className="card-sub" style={{ marginBottom: 0 }}>
+          Se pueden agregar tantas filas como sean necesarias.
+        </span>
       </div>
     </div>
   );
