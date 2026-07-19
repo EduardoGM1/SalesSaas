@@ -6994,9 +6994,53 @@ body,
   border-radius: var(--r-sm);
   padding: 10px 12px;
   background: var(--surface2);
+  touch-action: manipulation;
 }
 .disc-config-row.off {
   opacity: 0.55;
+}
+.disc-config-row--dragging {
+  opacity: 0.35;
+  border-style: dashed;
+}
+.disc-config-row--overlay {
+  background: var(--white);
+  box-shadow: var(--shadow-md);
+  border-color: var(--blue-xlt);
+  cursor: grabbing;
+}
+.disc-config-grip {
+  flex-shrink: 0;
+  width: 28px;
+  min-height: 32px;
+  border: 1px solid var(--border2);
+  border-radius: var(--r-sm);
+  background: var(--white);
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1;
+  cursor: grab;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  touch-action: none;
+}
+.disc-config-grip:active {
+  cursor: grabbing;
+}
+.disc-config-num {
+  flex-shrink: 0;
+  min-width: 1.75rem;
+  margin-top: 2px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text2);
+  font-variant-numeric: tabular-nums;
+}
+.disc-config-num--off {
+  color: var(--muted2);
+  font-weight: 600;
 }
 .disc-config-toggle {
   display: flex;
@@ -7019,6 +7063,17 @@ body,
   flex-direction: column;
   gap: 4px;
   flex-shrink: 0;
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 @media (max-width: 900px) {
   .disc-style-grid {

@@ -50,22 +50,23 @@ export async function loadMergedSurveyQuestions(userId, { includeInactive = fals
   };
 }
 
-/** Upsert overrides del usuario. items: [{ pregunta_id, activa, orden }] */
-export async function saveSurveyUserOverrides(userId, items) {
+/**
+ * Guarda overrides vía API (valida sección + ownership + órdenes únicos en backend).
+ * items: [{ pregunta_id, activa, orden }]
+ */
+export async function saveSurveyUserOverrides(userId, items, seccion) {
   if (!userId || !isSupabaseConfigured()) {
     throw new Error("Supabase no configurado");
   }
-  const sb = createClient();
-  const payload = (items || []).map((item) => ({
-    usuario_id: userId,
-    pregunta_id: item.pregunta_id,
-    activa: item.activa !== false,
-    orden: item.orden ?? null,
-    updated_at: new Date().toISOString(),
-  }));
-  if (!payload.length) return;
-  const { error } = await sb
-    .from("survey_preguntas_usuario")
-    .upsert(payload, { onConflict: "usuario_id,pregunta_id" });
-  if (error) throw error;
+  const res = await fetch("/api/v1/survey/questions-config", {
+    method: "PUT",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ seccion, items }),
+  });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(body.error || "No se pudo guardar la configuración.");
+  }
+  return body.data ?? body;
 }

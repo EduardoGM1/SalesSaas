@@ -12,6 +12,7 @@ import * as calendarService from "../services/calendar-service.js";
 import * as goalsService from "../services/goals-service.js";
 import * as activitiesService from "../services/activities-service.js";
 import * as toolsService from "../services/tools-service.js";
+import * as surveyQuestionsService from "../services/survey-questions-service.js";
 import * as geoService from "../services/geo-service.js";
 import * as remindersService from "../services/reminders-service.js";
 import * as networkService from "../services/network-service.js";
@@ -40,6 +41,7 @@ router.get("/", (_req, res) => {
       goals: { GET: "/api/v1/goals", PUT: "/api/v1/goals", DELETE: "/api/v1/goals?year=&month=" },
       activities: { GET: "/api/v1/activities", POST: "/api/v1/activities", GET_ONE: "/api/v1/activities/:id", PATCH: "/api/v1/activities/:id", DELETE: "/api/v1/activities/:id" },
       toolCalculations: { GET: "/api/v1/tool-calculations", PUT: "/api/v1/tool-calculations", DELETE: "/api/v1/tool-calculations?tool=&prospect_id=" },
+      surveyQuestionsConfig: { PUT: "/api/v1/survey/questions-config" },
       network: {
         search: { GET: "/api/v1/network/users/search?q=" },
         connections: { GET: "/api/v1/network/connections", POST: "/api/v1/network/connections", PATCH: "/api/v1/network/connections/:id", DELETE: "/api/v1/network/connections/:id" },
@@ -354,6 +356,18 @@ router.put("/tool-calculations", async (req, res) => {
   const body = parseJsonBody(req, res);
   if (!body) return;
   await runService(res, () => toolsService.upsertToolCalculation(a.supabase, a.userId, body), { wrap: "data" });
+});
+
+router.put("/survey/questions-config", async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  const body = parseJsonBody(req, res);
+  if (!body) return;
+  await runService(
+    res,
+    () => surveyQuestionsService.saveSurveyQuestionsConfig(a.supabase, a.userId, body),
+    { wrap: "data" },
+  );
 });
 
 router.delete("/tool-calculations", async (req, res) => {
