@@ -7003,11 +7003,43 @@ body,
   opacity: 0.35;
   border-style: dashed;
 }
+.disc-config-row--drop-target {
+  border-color: color-mix(in srgb, var(--blue) 45%, var(--border));
+  background: color-mix(in srgb, var(--blue-xlt) 55%, var(--surface2));
+}
+.disc-config-row--insert-before,
+.disc-config-row--insert-after {
+  position: relative;
+}
+.disc-config-row--insert-before::before,
+.disc-config-row--insert-after::after {
+  content: "";
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  height: 3px;
+  border-radius: 999px;
+  background: var(--blue);
+  pointer-events: none;
+  z-index: 2;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--blue) 18%, transparent);
+}
+.disc-config-row--insert-before::before {
+  top: -6px;
+}
+.disc-config-row--insert-after::after {
+  bottom: -6px;
+}
 .disc-config-row--overlay {
   background: var(--white);
   box-shadow: var(--shadow-md);
   border-color: var(--blue-xlt);
   cursor: grabbing;
+}
+.disc-config-num--live {
+  color: var(--blue);
+  min-width: 2rem;
+  transition: color 80ms linear;
 }
 .disc-config-grip {
   flex-shrink: 0;

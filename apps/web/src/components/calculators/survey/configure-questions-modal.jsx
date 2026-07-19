@@ -50,6 +50,23 @@ export function computeDisplayNumbers(rows) {
   });
 }
 
+/** Orden provisional durante el drag (sin mutar el estado persistible). */
+export function projectRowsOrder(rows, activeId, overId) {
+  if (!activeId || overId == null || activeId === overId) return rows || [];
+  const list = rows || [];
+  const oldIndex = list.findIndex((r) => r.clave === activeId);
+  const newIndex = list.findIndex((r) => r.clave === overId);
+  if (oldIndex < 0 || newIndex < 0 || oldIndex === newIndex) return list;
+  return arrayMove(list, oldIndex, newIndex);
+}
+
+function numbersByClave(rows) {
+  const nums = computeDisplayNumbers(rows);
+  const map = new Map();
+  (rows || []).forEach((r, i) => map.set(r.clave, nums[i]));
+  return map;
+}
+
 function questionLabel(row, t) {
   if (row.bloque === "style") return t(questionLabelKey(row.clave));
   return t(questionTitleKey(row.clave));
@@ -64,6 +81,9 @@ function QuestionRow({
   setNodeRef,
   style,
   isDragging,
+  isDropTarget = false,
+  insertEdge = null,
+  numberLive = false,
   onToggle,
   onMove,
   isFirst,
@@ -80,6 +100,9 @@ function QuestionRow({
         "disc-config-row",
         !active ? "off" : "",
         isDragging ? "disc-config-row--dragging" : "",
+        isDropTarget ? "disc-config-row--drop-target" : "",
+        insertEdge === "before" ? "disc-config-row--insert-before" : "",
+        insertEdge === "after" ? "disc-config-row--insert-after" : "",
       ].filter(Boolean).join(" ")}
     >
       {showGrip && (
@@ -93,7 +116,13 @@ function QuestionRow({
         </button>
       )}
 
-      <span className={`disc-config-num${!active ? " disc-config-num--off" : ""}`}>
+      <span
+        className={[
+          "disc-config-num",
+          !active ? "disc-config-num--off" : "",
+          numberLive ? "disc-config-num--live" : "",
+        ].filter(Boolean).join(" ")}
+      >
         {displayNumber != null ? `${displayNumber}.` : "—"}
       </span>
 
@@ -160,7 +189,7 @@ function RowPreview({ row, displayNumber, t }) {
   return (
     <div className="disc-config-row disc-config-row--overlay">
       <span className="disc-config-grip" aria-hidden>⠿</span>
-      <span className="disc-config-num">
+      <span className="disc-config-num disc-config-num--live">
         {displayNumber != null ? `${displayNumber}.` : "—"}
       </span>
       <span className="flabel" style={{ flex: 1 }}>{questionLabel(row, t)}</span>
@@ -186,6 +215,7 @@ export function ConfigureQuestionsModal({
   const [error, setError] = useState("");
   const [liveMessage, setLiveMessage] = useState("");
   const [activeId, setActiveId] = useState(null);
+  const [overId, setOverId] = useState(null);
   const canDrag = useDesktopDnD();
 
   const sensors = useSensors(
@@ -199,6 +229,7 @@ export function ConfigureQuestionsModal({
     setError("");
     setLiveMessage("");
     setActiveId(null);
+    setOverId(null);
   }, [open, initialSection]);
 
   useEffect(() => {
@@ -216,8 +247,16 @@ export function ConfigureQuestionsModal({
 
   const title = `${t("survey.disc.config.title")} · ${sectionLabel}`;
 
-  const displayNumbers = useMemo(() => computeDisplayNumbers(rows), [rows]);
+  const previewRows = useMemo(
+    () => projectRowsOrder(rows, activeId, overId),
+    [rows, activeId, overId],
+  );
+  const displayNumberMap = useMemo(() => numbersByClave(previewRows), [previewRows]);
   const sortableIds = useMemo(() => rows.map((r) => r.clave), [rows]);
+  const isDraggingList = activeId != null;
+
+  const activeIndex = activeId ? rows.findIndex((r) => r.clave === activeId) : -1;
+  const overIndex = overId ? rows.findIndex((r) => r.clave === overId) : -1;
 
   const announceOrder = (nextRows, movedClave) => {
     const nums = computeDisplayNumbers(nextRows);
@@ -230,6 +269,11 @@ export function ConfigureQuestionsModal({
     } else {
       setLiveMessage(t("survey.disc.config.liveNum", { label, n: num }));
     }
+  };
+
+  const clearDragState = () => {
+    setActiveId(null);
+    setOverId(null);
   };
 
   const move = (index, dir) => {
@@ -251,9 +295,20 @@ export function ConfigureQuestionsModal({
     });
   };
 
+  const handleDragStart = (event) => {
+    const id = event.active.id;
+    setActiveId(id);
+    setOverId(id);
+  };
+
+  const handleDragOver = (event) => {
+    const nextOver = event.over?.id ?? null;
+    setOverId((prev) => (prev === nextOver ? prev : nextOver));
+  };
+
   const handleDragEnd = (event) => {
     const { active, over } = event;
-    setActiveId(null);
+    clearDragState();
     if (!over || active.id === over.id) return;
     setRows((prev) => {
       const oldIndex = prev.findIndex((r) => r.clave === active.id);
@@ -266,9 +321,7 @@ export function ConfigureQuestionsModal({
   };
 
   const activeRow = activeId ? rows.find((r) => r.clave === activeId) : null;
-  const activeDisplayNumber = activeId
-    ? displayNumbers[rows.findIndex((r) => r.clave === activeId)]
-    : null;
+  const activeDisplayNumber = activeId ? (displayNumberMap.get(activeId) ?? null) : null;
 
   const handleSave = async () => {
     if (!userId) {
@@ -298,16 +351,25 @@ export function ConfigureQuestionsModal({
     }
   };
 
-  const rowProps = (row, index) => ({
-    row,
-    index,
-    displayNumber: displayNumbers[index],
-    onToggle: toggle,
-    onMove: move,
-    isFirst: index === 0,
-    isLast: index === rows.length - 1,
-    t,
-  });
+  const rowProps = (row, index) => {
+    let insertEdge = null;
+    if (isDraggingList && overId === row.clave && activeId !== row.clave && activeIndex >= 0 && overIndex >= 0) {
+      insertEdge = activeIndex < overIndex ? "after" : "before";
+    }
+    return {
+      row,
+      index,
+      displayNumber: displayNumberMap.get(row.clave) ?? null,
+      isDropTarget: isDraggingList && overId === row.clave && activeId !== row.clave,
+      insertEdge,
+      numberLive: isDraggingList,
+      onToggle: toggle,
+      onMove: move,
+      isFirst: index === 0,
+      isLast: index === rows.length - 1,
+      t,
+    };
+  };
 
   return (
     <SalesModal
@@ -338,9 +400,10 @@ export function ConfigureQuestionsModal({
         <DndContext
           sensors={sensors}
           collisionDetection={closestCenter}
-          onDragStart={(e) => setActiveId(e.active.id)}
+          onDragStart={handleDragStart}
+          onDragOver={handleDragOver}
           onDragEnd={handleDragEnd}
-          onDragCancel={() => setActiveId(null)}
+          onDragCancel={clearDragState}
         >
           <SortableContext items={sortableIds} strategy={verticalListSortingStrategy}>
             <div className="disc-config-list">
