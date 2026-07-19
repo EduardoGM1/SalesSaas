@@ -20,7 +20,7 @@ import {
   countAnswered,
   parseDiscovery,
   serializeDiscovery,
-} from "@/lib/survey/discovery-questions.js";
+} from "@/lib/survey/discovery-storage.js";
 import { useSurveyQuestions } from "@/hooks/use-survey-questions.js";
 import { MotivacionesPanel } from "@/components/calculators/survey/motivaciones-panel.jsx";
 import { TimesharePanel } from "@/components/calculators/survey/timeshare-panel.jsx";

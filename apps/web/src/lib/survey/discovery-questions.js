@@ -1,82 +1,82 @@
-/** Preguntas Discovery (texto y chips desde preview HTML). Autogenerado — no editar a mano. */
+/** Preguntas Discovery por clave estable (i18n). Generado por build-survey-discovery-i18n.mjs */
 
 export const MOTIVACIONES_BEFORE_STYLE = [
   {
     "id": "p1",
-    "number": 1,
-    "title": "¿Qué buscan principalmente cuando salen de vacaciones?",
     "max": 2,
-    "options": [
-      "Descansar y desconectarse",
-      "Pasar tiempo en familia",
-      "Reconectar como pareja",
-      "Crear recuerdos",
-      "Cuidar su salud o bienestar",
-      "Conocer nuevos destinos",
-      "Vivir aventuras",
-      "Celebrar momentos importantes",
-      "Disfrutar comodidad y buen servicio",
-      "Escapar de la rutina"
+    "optionKeys": [
+      "rest_disconnect",
+      "family_time",
+      "couple_reconnect",
+      "create_memories",
+      "health_wellness",
+      "new_destinations",
+      "live_adventures",
+      "celebrate_moments",
+      "comfort_service",
+      "escape_routine"
     ],
+    "titleKey": "survey.disc.q.p1.title",
+    "number": 1,
     "withContext": true
   },
   {
     "id": "p2",
-    "number": 2,
-    "title": "¿Qué emoción esperan sentir durante unas buenas vacaciones?",
     "max": 2,
-    "options": [
-      "Tranquilidad",
-      "Libertad",
-      "Alegría",
-      "Conexión familiar",
-      "Conexión de pareja",
-      "Diversión",
-      "Aventura",
-      "Renovación",
-      "Sentirse consentidos",
-      "Seguridad"
+    "optionKeys": [
+      "calm",
+      "freedom",
+      "joy",
+      "family_connection",
+      "couple_connection",
+      "fun",
+      "adventure",
+      "renewal",
+      "pampered",
+      "safety"
     ],
+    "titleKey": "survey.disc.q.p2.title",
+    "number": 2,
     "withContext": true
   },
   {
     "id": "p3",
-    "number": 3,
-    "title": "¿Qué no puede faltar para considerar que una vacación realmente valió la pena?",
     "max": 3,
-    "options": [
-      "Calidad del alojamiento",
-      "Buena ubicación",
-      "Espacio y privacidad",
-      "Buen servicio",
-      "Actividades para todos",
-      "Flexibilidad de fechas",
-      "Facilidad para reservar",
-      "Variedad de destinos",
-      "Seguridad",
-      "Comodidad para la familia",
-      "Costos claros",
-      "Buena relación precio–experiencia"
+    "optionKeys": [
+      "lodging_quality",
+      "good_location",
+      "space_privacy",
+      "good_service",
+      "activities_all",
+      "date_flexibility",
+      "easy_booking",
+      "destination_variety",
+      "safety",
+      "family_comfort",
+      "clear_costs",
+      "value_for_money"
     ],
+    "titleKey": "survey.disc.q.p3.title",
+    "number": 3,
     "withContext": true
   },
   {
     "id": "p4",
-    "number": 4,
-    "title": "Si pudieran mejorar una sola cosa de sus futuras vacaciones, ¿cuál sería?",
     "max": 1,
-    "options": [
-      "Viajar más veces",
-      "Quedarse más noches",
-      "Mejorar la calidad",
-      "Tener más espacio",
-      "Conocer más destinos",
-      "Viajar con más integrantes de la familia",
-      "Organizar con menos esfuerzo",
-      "Conseguir mejores fechas",
-      "Tener mayor control del costo",
-      "Tener mayor flexibilidad"
+    "optionKeys": [
+      "travel_more",
+      "more_nights",
+      "better_quality",
+      "more_space",
+      "more_destinations",
+      "more_family",
+      "less_effort",
+      "better_dates",
+      "cost_control",
+      "more_flexibility"
     ],
+    "titleKey": "survey.disc.q.p4.title",
+    "number": 4,
     "withContext": true
   }
 ];
@@ -84,143 +84,147 @@ export const MOTIVACIONES_BEFORE_STYLE = [
 export const STYLE_QUESTIONS = [
   {
     "id": "style1",
-    "label": "Destinos",
     "max": 1,
-    "options": [
-      "Conocidos",
-      "Nuevos",
-      "Combinan ambos"
-    ]
+    "optionKeys": [
+      "known",
+      "new",
+      "both"
+    ],
+    "titleKey": "survey.disc.q.style1.title",
+    "labelKey": "survey.disc.q.style1.label"
   },
   {
     "id": "style2",
-    "label": "Planeación",
     "max": 1,
-    "options": [
-      "Con anticipación",
-      "Meses antes",
-      "Cerca de la fecha"
-    ]
+    "optionKeys": [
+      "well_ahead",
+      "months_ahead",
+      "near_date"
+    ],
+    "titleKey": "survey.disc.q.style2.title",
+    "labelKey": "survey.disc.q.style2.label"
   },
   {
     "id": "style3",
-    "label": "Ritmo",
     "max": 1,
-    "options": [
-      "Descanso",
-      "Actividades",
-      "Equilibrio"
-    ]
+    "optionKeys": [
+      "rest",
+      "activities",
+      "balance"
+    ],
+    "titleKey": "survey.disc.q.style3.title",
+    "labelKey": "survey.disc.q.style3.label"
   },
   {
     "id": "style4",
-    "label": "Prioridad",
     "max": 1,
-    "options": [
-      "Practicidad",
-      "Calidad y servicio",
-      "Costo–experiencia"
-    ]
+    "optionKeys": [
+      "practicality",
+      "quality_service",
+      "cost_experience"
+    ],
+    "titleKey": "survey.disc.q.style4.title",
+    "labelKey": "survey.disc.q.style4.label"
   }
 ];
 
 export const MOTIVACIONES_AFTER_STYLE = [
   {
     "id": "p21",
-    "number": 5,
-    "title": "¿Qué suele dificultarles viajar como realmente quisieran?",
     "max": 2,
-    "options": [
-      "Falta de tiempo",
-      "Trabajo",
-      "Presupuesto",
-      "Calendario escolar o familiar",
-      "Vuelos costosos",
-      "Falta de disponibilidad",
-      "Organización complicada",
-      "No encontrar alojamiento adecuado",
-      "Falta de espacio",
-      "Costos inesperados",
-      "Diferencias para ponerse de acuerdo",
-      "Situaciones personales, familiares o de salud",
-      "Desconfianza al reservar",
-      "Nada importante",
-      "Prefieren no responder"
+    "optionKeys": [
+      "no_time",
+      "work",
+      "budget",
+      "school_calendar",
+      "expensive_flights",
+      "no_availability",
+      "hard_to_organize",
+      "no_right_lodging",
+      "not_enough_space",
+      "unexpected_costs",
+      "hard_to_agree",
+      "personal_health",
+      "booking_distrust",
+      "nothing_important",
+      "prefer_not_say"
     ],
+    "titleKey": "survey.disc.q.p21.title",
+    "number": 5,
     "withContext": true
   },
   {
     "id": "p22",
-    "number": 6,
-    "title": "¿Cuál de estas situaciones les ha sucedido con mayor frecuencia?",
     "max": 1,
-    "options": [
-      "Viajan menos de lo que quieren",
-      "Se quedan menos noches",
-      "Gastan más de lo planeado",
-      "Sacrifican calidad",
-      "No consiguen las fechas deseadas",
-      "No encuentran suficiente espacio",
-      "Organizar toma demasiado tiempo",
-      "Posponen las vacaciones",
-      "No todos disfrutan igualmente",
-      "Viajan como lo planean"
+    "optionKeys": [
+      "travel_less",
+      "fewer_nights",
+      "overspend",
+      "sacrifice_quality",
+      "miss_dates",
+      "not_enough_space",
+      "organizing_takes_time",
+      "postpone",
+      "uneven_enjoyment",
+      "as_planned"
     ],
+    "titleKey": "survey.disc.q.p22.title",
+    "number": 6,
     "withContext": true
   },
   {
     "id": "p23",
-    "number": 7,
-    "title": "¿Qué les preocuparía más al asumir un compromiso vacacional?",
     "max": 2,
-    "options": [
-      "Pagar por algo que no utilicen",
-      "No encontrar disponibilidad",
-      "Que los costos aumenten",
-      "Cuotas o cargos adicionales",
-      "Falta de flexibilidad",
-      "Compromiso demasiado largo",
-      "No entender cómo funciona",
-      "Tomar una decisión apresurada",
-      "Que cambie su forma de viajar",
-      "No confiar suficientemente",
-      "Ninguna preocupación específica",
-      "Prefieren no responder"
+    "optionKeys": [
+      "pay_unused",
+      "no_availability",
+      "rising_costs",
+      "extra_fees",
+      "no_flexibility",
+      "too_long",
+      "dont_understand",
+      "rushed_decision",
+      "travel_style_change",
+      "not_enough_trust",
+      "no_specific_worry",
+      "prefer_not_say"
     ],
+    "titleKey": "survey.disc.q.p23.title",
+    "number": 7,
     "withContext": true
   },
   {
     "id": "p24",
-    "number": 8,
-    "title": "Cuando organizan una vacación, ¿cómo toman normalmente la decisión?",
     "max": 1,
-    "options": [
-      "Decide la persona presente",
-      "Deciden juntos quienes viajan",
-      "Una persona propone y otra revisa números",
-      "Una persona organiza y otra confirma",
-      "Participa alguien que no está presente",
-      "Depende del viaje"
+    "optionKeys": [
+      "person_present",
+      "decide_together",
+      "one_proposes_numbers",
+      "one_organizes_confirms",
+      "someone_absent",
+      "depends_trip"
     ],
+    "titleKey": "survey.disc.q.p24.title",
+    "number": 8,
     "withContext": true
   },
   {
     "id": "p25",
-    "number": 9,
-    "title": "Cuando toman una decisión importante, ¿qué necesitan normalmente?",
     "max": 3,
-    "options": [
-      "Entender claramente cómo funciona",
-      "Revisar los números",
-      "Comparar opciones",
-      "Ver ejemplos reales",
-      "Leer las condiciones",
-      "Confirmar disponibilidad",
-      "Consultar con otra persona",
-      "Tener tiempo para pensarlo",
-      "Sentir confianza en quien explica",
-      "Estar todos de acuerdo"
+    "optionKeys": [
+      "clear_how",
+      "review_numbers",
+      "compare_options",
+      "real_examples",
+      "read_terms",
+      "confirm_availability",
+      "ask_someone",
+      "time_to_think",
+      "trust_explainer",
+      "everyone_agrees"
     ],
+    "titleKey": "survey.disc.q.p25.title",
+    "number": 9,
     "withContext": true
   }
 ];
@@ -233,230 +237,242 @@ export const MOTIVACIONES_QUESTIONS = [
 export const TIMESHARE_QUESTIONS = [
   {
     "id": "t1",
-    "number": 1,
-    "title": "Antes de esta experiencia, ¿qué opinión tenían sobre clubes vacacionales o tiempos compartidos?",
     "max": 1,
-    "options": [
-      "Muy positiva",
-      "Positiva",
-      "Neutral",
-      "Tenían algunas dudas",
-      "Negativa",
-      "Muy negativa",
-      "No tenían una opinión"
+    "optionKeys": [
+      "very_positive",
+      "positive",
+      "neutral",
+      "some_doubts",
+      "negative",
+      "very_negative",
+      "no_opinion"
     ],
+    "titleKey": "survey.disc.q.t1.title",
+    "number": 1,
     "withContext": true
   },
   {
     "id": "t2",
-    "number": 2,
-    "title": "¿Qué ha influido más en esa opinión?",
     "max": 2,
-    "options": [
-      "Experiencia propia",
-      "Familiares o amigos",
-      "Presentación anterior",
-      "Membresía actual o anterior",
-      "Información de internet",
-      "Costos o cuotas",
-      "Disponibilidad",
-      "Experiencias positivas",
-      "Poco conocimiento del concepto",
-      "Otro"
+    "optionKeys": [
+      "own_experience",
+      "family_friends",
+      "prior_presentation",
+      "current_prior_membership",
+      "internet_info",
+      "costs_fees",
+      "availability",
+      "positive_stories",
+      "little_knowledge",
+      "other"
     ],
+    "titleKey": "survey.disc.q.t2.title",
+    "number": 2,
     "withContext": true
   },
   {
     "id": "t3",
-    "number": 3,
-    "title": "¿Han asistido anteriormente a una presentación?",
     "max": 1,
-    "options": [
-      "Nunca",
-      "Una vez",
-      "Varias veces",
-      "No recuerdan"
+    "optionKeys": [
+      "never",
+      "once",
+      "several",
+      "dont_remember"
     ],
+    "titleKey": "survey.disc.q.t3.title",
+    "number": 3,
     "withContext": true
   },
   {
     "id": "t4",
-    "number": 4,
-    "title": "¿Cuál fue el resultado de la presentación más reciente?",
     "max": 1,
-    "options": [
-      "Solo conocieron el programa",
-      "Lo consideraron, pero no compraron",
-      "Compraron",
-      "Compraron y cancelaron",
-      "No recuerdan claramente",
-      "No aplica"
+    "optionKeys": [
+      "only_learned",
+      "considered_no_buy",
+      "bought",
+      "bought_canceled",
+      "unclear_memory",
+      "not_applicable"
     ],
+    "titleKey": "survey.disc.q.t4.title",
+    "number": 4,
     "withContext": true
   },
   {
     "id": "t5",
-    "number": 5,
-    "title": "Si no compraron, ¿qué influyó principalmente?",
     "max": 2,
-    "options": [
-      "No era el momento",
-      "Precio",
-      "Enganche",
-      "Mensualidad",
-      "Cuotas",
-      "No entendieron cómo funcionaba",
-      "No vieron suficiente valor",
-      "Falta de flexibilidad",
-      "Dudas sobre disponibilidad",
-      "Falta de confianza",
-      "Querían investigar o comparar",
-      "Se sintieron presionados",
-      "Ya tenían otro producto",
-      "Faltaba alguien para decidir",
-      "Otro",
-      "No aplica"
+    "optionKeys": [
+      "not_the_moment",
+      "price",
+      "down_payment",
+      "monthly",
+      "fees",
+      "didnt_understand",
+      "not_enough_value",
+      "no_flexibility",
+      "availability_doubts",
+      "lack_of_trust",
+      "wanted_to_research",
+      "felt_pressured",
+      "already_had_product",
+      "missing_decision_maker",
+      "other",
+      "not_applicable"
     ],
+    "titleKey": "survey.disc.q.t5.title",
+    "number": 5,
     "withContext": true
   },
   {
     "id": "t6",
-    "number": 6,
-    "title": "¿Actualmente tienen o han tenido una membresía, club o propiedad vacacional?",
     "max": 1,
-    "options": [
-      "Nunca han tenido",
-      "Actualmente tienen una",
-      "Tienen más de una",
-      "Tuvieron una anteriormente",
-      "Compraron y cancelaron",
-      "Herencia o transferencia",
-      "No están seguros"
+    "optionKeys": [
+      "never_had",
+      "have_one",
+      "have_more",
+      "had_before",
+      "bought_canceled",
+      "inheritance",
+      "not_sure"
     ],
+    "titleKey": "survey.disc.q.t6.title",
+    "number": 6,
     "withContext": true
   },
   {
     "id": "t7",
-    "number": 7,
-    "title": "¿Qué los motivó principalmente a comprar?",
     "max": 3,
-    "options": [
-      "Viajar más veces",
-      "Asegurar vacaciones futuras",
-      "Mejorar calidad y servicio",
-      "Tener más espacio",
-      "Crear recuerdos en familia",
-      "Acceder a más destinos",
-      "Protegerse del aumento de precios",
-      "Usar intercambios",
-      "La presentación les convenció",
-      "Beneficios especiales",
-      "Otro",
-      "No aplica"
+    "optionKeys": [
+      "travel_more",
+      "secure_future",
+      "better_quality",
+      "more_space",
+      "family_memories",
+      "more_destinations",
+      "hedge_prices",
+      "use_exchanges",
+      "presentation_convinced",
+      "special_benefits",
+      "other",
+      "not_applicable"
     ],
+    "titleKey": "survey.disc.q.t7.title",
+    "number": 7,
     "withContext": true
   },
   {
     "id": "t8",
-    "number": 8,
-    "title": "¿Ese producto cubre actualmente su forma de vacacionar?",
     "max": 1,
-    "options": [
-      "Sí, completamente",
-      "Cubre la mayor parte",
-      "Solo parcialmente",
-      "No la cubre",
-      "No están seguros",
-      "No aplica"
+    "optionKeys": [
+      "yes_fully",
+      "mostly",
+      "partially",
+      "does_not",
+      "not_sure",
+      "not_applicable"
     ],
+    "titleKey": "survey.disc.q.t8.title",
+    "number": 8,
     "withContext": true
   },
   {
     "id": "t9",
-    "number": 9,
-    "title": "¿Cómo describirían su experiencia general?",
     "max": 3,
-    "options": [
-      "La utilizan y están satisfechos",
-      "Satisfechos, pero la usan poco",
-      "Difícil disponibilidad",
-      "No saben aprovecharla",
-      "Los costos aumentaron",
-      "Pierden puntos o semanas",
-      "Ya no se adapta a la familia",
-      "Ya no se adapta a su forma de viajar",
-      "Quieren hacer un cambio",
-      "Prefieren no responder",
-      "No aplica"
+    "optionKeys": [
+      "use_satisfied",
+      "satisfied_little_use",
+      "hard_availability",
+      "dont_know_use",
+      "costs_rose",
+      "lose_points",
+      "not_fit_family",
+      "not_fit_travel",
+      "want_change",
+      "prefer_not_say",
+      "not_applicable"
     ],
+    "titleKey": "survey.disc.q.t9.title",
+    "number": 9,
     "withContext": true
   },
   {
     "id": "t10",
-    "number": 10,
-    "title": "¿Cuál es el principal problema con su propiedad o membresía?",
     "max": 2,
-    "options": [
-      "No la utilizan",
-      "Falta de disponibilidad",
-      "Deben reservar demasiado pronto",
-      "Pocos destinos",
-      "Puntos insuficientes",
-      "Temporada inadecuada",
-      "Espacio insuficiente",
-      "Cuotas elevadas",
-      "Mensualidad elevada",
-      "Intercambio complicado",
-      "Costos de intercambio",
-      "Mala atención",
-      "Cambió la familia",
-      "Cambió su forma de viajar",
-      "Ningún problema importante",
-      "Otro",
-      "No aplica"
+    "optionKeys": [
+      "dont_use",
+      "no_availability",
+      "book_too_early",
+      "few_destinations",
+      "not_enough_points",
+      "wrong_season",
+      "not_enough_space",
+      "high_fees",
+      "high_monthly",
+      "hard_exchange",
+      "exchange_costs",
+      "poor_service",
+      "family_changed",
+      "travel_changed",
+      "no_major_issue",
+      "other",
+      "not_applicable"
     ],
+    "titleKey": "survey.disc.q.t10.title",
+    "number": 10,
     "withContext": true
   },
   {
     "id": "t11",
-    "number": 11,
-    "title": "¿Qué les gustaría hacer con su producto actual o anterior?",
     "max": 1,
-    "options": [
-      "Conservarlo sin cambios",
-      "Aprender a utilizarlo mejor",
-      "Tener mayor capacidad",
-      "Complementarlo",
-      "Actualizarlo",
-      "Consolidarlo con otro producto",
-      "Venderlo o dejarlo",
-      "Todavía no lo saben",
-      "No aplica"
+    "optionKeys": [
+      "keep_as_is",
+      "learn_better",
+      "more_capacity",
+      "complement",
+      "upgrade",
+      "consolidate",
+      "sell_or_leave",
+      "not_sure_yet",
+      "not_applicable"
     ],
+    "titleKey": "survey.disc.q.t11.title",
+    "number": 11,
     "withContext": true
   }
 ];
 
 export const HAS_TS_QUESTION = {
   "id": "hasTs",
-  "title": "¿El cliente tiene actualmente uno o más timeshares o clubes vacacionales?",
   "max": 1,
-  "options": [
-    "Sí",
-    "No",
-    "Tuvo anteriormente",
-    "No está seguro"
+  "optionKeys": [
+    "yes",
+    "no",
+    "had_before",
+    "not_sure"
   ],
+  "titleKey": "survey.disc.q.hasTs.title",
   "withContext": false
 };
 
-export const MEMBERSHIP_TYPES = ["Semana fija", "Semana flotante", "Puntos", "Otro"];
+export const MEMBERSHIP_TYPE_KEYS = ["fixed_week", "floating_week", "points", "other"];
+export const YES_NO_KEYS = ["yes", "no"];
 
-export const YES_NO = ["Sí", "No"];
+/** @deprecated usar MEMBERSHIP_TYPE_KEYS */
+export const MEMBERSHIP_TYPES = MEMBERSHIP_TYPE_KEYS;
+/** @deprecated usar YES_NO_KEYS */
+export const YES_NO = YES_NO_KEYS;
 
 export const PROGRESS_QUESTION_IDS = [
   ...MOTIVACIONES_QUESTIONS.map((q) => q.id),
   ...TIMESHARE_QUESTIONS.map((q) => q.id),
+];
+
+export const ALL_DISCOVERY_QUESTIONS = [
+  ...MOTIVACIONES_BEFORE_STYLE,
+  ...STYLE_QUESTIONS,
+  ...MOTIVACIONES_AFTER_STYLE,
+  ...TIMESHARE_QUESTIONS,
+  HAS_TS_QUESTION,
 ];
 
 export function emptyMembership() {
@@ -478,53 +494,27 @@ export function emptyMembership() {
   };
 }
 
-export function parseDiscovery(raw) {
-  if (!raw) return { answers: {}, contexts: {}, hasTs: "", memberships: [] };
-  try {
-    const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
-    return {
-      answers: parsed.answers && typeof parsed.answers === "object" ? parsed.answers : {},
-      contexts: parsed.contexts && typeof parsed.contexts === "object" ? parsed.contexts : {},
-      hasTs: typeof parsed.hasTs === "string" ? parsed.hasTs : "",
-      memberships: Array.isArray(parsed.memberships) ? parsed.memberships : [],
-    };
-  } catch {
-    return { answers: {}, contexts: {}, hasTs: "", memberships: [] };
-  }
-}
-
-export function serializeDiscovery(disc) {
-  return JSON.stringify({
-    answers: disc.answers || {},
-    contexts: disc.contexts || {},
-    hasTs: disc.hasTs || "",
-    memberships: disc.memberships || [],
-  });
-}
-
-export function countAnswered(disc, questionIds = PROGRESS_QUESTION_IDS) {
-  let n = 0;
-  for (const id of questionIds || PROGRESS_QUESTION_IDS) {
-    const sel = disc.answers?.[id];
-    if (Array.isArray(sel) && sel.length > 0) n += 1;
-  }
-  return n;
-}
-
-export function toggleChip(selected, option, max) {
+export function toggleChip(selected, optionKey, max) {
   const cur = Array.isArray(selected) ? [...selected] : [];
-  const idx = cur.indexOf(option);
+  const idx = cur.indexOf(optionKey);
   if (idx >= 0) {
     cur.splice(idx, 1);
     return cur;
   }
-  if (max === 1) return [option];
+  if (max === 1) return [optionKey];
   if (cur.length >= max) return cur;
-  cur.push(option);
+  cur.push(optionKey);
   return cur;
 }
 
-export function joinSelected(selected) {
-  if (!Array.isArray(selected) || !selected.length) return "";
-  return selected.join(" · ");
+export function optionTitleKey(questionId, optionKey) {
+  return `survey.disc.q.${questionId}.opt.${optionKey}`;
+}
+
+export function questionTitleKey(questionId) {
+  return `survey.disc.q.${questionId}.title`;
+}
+
+export function questionLabelKey(questionId) {
+  return `survey.disc.q.${questionId}.label`;
 }

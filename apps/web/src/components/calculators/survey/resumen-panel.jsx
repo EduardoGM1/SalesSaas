@@ -1,4 +1,6 @@
-import { joinSelected } from "@/lib/survey/discovery-questions.js";
+import { useI18n } from "@/hooks/use-i18n.js";
+import { joinSelectedTranslated } from "@/lib/survey/discovery-storage.js";
+import { optionTitleKey } from "@/lib/survey/discovery-questions.js";
 
 function line(label, value) {
   if (!value) return null;
@@ -10,8 +12,8 @@ function line(label, value) {
   );
 }
 
-/** Resumen automático a partir de chips activos + métricas de gastos. */
 export function ResumenPanel({ discovery, result, fmt, grouped }) {
+  const { t } = useI18n();
   const answers = discovery.answers || {};
   const before = grouped?.motivacionesBefore || [];
   const after = grouped?.motivacionesAfter || [];
@@ -19,97 +21,79 @@ export function ResumenPanel({ discovery, result, fmt, grouped }) {
   const timeshareQs = grouped?.timeshareQuestions || [];
 
   const motivLines = [
-    ...before.map((q) => line(q.title, joinSelected(answers[q.id]))),
-    ...styleQs.map((q) => line(q.label, joinSelected(answers[q.id]))),
-    ...after.map((q) => line(q.title, joinSelected(answers[q.id]))),
+    ...before.map((q) => line(t(q.titleKey), joinSelectedTranslated(answers[q.id], q.id, t))),
+    ...styleQs.map((q) => line(t(q.labelKey), joinSelectedTranslated(answers[q.id], q.id, t))),
+    ...after.map((q) => line(t(q.titleKey), joinSelectedTranslated(answers[q.id], q.id, t))),
   ].filter(Boolean);
 
   const tsLines = [
-    ...timeshareQs.map((q) => line(q.title, joinSelected(answers[q.id]))),
-    grouped?.hasTsQuestion
-      ? line(grouped.hasTsQuestion.title, discovery.hasTs || "")
+    ...timeshareQs.map((q) => line(t(q.titleKey), joinSelectedTranslated(answers[q.id], q.id, t))),
+    grouped?.hasTsQuestion && discovery.hasTs
+      ? line(
+          t(grouped.hasTsQuestion.titleKey),
+          t(optionTitleKey("hasTs", discovery.hasTs)),
+        )
       : null,
     discovery.memberships?.length
       ? line(
-          "Membresías registradas",
+          t("survey.disc.membership.title"),
           discovery.memberships
-            .map((m, i) => `${i + 1}. ${m.hotel || "Sin nombre"}${m.place ? ` (${m.place})` : ""}`)
+            .map((m, i) => `${i + 1}. ${m.hotel || "—"}${m.place ? ` (${m.place})` : ""}`)
             .join(" · "),
         )
       : null,
   ].filter(Boolean);
 
   const gastosLines = [
-    line("Enganche sugerido (viaje actual)", result?.trip?.dp != null ? fmt(result.trip.dp) : ""),
-    line("Mensualidad ideal (viaje actual)", result?.trip?.mi != null ? fmt(result.trip.mi) : ""),
-    line("Histórico — enganche promedio", result?.hist?.dp != null ? fmt(result.hist.dp) : ""),
-    line("Histórico — mensualidad", result?.hist?.mi != null ? fmt(result.hist.mi) : ""),
-    line("Futuras — total a gastar", result?.future?.spend != null ? fmt(result.future.spend) : ""),
+    line(t("tools.survey.suggestedDown"), result?.trip?.dp != null ? fmt(result.trip.dp) : ""),
+    line(t("tools.survey.idealMonthly"), result?.trip?.mi != null ? fmt(result.trip.mi) : ""),
+    line(t("tools.survey.histTitle"), result?.hist?.dp != null ? fmt(result.hist.dp) : ""),
+    line(t("tools.survey.futureTitle"), result?.future?.spend != null ? fmt(result.future.spend) : ""),
   ].filter(Boolean);
 
   const firstMotiv = before[0] || after[0];
   const firstFreno = after.find((q) => q.id === "p21") || after[0];
   const patternBits = [
-    firstMotiv && joinSelected(answers[firstMotiv.id]) && `Valoran: ${joinSelected(answers[firstMotiv.id])}`,
-    firstFreno && joinSelected(answers[firstFreno.id]) && `Frenos: ${joinSelected(answers[firstFreno.id])}`,
-    discovery.hasTs && `Timeshare: ${discovery.hasTs}`,
-    result?.pattern?.mi != null && `Mensualidad patrón: ${fmt(result.pattern.mi)}`,
+    firstMotiv && joinSelectedTranslated(answers[firstMotiv.id], firstMotiv.id, t)
+      && `${t(firstMotiv.titleKey)}: ${joinSelectedTranslated(answers[firstMotiv.id], firstMotiv.id, t)}`,
+    firstFreno && joinSelectedTranslated(answers[firstFreno.id], firstFreno.id, t)
+      && `${t(firstFreno.titleKey)}: ${joinSelectedTranslated(answers[firstFreno.id], firstFreno.id, t)}`,
+    discovery.hasTs && `${t("survey.disc.q.hasTs.title")}: ${t(optionTitleKey("hasTs", discovery.hasTs))}`,
+    result?.pattern?.mi != null && `${t("tools.survey.idealMonthly")}: ${fmt(result.pattern.mi)}`,
   ].filter(Boolean);
 
   return (
     <div className="disc-panel">
       <div className="disc-section-head">
         <div>
-          <h2 className="card-heading">4. Resumen</h2>
+          <h2 className="card-heading">4. {t("tools.survey.tab.resumen")}</h2>
           <p className="card-sub">
-            Concentra los hallazgos de Motivaciones, Timeshare Information y Gastos de viaje.
-            Generado automáticamente a partir de las respuestas capturadas.
+            {t("tools.survey.tab.motivaciones")} · {t("tools.survey.tab.timeshare")} · {t("tools.survey.tab.gastos")}
           </p>
         </div>
       </div>
 
       <div className="g2 disc-summary-grid">
         <div className="card disc-summary-box">
-          <div className="card-heading">Motivaciones</div>
-          {motivLines.length ? (
-            motivLines
-          ) : (
-            <p className="card-sub">
-              Motivación principal, no negociables, frenos, estilo de viaje y forma de decidir.
-            </p>
-          )}
+          <div className="card-heading">{t("tools.survey.tab.motivaciones")}</div>
+          {motivLines.length ? motivLines : <p className="card-sub">—</p>}
         </div>
         <div className="card disc-summary-box">
-          <div className="card-heading">Experiencia con timeshare</div>
-          {tsLines.length ? (
-            tsLines
-          ) : (
-            <p className="card-sub">
-              Presentaciones previas, compras, experiencias, problemas, intención y productos registrados.
-            </p>
-          )}
+          <div className="card-heading">{t("tools.survey.tab.timeshare")}</div>
+          {tsLines.length ? tsLines : <p className="card-sub">—</p>}
         </div>
         <div className="card disc-summary-box">
-          <div className="card-heading">Gastos de viaje</div>
-          {gastosLines.length ? (
-            gastosLines
-          ) : (
-            <p className="card-sub">
-              Gasto actual, promedio histórico, viajes futuros, enganche sugerido y mensualidad ideal.
-            </p>
-          )}
+          <div className="card-heading">{t("tools.survey.tab.gastos")}</div>
+          {gastosLines.length ? gastosLines : <p className="card-sub">—</p>}
         </div>
         <div className="card disc-summary-box">
-          <div className="card-heading">Patrones detectados</div>
+          <div className="card-heading">{t("tools.survey.patternTitle")}</div>
           {patternBits.length ? (
-            patternBits.map((t) => (
-              <p key={t} className="card-sub">{t}</p>
+            patternBits.map((txt) => (
+              <p key={txt} className="card-sub">{txt}</p>
             ))
           ) : (
-            <p className="card-sub">
-              Relación entre lo que valora, lo que ya posee, lo que gasta y las oportunidades que deben
-              validarse en la conversación.
-            </p>
+            <p className="card-sub">—</p>
           )}
         </div>
       </div>

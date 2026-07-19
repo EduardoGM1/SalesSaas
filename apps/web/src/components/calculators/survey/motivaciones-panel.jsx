@@ -1,3 +1,4 @@
+import { useI18n } from "@/hooks/use-i18n.js";
 import { toggleChip } from "@/lib/survey/discovery-questions.js";
 import { ChipQuestion, StyleMicroGrid } from "./chip-question.jsx";
 
@@ -11,6 +12,7 @@ export function MotivacionesPanel({
   styleQuestions = [],
   afterQuestions = [],
 }) {
+  const { t } = useI18n();
   const answers = discovery.answers || {};
   const contexts = discovery.contexts || {};
 
@@ -26,10 +28,8 @@ export function MotivacionesPanel({
     <div className="disc-panel">
       <div className="disc-section-head">
         <div>
-          <h2 className="card-heading">1. Motivaciones</h2>
-          <p className="card-sub">
-            Abre la conversación y conoce qué busca, qué valora, qué le frena y cómo decide.
-          </p>
+          <h2 className="card-heading">{t("survey.disc.section.motivaciones.title")}</h2>
+          <p className="card-sub">{t("survey.disc.section.motivaciones.sub")}</p>
         </div>
         {canConfigure && (
           <button
@@ -38,7 +38,7 @@ export function MotivacionesPanel({
             disabled={disabled}
             onClick={onConfigClick}
           >
-            ⚙ Configurar preguntas
+            {t("survey.disc.configQuestions")}
           </button>
         )}
       </div>

@@ -1,10 +1,12 @@
 import { buildFallbackBankRows } from "@/lib/survey/fallback-bank.js";
+import {
+  questionLabelKey,
+  questionTitleKey,
+} from "@/lib/survey/discovery-questions.js";
+import { normalizeOpcionesArray } from "@/lib/survey/discovery-storage.js";
 
 /**
  * Combina banco global + overrides de usuario.
- * @param {object[]} bankRows filas survey_preguntas
- * @param {object[]} overrides filas survey_preguntas_usuario
- * @param {{ includeInactive?: boolean }} [opts]
  */
 export function mergeSurveyQuestions(bankRows, overrides = [], opts = {}) {
   const byPregunta = new Map(
@@ -12,9 +14,10 @@ export function mergeSurveyQuestions(bankRows, overrides = [], opts = {}) {
   );
   const merged = (bankRows || []).map((row) => {
     const ov = byPregunta.get(row.id);
+    const opciones = normalizeOpcionesArray(row.clave, row.opciones);
     return {
       ...row,
-      opciones: Array.isArray(row.opciones) ? row.opciones : [],
+      opciones,
       activa: ov ? ov.activa !== false : true,
       orden: ov?.orden != null ? Number(ov.orden) : Number(row.orden) || 0,
       override: ov || null,
@@ -29,14 +32,14 @@ export function mergeSurveyQuestions(bankRows, overrides = [], opts = {}) {
   return merged.filter((r) => r.activa);
 }
 
-/** Forma usada por ChipQuestion. */
+/** Forma usada por ChipQuestion (claves i18n + optionKeys). */
 export function toChipQuestion(row, displayNumber) {
   return {
     id: row.clave,
     number: displayNumber ?? row.numero ?? undefined,
-    title: row.texto,
+    titleKey: questionTitleKey(row.clave),
     max: row.max_seleccion ?? 1,
-    options: Array.isArray(row.opciones) ? row.opciones : [],
+    optionKeys: Array.isArray(row.opciones) ? row.opciones : [],
     withContext: row.with_context !== false,
   };
 }
@@ -44,16 +47,12 @@ export function toChipQuestion(row, displayNumber) {
 export function toStyleQuestion(row) {
   return {
     id: row.clave,
-    label: row.label_corto || row.texto,
+    labelKey: questionLabelKey(row.clave),
     max: row.max_seleccion ?? 1,
-    options: Array.isArray(row.opciones) ? row.opciones : [],
+    optionKeys: Array.isArray(row.opciones) ? row.opciones : [],
   };
 }
 
-/**
- * Agrupa preguntas activas para los paneles.
- * Renumera las preguntas "main" (no style / has_ts) en orden visual.
- */
 export function groupResolvedQuestions(mergedActive) {
   const motivaciones = (mergedActive || []).filter((r) => r.seccion === "motivaciones");
   const timeshare = (mergedActive || []).filter((r) => r.seccion === "timeshare");
@@ -71,9 +70,7 @@ export function groupResolvedQuestions(mergedActive) {
   const hasTsRow = timeshare.find((r) => r.bloque === "has_ts" || r.clave === "hasTs");
   let tn = 1;
   const timeshareQs = mainTs.map((r) => toChipQuestion(r, tn++));
-  const hasTs = hasTsRow
-    ? toChipQuestion(hasTsRow, undefined)
-    : null;
+  const hasTs = hasTsRow ? toChipQuestion(hasTsRow, undefined) : null;
 
   const progressIds = [
     ...beforeQs.map((q) => q.id),

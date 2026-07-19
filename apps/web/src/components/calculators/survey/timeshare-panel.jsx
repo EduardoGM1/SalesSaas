@@ -1,3 +1,4 @@
+import { useI18n } from "@/hooks/use-i18n.js";
 import { ChipQuestion } from "./chip-question.jsx";
 import { MembershipTable } from "./membership-table.jsx";
 
@@ -10,6 +11,7 @@ export function TimesharePanel({
   timeshareQuestions = [],
   hasTsQuestion = null,
 }) {
+  const { t } = useI18n();
   const answers = discovery.answers || {};
   const contexts = discovery.contexts || {};
 
@@ -25,10 +27,8 @@ export function TimesharePanel({
     <div className="disc-panel">
       <div className="disc-section-head">
         <div>
-          <h2 className="card-heading">2. Timeshare Information</h2>
-          <p className="card-sub">
-            Preguntas de experiencia primero; después, registro detallado de cada membresía.
-          </p>
+          <h2 className="card-heading">{t("survey.disc.section.timeshare.title")}</h2>
+          <p className="card-sub">{t("survey.disc.section.timeshare.sub")}</p>
         </div>
         {canConfigure && (
           <button
@@ -37,7 +37,7 @@ export function TimesharePanel({
             disabled={disabled}
             onClick={onConfigClick}
           >
-            ⚙ Configurar preguntas
+            {t("survey.disc.configQuestions")}
           </button>
         )}
       </div>
@@ -58,10 +58,8 @@ export function TimesharePanel({
 
       <div className="disc-subsection-head">
         <div>
-          <h2 className="card-heading">Membresías / Timeshare del cliente</h2>
-          <p className="card-sub">
-            Registra todas las propiedades, clubes o membresías que tenga o haya tenido.
-          </p>
+          <h2 className="card-heading">{t("survey.disc.membership.title")}</h2>
+          <p className="card-sub">{t("survey.disc.membership.sub")}</p>
         </div>
       </div>
 

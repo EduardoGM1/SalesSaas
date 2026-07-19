@@ -1,8 +1,9 @@
-import { toggleChip } from "@/lib/survey/discovery-questions.js";
+import { useI18n } from "@/hooks/use-i18n.js";
+import { optionTitleKey, toggleChip } from "@/lib/survey/discovery-questions.js";
 
 /**
- * Pregunta Discovery con chips + contexto colapsable.
- * Tipografía: flabel / card-sub / choice-pill / inputs globales del tema.
+ * Pregunta Discovery con chips + contexto.
+ * Guarda claves de opción; muestra labels vía i18n.
  */
 export function ChipQuestion({
   question,
@@ -13,48 +14,54 @@ export function ChipQuestion({
   onChangeContext,
   showNumber = true,
 }) {
+  const { t } = useI18n();
   const max = question.max ?? 1;
-  const help =
-    max === 1 ? "Selecciona hasta 1" : `Selecciona hasta ${max}`;
+  const optionKeys = question.optionKeys || question.options || [];
+  const title = t(question.titleKey || `survey.disc.q.${question.id}.title`);
+  const help = t("survey.disc.help.selectUpTo", { n: max });
 
-  const handleChip = (option) => {
+  const handleChip = (optionKey) => {
     if (disabled) return;
-    onChangeSelected?.(toggleChip(selected, option, max));
+    onChangeSelected?.(toggleChip(selected, optionKey, max));
   };
 
   return (
     <article className="disc-question-card">
       <div className="flabel disc-q-title">
         {showNumber && question.number != null ? `${question.number}. ` : ""}
-        {question.title}
+        {title}
       </div>
       <div className="card-sub disc-q-help">{help}</div>
-      <div className="choice-row disc-choice-row" role="group" aria-label={question.title}>
-        {question.options.map((option) => {
-          const on = selected.includes(option);
+      <div className="choice-row disc-choice-row" role="group" aria-label={title}>
+        {optionKeys.map((optionKey) => {
+          const on = selected.includes(optionKey);
+          const label = t(optionTitleKey(question.id, optionKey));
           return (
             <button
-              key={option}
+              key={optionKey}
               type="button"
               className={`choice-pill${on ? " on" : ""}`}
               aria-pressed={on}
               disabled={disabled}
-              onClick={() => handleChip(option)}
+              onClick={() => handleChip(optionKey)}
             >
-              {option}
+              {label}
             </button>
           );
         })}
       </div>
       {question.withContext !== false && (
         <details className="disc-context">
-          <summary className="disc-context-summary">+ Agregar contexto</summary>
+          <summary className="disc-context-summary">{t("survey.disc.context.add")}</summary>
           <textarea
-            placeholder="Contexto adicional, frase textual o información por validar…"
+            placeholder={t("survey.disc.context.placeholder")}
             value={context || ""}
             disabled={disabled}
             onChange={(e) => onChangeContext?.(e.target.value)}
           />
+          <p className="card-sub" style={{ marginTop: 8, marginBottom: 0 }}>
+            {t("survey.disc.context.note")}
+          </p>
         </details>
       )}
     </article>
@@ -62,26 +69,30 @@ export function ChipQuestion({
 }
 
 export function StyleMicroGrid({ questions, answers, disabled, onToggle }) {
+  const { t } = useI18n();
   return (
     <div className="disc-style-grid">
       {questions.map((q) => {
         const selected = answers?.[q.id] || [];
+        const optionKeys = q.optionKeys || q.options || [];
         return (
           <div key={q.id} className="disc-micro">
-            <div className="disc-micro-label">{q.label}</div>
+            <div className="disc-micro-label">
+              {t(q.labelKey || `survey.disc.q.${q.id}.label`)}
+            </div>
             <div className="choice-row disc-choice-row">
-              {q.options.map((option) => {
-                const on = selected.includes(option);
+              {optionKeys.map((optionKey) => {
+                const on = selected.includes(optionKey);
                 return (
                   <button
-                    key={option}
+                    key={optionKey}
                     type="button"
                     className={`choice-pill${on ? " on" : ""}`}
                     aria-pressed={on}
                     disabled={disabled}
-                    onClick={() => onToggle?.(q.id, option, q.max)}
+                    onClick={() => onToggle?.(q.id, optionKey, q.max)}
                   >
-                    {option}
+                    {t(optionTitleKey(q.id, optionKey))}
                   </button>
                 );
               })}

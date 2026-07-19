@@ -17,12 +17,11 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { SalesModal } from "@/components/ui/sales-modal";
+import { useI18n } from "@/hooks/use-i18n.js";
+import { questionLabelKey, questionTitleKey } from "@/lib/survey/discovery-questions.js";
 import { saveSurveyUserOverrides } from "@/lib/survey/survey-questions-api.js";
 
-const SECTIONS = [
-  { id: "motivaciones", label: "Motivaciones" },
-  { id: "timeshare", label: "Timeshare Information" },
-];
+const SECTION_IDS = ["motivaciones", "timeshare"];
 
 function useDesktopDnD() {
   const [enabled, setEnabled] = useState(false);
@@ -51,10 +50,9 @@ export function computeDisplayNumbers(rows) {
   });
 }
 
-function questionLabel(row) {
-  return row.bloque === "style" || row.bloque === "has_ts"
-    ? (row.label_corto || row.texto)
-    : row.texto;
+function questionLabel(row, t) {
+  if (row.bloque === "style") return t(questionLabelKey(row.clave));
+  return t(questionTitleKey(row.clave));
 }
 
 function QuestionRow({
@@ -70,8 +68,10 @@ function QuestionRow({
   onMove,
   isFirst,
   isLast,
+  t,
 }) {
   const active = row.activa !== false;
+  const label = questionLabel(row, t);
   return (
     <div
       ref={setNodeRef}
@@ -86,7 +86,7 @@ function QuestionRow({
         <button
           type="button"
           className="disc-config-grip"
-          aria-label={`Arrastrar para reordenar: ${questionLabel(row)}`}
+          aria-label={`${t("survey.disc.config.drag")}: ${label}`}
           {...(dragHandleProps || {})}
         >
           ⠿
@@ -103,7 +103,7 @@ function QuestionRow({
           checked={active}
           onChange={() => onToggle(row.clave)}
         />
-        <span className="flabel">{questionLabel(row)}</span>
+        <span className="flabel">{label}</span>
       </label>
 
       <div className="disc-config-order">
@@ -112,7 +112,7 @@ function QuestionRow({
           className="btn btn-ghost btn-sm"
           disabled={isFirst}
           onClick={() => onMove(index, -1)}
-          aria-label={`Subir: ${questionLabel(row)}`}
+          aria-label={`${t("survey.disc.config.moveUp")}: ${label}`}
         >
           ↑
         </button>
@@ -121,7 +121,7 @@ function QuestionRow({
           className="btn btn-ghost btn-sm"
           disabled={isLast}
           onClick={() => onMove(index, 1)}
-          aria-label={`Bajar: ${questionLabel(row)}`}
+          aria-label={`${t("survey.disc.config.moveDown")}: ${label}`}
         >
           ↓
         </button>
@@ -156,14 +156,14 @@ function SortableQuestionRow(props) {
   );
 }
 
-function RowPreview({ row, displayNumber }) {
+function RowPreview({ row, displayNumber, t }) {
   return (
     <div className="disc-config-row disc-config-row--overlay">
       <span className="disc-config-grip" aria-hidden>⠿</span>
       <span className="disc-config-num">
         {displayNumber != null ? `${displayNumber}.` : "—"}
       </span>
-      <span className="flabel" style={{ flex: 1 }}>{questionLabel(row)}</span>
+      <span className="flabel" style={{ flex: 1 }}>{questionLabel(row, t)}</span>
     </div>
   );
 }
@@ -179,6 +179,7 @@ export function ConfigureQuestionsModal({
   userId,
   onSaved,
 }) {
+  const { t } = useI18n();
   const [section, setSection] = useState(initialSection);
   const [rows, setRows] = useState([]);
   const [saving, setSaving] = useState(false);
@@ -209,10 +210,11 @@ export function ConfigureQuestionsModal({
     setRows(list);
   }, [open, section, mergedAll]);
 
-  const title = useMemo(
-    () => `Configurar preguntas · ${SECTIONS.find((s) => s.id === section)?.label || section}`,
-    [section],
-  );
+  const sectionLabel = section === "timeshare"
+    ? t("tools.survey.tab.timeshare")
+    : t("tools.survey.tab.motivaciones");
+
+  const title = `${t("survey.disc.config.title")} · ${sectionLabel}`;
 
   const displayNumbers = useMemo(() => computeDisplayNumbers(rows), [rows]);
   const sortableIds = useMemo(() => rows.map((r) => r.clave), [rows]);
@@ -221,12 +223,12 @@ export function ConfigureQuestionsModal({
     const nums = computeDisplayNumbers(nextRows);
     const idx = nextRows.findIndex((r) => r.clave === movedClave);
     if (idx < 0) return;
-    const label = questionLabel(nextRows[idx]);
+    const label = questionLabel(nextRows[idx], t);
     const num = nums[idx];
     if (nextRows[idx].activa === false) {
-      setLiveMessage(`${label} desactivada; no aparece en el Survey.`);
+      setLiveMessage(t("survey.disc.config.liveOff", { label }));
     } else {
-      setLiveMessage(`${label} ahora es la pregunta ${num} en esta sección.`);
+      setLiveMessage(t("survey.disc.config.liveNum", { label, n: num }));
     }
   };
 
@@ -270,7 +272,7 @@ export function ConfigureQuestionsModal({
 
   const handleSave = async () => {
     if (!userId) {
-      setError("Debes iniciar sesión para guardar tu configuración.");
+      setError(t("survey.disc.config.needLogin"));
       return;
     }
     setSaving(true);
@@ -283,14 +285,14 @@ export function ConfigureQuestionsModal({
       }));
       const persistable = payload.filter((p) => p.pregunta_id && !String(p.pregunta_id).startsWith("fallback-"));
       if (!persistable.length) {
-        setError("El banco de preguntas aún no está disponible en el servidor. Aplica la migración 0043.");
+        setError(t("survey.disc.config.bankMissing"));
         return;
       }
       await saveSurveyUserOverrides(userId, persistable, section);
       await onSaved?.();
       onOpenChange(false);
     } catch (e) {
-      setError(e?.message || "No se pudo guardar la configuración.");
+      setError(e?.message || t("survey.disc.config.saveError"));
     } finally {
       setSaving(false);
     }
@@ -304,6 +306,7 @@ export function ConfigureQuestionsModal({
     onMove: move,
     isFirst: index === 0,
     isLast: index === rows.length - 1,
+    t,
   });
 
   return (
@@ -311,18 +314,20 @@ export function ConfigureQuestionsModal({
       open={open}
       onOpenChange={onOpenChange}
       title={title}
-      sub="Activa, desactiva u ordena las preguntas del banco estándar. Solo aplica a tu cuenta."
+      sub={t("survey.disc.config.sub")}
       maxWidth={640}
     >
       <div className="seg" style={{ marginBottom: 14, width: "100%" }}>
-        {SECTIONS.map((s) => (
+        {SECTION_IDS.map((id) => (
           <button
-            key={s.id}
+            key={id}
             type="button"
-            className={`seg-btn${section === s.id ? " on" : ""}`}
-            onClick={() => setSection(s.id)}
+            className={`seg-btn${section === id ? " on" : ""}`}
+            onClick={() => setSection(id)}
           >
-            {s.label}
+            {id === "timeshare"
+              ? t("tools.survey.tab.timeshare")
+              : t("tools.survey.tab.motivaciones")}
           </button>
         ))}
       </div>
@@ -342,11 +347,13 @@ export function ConfigureQuestionsModal({
               {rows.map((row, index) => (
                 <SortableQuestionRow key={row.clave} {...rowProps(row, index)} />
               ))}
-              {!rows.length && <p className="card-sub">No hay preguntas en esta sección.</p>}
+              {!rows.length && <p className="card-sub">{t("survey.disc.config.empty")}</p>}
             </div>
           </SortableContext>
           <DragOverlay dropAnimation={null}>
-            {activeRow ? <RowPreview row={activeRow} displayNumber={activeDisplayNumber} /> : null}
+            {activeRow ? (
+              <RowPreview row={activeRow} displayNumber={activeDisplayNumber} t={t} />
+            ) : null}
           </DragOverlay>
         </DndContext>
       ) : (
@@ -354,7 +361,7 @@ export function ConfigureQuestionsModal({
           {rows.map((row, index) => (
             <QuestionRow key={row.clave} {...rowProps(row, index)} showGrip={false} />
           ))}
-          {!rows.length && <p className="card-sub">No hay preguntas en esta sección.</p>}
+          {!rows.length && <p className="card-sub">{t("survey.disc.config.empty")}</p>}
         </div>
       )}
 
@@ -362,10 +369,10 @@ export function ConfigureQuestionsModal({
 
       <div className="btn-row" style={{ marginTop: 16 }}>
         <button type="button" className="btn btn-ghost" onClick={() => onOpenChange(false)} disabled={saving}>
-          Cancelar
+          {t("survey.disc.config.cancel")}
         </button>
         <button type="button" className="btn btn-primary" onClick={handleSave} disabled={saving}>
-          {saving ? "Guardando…" : "Guardar"}
+          {saving ? t("survey.disc.config.saving") : t("survey.disc.config.save")}
         </button>
       </div>
     </SalesModal>

@@ -1,7 +1,9 @@
-import { emptyMembership, MEMBERSHIP_TYPES, YES_NO } from "@/lib/survey/discovery-questions.js";
+import { useI18n } from "@/hooks/use-i18n.js";
+import { emptyMembership, MEMBERSHIP_TYPE_KEYS, YES_NO_KEYS } from "@/lib/survey/discovery-questions.js";
 
-/** Tabla dinámica de membresías — tipografía vía `.mtbl` del tema. */
+/** Tabla dinámica de membresías — labels i18n; valores yes/no/type por clave. */
 export function MembershipTable({ rows = [], disabled = false, onChange }) {
+  const { t } = useI18n();
   const setRows = (next) => onChange?.(next);
 
   const updateRow = (id, key, value) => {
@@ -9,7 +11,6 @@ export function MembershipTable({ rows = [], disabled = false, onChange }) {
   };
 
   const addRow = () => setRows([...rows, emptyMembership()]);
-
   const removeRow = (id) => setRows(rows.filter((r) => r.id !== id));
 
   return (
@@ -19,16 +20,16 @@ export function MembershipTable({ rows = [], disabled = false, onChange }) {
           <thead>
             <tr>
               <th>#</th>
-              <th>Hotel / programa</th>
-              <th>Lugar de compra</th>
-              <th>Fecha</th>
-              <th>Costo</th>
-              <th>¿Paga mantenimiento?</th>
-              <th>Monto mantenimiento</th>
-              <th>¿Pagado totalmente?</th>
-              <th>Tipo</th>
-              <th>Notas</th>
-              <th aria-label="Acciones" />
+              <th>{t("survey.disc.membership.col.hotel")}</th>
+              <th>{t("survey.disc.membership.col.place")}</th>
+              <th>{t("survey.disc.membership.col.date")}</th>
+              <th>{t("survey.disc.membership.col.cost")}</th>
+              <th>{t("survey.disc.membership.col.paysMaint")}</th>
+              <th>{t("survey.disc.membership.col.maintAmount")}</th>
+              <th>{t("survey.disc.membership.col.paidFull")}</th>
+              <th>{t("survey.disc.membership.col.type")}</th>
+              <th>{t("survey.disc.membership.col.notes")}</th>
+              <th aria-label={t("survey.disc.membership.remove")} />
             </tr>
           </thead>
           <tbody>
@@ -36,7 +37,7 @@ export function MembershipTable({ rows = [], disabled = false, onChange }) {
               <tr>
                 <td colSpan={11}>
                   <span className="card-sub" style={{ marginBottom: 0 }}>
-                    Sin membresías registradas. Usa “+ Agregar membresía”.
+                    {t("survey.disc.membership.empty")}
                   </span>
                 </td>
               </tr>
@@ -47,7 +48,7 @@ export function MembershipTable({ rows = [], disabled = false, onChange }) {
                 <td>
                   <input
                     type="text"
-                    placeholder="Hotel o programa"
+                    placeholder={t("survey.disc.membership.ph.hotel")}
                     value={row.hotel || ""}
                     disabled={disabled}
                     onChange={(e) => updateRow(row.id, "hotel", e.target.value)}
@@ -56,7 +57,7 @@ export function MembershipTable({ rows = [], disabled = false, onChange }) {
                 <td>
                   <input
                     type="text"
-                    placeholder="Lugar de compra"
+                    placeholder={t("survey.disc.membership.ph.place")}
                     value={row.place || ""}
                     disabled={disabled}
                     onChange={(e) => updateRow(row.id, "place", e.target.value)}
@@ -86,9 +87,9 @@ export function MembershipTable({ rows = [], disabled = false, onChange }) {
                     disabled={disabled}
                     onChange={(e) => updateRow(row.id, "paysMaint", e.target.value)}
                   >
-                    <option value="">Selecciona</option>
-                    {YES_NO.map((o) => (
-                      <option key={o} value={o}>{o}</option>
+                    <option value="">{t("survey.disc.membership.select")}</option>
+                    {YES_NO_KEYS.map((k) => (
+                      <option key={k} value={k}>{t(`survey.disc.${k}`)}</option>
                     ))}
                   </select>
                 </td>
@@ -108,9 +109,9 @@ export function MembershipTable({ rows = [], disabled = false, onChange }) {
                     disabled={disabled}
                     onChange={(e) => updateRow(row.id, "paidFull", e.target.value)}
                   >
-                    <option value="">Selecciona</option>
-                    {YES_NO.map((o) => (
-                      <option key={o} value={o}>{o}</option>
+                    <option value="">{t("survey.disc.membership.select")}</option>
+                    {YES_NO_KEYS.map((k) => (
+                      <option key={k} value={k}>{t(`survey.disc.${k}`)}</option>
                     ))}
                   </select>
                 </td>
@@ -120,16 +121,16 @@ export function MembershipTable({ rows = [], disabled = false, onChange }) {
                     disabled={disabled}
                     onChange={(e) => updateRow(row.id, "type", e.target.value)}
                   >
-                    <option value="">Tipo</option>
-                    {MEMBERSHIP_TYPES.map((o) => (
-                      <option key={o} value={o}>{o}</option>
+                    <option value="">{t("survey.disc.membership.type.select")}</option>
+                    {MEMBERSHIP_TYPE_KEYS.map((k) => (
+                      <option key={k} value={k}>{t(`survey.disc.membership.type.${k}`)}</option>
                     ))}
                   </select>
                 </td>
                 <td>
                   <input
                     type="text"
-                    placeholder="Notas"
+                    placeholder={t("survey.disc.membership.ph.notes")}
                     value={row.notes || ""}
                     disabled={disabled}
                     onChange={(e) => updateRow(row.id, "notes", e.target.value)}
@@ -140,8 +141,8 @@ export function MembershipTable({ rows = [], disabled = false, onChange }) {
                     type="button"
                     className="btn btn-danger btn-sm"
                     disabled={disabled}
-                    title="Eliminar membresía"
-                    aria-label={`Eliminar membresía ${idx + 1}`}
+                    title={t("survey.disc.membership.remove")}
+                    aria-label={`${t("survey.disc.membership.remove")} ${idx + 1}`}
                     onClick={() => removeRow(row.id)}
                   >
                     ✕
@@ -154,10 +155,10 @@ export function MembershipTable({ rows = [], disabled = false, onChange }) {
       </div>
       <div className="disc-table-actions">
         <button type="button" className="btn btn-ghost btn-sm" disabled={disabled} onClick={addRow}>
-          + Agregar membresía
+          {t("survey.disc.membership.add")}
         </button>
         <span className="card-sub" style={{ marginBottom: 0 }}>
-          Se pueden agregar tantas filas como sean necesarias.
+          {t("survey.disc.membership.addHint")}
         </span>
       </div>
     </div>
