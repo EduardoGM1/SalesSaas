@@ -122,7 +122,7 @@ export function WorksheetPage({ clientId, shared }: WorksheetPageProps) {
   return (
     <>
       <Topbar title={t("tools.worksheet")} subtitle={isFileMode ? t("tools.sub.financing") : t("tools.sub.free")} />
-      <div className="sales-page tool-calc-page">
+      <div className={`sales-page tool-calc-page${!readOnly ? " tool-calc-page--with-save" : ""}`}>
         <div className="page-toolbar page-toolbar--between">
           <PageBack inline href={backHref} hasUnsavedChanges={() => dirtyKeysRef.current.size > 0} />
           {!readOnly && (
@@ -200,7 +200,7 @@ export function WorksheetPage({ clientId, shared }: WorksheetPageProps) {
         </fieldset>
 
         {!readOnly && (
-          <div className="save-footer">
+          <div className="save-footer tool-save-footer">
             <span className={`save-confirm${saved ? " show" : ""}`}>{t("common.saved")}</span>
             <button type="button" className="btn btn-primary" onClick={handleSave}>{t("common.save")}</button>
           </div>

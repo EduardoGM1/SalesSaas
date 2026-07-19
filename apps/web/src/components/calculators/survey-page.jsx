@@ -272,7 +272,7 @@ export function SurveyPage({ clientId, shared }: SurveyPageProps) {
   return (
     <>
       <Topbar title={t("tools.survey")} subtitle={isFileMode ? t("tools.sub.surveyClient") : t("tools.sub.free")} />
-      <div className={`sales-page tool-calc-page survey-calc-page${!readOnly ? " survey-calc-page--with-save" : ""}`}>
+      <div className={`sales-page tool-calc-page survey-calc-page${!readOnly ? " tool-calc-page--with-save" : ""}`}>
         <div className="page-toolbar page-toolbar--between">
           <PageBack inline href={backHref} hasUnsavedChanges={() => dirtyKeysRef.current.size > 0} />
           {!readOnly && (
@@ -460,13 +460,9 @@ export function SurveyPage({ clientId, shared }: SurveyPageProps) {
         </fieldset>
 
         {!readOnly && (
-          <div className="save-footer disc-save-footer">
-            <div className="disc-save-footer-actions">
-              <span className={`save-confirm${saved ? " show" : ""}`}>{t("common.saved")}</span>
-              <button type="button" className="btn btn-primary disc-save-btn" onClick={handleSave}>
-                {t("common.save")}
-              </button>
-            </div>
+          <div className="save-footer tool-save-footer">
+            <span className={`save-confirm${saved ? " show" : ""}`}>{t("common.saved")}</span>
+            <button type="button" className="btn btn-primary" onClick={handleSave}>{t("common.save")}</button>
           </div>
         )}
       </div>

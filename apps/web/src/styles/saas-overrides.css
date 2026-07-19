@@ -6975,82 +6975,50 @@ body,
 .disc-summary-line .flabel {
   flex: none;
 }
-/* Survey: barra Guardar fija (patrón preview Finalizar Discovery) */
-.survey-calc-page--with-save {
-  padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
-}
-.disc-save-footer {
-  position: fixed;
-  left: var(--sidebar-w);
-  right: 0;
-  bottom: 0;
-  z-index: 160;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 12px;
-  min-height: 68px;
-  margin-top: 0;
-  padding: 12px 24px;
-  padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
-  background: rgba(255, 255, 255, 0.96);
-  border-top: 1px solid var(--border);
-  box-shadow: 0 -4px 18px rgba(15, 32, 68, 0.07);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  box-sizing: border-box;
-}
-.disc-save-footer-actions {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 12px;
-  width: 100%;
-  max-width: 420px;
-}
-.disc-save-footer .save-confirm {
-  margin-right: 0;
-  flex-shrink: 0;
-  font-size: 12px;
-  line-height: 1.35;
-}
-.disc-save-footer .disc-save-btn {
-  min-height: 44px;
-  min-width: 220px;
-  flex: 1;
-  padding: 12px 28px;
-  font-size: 15px;
-  font-weight: 700;
-  justify-content: center;
-  border-radius: var(--r-sm);
-}
-@media (max-width: 900px) {
-  .disc-save-footer {
-    left: 0;
-  }
-}
+/*
+ * Guardar sticky solo en móvil (≤768), tamaño idéntico a Proyección de Vacaciones
+ * (.btn.btn-primary + .save-footer width 100%). Vacaciones NO usa .tool-save-footer.
+ */
 @media (max-width: 768px) {
-  .survey-calc-page--with-save {
-    /* bottom-nav (~64) + barra Guardar (~72) + respiro */
-    padding-bottom: calc(16px + 64px + 80px + env(safe-area-inset-bottom, 0px));
+  .tool-calc-page.tool-calc-page--with-save {
+    /* bottom-nav + barra Guardar + respiro */
+    padding-bottom: calc(16px + 64px + 70px + env(safe-area-inset-bottom, 0px));
   }
-  .disc-save-footer {
+
+  .tool-calc-page .save-footer.tool-save-footer {
+    position: fixed;
+    left: 0;
+    right: 0;
     bottom: calc(64px + env(safe-area-inset-bottom, 0px));
-    padding: 10px 14px;
-    padding-bottom: 10px;
-    min-height: 64px;
-  }
-  .disc-save-footer-actions {
-    max-width: none;
-  }
-  .disc-save-footer .disc-save-btn {
-    min-width: 0;
-    width: 100%;
-  }
-}
-@media (max-width: 480px) {
-  .disc-save-footer {
+    z-index: 160;
+    display: flex;
+    flex-direction: column-reverse;
+    align-items: stretch;
+    justify-content: flex-end;
+    gap: 8px;
+    margin: 0;
     padding: 10px 12px;
+    background: rgba(255, 255, 255, 0.96);
+    border-top: 1px solid var(--border);
+    box-shadow: 0 -4px 18px rgba(15, 32, 68, 0.07);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    box-sizing: border-box;
+  }
+
+  .tool-calc-page .tool-save-footer .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .tool-calc-page .tool-save-footer .save-confirm {
+    margin-right: 0;
+    text-align: center;
+  }
+
+  /* Evita hueco vertical cuando el confirm está oculto (opacity:0) */
+  .tool-calc-page .tool-save-footer .save-confirm:not(.show) {
+    display: none;
   }
 }
 .disc-config-list {
