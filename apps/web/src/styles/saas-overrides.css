@@ -6979,6 +6979,47 @@ body,
   gap: 12px;
   align-items: center;
 }
+.disc-config-list {
+  display: grid;
+  gap: 8px;
+  max-height: min(52vh, 420px);
+  overflow: auto;
+  padding-right: 2px;
+}
+.disc-config-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  padding: 10px 12px;
+  background: var(--surface2);
+}
+.disc-config-row.off {
+  opacity: 0.55;
+}
+.disc-config-toggle {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+  cursor: pointer;
+}
+.disc-config-toggle input {
+  margin-top: 3px;
+  flex-shrink: 0;
+}
+.disc-config-toggle .flabel {
+  flex: 1;
+  line-height: 1.35;
+}
+.disc-config-order {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex-shrink: 0;
+}
 @media (max-width: 900px) {
   .disc-style-grid {
     grid-template-columns: 1fr 1fr;

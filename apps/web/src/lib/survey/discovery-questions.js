@@ -502,9 +502,9 @@ export function serializeDiscovery(disc) {
   });
 }
 
-export function countAnswered(disc) {
+export function countAnswered(disc, questionIds = PROGRESS_QUESTION_IDS) {
   let n = 0;
-  for (const id of PROGRESS_QUESTION_IDS) {
+  for (const id of questionIds || PROGRESS_QUESTION_IDS) {
     const sel = disc.answers?.[id];
     if (Array.isArray(sel) && sel.length > 0) n += 1;
   }

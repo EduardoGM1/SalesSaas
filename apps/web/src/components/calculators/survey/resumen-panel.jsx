@@ -1,8 +1,4 @@
-import {
-  STYLE_QUESTIONS,
-  TIMESHARE_QUESTIONS,
-  joinSelected,
-} from "@/lib/survey/discovery-questions.js";
+import { joinSelected } from "@/lib/survey/discovery-questions.js";
 
 function line(label, value) {
   if (!value) return null;
@@ -14,27 +10,25 @@ function line(label, value) {
   );
 }
 
-/** Resumen automático a partir de chips seleccionados y métricas de gastos. */
-export function ResumenPanel({ discovery, result, fmt }) {
+/** Resumen automático a partir de chips activos + métricas de gastos. */
+export function ResumenPanel({ discovery, result, fmt, grouped }) {
   const answers = discovery.answers || {};
+  const before = grouped?.motivacionesBefore || [];
+  const after = grouped?.motivacionesAfter || [];
+  const styleQs = grouped?.styleQuestions || [];
+  const timeshareQs = grouped?.timeshareQuestions || [];
+
   const motivLines = [
-    line("Motivación principal", joinSelected(answers.p1)),
-    line("Emoción esperada", joinSelected(answers.p2)),
-    line("No negociables", joinSelected(answers.p3)),
-    line("Mejora deseada", joinSelected(answers.p4)),
-    line("Frenos", joinSelected(answers.p21)),
-    line("Situación frecuente", joinSelected(answers.p22)),
-    line("Preocupación al comprometerse", joinSelected(answers.p23)),
-    line("Cómo deciden", joinSelected(answers.p24)),
-    line("Qué necesitan para decidir", joinSelected(answers.p25)),
-    ...STYLE_QUESTIONS.map((q) => line(q.label, joinSelected(answers[q.id]))),
+    ...before.map((q) => line(q.title, joinSelected(answers[q.id]))),
+    ...styleQs.map((q) => line(q.label, joinSelected(answers[q.id]))),
+    ...after.map((q) => line(q.title, joinSelected(answers[q.id]))),
   ].filter(Boolean);
 
   const tsLines = [
-    ...TIMESHARE_QUESTIONS.map((q) =>
-      line(`${q.number}. ${q.title}`, joinSelected(answers[q.id])),
-    ),
-    line("¿Tiene timeshare actualmente?", discovery.hasTs || ""),
+    ...timeshareQs.map((q) => line(q.title, joinSelected(answers[q.id]))),
+    grouped?.hasTsQuestion
+      ? line(grouped.hasTsQuestion.title, discovery.hasTs || "")
+      : null,
     discovery.memberships?.length
       ? line(
           "Membresías registradas",
@@ -53,9 +47,11 @@ export function ResumenPanel({ discovery, result, fmt }) {
     line("Futuras — total a gastar", result?.future?.spend != null ? fmt(result.future.spend) : ""),
   ].filter(Boolean);
 
+  const firstMotiv = before[0] || after[0];
+  const firstFreno = after.find((q) => q.id === "p21") || after[0];
   const patternBits = [
-    joinSelected(answers.p1) && `Valoran: ${joinSelected(answers.p1)}`,
-    joinSelected(answers.p21) && `Frenos: ${joinSelected(answers.p21)}`,
+    firstMotiv && joinSelected(answers[firstMotiv.id]) && `Valoran: ${joinSelected(answers[firstMotiv.id])}`,
+    firstFreno && joinSelected(answers[firstFreno.id]) && `Frenos: ${joinSelected(answers[firstFreno.id])}`,
     discovery.hasTs && `Timeshare: ${discovery.hasTs}`,
     result?.pattern?.mi != null && `Mensualidad patrón: ${fmt(result.pattern.mi)}`,
   ].filter(Boolean);

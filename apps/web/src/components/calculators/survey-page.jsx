@@ -17,15 +17,16 @@ import { applyRemoteFormState, fieldKeyFromCollabId, markFieldsDirty, clearDirty
 import { useDbStore } from "@/stores/db-store";
 import { shallow } from "zustand/shallow";
 import {
-  PROGRESS_QUESTION_IDS,
   countAnswered,
   parseDiscovery,
   serializeDiscovery,
 } from "@/lib/survey/discovery-questions.js";
+import { useSurveyQuestions } from "@/hooks/use-survey-questions.js";
 import { MotivacionesPanel } from "@/components/calculators/survey/motivaciones-panel.jsx";
 import { TimesharePanel } from "@/components/calculators/survey/timeshare-panel.jsx";
 import { GastosPanel } from "@/components/calculators/survey/gastos-panel.jsx";
 import { ResumenPanel } from "@/components/calculators/survey/resumen-panel.jsx";
+import { ConfigureQuestionsModal } from "@/components/calculators/survey/configure-questions-modal.jsx";
 
 const EMPTY_DATA: Record<string, string> = {
   nights: "", total: "", hpct: "",
@@ -70,8 +71,17 @@ export function SurveyPage({ clientId, shared }: SurveyPageProps) {
   const [tab, setTab] = useState("motivaciones");
   const [saved, setSaved] = useState(false);
   const [autoSaved, setAutoSaved] = useState(false);
-  const [configNotice, setConfigNotice] = useState(false);
+  const [configOpen, setConfigOpen] = useState(false);
+  const [configSection, setConfigSection] = useState("motivaciones");
   const [saveToolOpen, setSaveToolOpen] = useState(false);
+  const {
+    grouped,
+    progressIds,
+    canConfigure,
+    userId,
+    mergedAll,
+    reload: reloadQuestions,
+  } = useSurveyQuestions();
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
   const dirtyKeysRef = useRef(new Set());
   const hydratedRef = useRef(false);
@@ -134,8 +144,8 @@ export function SurveyPage({ clientId, shared }: SurveyPageProps) {
   );
 
   const discovery = useMemo(() => parseDiscovery(data.disc_json), [data.disc_json]);
-  const answered = countAnswered(discovery);
-  const totalQuestions = PROGRESS_QUESTION_IDS.length;
+  const answered = countAnswered(discovery, progressIds);
+  const totalQuestions = progressIds.length;
   const progressPct = totalQuestions ? Math.round((answered / totalQuestions) * 100) : 0;
 
   const syncProspectToClient = (next: Record<string, string>) => {
@@ -251,9 +261,9 @@ export function SurveyPage({ clientId, shared }: SurveyPageProps) {
     }
   };
 
-  const onConfigClick = () => {
-    setConfigNotice(true);
-    setTimeout(() => setConfigNotice(false), 3200);
+  const openConfig = (sectionId) => {
+    setConfigSection(sectionId === "timeshare" ? "timeshare" : "motivaciones");
+    setConfigOpen(true);
   };
 
   const markSType = (v) => {
@@ -412,7 +422,11 @@ export function SurveyPage({ clientId, shared }: SurveyPageProps) {
                 discovery={discovery}
                 disabled={readOnly}
                 onPatch={patchDiscovery}
-                onConfigClick={onConfigClick}
+                canConfigure={canConfigure && !readOnly}
+                onConfigClick={() => openConfig("motivaciones")}
+                beforeQuestions={grouped.motivacionesBefore}
+                styleQuestions={grouped.styleQuestions}
+                afterQuestions={grouped.motivacionesAfter}
               />
             )}
             {tab === "timeshare" && (
@@ -420,7 +434,10 @@ export function SurveyPage({ clientId, shared }: SurveyPageProps) {
                 discovery={discovery}
                 disabled={readOnly}
                 onPatch={patchDiscovery}
-                onConfigClick={onConfigClick}
+                canConfigure={canConfigure && !readOnly}
+                onConfigClick={() => openConfig("timeshare")}
+                timeshareQuestions={grouped.timeshareQuestions}
+                hasTsQuestion={grouped.hasTsQuestion}
               />
             )}
             {tab === "gastos" && (
@@ -443,16 +460,9 @@ export function SurveyPage({ clientId, shared }: SurveyPageProps) {
               />
             )}
             {tab === "resumen" && (
-              <ResumenPanel discovery={discovery} result={result} fmt={fmt} />
+              <ResumenPanel discovery={discovery} result={result} fmt={fmt} grouped={grouped} />
             )}
           </div>
-
-          {configNotice && (
-            <div className="hint" role="status">
-              Configurar preguntas: pendiente. No existe aún un sistema de edición de preguntas por sección;
-              el botón queda como placeholder hasta definirlo con el equipo.
-            </div>
-          )}
         </fieldset>
 
         {!readOnly && (
@@ -468,6 +478,14 @@ export function SurveyPage({ clientId, shared }: SurveyPageProps) {
       {!isShared && (
         <SaveToolModal open={saveToolOpen} onOpenChange={setSaveToolOpen} tool="survey" />
       )}
+      <ConfigureQuestionsModal
+        open={configOpen}
+        onOpenChange={setConfigOpen}
+        section={configSection}
+        mergedAll={mergedAll}
+        userId={userId}
+        onSaved={reloadQuestions}
+      />
     </>
   );
 }

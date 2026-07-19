@@ -1,8 +1,15 @@
-import { HAS_TS_QUESTION, TIMESHARE_QUESTIONS } from "@/lib/survey/discovery-questions.js";
 import { ChipQuestion } from "./chip-question.jsx";
 import { MembershipTable } from "./membership-table.jsx";
 
-export function TimesharePanel({ discovery, disabled, onPatch, onConfigClick }) {
+export function TimesharePanel({
+  discovery,
+  disabled,
+  onPatch,
+  onConfigClick,
+  canConfigure = false,
+  timeshareQuestions = [],
+  hasTsQuestion = null,
+}) {
   const answers = discovery.answers || {};
   const contexts = discovery.contexts || {};
 
@@ -23,19 +30,20 @@ export function TimesharePanel({ discovery, disabled, onPatch, onConfigClick }) 
             Preguntas de experiencia primero; después, registro detallado de cada membresía.
           </p>
         </div>
-        <button
-          type="button"
-          className="btn btn-ghost btn-sm"
-          disabled={disabled}
-          title="La configuración de preguntas aún no está disponible en la app"
-          onClick={onConfigClick}
-        >
-          ⚙ Configurar preguntas
-        </button>
+        {canConfigure && (
+          <button
+            type="button"
+            className="btn btn-ghost btn-sm"
+            disabled={disabled}
+            onClick={onConfigClick}
+          >
+            ⚙ Configurar preguntas
+          </button>
+        )}
       </div>
 
       <div className="disc-questions">
-        {TIMESHARE_QUESTIONS.map((q) => (
+        {timeshareQuestions.map((q) => (
           <ChipQuestion
             key={q.id}
             question={q}
@@ -57,15 +65,17 @@ export function TimesharePanel({ discovery, disabled, onPatch, onConfigClick }) 
         </div>
       </div>
 
-      <div className="disc-questions">
-        <ChipQuestion
-          question={HAS_TS_QUESTION}
-          selected={discovery.hasTs ? [discovery.hasTs] : []}
-          disabled={disabled}
-          showNumber={false}
-          onChangeSelected={(sel) => onPatch({ hasTs: sel[0] || "" })}
-        />
-      </div>
+      {hasTsQuestion && (
+        <div className="disc-questions">
+          <ChipQuestion
+            question={hasTsQuestion}
+            selected={discovery.hasTs ? [discovery.hasTs] : []}
+            disabled={disabled}
+            showNumber={false}
+            onChangeSelected={(sel) => onPatch({ hasTs: sel[0] || "" })}
+          />
+        </div>
+      )}
 
       <MembershipTable
         rows={discovery.memberships || []}

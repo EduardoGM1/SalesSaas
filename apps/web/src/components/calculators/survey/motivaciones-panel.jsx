@@ -1,12 +1,16 @@
-import {
-  MOTIVACIONES_AFTER_STYLE,
-  MOTIVACIONES_BEFORE_STYLE,
-  STYLE_QUESTIONS,
-  toggleChip,
-} from "@/lib/survey/discovery-questions.js";
+import { toggleChip } from "@/lib/survey/discovery-questions.js";
 import { ChipQuestion, StyleMicroGrid } from "./chip-question.jsx";
 
-export function MotivacionesPanel({ discovery, disabled, onPatch, onConfigClick }) {
+export function MotivacionesPanel({
+  discovery,
+  disabled,
+  onPatch,
+  onConfigClick,
+  canConfigure = false,
+  beforeQuestions = [],
+  styleQuestions = [],
+  afterQuestions = [],
+}) {
   const answers = discovery.answers || {};
   const contexts = discovery.contexts || {};
 
@@ -27,19 +31,20 @@ export function MotivacionesPanel({ discovery, disabled, onPatch, onConfigClick 
             Abre la conversación y conoce qué busca, qué valora, qué le frena y cómo decide.
           </p>
         </div>
-        <button
-          type="button"
-          className="btn btn-ghost btn-sm"
-          disabled={disabled}
-          title="La configuración de preguntas aún no está disponible en la app"
-          onClick={onConfigClick}
-        >
-          ⚙ Configurar preguntas
-        </button>
+        {canConfigure && (
+          <button
+            type="button"
+            className="btn btn-ghost btn-sm"
+            disabled={disabled}
+            onClick={onConfigClick}
+          >
+            ⚙ Configurar preguntas
+          </button>
+        )}
       </div>
 
       <div className="disc-questions">
-        {MOTIVACIONES_BEFORE_STYLE.map((q) => (
+        {beforeQuestions.map((q) => (
           <ChipQuestion
             key={q.id}
             question={q}
@@ -52,17 +57,19 @@ export function MotivacionesPanel({ discovery, disabled, onPatch, onConfigClick 
         ))}
       </div>
 
-      <StyleMicroGrid
-        questions={STYLE_QUESTIONS}
-        answers={answers}
-        disabled={disabled}
-        onToggle={(id, option, max) => {
-          setSelected(id, toggleChip(answers[id] || [], option, max));
-        }}
-      />
+      {styleQuestions.length > 0 && (
+        <StyleMicroGrid
+          questions={styleQuestions}
+          answers={answers}
+          disabled={disabled}
+          onToggle={(id, option, max) => {
+            setSelected(id, toggleChip(answers[id] || [], option, max));
+          }}
+        />
+      )}
 
       <div className="disc-questions">
-        {MOTIVACIONES_AFTER_STYLE.map((q) => (
+        {afterQuestions.map((q) => (
           <ChipQuestion
             key={q.id}
             question={q}
