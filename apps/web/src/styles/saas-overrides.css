@@ -7187,6 +7187,13 @@ body,
     padding: 8px 6px;
   }
 }
+/* Chips Discovery: texto centrado solo en móvil (pisa text-align:left del desktop) */
+@media (max-width: 768px) {
+  .disc-choice-row .choice-pill {
+    text-align: center;
+    justify-content: center;
+  }
+}
 @media (max-width: 560px) {
   .disc-style-grid {
     grid-template-columns: 1fr;
@@ -7205,6 +7212,8 @@ body,
   .disc-choice-row .choice-pill {
     font-size: 10px;
     padding: 8px 8px;
+    text-align: center;
+    justify-content: center;
   }
 }
 
