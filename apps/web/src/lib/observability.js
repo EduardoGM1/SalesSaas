@@ -48,6 +48,31 @@ export async function reportOneSignalLinkIssue(detail) {
   });
 }
 
+/** Reporta panel admin sin tabs / crash de sección (permisos parciales, render). */
+export async function reportAdminPanelIssue(detail) {
+  console.warn("[admin:panel]", detail);
+
+  const Sentry = await ensureSentry();
+  if (!Sentry) return;
+
+  Sentry.withScope((scope) => {
+    scope.setTag("feature", "admin_panel");
+    scope.setTag("admin_reason", detail.reason || "unknown");
+    scope.setUser(detail.userId ? { id: String(detail.userId) } : null);
+    scope.setContext("admin_panel", {
+      userId: detail.userId ?? null,
+      permissions: detail.permissions ?? null,
+      pathname: detail.pathname ?? null,
+      reason: detail.reason ?? null,
+    });
+    if (detail.error instanceof Error) {
+      Sentry.captureException(detail.error);
+      return;
+    }
+    Sentry.captureMessage(detail.message || "Admin panel access issue", "warning");
+  });
+}
+
 /** Reporta fallos al activar/suscribir push (optIn, SW, permiso). */
 export async function reportOneSignalPushIssue(detail) {
   console.warn("[onesignal:push]", detail);

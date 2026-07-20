@@ -75,13 +75,14 @@ export function hasAnyAdminAccess(profile: AdminAccessProfile): boolean {
 }
 
 export function effectivePermissions(profile: AdminAccessProfile): string[] {
-  if (!hasAnyAdminAccess(profile)) return [];
+  if (profile?.role !== "admin") return [];
   if (isSuperAdmin(profile)) {
     return [
       ...DELEGATABLE_ADMIN_PERMISSIONS.map((p) => p.key),
       ...SUPER_ADMIN_ONLY_PERMISSIONS,
     ];
   }
+  // Roles nuevos pueden vivir solo en permission_keys; no cortar por admin_permissions vacío.
   const out = new Set(
     (profile.admin_permissions || []).filter(
       (p) => DELEGATABLE_KEYS.has(p) || (SUPER_ADMIN_ONLY_PERMISSIONS as readonly string[]).includes(p),
@@ -110,21 +111,83 @@ export const ADMIN_NAV_PERMISSIONS: Record<string, AdminPermission> = {
   "/admin/logs": "ver_logs_administracion",
 };
 
+/** Orden de pestañas del panel (fallback = primera permitida). */
+export const ADMIN_NAV_ORDER = [
+  "/admin",
+  "/admin/users",
+  "/admin/roles",
+  "/admin/logs",
+  "/admin/goals",
+  "/admin/tools",
+  "/admin/support",
+] as const;
+
+/** Expande aliases (p. ej. support:read ↔ ver_tickets_soporte). */
+export function expandAdminPermissionSet(permissions: string[] | null | undefined): Set<string> {
+  const set = new Set<string>();
+  for (const raw of permissions || []) {
+    const key = String(raw || "");
+    if (!key) continue;
+    set.add(key);
+    for (const alias of PERMISSION_ALIASES[key] || []) set.add(alias);
+  }
+  return set;
+}
+
+export function adminPermissionSetHas(set: Set<string>, perm: string): boolean {
+  if (set.has(perm)) return true;
+  return (PERMISSION_ALIASES[perm] || []).some((a) => set.has(a));
+}
+
+/** ¿La lista de keys (sesión admin) da acceso a alguna pestaña del panel? */
+export function hasAnyAdminNavPermission(permissions: string[] | null | undefined): boolean {
+  const set = expandAdminPermissionSet(permissions);
+  return Object.values(ADMIN_NAV_PERMISSIONS).some((perm) => adminPermissionSetHas(set, perm));
+}
+
+export function getFirstAllowedAdminPath(
+  permissions: string[] | null | undefined,
+  isSuper = false,
+): string | null {
+  if (isSuper) return "/admin";
+  const set = expandAdminPermissionSet(permissions);
+  for (const href of ADMIN_NAV_ORDER) {
+    const perm = ADMIN_NAV_PERMISSIONS[href];
+    if (perm && adminPermissionSetHas(set, perm)) return href;
+  }
+  return null;
+}
+
+/**
+ * Gate de ruta usando la misma fuente que las tabs (`session.permissions`),
+ * no `profile.admin_permissions` (legacy) — evita loops Navigate por drift.
+ */
+export function canAccessAdminPathByPermissions(
+  permissions: string[] | null | undefined,
+  pathname: string,
+  isSuper = false,
+): boolean {
+  if (isSuper) return true;
+  const set = expandAdminPermissionSet(permissions);
+  if (pathname.startsWith("/admin/users/") && pathname.includes("/permissions")) {
+    return adminPermissionSetHas(set, "users:permissions");
+  }
+  if (pathname.startsWith("/admin/export/users")) return adminPermissionSetHas(set, "users:export");
+  if (pathname.startsWith("/admin/export/logs")) return adminPermissionSetHas(set, "ver_logs_administracion");
+  if (pathname.startsWith("/admin/users")) return adminPermissionSetHas(set, "users:read");
+  if (pathname.startsWith("/admin/tools")) return adminPermissionSetHas(set, "tools:analytics");
+  if (pathname.startsWith("/admin/support")) return adminPermissionSetHas(set, "ver_tickets_soporte");
+  if (pathname.startsWith("/admin/goals")) return adminPermissionSetHas(set, "goals:read");
+  if (pathname.startsWith("/admin/roles")) return adminPermissionSetHas(set, "admin:roles");
+  if (pathname.startsWith("/admin/logs")) return adminPermissionSetHas(set, "ver_logs_administracion");
+  if (pathname === "/admin") return adminPermissionSetHas(set, "dashboard:read");
+  return false;
+}
+
 export function canAccessAdminPath(profile: AdminAccessProfile, pathname: string): boolean {
   if (!hasAnyAdminAccess(profile)) return false;
-  if (pathname.startsWith("/admin/users/") && pathname.includes("/permissions")) {
-    return hasPermission(profile, "users:permissions");
-  }
-  if (pathname.startsWith("/admin/export/users")) return hasPermission(profile, "users:export");
-  if (pathname.startsWith("/admin/export/logs")) return hasPermission(profile, "ver_logs_administracion");
-  if (pathname.startsWith("/admin/users")) return hasPermission(profile, "users:read");
-  if (pathname.startsWith("/admin/tools")) return hasPermission(profile, "tools:analytics");
-  if (pathname.startsWith("/admin/support")) return hasPermission(profile, "ver_tickets_soporte");
-  if (pathname.startsWith("/admin/goals")) return hasPermission(profile, "goals:read");
-  if (pathname.startsWith("/admin/roles")) return hasPermission(profile, "admin:roles");
-  if (pathname.startsWith("/admin/logs")) return hasPermission(profile, "ver_logs_administracion");
-  if (pathname === "/admin") return hasPermission(profile, "dashboard:read");
-  return isSuperAdmin(profile);
+  if (isSuperAdmin(profile)) return true;
+  return canAccessAdminPathByPermissions(profile.admin_permissions || [], pathname, false);
 }
 
 export function sanitizeDelegatedPermissions(perms: string[]): DelegatablePermission[] {

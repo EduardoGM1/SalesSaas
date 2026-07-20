@@ -5,6 +5,7 @@ import { apiError, json } from "../lib/http.js";
 import {
   effectivePermissions,
   hasAnyAdminAccess,
+  hasAnyAdminNavPermission,
   isSuperAdmin,
 } from "@salesapp/shared/auth/permissions.js";
 import { parseAdminFilters, parseUserAdminFilters } from "../lib/admin/filters.js";
@@ -75,9 +76,7 @@ router.get("/me", async (req, res) => {
     is_super_admin: profile.is_super_admin ?? false,
     admin_permissions: profile.admin_permissions ?? [],
   };
-  if (!hasAnyAdminAccess(adminProfile)) {
-    return apiError(res, "No autorizado.", 403);
-  }
+  // Preferir keys del rol (catálogo nuevo); fallback a admin_permissions legacy.
   let permissionKeys = effectivePermissions(adminProfile);
   try {
     const ctx = await rolesService.loadUserPermissionContext(base.supabase, base.userId);
@@ -95,6 +94,14 @@ router.get("/me", async (req, res) => {
     for (const k of ["ver_tickets_soporte", "responder_tickets_soporte"]) {
       if (!permissionKeys.includes(k)) permissionKeys = [...permissionKeys, k];
     }
+  }
+  // Acceso: legacy admin_permissions O al menos una key de pestaña del rol.
+  if (
+    !isSuperAdmin(adminProfile)
+    && !hasAnyAdminAccess(adminProfile)
+    && !hasAnyAdminNavPermission(permissionKeys)
+  ) {
+    return apiError(res, "No autorizado.", 403);
   }
   json(res, {
     profile: { ...adminProfile, role_id: profile.role_id ?? null },

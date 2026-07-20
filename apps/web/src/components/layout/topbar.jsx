@@ -41,7 +41,11 @@ export function Topbar({ title, subtitle, showMonthNav, admin }) {
             </Link>
           </div>
         </div>
-        <AdminTopbarTabs permissions={permissions} pathname={pathname} />
+        <AdminTopbarTabs
+          permissions={permissions}
+          pathname={pathname}
+          isSuperAdmin={Boolean(admin?.isSuperAdmin)}
+        />
       </header>
     );
   }

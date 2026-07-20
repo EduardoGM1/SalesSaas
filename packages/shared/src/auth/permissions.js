@@ -57,13 +57,14 @@ function hasAnyAdminAccess(profile) {
 }
 
 function effectivePermissions(profile) {
-  if (!hasAnyAdminAccess(profile)) return [];
+  if (profile?.role !== "admin") return [];
   if (isSuperAdmin(profile)) {
     return [
       ...DELEGATABLE_ADMIN_PERMISSIONS.map((p) => p.key),
       ...SUPER_ADMIN_ONLY_PERMISSIONS,
     ];
   }
+  // No exigir hasAnyAdminAccess aquí: roles nuevos pueden vivir solo en permission_keys.
   const out = new Set(
     (profile.admin_permissions || []).filter((p) => DELEGATABLE_KEYS.has(p) || SUPER_ADMIN_ONLY_PERMISSIONS.includes(p)),
   );
@@ -88,6 +89,28 @@ const ADMIN_NAV_PERMISSIONS = {
   "/admin/roles": "admin:roles",
   "/admin/logs": "ver_logs_administracion",
 };
+
+function expandAdminPermissionSet(permissions) {
+  const set = new Set();
+  for (const raw of permissions || []) {
+    const key = String(raw || "");
+    if (!key) continue;
+    set.add(key);
+    for (const alias of PERMISSION_ALIASES[key] || []) set.add(alias);
+  }
+  return set;
+}
+
+function adminPermissionSetHas(set, perm) {
+  if (set.has(perm)) return true;
+  return (PERMISSION_ALIASES[perm] || []).some((a) => set.has(a));
+}
+
+/** Keys de rol/sesión que abren alguna pestaña del panel. */
+function hasAnyAdminNavPermission(permissions) {
+  const set = expandAdminPermissionSet(permissions);
+  return Object.values(ADMIN_NAV_PERMISSIONS).some((perm) => adminPermissionSetHas(set, perm));
+}
 
 function canAccessAdminPath(profile, pathname) {
   if (!hasAnyAdminAccess(profile)) return false;
@@ -127,7 +150,9 @@ export {
   SUPER_ADMIN_ONLY_PERMISSIONS,
   canAccessAdminPath,
   effectivePermissions,
+  expandAdminPermissionSet,
   hasAnyAdminAccess,
+  hasAnyAdminNavPermission,
   hasPermission,
   isSuperAdmin,
   permissionLabel,
