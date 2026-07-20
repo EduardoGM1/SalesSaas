@@ -93,24 +93,38 @@ function bankKeysOf(row) {
     : (Array.isArray(row.opciones) ? row.opciones : []);
 }
 
-function buildDraftOptions(row) {
+function bankOptionLabel(questionClave, key, t) {
+  if (!key || isCustomOptionKey(key)) return "";
+  return t(optionTitleKey(questionClave, key));
+}
+
+/** Precarga el texto visible real en value (no placeholder). Opciones nuevas custom nacen vacías. */
+function buildDraftOptions(row, t) {
   const bank = bankKeysOf(row);
   if (Array.isArray(row.opciones_override)) {
     return row.opciones_override
-      .map((item) => ({
-        key: String(item?.key || item || ""),
-        label: item?.label != null ? String(item.label) : "",
-      }))
-      .filter((o) => o.key);
+      .map((item) => {
+        const key = String(item?.key || item || "");
+        if (!key) return null;
+        const stored = item?.label != null ? String(item.label) : "";
+        const label = stored.trim()
+          ? stored
+          : bankOptionLabel(row.clave, key, t);
+        return { key, label };
+      })
+      .filter(Boolean);
   }
-  return bank.map((key) => ({ key, label: "" }));
+  return bank.map((key) => ({
+    key,
+    label: bankOptionLabel(row.clave, key, t),
+  }));
 }
 
-function hydrateRow(row) {
+function hydrateRow(row, t) {
   return {
     ...row,
     draftTitle: row.texto_override || "",
-    draftOptions: buildDraftOptions(row),
+    draftOptions: buildDraftOptions(row, t),
     expanded: false,
   };
 }
@@ -141,11 +155,7 @@ function QuestionEditor({ row, t, onChangeTitle, onChangeOption, onMoveOption, o
             <input
               type="text"
               maxLength={120}
-              placeholder={
-                isCustomOptionKey(opt.key)
-                  ? t("survey.disc.config.customPlaceholder")
-                  : t(optionTitleKey(row.clave, opt.key))
-              }
+              placeholder={t("survey.disc.config.customPlaceholder")}
               value={opt.label || ""}
               onChange={(e) => onChangeOption(oi, e.target.value)}
             />
@@ -424,11 +434,11 @@ export function ConfigureQuestionsModal({
     if (!open) return;
     const list = (mergedAll || [])
       .filter((r) => r.seccion === section)
-      .map((r) => hydrateRow({ ...r }));
+      .map((r) => hydrateRow({ ...r }, t));
     list.sort((a, b) => a.orden - b.orden || String(a.clave).localeCompare(String(b.clave)));
     setRows(list);
     clearMoveFlash();
-  }, [open, section, mergedAll]);
+  }, [open, section, mergedAll, t]);
 
   useLayoutEffect(() => {
     if (!moveFlash.clave || !listRef.current) return;
@@ -562,7 +572,11 @@ export function ConfigureQuestionsModal({
           activa: r.activa !== false,
           orden: (i + 1) * 10,
           texto_override: title || null,
-          opciones_override: opcionesOverrideOrNull(r.draftOptions, bankKeysOf(r)),
+          opciones_override: opcionesOverrideOrNull(
+            r.draftOptions,
+            bankKeysOf(r),
+            (key) => bankOptionLabel(r.clave, key, t),
+          ),
         };
       });
       const persistable = payload.filter((p) => p.pregunta_id && !String(p.pregunta_id).startsWith("fallback-"));
@@ -608,7 +622,10 @@ export function ConfigureQuestionsModal({
     onRestore: () => {
       patchRow(row.clave, {
         draftTitle: "",
-        draftOptions: bankKeysOf(row).map((key) => ({ key, label: "" })),
+        draftOptions: bankKeysOf(row).map((key) => ({
+          key,
+          label: bankOptionLabel(row.clave, key, t),
+        })),
       });
     },
   });

@@ -58,17 +58,26 @@ export function newCustomOptionKey() {
   return `custom_${id}`;
 }
 
-/** Compara editor vs banco para decidir si persistir null. */
-export function opcionesOverrideOrNull(editorOptions, bankKeys) {
+/**
+ * Compara editor vs banco para decidir si persistir null.
+ * `bankLabelOf(key)` opcional: si el label del editor coincide con el del banco,
+ * se trata como sin override (permite precargar value en UI sin forzar persistencia).
+ */
+export function opcionesOverrideOrNull(editorOptions, bankKeys, bankLabelOf) {
   if (!Array.isArray(editorOptions)) return null;
   const bank = bankKeys || [];
-  const sameKeys =
-    editorOptions.length === bank.length
-    && editorOptions.every((o, i) => o.key === bank[i] && !String(o.label || "").trim());
-  if (sameKeys) return null;
-  return editorOptions.map((o) => {
-    const label = String(o.label || "").trim();
+  const normalized = editorOptions.map((o) => {
+    let label = String(o.label || "").trim();
+    if (label && !isCustomOptionKey(o.key) && typeof bankLabelOf === "function") {
+      const bankLabel = String(bankLabelOf(o.key) || "").trim();
+      if (bankLabel && label === bankLabel) label = "";
+    }
     if (label) return { key: o.key, label };
     return { key: o.key };
   });
+  const sameKeys =
+    normalized.length === bank.length
+    && normalized.every((o, i) => o.key === bank[i] && !o.label);
+  if (sameKeys) return null;
+  return normalized;
 }
