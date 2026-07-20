@@ -3,6 +3,7 @@ import { authenticateApi } from "../middleware/auth.js";
 import { requireApiAdmin } from "../middleware/admin-auth.js";
 import { apiError, json } from "../lib/http.js";
 import {
+  canViewUserFinancialMetrics,
   effectivePermissions,
   hasAnyAdminAccess,
   hasAnyAdminNavPermission,
@@ -85,7 +86,13 @@ router.get("/me", async (req, res) => {
     // fallback legacy
   }
   if (isSuperAdmin(adminProfile)) {
-    for (const k of ["admin:roles", "ver_logs_administracion", "ver_tickets_soporte", "responder_tickets_soporte"]) {
+    for (const k of [
+      "admin:roles",
+      "ver_logs_administracion",
+      "ver_metricas_financieras_usuarios",
+      "ver_tickets_soporte",
+      "responder_tickets_soporte",
+    ]) {
       if (!permissionKeys.includes(k)) permissionKeys = [...permissionKeys, k];
     }
   }
@@ -227,7 +234,11 @@ router.get("/users", async (req, res) => {
   if (!a) return;
   try {
     const filters = parseUserAdminFilters(req.query);
-    const data = await getUsers(a.supabase, filters);
+    const includeMetrics = canViewUserFinancialMetrics({
+      isSuperAdmin: a.isSuperAdmin === true,
+      permissions: a.permissions || [],
+    });
+    const data = await getUsers(a.supabase, filters, { includeMetrics });
     json(res, { data });
   } catch (err) {
     apiError(res, err instanceof Error ? err.message : "Error al cargar usuarios.", 500);
@@ -259,20 +270,28 @@ router.get("/export/users", async (req, res) => {
   if (!a) return;
   try {
     const filters = parseUserAdminFilters(req.query);
-    const users = await getUsers(a.supabase, filters);
+    const includeMetrics = canViewUserFinancialMetrics({
+      isSuperAdmin: a.isSuperAdmin === true,
+      permissions: a.permissions || [],
+    });
+    const users = await getUsers(a.supabase, filters, { includeMetrics });
     const ROLE_LABEL = { vendedor: "Vendedor", gerente: "Gerente", admin: "Admin" };
+    const headers = includeMetrics
+      ? ["Nombre", "Correo", "Rol", "Estado", "Expedientes", "Ventas", "Volumen", "Alta"]
+      : ["Nombre", "Correo", "Rol", "Estado", "Alta"];
     const csv = toCsv(
-      ["Nombre", "Correo", "Rol", "Estado", "Expedientes", "Ventas", "Volumen", "Alta"],
-      users.map((u) => [
-        u.name,
-        u.email,
-        ROLE_LABEL[u.role] ?? u.role,
-        u.is_active ? "Activa" : "Desactivada",
-        u.prospects,
-        u.sales,
-        u.volume,
-        u.created_at ? String(u.created_at).slice(0, 10) : "",
-      ])
+      headers,
+      users.map((u) => {
+        const base = [
+          u.name,
+          u.email,
+          ROLE_LABEL[u.role] ?? u.role,
+          u.is_active ? "Activa" : "Desactivada",
+        ];
+        if (includeMetrics) base.push(u.prospects, u.sales, u.volume);
+        base.push(u.created_at ? String(u.created_at).slice(0, 10) : "");
+        return base;
+      }),
     );
     res.setHeader("Content-Type", "text/csv; charset=utf-8");
     res.setHeader("Content-Disposition", `attachment; filename="usuarios-${new Date().toISOString().slice(0, 10)}.csv"`);

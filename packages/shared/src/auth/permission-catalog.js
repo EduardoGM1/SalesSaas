@@ -59,6 +59,7 @@ export const PERMISSION_CATALOG = [
   { clave: "ver_tickets_soporte", nombre_visible: "Ver tickets de soporte", modulo: "admin", capa: "admin" },
   { clave: "responder_tickets_soporte", nombre_visible: "Responder tickets de soporte", modulo: "admin", capa: "admin" },
   { clave: "ver_logs_administracion", nombre_visible: "Ver logs de administración", modulo: "admin", capa: "admin" },
+  { clave: "ver_metricas_financieras_usuarios", nombre_visible: "Admin: ver métricas financieras por usuario", modulo: "admin", capa: "admin" },
   { clave: "admin:roles", nombre_visible: "Admin: gestionar roles", modulo: "admin", capa: "admin" },
 ];
 
@@ -108,7 +109,13 @@ export const SOPORTE_DEFAULT_PERMISSIONS = [
   "support:read",
 ];
 
-export const SUPERADMIN_ONLY_KEYS = ["users:role", "users:permissions", "admin:roles", "ver_logs_administracion"];
+export const SUPERADMIN_ONLY_KEYS = [
+  "users:role",
+  "users:permissions",
+  "admin:roles",
+  "ver_logs_administracion",
+  "ver_metricas_financieras_usuarios",
+];
 
 /** Acciones de auditoría admin (claves estables). */
 export const ADMIN_AUDIT_ACTIONS = {

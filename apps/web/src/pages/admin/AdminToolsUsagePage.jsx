@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useOutletContext, useSearchParams } from "react-router-dom";
 import { AdminFiltersBar } from "@/components/admin/admin-filters-bar.jsx";
 import { AdminViewToggle } from "@/components/admin/admin-view-toggle.jsx";
 import { AdminToolsByToolChart } from "@/components/admin/admin-tools-by-tool-chart.jsx";
@@ -7,6 +7,7 @@ import { AdminToolsTrendChart } from "@/components/admin/admin-tools-trend-chart
 import { useAdminFetch } from "@/hooks/use-admin-session.js";
 import { useAdminViewPref } from "@/hooks/use-admin-view-pref.js";
 import { parseAdminFilters } from "@/lib/admin/filters";
+import { isSuperAdmin } from "@/lib/auth/permissions";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { useMoney } from "@/hooks/use-money.js";
 
@@ -19,6 +20,7 @@ const TOOL_LABEL_KEYS = {
 export function AdminToolsUsagePage() {
   const { t } = useI18n();
   const { fmtN } = useMoney();
+  const session = useOutletContext();
   const [searchParams] = useSearchParams();
   const filters = useMemo(() => parseAdminFilters(Object.fromEntries(searchParams.entries())), [searchParams]);
   const search = searchParams.toString() ? `?${searchParams.toString()}` : "";
@@ -26,6 +28,12 @@ export function AdminToolsUsagePage() {
   const sellersState = useAdminFetch("sellers");
   const [byToolView, setByToolView] = useAdminViewPref("byTool", "chart");
   const [trendView, setTrendView] = useAdminViewPref("trend", "chart");
+
+  const canUseTableView = Boolean(
+    session?.isSuperAdmin || (session?.profile && isSuperAdmin(session.profile)),
+  );
+  const byToolMode = canUseTableView ? byToolView : "chart";
+  const trendMode = canUseTableView ? trendView : "chart";
 
   if (toolsState.loading || sellersState.loading) {
     return <div className="admin-page">{t("admin.loading.tools")}</div>;
@@ -66,16 +74,18 @@ export function AdminToolsUsagePage() {
       <div className="client-table-card admin-tools-section">
         <div className="admin-card-head">
           <span>{t("admin.tools.byTool")}</span>
-          <AdminViewToggle
-            value={byToolView}
-            onChange={setByToolView}
-            tableLabel={t("admin.view.table")}
-            chartLabel={t("admin.view.chart")}
-          />
+          {canUseTableView ? (
+            <AdminViewToggle
+              value={byToolView}
+              onChange={setByToolView}
+              tableLabel={t("admin.view.table")}
+              chartLabel={t("admin.view.chart")}
+            />
+          ) : null}
         </div>
         {byTool.length === 0 ? (
           <div className="admin-empty">{t("admin.tools.empty")}</div>
-        ) : byToolView === "chart" ? (
+        ) : byToolMode === "chart" ? (
           <AdminToolsByToolChart byTool={byTool} />
         ) : (
           <table className="client-table">
@@ -106,16 +116,18 @@ export function AdminToolsUsagePage() {
       <div className="client-table-card admin-tools-section" style={{ marginTop: 16 }}>
         <div className="admin-card-head">
           <span>{t("admin.tools.trend")}</span>
-          <AdminViewToggle
-            value={trendView}
-            onChange={setTrendView}
-            tableLabel={t("admin.view.table")}
-            chartLabel={t("admin.view.chart")}
-          />
+          {canUseTableView ? (
+            <AdminViewToggle
+              value={trendView}
+              onChange={setTrendView}
+              tableLabel={t("admin.view.table")}
+              chartLabel={t("admin.view.chart")}
+            />
+          ) : null}
         </div>
         {trend.length === 0 ? (
           <div className="admin-empty">{t("admin.tools.empty")}</div>
-        ) : trendView === "chart" ? (
+        ) : trendMode === "chart" ? (
           <AdminToolsTrendChart trend={trend} />
         ) : (
           <table className="client-table">

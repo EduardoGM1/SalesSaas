@@ -10,7 +10,19 @@ const DELEGATABLE_ADMIN_PERMISSIONS = [
   { key: "ver_tickets_soporte", label: "Ver tickets de soporte" },
   { key: "responder_tickets_soporte", label: "Responder tickets de soporte" },
 ];
-const SUPER_ADMIN_ONLY_PERMISSIONS = ["users:role", "users:permissions", "admin:roles", "ver_logs_administracion"];
+const SUPER_ADMIN_ONLY_PERMISSIONS = [
+  "users:role",
+  "users:permissions",
+  "admin:roles",
+  "ver_logs_administracion",
+  "ver_metricas_financieras_usuarios",
+];
+const USER_FINANCIAL_METRICS_PERMISSION = "ver_metricas_financieras_usuarios";
+
+function canViewUserFinancialMetrics({ isSuperAdmin = false, permissions = [] } = {}) {
+  if (isSuperAdmin) return true;
+  return (permissions || []).includes(USER_FINANCIAL_METRICS_PERMISSION);
+}
 const DELEGATABLE_KEYS = new Set(DELEGATABLE_ADMIN_PERMISSIONS.map((p) => p.key));
 const LEGACY_PERMISSION_MAP = {
   "worksheets:read": "tools:analytics",
@@ -148,7 +160,10 @@ export {
   ADMIN_NAV_PERMISSIONS,
   DELEGATABLE_ADMIN_PERMISSIONS,
   SUPER_ADMIN_ONLY_PERMISSIONS,
+  USER_FINANCIAL_METRICS_PERMISSION,
+  adminPermissionSetHas,
   canAccessAdminPath,
+  canViewUserFinancialMetrics,
   effectivePermissions,
   expandAdminPermissionSet,
   hasAnyAdminAccess,
@@ -156,5 +171,5 @@ export {
   hasPermission,
   isSuperAdmin,
   permissionLabel,
-  sanitizeDelegatedPermissions
+  sanitizeDelegatedPermissions,
 };

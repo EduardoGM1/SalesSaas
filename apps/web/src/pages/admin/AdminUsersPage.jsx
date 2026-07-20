@@ -5,9 +5,13 @@ import { AdminUsersFilters } from "@/components/admin/admin-users-filters.jsx";
 import { IconSave, IconUserCheck, IconUserX } from "@/components/admin/admin-users-icons.jsx";
 import { CreditCard, Layers, Shield } from "lucide-react";
 import { useAdminFetch } from "@/hooks/use-admin-session.js";
-import { hasPermission, isSuperAdmin } from "@/lib/auth/permissions";
+import {
+  canViewUserFinancialMetrics,
+  DELEGATABLE_ADMIN_PERMISSIONS,
+  hasPermission,
+  isSuperAdmin,
+} from "@/lib/auth/permissions";
 import { parseUserAdminFilters, userAdminUrl, userFiltersToSearchParams } from "@/lib/admin/filters";
-import { DELEGATABLE_ADMIN_PERMISSIONS } from "@/lib/auth/permissions";
 import { VENDOR_FEATURE_PERMISSIONS } from "@/lib/auth/user-features";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { useMoney } from "@/hooks/use-money.js";
@@ -292,7 +296,14 @@ export function AdminUsersPage() {
   const qs = searchParams.toString();
   const search = qs ? `?${qs}&_=${reloadKey}` : `?_=${reloadKey}`;
   const { loading, data, error } = useAdminFetch("users", search);
-  const canManageRoles = Boolean(session?.profile && isSuperAdmin(session.profile));
+  const viewerIsSuper = Boolean(
+    session?.isSuperAdmin || (session?.profile && isSuperAdmin(session.profile)),
+  );
+  const canManageRoles = viewerIsSuper;
+  const showUserMetrics = canViewUserFinancialMetrics({
+    isSuperAdmin: viewerIsSuper,
+    permissions: session?.permissions || [],
+  });
   const { data: rolesData } = useAdminFetch(canManageRoles ? "roles" : null, canManageRoles ? `?_=${reloadKey}` : "");
 
   const profile = session?.profile;
@@ -365,9 +376,13 @@ export function AdminUsersPage() {
                 <th>{t("admin.users.col.plan")}</th>
                 <th>{t("admin.users.col.membership")}</th>
                 <th>{t("admin.users.col.status")}</th>
-                <th style={{ textAlign: "right" }}>{t("admin.users.col.files")}</th>
-                <th style={{ textAlign: "right" }}>{t("admin.users.col.sales")}</th>
-                <th style={{ textAlign: "right" }}>{t("admin.users.col.volume")}</th>
+                {showUserMetrics && (
+                  <>
+                    <th style={{ textAlign: "right" }}>{t("admin.users.col.files")}</th>
+                    <th style={{ textAlign: "right" }}>{t("admin.users.col.sales")}</th>
+                    <th style={{ textAlign: "right" }}>{t("admin.users.col.volume")}</th>
+                  </>
+                )}
                 <th>{t("admin.users.col.created")}</th>
                 {hasActions && <th className="admin-cell-actions">{t("admin.users.col.actions")}</th>}
               </tr>
@@ -379,7 +394,12 @@ export function AdminUsersPage() {
                 const roleReadOnly = !caps.canRole || u.is_super_admin || isSelf;
                 return (
                   <tr key={u.id} className={!u.is_active ? "admin-user-row-inactive" : undefined}>
-                    <td className="admin-cell-name" title={u.name}>{u.name}{u.is_super_admin && <span className="admin-super-badge">{t("admin.users.badge.super")}</span>}</td>
+                    <td className="admin-cell-name" title={u.name}>
+                      {u.name}
+                      {viewerIsSuper && u.is_super_admin ? (
+                        <span className="admin-super-badge">{t("admin.users.badge.super")}</span>
+                      ) : null}
+                    </td>
                     <td className="admin-cell-email" title={u.email ?? undefined}>{u.email ?? "—"}</td>
                     <td className="admin-cell-role">
                       {roleReadOnly ? (
@@ -409,9 +429,13 @@ export function AdminUsersPage() {
                         {u.is_active ? t("admin.users.status.active") : t("admin.users.status.inactive")}
                       </span>
                     </td>
-                    <td className="admin-cell-num" style={{ textAlign: "right" }}>{fmtN(u.prospects)}</td>
-                    <td className="admin-cell-num" style={{ textAlign: "right" }}>{fmtN(u.sales)}</td>
-                    <td className="admin-cell-num" style={{ textAlign: "right" }}>{fmt(u.volume)}</td>
+                    {showUserMetrics && (
+                      <>
+                        <td className="admin-cell-num" style={{ textAlign: "right" }}>{fmtN(u.prospects)}</td>
+                        <td className="admin-cell-num" style={{ textAlign: "right" }}>{fmtN(u.sales)}</td>
+                        <td className="admin-cell-num" style={{ textAlign: "right" }}>{fmt(u.volume)}</td>
+                      </>
+                    )}
                     <td className="admin-cell-date">{u.created_at ? longDate(String(u.created_at).slice(0, 10)) : "—"}</td>
                     {hasActions && (
                       <td className="admin-cell-actions">

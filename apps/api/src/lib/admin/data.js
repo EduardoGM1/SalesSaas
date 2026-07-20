@@ -62,7 +62,13 @@ export async function getOverview(sb) {
   };
 }
 
-export async function getUsers(sb, filters = {}) {
+/**
+ * @param {object} sb
+ * @param {object} [filters]
+ * @param {{ includeMetrics?: boolean }} [options] includeMetrics=false omite RPC y campos sensibles
+ */
+export async function getUsers(sb, filters = {}, options = {}) {
+  const includeMetrics = options.includeMetrics === true;
   const { loadMembershipsByUserIds } = await import("../../services/membership-service.js");
 
   let profilesQuery = sb
@@ -78,10 +84,16 @@ export async function getUsers(sb, filters = {}) {
     if (q) profilesQuery = profilesQuery.or(`full_name.ilike.%${q}%,email.ilike.%${q}%`);
   }
 
-  let [profilesRes, statsRes] = await Promise.all([
-    profilesQuery,
-    sb.rpc("admin_user_stats"),
-  ]);
+  let profilesRes;
+  let statsRes = { data: [], error: null };
+  if (includeMetrics) {
+    [profilesRes, statsRes] = await Promise.all([
+      profilesQuery,
+      sb.rpc("admin_user_stats"),
+    ]);
+  } else {
+    profilesRes = await profilesQuery;
+  }
 
   if (profilesRes.error) {
     // Fallback si role_id aún no existe
@@ -99,16 +111,20 @@ export async function getUsers(sb, filters = {}) {
     profilesRes = await legacyQuery;
   }
 
-  if (statsRes.error) throw new Error(statsRes.error.message || "No se pudieron cargar estadísticas.");
+  if (includeMetrics && statsRes.error) {
+    throw new Error(statsRes.error.message || "No se pudieron cargar estadísticas.");
+  }
   if (profilesRes.error) throw new Error(profilesRes.error.message || "No se pudieron cargar usuarios.");
 
   const statsByUser = new Map();
-  for (const row of statsRes.data ?? []) {
-    statsByUser.set(row.user_id, {
-      prospects: num(row.prospects),
-      sales: num(row.sales),
-      volume: num(row.volume),
-    });
+  if (includeMetrics) {
+    for (const row of statsRes.data ?? []) {
+      statsByUser.set(row.user_id, {
+        prospects: num(row.prospects),
+        sales: num(row.sales),
+        volume: num(row.volume),
+      });
+    }
   }
 
   const profiles = profilesRes.data ?? [];
@@ -129,10 +145,9 @@ export async function getUsers(sb, filters = {}) {
   }
 
   return profiles.map((p) => {
-    const stats = statsByUser.get(p.id) ?? { prospects: 0, sales: 0, volume: 0 };
     const mem = memberships.get(p.id) || { plan: "basico", status: "activa" };
     const roleMeta = p.role_id ? roleNameById.get(p.role_id) : null;
-    return {
+    const row = {
       id: p.id,
       name: p.full_name || p.email || `Usuario ${String(p.id).slice(0, 8)}`,
       email: p.email ?? null,
@@ -145,14 +160,18 @@ export async function getUsers(sb, filters = {}) {
       is_super_admin: p.is_super_admin ?? false,
       admin_permissions: p.admin_permissions ?? [],
       user_permissions: p.user_permissions ?? [],
-      prospects: stats.prospects,
-      sales: stats.sales,
-      volume: stats.volume,
       plan: mem.plan,
       membership_status: mem.status,
       membership_fecha_inicio: mem.fecha_inicio ?? null,
       membership_fecha_proximo_cobro: mem.fecha_proximo_cobro ?? null,
     };
+    if (includeMetrics) {
+      const stats = statsByUser.get(p.id) ?? { prospects: 0, sales: 0, volume: 0 };
+      row.prospects = stats.prospects;
+      row.sales = stats.sales;
+      row.volume = stats.volume;
+    }
+    return row;
   });
 }
 

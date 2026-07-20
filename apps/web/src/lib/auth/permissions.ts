@@ -21,7 +21,20 @@ export const SUPER_ADMIN_ONLY_PERMISSIONS = [
   "users:permissions",
   "admin:roles",
   "ver_logs_administracion",
+  "ver_metricas_financieras_usuarios",
 ] as const;
+
+/** Métricas por usuario (Expedientes/Ventas/Volumen). El badge Principal usa isSuperAdmin del viewer. */
+export const USER_FINANCIAL_METRICS_PERMISSION = "ver_metricas_financieras_usuarios";
+
+export function canViewUserFinancialMetrics(opts: {
+  isSuperAdmin?: boolean;
+  permissions?: string[] | null;
+}): boolean {
+  if (opts.isSuperAdmin) return true;
+  const list = opts.permissions || [];
+  return list.includes(USER_FINANCIAL_METRICS_PERMISSION);
+}
 
 export type AdminPermission = DelegatablePermission | (typeof SUPER_ADMIN_ONLY_PERMISSIONS)[number];
 
