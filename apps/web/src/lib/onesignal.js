@@ -353,6 +353,38 @@ function isPushServiceFailure(err) {
   return /push service|registration failed|AbortError/i.test(`${name} ${message}`);
 }
 
+/**
+ * OneSignal.init / autoResubscribe a veces lanza AbortError "push service error"
+ * como promesa no capturada (Chrome/FCM). Lo degradamos a warn para no ensuciar consola.
+ */
+function withPushServiceRejectionGuard(run) {
+  if (typeof window === "undefined") return run();
+  let warned = false;
+  const onRejection = (event) => {
+    const reason = event?.reason;
+    if (!isPushServiceFailure(reason)) return;
+    if (!warned) {
+      warned = true;
+      console.warn(
+        "[onesignal] Chrome/FCM rechazó el registro push (AbortError). "
+        + "La app sigue; usa «Activar notificaciones» o await __diagnosePush().",
+        reason,
+      );
+    }
+    try {
+      event.preventDefault();
+    } catch {
+      // ignore
+    }
+  };
+  window.addEventListener("unhandledrejection", onRejection);
+  return Promise.resolve()
+    .then(run)
+    .finally(() => {
+      window.removeEventListener("unhandledrejection", onRejection);
+    });
+}
+
 function rememberSubscribeError(code, detail) {
   lastSubscribeError = { code, detail: detail || null, at: Date.now() };
 }
@@ -573,14 +605,18 @@ export async function ensureOneSignal() {
         window.OneSignalDeferred.push(async (OneSignal) => {
           try {
             const safariWebId = await resolveSafariWebId();
-            await OneSignal.init({
-              appId,
-              ...(safariWebId ? { safari_web_id: safariWebId } : {}),
-              serviceWorkerPath: SW_PATH,
-              serviceWorkerParam: { scope: SW_SCOPE },
-              notifyButton: { enable: false },
-              allowLocalhostAsSecureOrigin: import.meta.env.DEV,
-              autoResubscribe: true,
+            // autoResubscribe OFF: el SDK dispara AbortError "push service error" en Chrome
+            // al re-suscribir en init. La restauración la hace restorePushSubscriptionIfNeeded.
+            await withPushServiceRejectionGuard(async () => {
+              await OneSignal.init({
+                appId,
+                ...(safariWebId ? { safari_web_id: safariWebId } : {}),
+                serviceWorkerPath: SW_PATH,
+                serviceWorkerParam: { scope: SW_SCOPE },
+                notifyButton: { enable: false },
+                allowLocalhostAsSecureOrigin: import.meta.env.DEV,
+                autoResubscribe: false,
+              });
             });
             sdkReady = OneSignal;
             try {

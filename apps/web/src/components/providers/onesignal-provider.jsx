@@ -6,6 +6,7 @@ import {
   diagnosePushSubscription,
   ensureOneSignal,
   resolveOneSignalAppId,
+  restorePushSubscriptionIfNeeded,
   setupPushNotificationHandlers,
   syncPushIdentityAndSubscription,
   unlinkOneSignalUser,
@@ -66,6 +67,12 @@ export function OneSignalProvider({ children }) {
 
         await setupPushNotificationHandlers({ onNavigate: navigate });
         if (cancelled) return;
+
+        // Restauración controlada (sin autoResubscribe del SDK, que rompe con AbortError en Chrome).
+        if (typeof Notification !== "undefined" && Notification.permission === "granted") {
+          await restorePushSubscriptionIfNeeded();
+          if (cancelled) return;
+        }
 
         const supabase = createClient();
         const { data: { user } } = await supabase.auth.getUser();
