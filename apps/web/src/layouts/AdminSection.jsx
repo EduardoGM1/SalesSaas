@@ -51,11 +51,19 @@ export function AdminSection() {
   }
   if (!session) return <Navigate to="/" replace />;
 
-  // Ninguna pestaña mapeada → mensaje explícito (nunca main vacío).
+  // Ninguna pestaña mapeada → mensaje explícito (barra sin tabs útiles).
   if (!hasNavAccess || !firstAllowed) {
     return (
       <>
-        <Topbar title={t("admin.panel.title")} subtitle={t("admin.panel.noAccessSub")} />
+        <Topbar
+          title={t("admin.panel.title")}
+          subtitle={t("admin.panel.noAccessSub")}
+          admin={{
+            permissions: [],
+            isSuperAdmin: false,
+            pathname,
+          }}
+        />
         <div className="admin-embedded-loading admin-panel-empty" role="status">
           <p className="card-heading" style={{ marginBottom: 8 }}>{t("admin.panel.noAccessTitle")}</p>
           <p className="card-sub" style={{ marginBottom: 0 }}>{t("admin.panel.noAccessBody")}</p>
@@ -64,22 +72,29 @@ export function AdminSection() {
     );
   }
 
-  // /admin sin dashboard:read (u otra ruta no autorizada) → primera tab permitida.
-  // Una sola fuente: session.permissions (misma que las tabs). Sin loop Navigate.
-  if (!pathAllowed) {
-    if (pathname === firstAllowed) {
-      // Defensa: no redirigir a sí mismo si el gate fallara de forma inconsistente.
-      return (
-        <>
-          <Topbar title={t("admin.panel.title")} subtitle={t("admin.panel.noAccessSub")} />
-          <div className="admin-embedded-loading admin-panel-empty" role="status">
-            <p className="card-heading" style={{ marginBottom: 8 }}>{t("admin.panel.noAccessTitle")}</p>
-            <p className="card-sub" style={{ marginBottom: 0 }}>{t("admin.panel.noAccessBody")}</p>
-          </div>
-        </>
-      );
-    }
+  // Entrada a /admin sin resumen → primera tab permitida (no dejar Resumen “fantasma”).
+  if (pathname === "/admin" && !pathAllowed) {
     return <Navigate to={firstAllowed} replace />;
+  }
+
+  // Acceso directo por URL a una sección sin permiso → mensaje (tabs visibles = solo las permitidas).
+  if (!pathAllowed) {
+    return (
+      <div className="admin-embedded">
+        <Topbar
+          admin={{
+            permissions,
+            isSuperAdmin: isSuper,
+            pathname,
+          }}
+        />
+        <div className="admin-main">
+          <div className="admin-page admin-empty" role="status">
+            {t("admin.panel.actionForbidden")}
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (

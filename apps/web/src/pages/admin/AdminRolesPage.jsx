@@ -48,6 +48,11 @@ function RoleEditor({ role, modules, onClose, onSaved }) {
           body: { nombre: role.es_sistema ? undefined : nombre, permission_keys },
         });
       }
+      try {
+        window.dispatchEvent(new Event("admin:permissions-changed"));
+      } catch {
+        // ignore
+      }
       onSaved();
     } catch (err) {
       setError(err instanceof Error ? err.message : t("admin.roles.error.save"));

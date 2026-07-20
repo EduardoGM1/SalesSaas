@@ -1,11 +1,22 @@
-import { hasAnyAdminAccess, hasPermission } from "@salesapp/shared/auth/permissions.js";
+import {
+  adminPermissionSetHas,
+  expandAdminPermissionSet,
+  hasAnyAdminAccess,
+  hasAnyAdminNavPermission,
+  isSuperAdmin,
+} from "@salesapp/shared/auth/permissions.js";
+import * as rolesService from "../services/roles-service.js";
 
+/**
+ * Auth admin alineada con /admin/me: rol + overrides (permission_keys),
+ * no solo profiles.admin_permissions (legacy).
+ */
 export async function requireApiAdmin(auth, perm) {
   if (!auth.ok) return auth;
 
   const { data: profile, error } = await auth.supabase
     .from("profiles")
-    .select("id, role, is_super_admin, admin_permissions")
+    .select("id, role, is_super_admin, admin_permissions, role_id")
     .eq("id", auth.userId)
     .single();
 
@@ -18,15 +29,47 @@ export async function requireApiAdmin(auth, perm) {
     role: profile.role,
     is_super_admin: profile.is_super_admin ?? false,
     admin_permissions: profile.admin_permissions ?? [],
+    role_id: profile.role_id ?? null,
   };
 
-  if (!hasAnyAdminAccess(adminProfile)) {
+  let permissionKeys = Array.isArray(adminProfile.admin_permissions)
+    ? [...adminProfile.admin_permissions]
+    : [];
+  try {
+    const ctx = await rolesService.loadUserPermissionContext(auth.supabase, auth.userId);
+    if (ctx?.permission_keys?.length) permissionKeys = ctx.permission_keys;
+  } catch {
+    // fallback legacy admin_permissions
+  }
+
+  if (permissionKeys.includes("support:read")) {
+    for (const k of ["ver_tickets_soporte", "responder_tickets_soporte"]) {
+      if (!permissionKeys.includes(k)) permissionKeys.push(k);
+    }
+  }
+
+  const superAdmin = isSuperAdmin(adminProfile);
+  if (
+    !superAdmin
+    && !hasAnyAdminAccess(adminProfile)
+    && !hasAnyAdminNavPermission(permissionKeys)
+  ) {
     return { ok: false, status: 403, message: "No autorizado." };
   }
 
-  if (!hasPermission(adminProfile, perm)) {
-    return { ok: false, status: 403, message: "No tienes permiso para esta acción." };
+  if (perm && !superAdmin) {
+    const set = expandAdminPermissionSet(permissionKeys);
+    if (!adminPermissionSetHas(set, perm)) {
+      return { ok: false, status: 403, message: "No tienes permiso para esta acción." };
+    }
   }
 
-  return { ok: true, supabase: auth.supabase, userId: auth.userId, profile: adminProfile };
+  return {
+    ok: true,
+    supabase: auth.supabase,
+    userId: auth.userId,
+    profile: adminProfile,
+    permissions: permissionKeys,
+    isSuperAdmin: superAdmin,
+  };
 }
