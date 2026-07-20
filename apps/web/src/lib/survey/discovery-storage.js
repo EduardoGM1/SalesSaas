@@ -1,17 +1,22 @@
 import {
   ALL_DISCOVERY_QUESTIONS,
+  emptyMembership,
   HAS_TS_QUESTION,
   MEMBERSHIP_TYPE_KEYS,
   PROGRESS_QUESTION_IDS,
   YES_NO_KEYS,
-  optionTitleKey,
 } from "@/lib/survey/discovery-questions.js";
 import { LEGACY_OPTION_TEXT_TO_KEY } from "@/lib/survey/legacy-option-map.js";
+import { isCustomOptionKey, resolveOptionDisplayLabel } from "@/lib/survey/option-labels.js";
 
 const QUESTION_BY_ID = new Map(ALL_DISCOVERY_QUESTIONS.map((q) => [q.id, q]));
 
+function emptyDiscovery() {
+  return { answers: {}, contexts: {}, hasTs: "", memberships: [emptyMembership()] };
+}
+
 export function parseDiscovery(raw) {
-  if (!raw) return { answers: {}, contexts: {}, hasTs: "", memberships: [] };
+  if (!raw) return emptyDiscovery();
   try {
     const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
     const base = {
@@ -22,7 +27,7 @@ export function parseDiscovery(raw) {
     };
     return normalizeDiscovery(base);
   } catch {
-    return { answers: {}, contexts: {}, hasTs: "", memberships: [] };
+    return emptyDiscovery();
   }
 }
 
@@ -65,10 +70,11 @@ export function normalizeSelectedKeys(questionId, selected) {
   for (const raw of selected) {
     const s = String(raw);
     let key = s;
-    if (!allowed.has(s)) {
+    if (!allowed.has(s) && !isCustomOptionKey(s)) {
       key = LEGACY_OPTION_TEXT_TO_KEY[`${questionId}::${s}`] || s;
     }
-    if (allowed.has(key) && !out.includes(key)) out.push(key);
+    // Banco canónico o custom del vendedor (Nivel B)
+    if ((allowed.has(key) || isCustomOptionKey(key)) && !out.includes(key)) out.push(key);
   }
   return out;
 }
@@ -114,13 +120,15 @@ export function normalizeDiscovery(disc) {
     answers,
     contexts: disc.contexts || {},
     hasTs,
-    memberships,
+    // Fila base preestablecida: siempre al menos una membresía editable.
+    memberships: memberships.length ? memberships : [emptyMembership()],
   };
 }
 
-export function joinSelectedTranslated(selected, questionId, t) {
+export function joinSelectedTranslated(selected, questionId, t, questionCtx = null) {
   if (!Array.isArray(selected) || !selected.length) return "";
+  const ctx = questionCtx || { optionLabels: {}, activeKeys: null };
   return selected
-    .map((key) => t(optionTitleKey(questionId, key)))
+    .map((key) => resolveOptionDisplayLabel(questionId, key, ctx, t))
     .join(" · ");
 }

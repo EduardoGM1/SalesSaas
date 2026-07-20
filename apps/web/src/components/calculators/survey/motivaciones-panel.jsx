@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { toggleChip } from "@/lib/survey/discovery-questions.js";
 import { ChipQuestion, StyleMicroGrid } from "./chip-question.jsx";
@@ -15,6 +16,7 @@ export function MotivacionesPanel({
   const { t } = useI18n();
   const answers = discovery.answers || {};
   const contexts = discovery.contexts || {};
+  const [openQuestionId, setOpenQuestionId] = useState(null);
 
   const setSelected = (id, next) => {
     onPatch({ answers: { ...answers, [id]: next } });
@@ -23,6 +25,25 @@ export function MotivacionesPanel({
   const setContext = (id, value) => {
     onPatch({ contexts: { ...contexts, [id]: value } });
   };
+
+  const toggleExpand = (id) => {
+    setOpenQuestionId((prev) => (prev === id ? null : id));
+  };
+
+  const renderChip = (q) => (
+    <ChipQuestion
+      key={q.id}
+      question={q}
+      selected={answers[q.id] || []}
+      context={contexts[q.id] || ""}
+      disabled={disabled}
+      accordion
+      expanded={openQuestionId === q.id}
+      onToggleExpand={toggleExpand}
+      onChangeSelected={(sel) => setSelected(q.id, sel)}
+      onChangeContext={(v) => setContext(q.id, v)}
+    />
+  );
 
   return (
     <div className="disc-panel">
@@ -44,17 +65,7 @@ export function MotivacionesPanel({
       </div>
 
       <div className="disc-questions">
-        {beforeQuestions.map((q) => (
-          <ChipQuestion
-            key={q.id}
-            question={q}
-            selected={answers[q.id] || []}
-            context={contexts[q.id] || ""}
-            disabled={disabled}
-            onChangeSelected={(sel) => setSelected(q.id, sel)}
-            onChangeContext={(v) => setContext(q.id, v)}
-          />
-        ))}
+        {beforeQuestions.map(renderChip)}
       </div>
 
       {styleQuestions.length > 0 && (
@@ -69,17 +80,7 @@ export function MotivacionesPanel({
       )}
 
       <div className="disc-questions">
-        {afterQuestions.map((q) => (
-          <ChipQuestion
-            key={q.id}
-            question={q}
-            selected={answers[q.id] || []}
-            context={contexts[q.id] || ""}
-            disabled={disabled}
-            onChangeSelected={(sel) => setSelected(q.id, sel)}
-            onChangeContext={(v) => setContext(q.id, v)}
-          />
-        ))}
+        {afterQuestions.map(renderChip)}
       </div>
     </div>
   );

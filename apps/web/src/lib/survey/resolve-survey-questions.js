@@ -4,9 +4,10 @@ import {
   questionTitleKey,
 } from "@/lib/survey/discovery-questions.js";
 import { normalizeOpcionesArray } from "@/lib/survey/discovery-storage.js";
+import { parseOpcionesOverride } from "@/lib/survey/option-labels.js";
 
 /**
- * Combina banco global + overrides de usuario.
+ * Combina banco global + overrides de usuario (activa/orden/texto/opciones).
  */
 export function mergeSurveyQuestions(bankRows, overrides = [], opts = {}) {
   const byPregunta = new Map(
@@ -14,10 +15,25 @@ export function mergeSurveyQuestions(bankRows, overrides = [], opts = {}) {
   );
   const merged = (bankRows || []).map((row) => {
     const ov = byPregunta.get(row.id);
-    const opciones = normalizeOpcionesArray(row.clave, row.opciones);
+    const opcionesBanco = normalizeOpcionesArray(row.clave, row.opciones);
+    let opciones = opcionesBanco;
+    let optionLabels = {};
+    if (Array.isArray(ov?.opciones_override)) {
+      const parsed = parseOpcionesOverride(ov.opciones_override, opcionesBanco);
+      opciones = parsed.optionKeys;
+      optionLabels = parsed.optionLabels;
+    }
+    const textoOverride =
+      ov?.texto_override != null && String(ov.texto_override).trim()
+        ? String(ov.texto_override).trim()
+        : null;
     return {
       ...row,
+      opciones_banco: opcionesBanco,
       opciones,
+      optionLabels,
+      texto_override: textoOverride,
+      opciones_override: ov?.opciones_override ?? null,
       activa: ov ? ov.activa !== false : true,
       orden: ov?.orden != null ? Number(ov.orden) : Number(row.orden) || 0,
       override: ov || null,
@@ -32,14 +48,17 @@ export function mergeSurveyQuestions(bankRows, overrides = [], opts = {}) {
   return merged.filter((r) => r.activa);
 }
 
-/** Forma usada por ChipQuestion (claves i18n + optionKeys). */
+/** Forma usada por ChipQuestion (claves i18n + optionKeys + overrides). */
 export function toChipQuestion(row, displayNumber) {
   return {
     id: row.clave,
     number: displayNumber ?? row.numero ?? undefined,
     titleKey: questionTitleKey(row.clave),
+    titleOverride: row.texto_override || null,
     max: row.max_seleccion ?? 1,
     optionKeys: Array.isArray(row.opciones) ? row.opciones : [],
+    optionLabels: row.optionLabels || {},
+    bankOptionKeys: Array.isArray(row.opciones_banco) ? row.opciones_banco : [],
     withContext: row.with_context !== false,
   };
 }
@@ -48,8 +67,11 @@ export function toStyleQuestion(row) {
   return {
     id: row.clave,
     labelKey: questionLabelKey(row.clave),
+    labelOverride: row.texto_override || null,
     max: row.max_seleccion ?? 1,
     optionKeys: Array.isArray(row.opciones) ? row.opciones : [],
+    optionLabels: row.optionLabels || {},
+    bankOptionKeys: Array.isArray(row.opciones_banco) ? row.opciones_banco : [],
   };
 }
 

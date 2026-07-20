@@ -165,6 +165,15 @@ export interface UserSettings {
   userName?: string;
   userInitials?: string;
   worksheetConfig?: Record<string, string>;
+  /** Defaults Money Box (restricciones) por cuenta — no por cliente. */
+  moneyBoxConfig?: {
+    minDownPct?: string;
+    maxDownPct?: string;
+    fc?: string;
+    ff?: string;
+    maxSale?: string;
+    roundStep?: string;
+  };
   tourTypes?: string[];
   notifications?: {
     messages?: boolean;

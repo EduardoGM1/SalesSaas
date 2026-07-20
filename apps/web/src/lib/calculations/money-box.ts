@@ -150,6 +150,7 @@ export type PlanMatrixRow = MoneyBoxTerm & {
   feasible: boolean;
   reason: string;
   origin: boolean;
+  best: boolean;
 };
 
 export type MoneyBoxProposal = {
@@ -192,9 +193,10 @@ export function reasonText({
 }): string {
   const reasons: string[] = [];
   if (!downPctOk) reasons.push("enganche fuera del rango");
-  if (!monthlyOk) reasons.push("supera la mensualidad");
+  // "supera la mensualidad" se omite a propósito: el rojo de la celda ya lo comunica.
+  void monthlyOk;
   if (!cashOk) reasons.push("requiere más efectivo hoy");
-  return reasons.length ? reasons.join(" · ") : "cumple restricciones";
+  return reasons.length ? reasons.join(" · ") : "";
 }
 
 export function buildPlanMatrix({
@@ -219,7 +221,7 @@ export function buildPlanMatrix({
     downPct >= config.minDownPct - 0.000001 && downPct <= config.maxDownPct + 0.000001;
   const totalTodayCents = downCents + config.fcCents;
 
-  return terms.map((term) => {
+  const rows = terms.map((term) => {
     const id = termId(term);
     const monthlyCents = mensualidadPara(saleCents, downCents, config.ffCents, term);
     const monthlyOk = monthlyCapCents <= 0 || monthlyCents <= monthlyCapCents;
@@ -231,8 +233,17 @@ export function buildPlanMatrix({
       feasible: downPctOk && monthlyOk && cashOk,
       reason: reasonText({ downPctOk, monthlyOk, cashOk }),
       origin: id === originPlanId,
+      best: false,
     };
   });
+  const feasible = rows.filter((r) => r.feasible);
+  if (feasible.length) {
+    const bestId = feasible.reduce((a, b) => (a.monthlyCents <= b.monthlyCents ? a : b)).id;
+    for (const row of rows) {
+      row.best = row.id === bestId;
+    }
+  }
+  return rows;
 }
 
 export function uniqueBySale(candidates: ProposalCandidate[]): ProposalCandidate[] {

@@ -21,6 +21,7 @@ export const PERMISSION_CATALOG = [
   { clave: "expedientes:ver_equipo", nombre_visible: "Ver expedientes del equipo", modulo: "expedientes", capa: "app" },
   // Herramientas
   { clave: "herramientas:survey", nombre_visible: "Usar Survey", modulo: "herramientas", capa: "app" },
+  { clave: "herramientas:survey_configurar_preguntas", nombre_visible: "Configurar preguntas del Survey", modulo: "herramientas", capa: "app" },
   { clave: "herramientas:vacaciones", nombre_visible: "Usar Proyección de Vacaciones", modulo: "herramientas", capa: "app" },
   { clave: "herramientas:worksheet", nombre_visible: "Usar Worksheet", modulo: "herramientas", capa: "app" },
   { clave: "herramientas:analysis", nombre_visible: "Usar Analysis", modulo: "herramientas", capa: "app" },
@@ -73,6 +74,7 @@ export const OVERRIDABLE_APP_FEATURES = [
   "sales:view_detail",
   "sales:history",
   "herramientas:survey",
+  "herramientas:survey_configurar_preguntas",
   "herramientas:vacaciones",
   "herramientas:worksheet",
   "herramientas:analysis",

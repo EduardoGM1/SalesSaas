@@ -212,20 +212,52 @@ export function SurveyPage({ clientId, shared }: SurveyPageProps) {
     }
   };
 
-  const handleSave = async () => {
-    if (readOnly) return;
+  const handleSave = async ({ openToolModal = true } = {}) => {
+    if (readOnly) return false;
     const errors: Record<string, string> = {};
     const name = data.svp_name1?.trim() || "";
     if (!name) errors.svp_name1 = t("tools.survey.validationRequired");
     else if (!isValidSingleName(name)) errors.svp_name1 = t("tools.survey.validationSingleName");
     setValidationErrors(errors);
-    if (Object.keys(errors).length) return;
+    if (Object.keys(errors).length) return false;
     await persistBucket({ ...data, stype: sType, futureType });
     if (isFileMode) await syncProspectFields(prospectPatchFromData(data));
     clearDirtyFields(dirtyKeysRef);
     hydratedRef.current = true;
-    if (!isFileMode) { setSaveToolOpen(true); return; }
+    // Modal “guardar en expediente” solo al finalizar (o Guardar en Resumen), no al continuar tabs.
+    if (!isFileMode && openToolModal) setSaveToolOpen(true);
+    return true;
   };
+
+  const TAB_FLOW_NEXT = {
+    motivaciones: "timeshare",
+    timeshare: "gastos",
+  };
+
+  const handleSaveFlow = async () => {
+    if (readOnly) return;
+    const advancing = Boolean(TAB_FLOW_NEXT[tab]);
+    const ok = await handleSave({ openToolModal: !advancing });
+    if (!ok) return;
+    const next = TAB_FLOW_NEXT[tab];
+    if (!next) return;
+    setTab(next);
+    requestAnimationFrame(() => {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      const panel = document.querySelector(".survey-calc-page .disc-panel, .survey-calc-page .tool-calc-card, .survey-calc-page fieldset");
+      panel?.scrollIntoView?.({ block: "start", behavior: "smooth" });
+    });
+  };
+
+  const saveFlowLabel = tab === "gastos"
+    ? t("survey.disc.saveFinish")
+    : (tab === "motivaciones" || tab === "timeshare")
+      ? t("survey.disc.saveContinue")
+      : t("common.save");
+
+  const saveFlowHandler = (tab === "motivaciones" || tab === "timeshare" || tab === "gastos")
+    ? handleSaveFlow
+    : handleSave;
 
   // Autoguardado con el mismo bucket survey (tras hidratar; sin validar nombre para no bloquear captura).
   useEffect(() => {
@@ -462,7 +494,9 @@ export function SurveyPage({ clientId, shared }: SurveyPageProps) {
         {!readOnly && (
           <div className="save-footer tool-save-footer">
             <span className={`save-confirm${saved ? " show" : ""}`}>{t("common.saved")}</span>
-            <button type="button" className="btn btn-primary" onClick={handleSave}>{t("common.save")}</button>
+            <button type="button" className="btn btn-primary" onClick={saveFlowHandler}>
+              {saveFlowLabel}
+            </button>
           </div>
         )}
       </div>

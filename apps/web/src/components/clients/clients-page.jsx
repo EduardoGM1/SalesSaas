@@ -56,8 +56,12 @@ function matchesQuery(row, q) {
   return hay.includes(q);
 }
 
+function clientListYmd(c) {
+  return c.tourDate || c.createdYmd || "";
+}
+
 export function ClientsPage() {
-  const { t, lang } = useI18n();
+  const { t, lang, months } = useI18n();
   const navigate = useNavigate();
   const hydrated = useAppStore((s) => s.hydrated);
   const { searchClients, removeClient } = useClientActions();
@@ -66,6 +70,7 @@ export function ClientsPage() {
   const [shareClient, setShareClient] = useState(null);
   const [pinned, setPinned] = useState([]);
   const canShare = isSupabaseConfigured();
+  const currentYear = new Date().getFullYear();
 
   useEffect(() => {
     if (!canShare || !hydrated) return;
@@ -153,67 +158,94 @@ export function ClientsPage() {
                 </tr>
               </thead>
               <tbody>
-                {allRows.map((c) => {
-                  const href = c.pinned ? c.href : `/clients/${c.id}`;
-                  // Misma fuente de verdad que el recuadro Ventas del Dashboard.
-                  const hasRecognizedSale = !c.pinned && isQuantifiableSaleClient(c);
-                  const nameClass = hasRecognizedSale
-                    ? "client-name-text client-name-text--sale"
-                    : "client-name-text";
-                  return (
-                    <tr
-                      key={c.pinned ? `pin-${c.shareId || c.id}` : c.id}
-                      className="client-table-row"
-                      onClick={(e) => handleRowClick(c, e)}
-                    >
-                      <td>
-                        <Link
-                          to={href}
-                          className="client-name-link client-name-link--desktop"
-                        >
-                          <span className={nameClass}>
-                            {clientDisplayName(c)}
-                            {c.pinned && (
-                              <span className="client-status-badge">{t("clients.pinnedBadge")}</span>
+                {(() => {
+                  const nodes = [];
+                  let prevYm = "";
+                  let prevYear = null;
+                  for (const c of allRows) {
+                    const ymd = clientListYmd(c);
+                    const ym = ymd.length >= 7 ? ymd.slice(0, 7) : "";
+                    if (ym && ym !== prevYm) {
+                      const year = Number(ym.slice(0, 4));
+                      const monthIdx = Number(ym.slice(5, 7)) - 1;
+                      const monthLabel = months[monthIdx] || ym;
+                      if (prevYear == null ? year !== currentYear : year !== prevYear) {
+                        nodes.push(
+                          <tr key={`sep-y-${ym}`} className="client-period-sep client-period-sep--year" aria-hidden="true">
+                            <td colSpan={4}>{year}</td>
+                          </tr>,
+                        );
+                      }
+                      nodes.push(
+                        <tr key={`sep-m-${ym}`} className="client-period-sep" aria-hidden="true">
+                          <td colSpan={4}>{monthLabel}</td>
+                        </tr>,
+                      );
+                      prevYm = ym;
+                      prevYear = year;
+                    }
+                    const href = c.pinned ? c.href : `/clients/${c.id}`;
+                    // Misma fuente de verdad que el recuadro Ventas del Dashboard (global, no por mes).
+                    const hasRecognizedSale = !c.pinned && isQuantifiableSaleClient(c);
+                    const nameClass = hasRecognizedSale
+                      ? "client-name-text client-name-text--sale"
+                      : "client-name-text";
+                    nodes.push(
+                      <tr
+                        key={c.pinned ? `pin-${c.shareId || c.id}` : c.id}
+                        className="client-table-row"
+                        onClick={(e) => handleRowClick(c, e)}
+                      >
+                        <td>
+                          <Link
+                            to={href}
+                            className="client-name-link client-name-link--desktop"
+                          >
+                            <span className={nameClass}>
+                              {clientDisplayName(c)}
+                              {c.pinned && (
+                                <span className="client-status-badge">{t("clients.pinnedBadge")}</span>
+                              )}
+                            </span>
+                            <span className="client-code">{c.prospectCode}</span>
+                          </Link>
+                          <div className="client-name-link client-name-link--mobile">
+                            <span className={nameClass}>
+                              {clientDisplayName(c)}
+                              {c.pinned && (
+                                <span className="client-status-badge">{t("clients.pinnedBadge")}</span>
+                              )}
+                            </span>
+                            <span className="client-code">{c.prospectCode}</span>
+                          </div>
+                        </td>
+                        <td>{c.tourDate ? shortDate(c.tourDate, lang) : c.createdYmd ? shortDate(c.createdYmd, lang) : "—"}</td>
+                        <td className="client-td-calif">{formatQualification(c.tipo_tour)}</td>
+                        <td>
+                          <div className="client-actions" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
+                            <Link to={href} className="icon-btn client-action-view" title={t("clients.viewFile")}><Eye size={14} /></Link>
+                            {!c.pinned && canShare && (
+                              <button
+                                type="button"
+                                className="icon-btn"
+                                title={t("clients.share")}
+                                onClick={() => setShareClient(c)}
+                              >
+                                <Share2 size={14} />
+                              </button>
                             )}
-                          </span>
-                          <span className="client-code">{c.prospectCode}</span>
-                        </Link>
-                        <div className="client-name-link client-name-link--mobile">
-                          <span className={nameClass}>
-                            {clientDisplayName(c)}
-                            {c.pinned && (
-                              <span className="client-status-badge">{t("clients.pinnedBadge")}</span>
+                            {!c.pinned && (
+                              <button type="button" className="icon-btn danger" title={t("clients.delete")} onClick={async () => {
+                                await removeClient(c.id, clientDisplayName(c));
+                              }}><Trash2 size={14} color="#dc2626" /></button>
                             )}
-                          </span>
-                          <span className="client-code">{c.prospectCode}</span>
-                        </div>
-                      </td>
-                      <td>{c.tourDate ? shortDate(c.tourDate, lang) : c.createdYmd ? shortDate(c.createdYmd, lang) : "—"}</td>
-                      <td className="client-td-calif">{formatQualification(c.tipo_tour)}</td>
-                      <td>
-                        <div className="client-actions" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
-                          <Link to={href} className="icon-btn client-action-view" title={t("clients.viewFile")}><Eye size={14} /></Link>
-                          {!c.pinned && canShare && (
-                            <button
-                              type="button"
-                              className="icon-btn"
-                              title={t("clients.share")}
-                              onClick={() => setShareClient(c)}
-                            >
-                              <Share2 size={14} />
-                            </button>
-                          )}
-                          {!c.pinned && (
-                            <button type="button" className="icon-btn danger" title={t("clients.delete")} onClick={async () => {
-                              await removeClient(c.id, clientDisplayName(c));
-                            }}><Trash2 size={14} color="#dc2626" /></button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
+                          </div>
+                        </td>
+                      </tr>,
+                    );
+                  }
+                  return nodes;
+                })()}
               </tbody>
             </table>
           </div>

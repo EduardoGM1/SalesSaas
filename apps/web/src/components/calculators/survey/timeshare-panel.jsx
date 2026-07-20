@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { ChipQuestion } from "./chip-question.jsx";
 import { MembershipTable } from "./membership-table.jsx";
@@ -14,6 +15,7 @@ export function TimesharePanel({
   const { t } = useI18n();
   const answers = discovery.answers || {};
   const contexts = discovery.contexts || {};
+  const [openQuestionId, setOpenQuestionId] = useState(null);
 
   const setSelected = (id, next) => {
     onPatch({ answers: { ...answers, [id]: next } });
@@ -21,6 +23,10 @@ export function TimesharePanel({
 
   const setContext = (id, value) => {
     onPatch({ contexts: { ...contexts, [id]: value } });
+  };
+
+  const toggleExpand = (id) => {
+    setOpenQuestionId((prev) => (prev === id ? null : id));
   };
 
   return (
@@ -50,6 +56,9 @@ export function TimesharePanel({
             selected={answers[q.id] || []}
             context={contexts[q.id] || ""}
             disabled={disabled}
+            accordion
+            expanded={openQuestionId === q.id}
+            onToggleExpand={toggleExpand}
             onChangeSelected={(sel) => setSelected(q.id, sel)}
             onChangeContext={(v) => setContext(q.id, v)}
           />
@@ -70,6 +79,9 @@ export function TimesharePanel({
             selected={discovery.hasTs ? [discovery.hasTs] : []}
             disabled={disabled}
             showNumber={false}
+            accordion
+            expanded={openQuestionId === hasTsQuestion.id}
+            onToggleExpand={toggleExpand}
             onChangeSelected={(sel) => onPatch({ hasTs: sel[0] || "" })}
           />
         </div>

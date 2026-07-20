@@ -5,6 +5,7 @@ export const VENDOR_FEATURE_PERMISSIONS = [
   { key: "sales:view_detail", labelKey: "admin.perm.salesViewDetail" },
   { key: "sales:history", labelKey: "admin.perm.salesHistory" },
   { key: "herramientas:survey", labelKey: "admin.perm.toolSurvey" },
+  { key: "herramientas:survey_configurar_preguntas", labelKey: "admin.perm.toolSurveyConfigQuestions" },
   { key: "herramientas:vacaciones", labelKey: "admin.perm.toolVacaciones" },
   { key: "herramientas:worksheet", labelKey: "admin.perm.toolWorksheet" },
   { key: "herramientas:analysis", labelKey: "admin.perm.toolAnalysis" },

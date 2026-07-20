@@ -29,7 +29,7 @@ export async function fetchSurveyUserOverrides(userId) {
     const sb = createClient();
     const { data, error } = await sb
       .from("survey_preguntas_usuario")
-      .select("pregunta_id, activa, orden")
+      .select("pregunta_id, activa, orden, texto_override, opciones_override")
       .eq("usuario_id", userId);
     if (error || !data) return [];
     return data;
@@ -51,8 +51,8 @@ export async function loadMergedSurveyQuestions(userId, { includeInactive = fals
 }
 
 /**
- * Guarda overrides vía API (valida sección + ownership + órdenes únicos en backend).
- * items: [{ pregunta_id, activa, orden }]
+ * Guarda overrides vía API.
+ * items: [{ pregunta_id, activa, orden, texto_override, opciones_override }]
  */
 export async function saveSurveyUserOverrides(userId, items, seccion) {
   if (!userId || !isSupabaseConfigured()) {

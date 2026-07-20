@@ -41,3 +41,29 @@ export async function saveProfileRemote({ fullName, phone, avatarUrl, settings }
   toast.success(translate("toast.settings.saved"));
   return { ok: true, settings: nextSettings };
 }
+
+/** Persiste un parche de settings sin tocar fullName/phone/avatar. */
+export async function saveSettingsPatchRemote(settingsPatch) {
+  const db = useDbStore.getState().db;
+  const nextSettings = buildSettingsPayload(
+    { ...(db.settings || {}), ...(settingsPatch || {}) },
+    db.settings?.userName,
+  );
+  useDbStore.getState().replaceDb({ ...db, settings: nextSettings });
+
+  if (!isSupabaseConfigured()) {
+    toast.success(translate("toast.settings.savedLocal"));
+    return { ok: true, localOnly: true, settings: nextSettings };
+  }
+
+  const res = await fetch("/api/v1/profile", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ settings: nextSettings }),
+  });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(body.error ?? "No se pudo guardar la configuración.");
+  toast.success(translate("toast.settings.saved"));
+  return { ok: true, settings: nextSettings };
+}

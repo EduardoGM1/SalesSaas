@@ -98,6 +98,7 @@ export function SettingsPage() {
       if (prev === incoming) return prev;
       if (livePreviewSettingsEqual(prev, incoming)
         && prev.worksheetConfig === incoming.worksheetConfig
+        && prev.moneyBoxConfig === incoming.moneyBoxConfig
         && prev.tourTypes === incoming.tourTypes
         && prev.notifications === incoming.notifications) {
         return prev;

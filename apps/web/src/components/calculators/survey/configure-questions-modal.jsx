@@ -18,13 +18,21 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { SalesModal } from "@/components/ui/sales-modal";
 import { useI18n } from "@/hooks/use-i18n.js";
-import { questionLabelKey, questionTitleKey } from "@/lib/survey/discovery-questions.js";
+import {
+  optionTitleKey,
+  questionLabelKey,
+  questionTitleKey,
+} from "@/lib/survey/discovery-questions.js";
+import {
+  isCustomOptionKey,
+  newCustomOptionKey,
+  opcionesOverrideOrNull,
+} from "@/lib/survey/option-labels.js";
 import { saveSurveyUserOverrides } from "@/lib/survey/survey-questions-api.js";
 
 const SECTION_IDS = ["motivaciones", "timeshare"];
 const MOVE_FLASH_MS = 900;
 
-/** Escapa para selectores de atributo. No usar CSS.escape: choca con el CSS de @dnd-kit/utilities. */
 function escapeAttrSelector(value) {
   const api = typeof globalThis !== "undefined" ? globalThis.CSS : null;
   if (api && typeof api.escape === "function") return api.escape(String(value));
@@ -48,7 +56,6 @@ function useDesktopDnD() {
   return enabled;
 }
 
-/** Números de Survey real: solo activas, en orden visual actual. */
 export function computeDisplayNumbers(rows) {
   let n = 0;
   return (rows || []).map((r) => {
@@ -58,7 +65,6 @@ export function computeDisplayNumbers(rows) {
   });
 }
 
-/** Orden provisional durante el drag (sin mutar el estado persistible). */
 export function projectRowsOrder(rows, activeId, overId) {
   if (!activeId || overId == null || activeId === overId) return rows || [];
   const list = rows || [];
@@ -76,8 +82,120 @@ function numbersByClave(rows) {
 }
 
 function questionLabel(row, t) {
+  if (row.draftTitle?.trim()) return row.draftTitle.trim();
   if (row.bloque === "style") return t(questionLabelKey(row.clave));
   return t(questionTitleKey(row.clave));
+}
+
+function bankKeysOf(row) {
+  return Array.isArray(row.opciones_banco) && row.opciones_banco.length
+    ? row.opciones_banco
+    : (Array.isArray(row.opciones) ? row.opciones : []);
+}
+
+function buildDraftOptions(row) {
+  const bank = bankKeysOf(row);
+  if (Array.isArray(row.opciones_override)) {
+    return row.opciones_override
+      .map((item) => ({
+        key: String(item?.key || item || ""),
+        label: item?.label != null ? String(item.label) : "",
+      }))
+      .filter((o) => o.key);
+  }
+  return bank.map((key) => ({ key, label: "" }));
+}
+
+function hydrateRow(row) {
+  return {
+    ...row,
+    draftTitle: row.texto_override || "",
+    draftOptions: buildDraftOptions(row),
+    expanded: false,
+  };
+}
+
+function QuestionEditor({ row, t, onChangeTitle, onChangeOption, onMoveOption, onRemoveOption, onAddOption, onRestore }) {
+  const bank = bankKeysOf(row);
+  return (
+    <div className="disc-config-editor">
+      <label className="disc-config-editor-field">
+        <span className="flabel">{t("survey.disc.config.editTitle")}</span>
+        <input
+          type="text"
+          maxLength={200}
+          placeholder={
+            row.bloque === "style"
+              ? t(questionLabelKey(row.clave))
+              : t(questionTitleKey(row.clave))
+          }
+          value={row.draftTitle || ""}
+          onChange={(e) => onChangeTitle(e.target.value)}
+        />
+      </label>
+
+      <div className="flabel" style={{ marginTop: 10 }}>{t("survey.disc.config.editOptions")}</div>
+      <div className="disc-config-options">
+        {(row.draftOptions || []).map((opt, oi) => (
+          <div key={opt.key} className="disc-config-option-row">
+            <input
+              type="text"
+              maxLength={120}
+              placeholder={
+                isCustomOptionKey(opt.key)
+                  ? t("survey.disc.config.customPlaceholder")
+                  : t(optionTitleKey(row.clave, opt.key))
+              }
+              value={opt.label || ""}
+              onChange={(e) => onChangeOption(oi, e.target.value)}
+            />
+            <div className="disc-config-option-actions">
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                disabled={oi === 0}
+                onClick={() => onMoveOption(oi, -1)}
+                aria-label={t("survey.disc.config.moveUp")}
+              >
+                ↑
+              </button>
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                disabled={oi >= (row.draftOptions?.length || 0) - 1}
+                onClick={() => onMoveOption(oi, 1)}
+                aria-label={t("survey.disc.config.moveDown")}
+              >
+                ↓
+              </button>
+              <button
+                type="button"
+                className="btn btn-danger btn-sm"
+                onClick={() => onRemoveOption(oi)}
+                aria-label={t("survey.disc.config.removeOption")}
+                title={t("survey.disc.config.removeOption")}
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="disc-config-editor-actions">
+        <button type="button" className="btn btn-ghost btn-sm" onClick={onAddOption}>
+          {t("survey.disc.config.addOption")}
+        </button>
+        <button type="button" className="btn btn-ghost btn-sm" onClick={onRestore}>
+          {t("survey.disc.config.restoreBank")}
+        </button>
+        <span className="card-sub" style={{ marginBottom: 0 }}>
+          {t("survey.disc.config.maxSelectHint", { n: row.max_seleccion ?? 1 })}
+          {bank.length ? ` · ${t("survey.disc.config.bankCount", { n: bank.length })}` : ""}
+        </span>
+      </div>
+    </div>
+  );
 }
 
 function QuestionRow({
@@ -94,11 +212,14 @@ function QuestionRow({
   numberLive = false,
   isJustMoved = false,
   moveFlashToken = 0,
+  expanded,
+  onToggleExpand,
   onToggle,
   onMove,
   isFirst,
   isLast,
   t,
+  editorProps,
 }) {
   const active = row.activa !== false;
   const label = questionLabel(row, t);
@@ -109,7 +230,6 @@ function QuestionRow({
     setNodeRef?.(node);
   };
 
-  // Reinicia la animación en movimientos consecutivos de la misma fila.
   useLayoutEffect(() => {
     if (!isJustMoved || !localRef.current) return;
     const el = localRef.current;
@@ -119,70 +239,84 @@ function QuestionRow({
   }, [isJustMoved, moveFlashToken]);
 
   return (
-    <div
-      ref={setRefs}
-      data-disc-clave={row.clave}
-      style={style}
-      className={[
-        "disc-config-row",
-        !active ? "off" : "",
-        isDragging ? "disc-config-row--dragging" : "",
-        isDropTarget ? "disc-config-row--drop-target" : "",
-        insertEdge === "before" ? "disc-config-row--insert-before" : "",
-        insertEdge === "after" ? "disc-config-row--insert-after" : "",
-        isJustMoved ? "disc-config-row--just-moved" : "",
-      ].filter(Boolean).join(" ")}
-    >
-      {showGrip && (
-        <button
-          type="button"
-          className="disc-config-grip"
-          aria-label={`${t("survey.disc.config.drag")}: ${label}`}
-          {...(dragHandleProps || {})}
-        >
-          ⠿
-        </button>
-      )}
-
-      <span
+    <div className="disc-config-block" data-disc-clave={row.clave}>
+      <div
+        ref={setRefs}
+        style={style}
         className={[
-          "disc-config-num",
-          !active ? "disc-config-num--off" : "",
-          numberLive ? "disc-config-num--live" : "",
+          "disc-config-row",
+          !active ? "off" : "",
+          isDragging ? "disc-config-row--dragging" : "",
+          isDropTarget ? "disc-config-row--drop-target" : "",
+          insertEdge === "before" ? "disc-config-row--insert-before" : "",
+          insertEdge === "after" ? "disc-config-row--insert-after" : "",
+          isJustMoved ? "disc-config-row--just-moved" : "",
+          expanded ? "disc-config-row--expanded" : "",
         ].filter(Boolean).join(" ")}
       >
-        {displayNumber != null ? `${displayNumber}.` : "—"}
-      </span>
+        {showGrip && (
+          <button
+            type="button"
+            className="disc-config-grip"
+            aria-label={`${t("survey.disc.config.drag")}: ${label}`}
+            {...(dragHandleProps || {})}
+          >
+            ⠿
+          </button>
+        )}
 
-      <label className="disc-config-toggle">
-        <input
-          type="checkbox"
-          checked={active}
-          onChange={() => onToggle(row.clave)}
-        />
-        <span className="flabel">{label}</span>
-      </label>
+        <span
+          className={[
+            "disc-config-num",
+            !active ? "disc-config-num--off" : "",
+            numberLive ? "disc-config-num--live" : "",
+          ].filter(Boolean).join(" ")}
+        >
+          {displayNumber != null ? `${displayNumber}.` : "—"}
+        </span>
 
-      <div className="disc-config-order">
+        <label className="disc-config-toggle">
+          <input
+            type="checkbox"
+            checked={active}
+            onChange={() => onToggle(row.clave)}
+          />
+          <span className="flabel">{label}</span>
+        </label>
+
         <button
           type="button"
-          className="btn btn-ghost btn-sm"
-          disabled={isFirst}
-          onClick={() => onMove(index, -1)}
-          aria-label={`${t("survey.disc.config.moveUp")}: ${label}`}
+          className="btn btn-ghost btn-sm disc-config-expand"
+          onClick={onToggleExpand}
+          aria-expanded={expanded}
+          aria-label={t("survey.disc.config.editQuestion")}
+          title={t("survey.disc.config.editQuestion")}
         >
-          ↑
+          {expanded ? "▾" : "✎"}
         </button>
-        <button
-          type="button"
-          className="btn btn-ghost btn-sm"
-          disabled={isLast}
-          onClick={() => onMove(index, 1)}
-          aria-label={`${t("survey.disc.config.moveDown")}: ${label}`}
-        >
-          ↓
-        </button>
+
+        <div className="disc-config-order">
+          <button
+            type="button"
+            className="btn btn-ghost btn-sm"
+            disabled={isFirst}
+            onClick={() => onMove(index, -1)}
+            aria-label={`${t("survey.disc.config.moveUp")}: ${label}`}
+          >
+            ↑
+          </button>
+          <button
+            type="button"
+            className="btn btn-ghost btn-sm"
+            disabled={isLast}
+            onClick={() => onMove(index, 1)}
+            aria-label={`${t("survey.disc.config.moveDown")}: ${label}`}
+          >
+            ↓
+          </button>
+        </div>
       </div>
+      {expanded && <QuestionEditor row={row} t={t} {...editorProps} />}
     </div>
   );
 }
@@ -226,7 +360,7 @@ function RowPreview({ row, displayNumber, t }) {
 }
 
 /**
- * Nivel A: activar/desactivar y reordenar (flechas + drag desktop).
+ * Nivel A+B: activar/reordenar + editar título y opciones (override por cuenta).
  */
 export function ConfigureQuestionsModal({
   open,
@@ -290,7 +424,7 @@ export function ConfigureQuestionsModal({
     if (!open) return;
     const list = (mergedAll || [])
       .filter((r) => r.seccion === section)
-      .map((r) => ({ ...r }));
+      .map((r) => hydrateRow({ ...r }));
     list.sort((a, b) => a.orden - b.orden || String(a.clave).localeCompare(String(b.clave)));
     setRows(list);
     clearMoveFlash();
@@ -342,6 +476,10 @@ export function ConfigureQuestionsModal({
   const clearDragState = () => {
     setActiveId(null);
     setOverId(null);
+  };
+
+  const patchRow = (clave, patch) => {
+    setRows((prev) => prev.map((r) => (r.clave === clave ? { ...r, ...patch } : r)));
   };
 
   const move = (index, dir) => {
@@ -399,14 +537,34 @@ export function ConfigureQuestionsModal({
       setError(t("survey.disc.config.needLogin"));
       return;
     }
+    for (const r of rows) {
+      for (const opt of r.draftOptions || []) {
+        if (isCustomOptionKey(opt.key) && !String(opt.label || "").trim()) {
+          setError(t("survey.disc.config.customRequired"));
+          patchRow(r.clave, { expanded: true });
+          return;
+        }
+      }
+      if (!(r.draftOptions || []).length) {
+        setError(t("survey.disc.config.optionsRequired"));
+        patchRow(r.clave, { expanded: true });
+        return;
+      }
+    }
+
     setSaving(true);
     setError("");
     try {
-      const payload = rows.map((r, i) => ({
-        pregunta_id: r.id,
-        activa: r.activa !== false,
-        orden: (i + 1) * 10,
-      }));
+      const payload = rows.map((r, i) => {
+        const title = String(r.draftTitle || "").trim();
+        return {
+          pregunta_id: r.id,
+          activa: r.activa !== false,
+          orden: (i + 1) * 10,
+          texto_override: title || null,
+          opciones_override: opcionesOverrideOrNull(r.draftOptions, bankKeysOf(r)),
+        };
+      });
       const persistable = payload.filter((p) => p.pregunta_id && !String(p.pregunta_id).startsWith("fallback-"));
       if (!persistable.length) {
         setError(t("survey.disc.config.bankMissing"));
@@ -422,6 +580,39 @@ export function ConfigureQuestionsModal({
     }
   };
 
+  const editorPropsFor = (row) => ({
+    onChangeTitle: (value) => patchRow(row.clave, { draftTitle: value }),
+    onChangeOption: (oi, value) => {
+      const next = [...(row.draftOptions || [])];
+      next[oi] = { ...next[oi], label: value };
+      patchRow(row.clave, { draftOptions: next });
+    },
+    onMoveOption: (oi, dir) => {
+      const j = oi + dir;
+      const cur = row.draftOptions || [];
+      if (j < 0 || j >= cur.length) return;
+      patchRow(row.clave, { draftOptions: arrayMove(cur, oi, j) });
+    },
+    onRemoveOption: (oi) => {
+      const cur = row.draftOptions || [];
+      if (cur.length <= 1) return;
+      patchRow(row.clave, { draftOptions: cur.filter((_, i) => i !== oi) });
+    },
+    onAddOption: () => {
+      const cur = row.draftOptions || [];
+      if (cur.length >= 30) return;
+      patchRow(row.clave, {
+        draftOptions: [...cur, { key: newCustomOptionKey(), label: "" }],
+      });
+    },
+    onRestore: () => {
+      patchRow(row.clave, {
+        draftTitle: "",
+        draftOptions: bankKeysOf(row).map((key) => ({ key, label: "" })),
+      });
+    },
+  });
+
   const rowProps = (row, index) => {
     let insertEdge = null;
     if (isDraggingList && overId === row.clave && activeId !== row.clave && activeIndex >= 0 && overIndex >= 0) {
@@ -436,11 +627,19 @@ export function ConfigureQuestionsModal({
       numberLive: isDraggingList,
       isJustMoved: moveFlash.clave === row.clave,
       moveFlashToken: moveFlash.token,
+      expanded: !!row.expanded,
+      onToggleExpand: () => {
+        setRows((prev) => prev.map((r) => ({
+          ...r,
+          expanded: r.clave === row.clave ? !r.expanded : false,
+        })));
+      },
       onToggle: toggle,
       onMove: move,
       isFirst: index === 0,
       isLast: index === rows.length - 1,
       t,
+      editorProps: editorPropsFor(row),
     };
   };
 
@@ -450,7 +649,7 @@ export function ConfigureQuestionsModal({
       onOpenChange={onOpenChange}
       title={title}
       sub={t("survey.disc.config.sub")}
-      maxWidth={640}
+      maxWidth={720}
     >
       <div className="seg" style={{ marginBottom: 14, width: "100%" }}>
         {SECTION_IDS.map((id) => (

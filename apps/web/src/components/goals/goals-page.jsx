@@ -43,13 +43,13 @@ export function GoalsPage() {
     [calYear, calMonth, data, goal, clients],
   );
 
-  /** Fuente única: Resumen de tipo tours + recuadros Tours/Ventas de Datos de producción. */
+  /** Fuente única: Tours/Ventas del mes seleccionado (misma consulta web/móvil). */
   const { summary: tourSummary, tours: productionTours, sales: productionSales } = useMemo(
-    () => productionTourSaleCounts(clients, tourTypes),
-    [clients, tourTypes],
+    () => productionTourSaleCounts(clients, tourTypes, calYear, calMonth),
+    [clients, tourTypes, calYear, calMonth],
   );
 
-  /** Volumen del mes (agenda/ventas); Tours/Ventas acumulados vienen de expedientes cuantificables. */
+  /** Volumen del mes (agenda/ventas por sale.date); Tours/Ventas del mismo periodo. */
   const volumeTotals = weeks.reduce((a, w) => ({
     obj: a.obj + (w.obj || 0),
     real: a.real + (w.real || 0),

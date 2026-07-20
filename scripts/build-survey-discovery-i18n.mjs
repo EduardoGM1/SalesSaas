@@ -526,6 +526,24 @@ function buildCatalog() {
     "survey.disc.config.cancel": { es: "Cancelar", en: "Cancel" },
     "survey.disc.config.save": { es: "Guardar", en: "Save" },
     "survey.disc.config.saving": { es: "Guardando…", en: "Saving…" },
+    "survey.disc.config.editQuestion": { es: "Editar pregunta y opciones", en: "Edit question and options" },
+    "survey.disc.config.editTitle": { es: "Texto de la pregunta", en: "Question text" },
+    "survey.disc.config.editOptions": { es: "Opciones de respuesta", en: "Answer options" },
+    "survey.disc.config.addOption": { es: "+ Agregar opción", en: "+ Add option" },
+    "survey.disc.config.removeOption": { es: "Eliminar opción", en: "Remove option" },
+    "survey.disc.config.restoreBank": { es: "Restaurar banco", en: "Restore bank" },
+    "survey.disc.config.customPlaceholder": { es: "Texto de la nueva opción", en: "New option text" },
+    "survey.disc.config.customRequired": {
+      es: "Todas las opciones nuevas necesitan un texto.",
+      en: "Every new option needs a label.",
+    },
+    "survey.disc.config.optionsRequired": {
+      es: "Cada pregunta debe tener al menos una opción.",
+      en: "Each question must have at least one option.",
+    },
+    "survey.disc.config.maxSelectHint": { es: "Selecciona hasta {n} (sin cambio)", en: "Select up to {n} (unchanged)" },
+    "survey.disc.config.bankCount": { es: "{n} en el banco", en: "{n} in bank" },
+    "survey.disc.optionDeleted": { es: "Opción eliminada", en: "Deleted option" },
   };
   for (const [k, v] of Object.entries(chrome)) {
     es[k] = v.es;

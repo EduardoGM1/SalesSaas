@@ -4,14 +4,19 @@ import { emptyMembership, MEMBERSHIP_TYPE_KEYS, YES_NO_KEYS } from "@/lib/survey
 /** Tabla dinámica de membresías — labels i18n; valores yes/no/type por clave. */
 export function MembershipTable({ rows = [], disabled = false, onChange }) {
   const { t } = useI18n();
+  const displayRows = rows.length ? rows : [emptyMembership()];
   const setRows = (next) => onChange?.(next);
 
   const updateRow = (id, key, value) => {
-    setRows(rows.map((r) => (r.id === id ? { ...r, [key]: value } : r)));
+    setRows(displayRows.map((r) => (r.id === id ? { ...r, [key]: value } : r)));
   };
 
-  const addRow = () => setRows([...rows, emptyMembership()]);
-  const removeRow = (id) => setRows(rows.filter((r) => r.id !== id));
+  const addRow = () => setRows([...displayRows, emptyMembership()]);
+  const removeRow = (id) => {
+    const next = displayRows.filter((r) => r.id !== id);
+    // Conservar siempre la fila base preestablecida.
+    setRows(next.length ? next : [emptyMembership()]);
+  };
 
   return (
     <div className="disc-membership">
@@ -33,16 +38,7 @@ export function MembershipTable({ rows = [], disabled = false, onChange }) {
             </tr>
           </thead>
           <tbody>
-            {rows.length === 0 && (
-              <tr>
-                <td colSpan={11}>
-                  <span className="card-sub" style={{ marginBottom: 0 }}>
-                    {t("survey.disc.membership.empty")}
-                  </span>
-                </td>
-              </tr>
-            )}
-            {rows.map((row, idx) => (
+            {displayRows.map((row, idx) => (
               <tr key={row.id}>
                 <td className="nc">{idx + 1}</td>
                 <td>

@@ -3330,6 +3330,24 @@ body,
   flex-shrink: 0;
 }
 
+.client-period-sep td {
+  background: var(--navy, #0f2044) !important;
+  color: #fff !important;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: capitalize;
+  padding: 8px 12px !important;
+  border-bottom: none !important;
+}
+.client-period-sep--year td {
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  text-transform: none;
+}
+.client-table tbody tr.client-period-sep:hover td {
+  background: var(--navy, #0f2044) !important;
+}
 .client-table-card {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
@@ -6536,28 +6554,32 @@ body,
   grid-template-columns: 1fr 1fr;
   gap: 14px 16px;
 }
-/* Restricciones: label izq. + controles alineados; columna de control flexible (sin width fijo frágil). */
+/* Restricciones: 2 cols campos (label+input+unidad inline) + columna plazos a la derecha. */
+.money-box-restrictions-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(12rem, 0.9fr);
+  gap: 16px 24px;
+  align-items: start;
+}
 .money-box-restrictions-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 18px;
+  min-width: 0;
 }
 .money-box-restrictions-grid > .money-box-field {
   display: grid;
-  grid-template-columns: minmax(10rem, 15.5rem) minmax(12.5rem, 18rem);
-  column-gap: 16px;
+  grid-template-columns: minmax(7.5rem, 1fr) minmax(7rem, 1.1fr);
+  column-gap: 10px;
   align-items: center;
-  justify-content: start;
-  gap: 0 16px;
-  padding: 10px 0;
-  border-top: 1px solid var(--border);
-}
-.money-box-restrictions-grid > .money-box-field:first-child {
-  border-top: none;
-  padding-top: 0;
+  min-width: 0;
+  padding: 0;
+  border: 0;
 }
 .money-box-restrictions-grid > .money-box-field .flabel {
   text-align: left;
+  margin: 0;
+  line-height: 1.25;
 }
 .money-box-restrictions-grid > .money-box-field .mfield,
 .money-box-restrictions-grid > .money-box-field .frow-inline,
@@ -6578,15 +6600,58 @@ body,
   width: 100%;
 }
 .money-box-terms-block {
-  margin-top: 12px;
-  padding-top: 12px;
-  border-top: 1px solid var(--border);
+  margin: 0;
+  padding: 0 0 0 16px;
+  border: 0;
+  border-left: 1px solid var(--border);
+  min-width: 0;
 }
 .money-box-terms-block .card-heading {
   margin-bottom: 4px;
 }
 .money-box-terms-sub {
   margin-bottom: 8px !important;
+}
+.money-box-restrictions-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+.money-box-tabs {
+  display: block;
+  margin-top: 16px;
+}
+.money-box-refresh-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  width: 100%;
+  margin: 0 0 10px;
+  padding: 10px 12px;
+  border: 1px dashed var(--border2);
+  border-radius: var(--r-sm);
+  background: var(--surface2);
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+}
+.money-box-refresh-btn:hover {
+  border-color: var(--blue-lt);
+  background: #fff;
+}
+.money-box-refresh-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--blue);
+}
+.money-box-refresh-hint {
+  font-size: 11px;
+  color: var(--muted);
+  font-weight: 500;
 }
 .money-box-hero {
   display: flex;
@@ -6620,13 +6685,9 @@ body,
   overscroll-behavior-x: contain;
 }
 .money-box-matrix {
-  /* min-width fuerza scroll en .table-scroll cuando la tarjeta es angosta (p. ej. grid 2 col). */
   table-layout: fixed;
   width: 100%;
-  min-width: 560px;
-}
-.money-box-pair-grid .money-box-matrix {
-  min-width: 640px;
+  min-width: 0;
 }
 .money-box-matrix th:first-child,
 .money-box-matrix td:first-child {
@@ -6691,21 +6752,11 @@ body,
   font-weight: 500;
   margin-top: 3px;
 }
-.money-box-mobile-tabs {
-  display: none;
-  margin-top: 16px;
-}
 .money-box-panels-stack {
   display: flex;
   flex-direction: column;
   gap: 16px;
   margin-top: 16px;
-}
-.money-box-pair-grid {
-  align-items: start;
-}
-.money-box-pair-grid > .card {
-  min-width: 0;
 }
 .money-box-plan-ok {
   background: rgba(16, 185, 129, 0.08);
@@ -6746,61 +6797,73 @@ body,
   align-items: center;
   gap: 8px;
 }
+@media (max-width: 900px) {
+  .money-box-restrictions-layout {
+    grid-template-columns: 1fr;
+  }
+  .money-box-terms-block {
+    padding: 12px 0 0;
+    border-left: 0;
+    border-top: 1px solid var(--border);
+  }
+}
 @media (max-width: 700px) {
   .money-box-fields--multi {
     grid-template-columns: 1fr;
   }
+  .money-box-restrictions-layout {
+    grid-template-columns: 1fr;
+    overflow-x: hidden;
+  }
+  .money-box-restrictions-grid {
+    grid-template-columns: 1fr;
+  }
   .money-box-restrictions-grid > .money-box-field {
-    grid-template-columns: minmax(8.5rem, 12rem) minmax(11rem, 1fr);
+    grid-template-columns: minmax(7rem, 0.95fr) minmax(0, 1.2fr);
   }
-  .money-box-mobile-tabs {
-    display: block;
+  .money-box-tabs .seg {
+    width: 100%;
   }
-  .money-box-panels-stack > .card,
-  .money-box-pair-grid > .card {
-    display: none;
+  .money-box-tabs .seg-btn {
+    flex: 1 1 0;
+    min-width: 0;
+    font-size: 12px;
+    padding-left: 6px;
+    padding-right: 6px;
   }
-  .money-box-panels-stack > .card.is-mobile-active,
-  .money-box-pair-grid > .card.is-mobile-active {
-    display: block;
+  .money-box-restrictions-actions {
+    justify-content: stretch;
   }
-  .money-box-pair-grid:has(> .card.is-mobile-active) {
-    display: grid;
-  }
-  .money-box-pair-grid:not(:has(> .card.is-mobile-active)) {
-    display: none;
+  .money-box-restrictions-actions .btn {
+    width: 100%;
   }
 
-  /* Scroll horizontal: misma solución que client-table / table-scroll en calculadoras. */
+  /* Matriz: sin scroll horizontal forzado; columnas se adaptan. */
   .money-box-matrix-scroll {
-    margin-left: -2px;
-    margin-right: -2px;
-    padding-bottom: 2px;
+    margin-left: 0;
+    margin-right: 0;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
   }
   .money-box-matrix {
-    width: 720px;
-    min-width: 720px;
-    max-width: none;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
   }
   .money-box-matrix th:first-child,
   .money-box-matrix td:first-child,
   .money-box-matrix-sticky {
-    width: 96px;
-    min-width: 96px;
-    position: sticky;
-    left: 0;
-    z-index: 1;
-    background: var(--white);
-    box-shadow: 1px 0 0 var(--border);
-  }
-  .money-box-matrix .money-box-section-row td {
+    width: auto;
+    min-width: 0;
     position: static;
     box-shadow: none;
   }
   .money-box-matrix th:not(:first-child),
   .money-box-matrix td:not(:first-child) {
-    width: 208px;
-    min-width: 208px;
+    width: auto;
+    min-width: 0;
+    padding-left: 6px;
+    padding-right: 6px;
   }
   .money-box-feasibility {
     font-size: 10px;
@@ -6813,6 +6876,11 @@ body,
   }
   .money-box-plan-reason {
     font-size: 10px;
+  }
+  .money-box-dp-line {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    white-space: normal;
   }
 }
 
@@ -6877,6 +6945,71 @@ body,
   background: var(--white);
   box-shadow: none;
 }
+.disc-question-card--accordion {
+  padding: 0;
+  overflow: hidden;
+}
+.disc-q-accordion-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 14px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.disc-q-accordion-head:hover {
+  background: var(--surface2);
+}
+.disc-q-accordion-title {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  min-width: 0;
+  flex: 1;
+  font-weight: 700;
+  font-size: 13px;
+  line-height: 1.35;
+}
+.disc-q-num {
+  flex: none;
+  color: var(--muted);
+}
+.disc-q-text {
+  min-width: 0;
+}
+.disc-q-accordion-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+}
+.disc-q-answered {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.disc-q-answered.is-yes {
+  color: #047857;
+}
+.disc-q-chevron {
+  color: var(--muted);
+  transition: transform 0.18s ease;
+  flex: none;
+}
+.disc-q-chevron.is-open {
+  transform: rotate(180deg);
+}
+.disc-q-accordion-body {
+  padding: 0 14px 14px;
+  border-top: 1px solid var(--border);
+}
 .disc-q-title {
   flex: none;
   display: block;
@@ -6884,7 +7017,7 @@ body,
   margin-bottom: 0;
 }
 .disc-q-help {
-  margin-top: 4px;
+  margin-top: 10px;
   margin-bottom: 10px;
 }
 .disc-choice-row {
@@ -7166,6 +7299,58 @@ body,
   flex-direction: column;
   gap: 4px;
   flex-shrink: 0;
+}
+.disc-config-block {
+  display: grid;
+  gap: 0;
+}
+.disc-config-expand {
+  flex-shrink: 0;
+  min-width: 36px;
+  justify-content: center;
+}
+.disc-config-row--expanded {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+.disc-config-editor {
+  border: 1px solid var(--border);
+  border-top: none;
+  border-radius: 0 0 var(--r-sm) var(--r-sm);
+  background: var(--white);
+  padding: 12px;
+  display: grid;
+  gap: 8px;
+}
+.disc-config-editor-field {
+  display: grid;
+  gap: 6px;
+}
+.disc-config-editor-field input,
+.disc-config-option-row input {
+  width: 100%;
+  box-sizing: border-box;
+}
+.disc-config-options {
+  display: grid;
+  gap: 8px;
+}
+.disc-config-option-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.disc-config-option-actions {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.disc-config-editor-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
 }
 .sr-only {
   position: absolute;
