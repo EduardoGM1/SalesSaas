@@ -241,6 +241,11 @@ function PermissionsModal({ user, onClose, onDone }) {
     const permissions = fd.getAll("permissions").map(String);
     try {
       await patchAdmin(`users/${user.id}/permissions`, { permissions });
+      try {
+        window.dispatchEvent(new Event("admin:permissions-changed"));
+      } catch {
+        // ignore
+      }
       onDone();
     } catch {
       onDone("permissions");
