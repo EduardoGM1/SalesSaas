@@ -203,22 +203,55 @@ create policy org_select_member on public.organizaciones
     or public.is_super_admin()
   );
 
+-- Helpers SECURITY DEFINER primero (evitan recursión grupos ↔ grupo_miembros en RLS)
+create or replace function public.my_grupo_ids(p_user_id uuid default auth.uid())
+returns uuid[]
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select coalesce(array_agg(distinct gid), '{}'::uuid[])
+  from (
+    select g.id as gid from public.grupos g where g.gerente_id = p_user_id
+    union
+    select m.grupo_id as gid from public.grupo_miembros m where m.usuario_id = p_user_id
+  ) s;
+$$;
+
+grant execute on function public.my_grupo_ids(uuid) to authenticated;
+
+create or replace function public.is_grupo_gerente(p_grupo_id uuid, p_user_id uuid default auth.uid())
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1 from public.grupos g
+    where g.id = p_grupo_id and g.gerente_id = p_user_id
+  );
+$$;
+
+grant execute on function public.is_grupo_gerente(uuid, uuid) to authenticated;
+
 drop policy if exists grupos_select_related on public.grupos;
 create policy grupos_select_related on public.grupos
   for select to authenticated
   using (
-    gerente_id = auth.uid()
-    or id in (select grupo_id from public.grupo_miembros where usuario_id = auth.uid())
-    or public.is_super_admin()
+    public.is_super_admin()
+    or gerente_id = auth.uid()
+    or id = any (public.my_grupo_ids(auth.uid()))
   );
 
 drop policy if exists grupo_miembros_select_related on public.grupo_miembros;
 create policy grupo_miembros_select_related on public.grupo_miembros
   for select to authenticated
   using (
-    usuario_id = auth.uid()
-    or grupo_id in (select id from public.grupos where gerente_id = auth.uid())
-    or public.is_super_admin()
+    public.is_super_admin()
+    or usuario_id = auth.uid()
+    or public.is_grupo_gerente(grupo_id, auth.uid())
   );
 
 -- Admin/superadmin gestionan grupos vía service role / RPCs; políticas write solo superadmin
@@ -404,11 +437,7 @@ create policy modulo_act_select_related on public.modulo_activacion
     or (scope_tipo = 'organizacion' and organizacion_id in (
       select organizacion_id from public.profiles where id = auth.uid()
     ))
-    or (scope_tipo = 'grupo' and grupo_id in (
-      select id from public.grupos where gerente_id = auth.uid()
-      union
-      select grupo_id from public.grupo_miembros where usuario_id = auth.uid()
-    ))
+    or (scope_tipo = 'grupo' and grupo_id = any (public.my_grupo_ids(auth.uid())))
   );
 
 drop policy if exists modulo_act_write_super on public.modulo_activacion;
