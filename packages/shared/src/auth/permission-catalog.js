@@ -24,74 +24,50 @@ export const ADMIN_SECTION_PERMISSIONS = [
   { clave: "gestionar_roles_permisos", nombre_visible: "Gestionar Roles y permisos", modulo: "admin", capa: "admin" },
 ];
 
-/**
- * Precedencia de acceso (única, sin excepción):
- * deny/grant usuario > deny/grant grupo > permisos del rol > denegar.
- * Solo claves con permite_override=true admiten override individual.
- */
-const OV = true;
-const NO = false;
-
-/** @type {{ clave: string, nombre_visible: string, modulo: string, capa: 'app' | 'admin', permite_override: boolean }[]} */
+/** @type {{ clave: string, nombre_visible: string, modulo: string, capa: 'app' | 'admin' }[]} */
 export const PERMISSION_CATALOG = [
   // Expedientes
-  { clave: "expedientes:ver_propios", nombre_visible: "Ver expedientes propios", modulo: "expedientes", capa: "app", permite_override: NO },
-  { clave: "expedientes:crear", nombre_visible: "Crear expedientes", modulo: "expedientes", capa: "app", permite_override: NO },
-  { clave: "expedientes:editar", nombre_visible: "Editar expedientes", modulo: "expedientes", capa: "app", permite_override: NO },
-  { clave: "expedientes:eliminar", nombre_visible: "Eliminar expedientes", modulo: "expedientes", capa: "app", permite_override: NO },
-  { clave: "expedientes:compartir", nombre_visible: "Compartir expedientes", modulo: "expedientes", capa: "app", permite_override: NO },
-  { clave: "expedientes:ver_equipo", nombre_visible: "Ver expedientes del equipo", modulo: "expedientes", capa: "app", permite_override: NO },
+  { clave: "expedientes:ver_propios", nombre_visible: "Ver expedientes propios", modulo: "expedientes", capa: "app" },
+  { clave: "expedientes:crear", nombre_visible: "Crear expedientes", modulo: "expedientes", capa: "app" },
+  { clave: "expedientes:editar", nombre_visible: "Editar expedientes", modulo: "expedientes", capa: "app" },
+  { clave: "expedientes:eliminar", nombre_visible: "Eliminar expedientes", modulo: "expedientes", capa: "app" },
+  { clave: "expedientes:compartir", nombre_visible: "Compartir expedientes", modulo: "expedientes", capa: "app" },
+  { clave: "expedientes:ver_equipo", nombre_visible: "Ver expedientes del equipo", modulo: "expedientes", capa: "app" },
   // Herramientas (app)
-  { clave: "herramientas:survey", nombre_visible: "Usar Survey", modulo: "herramientas", capa: "app", permite_override: OV },
-  { clave: "herramientas:survey_configurar_preguntas", nombre_visible: "Configurar preguntas del Survey", modulo: "herramientas", capa: "app", permite_override: OV },
-  { clave: "herramientas:vacaciones", nombre_visible: "Usar Proyección de Vacaciones", modulo: "herramientas", capa: "app", permite_override: OV },
-  { clave: "herramientas:worksheet", nombre_visible: "Usar Worksheet", modulo: "herramientas", capa: "app", permite_override: OV },
-  { clave: "herramientas:analysis", nombre_visible: "Usar Analysis", modulo: "herramientas", capa: "app", permite_override: OV },
+  { clave: "herramientas:survey", nombre_visible: "Usar Survey", modulo: "herramientas", capa: "app" },
+  { clave: "herramientas:survey_configurar_preguntas", nombre_visible: "Configurar preguntas del Survey", modulo: "herramientas", capa: "app" },
+  { clave: "herramientas:vacaciones", nombre_visible: "Usar Proyección de Vacaciones", modulo: "herramientas", capa: "app" },
+  { clave: "herramientas:worksheet", nombre_visible: "Usar Worksheet", modulo: "herramientas", capa: "app" },
+  { clave: "herramientas:analysis", nombre_visible: "Usar Analysis", modulo: "herramientas", capa: "app" },
   // Ventas
-  { clave: "ventas:registrar", nombre_visible: "Registrar ventas", modulo: "ventas", capa: "app", permite_override: NO },
-  { clave: "ventas:editar", nombre_visible: "Editar ventas", modulo: "ventas", capa: "app", permite_override: NO },
-  { clave: "ventas:cancelar", nombre_visible: "Cancelar ventas", modulo: "ventas", capa: "app", permite_override: NO },
-  { clave: "sales:view_modal", nombre_visible: "Ver modal de venta", modulo: "ventas", capa: "app", permite_override: OV },
-  { clave: "sales:view_detail", nombre_visible: "Ver detalle ampliado de venta", modulo: "ventas", capa: "app", permite_override: OV },
-  { clave: "sales:history", nombre_visible: "Acceso a historial de ventas", modulo: "ventas", capa: "app", permite_override: OV },
-  { clave: "ventas:ver_equipo", nombre_visible: "Ver ventas de otros vendedores", modulo: "ventas", capa: "app", permite_override: NO },
+  { clave: "ventas:registrar", nombre_visible: "Registrar ventas", modulo: "ventas", capa: "app" },
+  { clave: "ventas:editar", nombre_visible: "Editar ventas", modulo: "ventas", capa: "app" },
+  { clave: "ventas:cancelar", nombre_visible: "Cancelar ventas", modulo: "ventas", capa: "app" },
+  { clave: "sales:view_modal", nombre_visible: "Ver modal de venta", modulo: "ventas", capa: "app" },
+  { clave: "sales:view_detail", nombre_visible: "Ver detalle ampliado de venta", modulo: "ventas", capa: "app" },
+  { clave: "sales:history", nombre_visible: "Acceso a historial de ventas", modulo: "ventas", capa: "app" },
+  { clave: "ventas:ver_equipo", nombre_visible: "Ver ventas de otros vendedores", modulo: "ventas", capa: "app" },
   // Dashboard / agenda / metas
-  { clave: "dashboard:ver_propio", nombre_visible: "Ver dashboard propio", modulo: "dashboard", capa: "app", permite_override: NO },
-  { clave: "dashboard:ver_equipo", nombre_visible: "Ver dashboard del equipo", modulo: "dashboard", capa: "app", permite_override: NO },
-  { clave: "agenda:usar", nombre_visible: "Usar agenda", modulo: "dashboard", capa: "app", permite_override: NO },
-  { clave: "metas:ver_editar_propias", nombre_visible: "Ver y editar metas propias", modulo: "dashboard", capa: "app", permite_override: NO },
-  { clave: "metas:ver_equipo", nombre_visible: "Ver metas del equipo", modulo: "dashboard", capa: "app", permite_override: NO },
+  { clave: "dashboard:ver_propio", nombre_visible: "Ver dashboard propio", modulo: "dashboard", capa: "app" },
+  { clave: "dashboard:ver_equipo", nombre_visible: "Ver dashboard del equipo", modulo: "dashboard", capa: "app" },
+  { clave: "agenda:usar", nombre_visible: "Usar agenda", modulo: "dashboard", capa: "app" },
+  { clave: "metas:ver_editar_propias", nombre_visible: "Ver y editar metas propias", modulo: "dashboard", capa: "app" },
+  { clave: "metas:ver_equipo", nombre_visible: "Ver metas del equipo", modulo: "dashboard", capa: "app" },
   // Red
-  { clave: "red:usar", nombre_visible: "Usar red de contactos", modulo: "red", capa: "app", permite_override: NO },
-  { clave: "mensajes:usar", nombre_visible: "Usar mensajería", modulo: "red", capa: "app", permite_override: NO },
+  { clave: "red:usar", nombre_visible: "Usar red de contactos", modulo: "red", capa: "app" },
+  { clave: "mensajes:usar", nombre_visible: "Usar mensajería", modulo: "red", capa: "app" },
   // Config
-  { clave: "notificaciones:configurar_propias", nombre_visible: "Configurar notificaciones propias", modulo: "config", capa: "app", permite_override: NO },
-  { clave: "config:propia", nombre_visible: "Configuración propia", modulo: "config", capa: "app", permite_override: NO },
-  // Admin (secciones) — delegables sí; estructurales no
-  ...ADMIN_SECTION_PERMISSIONS.map((p) => ({
-    ...p,
-    permite_override: ![
-      "ver_logs",
-      "gestionar_roles_permisos",
-    ].includes(p.clave),
-  })),
-  // Excepción: métricas financieras por usuario (no overrideable)
+  { clave: "notificaciones:configurar_propias", nombre_visible: "Configurar notificaciones propias", modulo: "config", capa: "app" },
+  { clave: "config:propia", nombre_visible: "Configuración propia", modulo: "config", capa: "app" },
+  // Admin (secciones)
+  ...ADMIN_SECTION_PERMISSIONS,
+  // Excepción: métricas financieras por usuario (no es pestaña)
   {
     clave: "ver_metricas_financieras_usuarios",
     nombre_visible: "Ver métricas financieras por usuario",
     modulo: "admin",
     capa: "admin",
-    permite_override: NO,
   },
-];
-
-/** Catálogo de módulos de herramienta (Tema 1). */
-export const MODULE_CATALOG = [
-  { clave: "survey", nombre_visible: "Survey", permission_key: "herramientas:survey", requiere_plan: null },
-  { clave: "vacaciones", nombre_visible: "Proyección de Vacaciones", permission_key: "herramientas:vacaciones", requiere_plan: null },
-  { clave: "worksheet", nombre_visible: "Worksheet", permission_key: "herramientas:worksheet", requiere_plan: null },
-  { clave: "money_box", nombre_visible: "Money Box", permission_key: null, requiere_plan: "pro" },
-  { clave: "analysis", nombre_visible: "Analysis", permission_key: "herramientas:analysis", requiere_plan: null },
 ];
 
 export const ALL_PERMISSION_KEYS = PERMISSION_CATALOG.map((p) => p.clave);

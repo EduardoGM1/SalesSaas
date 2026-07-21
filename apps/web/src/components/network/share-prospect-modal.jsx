@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Eye, FolderPlus, Pencil } from "lucide-react";
 import { SalesModal } from "@/components/ui/sales-modal";
-import { networkApi, sharingApi, messagesApi } from "@/lib/network-api.js";
+import { networkApi, sharingApi } from "@/lib/network-api.js";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { toast } from "@/lib/toast";
 import { nudgePushPrompt } from "@/lib/push-prompt.js";
@@ -86,8 +86,6 @@ export function ShareProspectModal({ open, onOpenChange, prospectId, prospectNam
   const [invitePayload, setInvitePayload] = useState(null);
   const [sharingOut, setSharingOut] = useState(false);
   const [sharerName, setSharerName] = useState("Saletse");
-  const [groupChats, setGroupChats] = useState([]);
-  const [selectedGroupId, setSelectedGroupId] = useState("");
 
   const clientForShare = useMemo(() => {
     if (prospect && typeof prospect === "object") {
@@ -100,14 +98,12 @@ export function ShareProspectModal({ open, onOpenChange, prospectId, prospectNam
     if (!prospectId) return;
     setLoading(true);
     try {
-      const [conn, existing, convs] = await Promise.all([
+      const [conn, existing] = await Promise.all([
         networkApi.listConnections("accepted"),
         sharingApi.listForProspect(prospectId),
-        messagesApi.conversations().catch(() => []),
       ]);
       setContacts(conn.map((c) => c.peer).filter(Boolean));
       setShares(existing);
-      setGroupChats((convs || []).filter((c) => c.kind === "group" || c.conversation_id));
     } catch (err) {
       toast.error(err.message);
     } finally {
@@ -161,18 +157,6 @@ export function ShareProspectModal({ open, onOpenChange, prospectId, prospectNam
   }, [open, mode, prospectId, externalPermission, clientForShare, lang, sharerName]);
 
   const handleShare = async () => {
-    if (selectedGroupId) {
-      try {
-        const result = await sharingApi.createToGroup(prospectId, selectedGroupId, permission);
-        toast.success(t("network.shareGroupSuccess", { n: result.shared_count ?? 0 }));
-        setSelectedGroupId("");
-        refresh();
-        nudgePushPrompt({ contextual: true, reason: "prospect-shared" });
-      } catch (err) {
-        toast.error(err.message);
-      }
-      return;
-    }
     if (!selectedId) return;
     try {
       await sharingApi.create(prospectId, selectedId, permission);
@@ -332,67 +316,28 @@ export function ShareProspectModal({ open, onOpenChange, prospectId, prospectNam
 
           {loading ? (
             <div className="dp-empty">{t("common.loading")}</div>
+          ) : contacts.length === 0 ? (
+            <div className="ethic-box">{t("network.shareNeedContacts")}</div>
           ) : (
             <>
-              {groupChats.length > 0 && (
-                <>
-                  <div className="prospect-grid" style={{ marginBottom: 12 }}>
-                    <div className="prospect-field full">
-                      <label>{t("network.shareWithGroup")}</label>
-                      <select
-                        value={selectedGroupId}
-                        onChange={(e) => {
-                          setSelectedGroupId(e.target.value);
-                          if (e.target.value) setSelectedId("");
-                        }}
-                      >
-                        <option value="">{t("network.selectGroup")}</option>
-                        {groupChats.map((g) => (
-                          <option key={g.conversation_id} value={g.conversation_id}>
-                            {g.name || t("messages.groupChat")}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-                  <div className="btn-row" style={{ marginTop: 0, marginBottom: 12 }}>
-                    <button type="button" className="btn btn-primary btn-sm" disabled={!selectedGroupId} onClick={handleShare}>
-                      {t("network.shareGroupAction")}
-                    </button>
-                  </div>
-                  <p className="share-external-hint">{t("network.shareGroupHint")}</p>
-                </>
-              )}
-              {contacts.length === 0 && groupChats.length === 0 ? (
-                <div className="ethic-box">{t("network.shareNeedContacts")}</div>
-              ) : contacts.length > 0 ? (
-                <>
-                  <div className="prospect-grid" style={{ marginBottom: 12 }}>
-                    <div className="prospect-field full">
-                      <label>{t("network.shareWith")}</label>
-                      <select
-                        value={selectedId}
-                        onChange={(e) => {
-                          setSelectedId(e.target.value);
-                          if (e.target.value) setSelectedGroupId("");
-                        }}
-                      >
-                        <option value="">{t("network.selectContact")}</option>
-                        {contacts
-                          .filter((c) => !shares.some((s) => s.shared_with_id === c.id))
-                          .map((c) => (
-                            <option key={c.id} value={c.id}>{displayName(c)}</option>
-                          ))}
-                      </select>
-                    </div>
-                  </div>
-                  <div className="btn-row" style={{ marginTop: 0, marginBottom: 16 }}>
-                    <button type="button" className="btn btn-primary btn-sm" disabled={!selectedId} onClick={handleShare}>
-                      {t("network.shareAction")}
-                    </button>
-                  </div>
-                </>
-              ) : null}
+              <div className="prospect-grid" style={{ marginBottom: 12 }}>
+                <div className="prospect-field full">
+                  <label>{t("network.shareWith")}</label>
+                  <select value={selectedId} onChange={(e) => setSelectedId(e.target.value)}>
+                    <option value="">{t("network.selectContact")}</option>
+                    {contacts
+                      .filter((c) => !shares.some((s) => s.shared_with_id === c.id))
+                      .map((c) => (
+                        <option key={c.id} value={c.id}>{displayName(c)}</option>
+                      ))}
+                  </select>
+                </div>
+              </div>
+              <div className="btn-row" style={{ marginTop: 0, marginBottom: 16 }}>
+                <button type="button" className="btn btn-primary btn-sm" disabled={!selectedId} onClick={handleShare}>
+                  {t("network.shareAction")}
+                </button>
+              </div>
             </>
           )}
 

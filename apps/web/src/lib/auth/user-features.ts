@@ -20,9 +20,10 @@ export interface UserFeatureProfile {
   permission_keys?: string[];
 }
 
-/** Vacío = todas activas (compatibilidad). Preferir permission_keys resueltos. */
+/** Vacío = todas activas (compatibilidad). Admin siempre tiene acceso a sales:*. */
 export function hasUserFeature(profile: UserFeatureProfile | null | undefined, key: VendorFeatureKey): boolean {
   if (!profile) return true;
+  if (profile.role === "admin" && key.startsWith("sales:")) return true;
   if (Array.isArray(profile.permission_keys)) {
     return profile.permission_keys.includes(key);
   }

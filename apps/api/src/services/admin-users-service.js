@@ -56,18 +56,14 @@ export async function updateUserStatus(supabase, targetId, isActive, actorId = n
 
 export async function updateUserPermissions(supabase, adminProfile, targetId, permissions, actorId = null) {
   if (!isSuperAdmin(adminProfile)) throw new ServiceError("No autorizado.", 403);
+  const { data: before } = await supabase.from("profiles").select("admin_permissions").eq("id", targetId).maybeSingle();
   const sanitized = sanitizeDelegatedPermissions(Array.isArray(permissions) ? permissions.map(String) : []);
-  // Escribe overrides relativos al rol (RPC 0050); admin_permissions queda como proyección sync.
   const { error } = await supabase.rpc("admin_set_user_permissions", {
     p_target_id: targetId,
     p_permissions: sanitized,
   });
   if (error) throw new ServiceError(error.message, 400);
-  const { data } = await supabase
-    .from("profiles")
-    .select("id, admin_permissions, role_id")
-    .eq("id", targetId)
-    .single();
+  const { data } = await supabase.from("profiles").select("id, admin_permissions").eq("id", targetId).single();
   if (actorId) {
     await writeAdminLog(supabase, {
       actorId,
@@ -75,8 +71,9 @@ export async function updateUserPermissions(supabase, adminProfile, targetId, pe
       entidadAfectada: "usuario",
       entidadId: targetId,
       detalle: {
-        tipo: "admin_section_overrides",
-        a: sanitized,
+        tipo: "admin_permissions",
+        de: before?.admin_permissions ?? [],
+        a: data?.admin_permissions ?? sanitized,
       },
     });
   }

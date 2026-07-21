@@ -25,8 +25,6 @@ import * as supportService from "../services/support-service.js";
 import * as membershipService from "../services/membership-service.js";
 import * as rolesService from "../services/roles-service.js";
 import * as adminAuditService from "../services/admin-audit-service.js";
-import * as groupsService from "../services/groups-service.js";
-import * as modulesService from "../services/modules-service.js";
 
 const router = Router();
 
@@ -397,60 +395,6 @@ router.post("/support/requests/:id/replies", async (req, res) => {
     }),
     { wrap: "data" },
   );
-});
-
-// ── Grupos (Tema 2) ──
-router.get("/groups", async (req, res) => {
-  const a = await requireSuperAdminApi(req, res);
-  if (!a) return;
-  await runService(res, () => groupsService.listGroups(a.supabase, a.profile), { wrap: "data" });
-});
-
-router.post("/groups", async (req, res) => {
-  const a = await requireSuperAdminApi(req, res);
-  if (!a) return;
-  const body = parseJsonBody(req, res);
-  if (!body) return;
-  await runService(res, () => groupsService.upsertGroup(a.supabase, a.profile, body), { wrap: "data", successStatus: 201 });
-});
-
-router.patch("/groups/:id", async (req, res) => {
-  const a = await requireSuperAdminApi(req, res);
-  if (!a) return;
-  const body = parseJsonBody(req, res);
-  if (!body) return;
-  await runService(
-    res,
-    () => groupsService.upsertGroup(a.supabase, a.profile, { ...body, id: req.params.id }),
-    { wrap: "data" },
-  );
-});
-
-router.delete("/groups/:id", async (req, res) => {
-  const a = await requireSuperAdminApi(req, res);
-  if (!a) return;
-  await runService(res, () => groupsService.deleteGroup(a.supabase, a.profile, req.params.id), { wrap: "ok" });
-});
-
-// ── Módulos (Tema 1) ──
-router.get("/modules", async (req, res) => {
-  const a = await requireSuperAdminApi(req, res);
-  if (!a) return;
-  await runService(res, () => modulesService.listModules(a.supabase, a.profile), { wrap: "data" });
-});
-
-router.post("/modules/activation", async (req, res) => {
-  const a = await requireSuperAdminApi(req, res);
-  if (!a) return;
-  const body = parseJsonBody(req, res);
-  if (!body) return;
-  await runService(res, () => modulesService.setModuleActivation(a.supabase, a.profile, body), { wrap: "data" });
-});
-
-router.delete("/modules/activation/:id", async (req, res) => {
-  const a = await requireSuperAdminApi(req, res);
-  if (!a) return;
-  await runService(res, () => modulesService.clearModuleActivation(a.supabase, a.profile, req.params.id), { wrap: "ok" });
 });
 
 export default router;

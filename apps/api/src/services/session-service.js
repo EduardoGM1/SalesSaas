@@ -9,7 +9,7 @@ export async function getSession(supabase, userId) {
   {
     const withRoleId = await supabase
       .from("profiles")
-      .select("id, email, full_name, role, phone, avatar_url, settings, is_super_admin, admin_permissions, user_permissions, role_id, organizacion_id")
+      .select("id, email, full_name, role, phone, avatar_url, settings, is_super_admin, admin_permissions, user_permissions, role_id")
       .eq("id", userId)
       .single();
     if (!withRoleId.error) {
@@ -75,21 +75,6 @@ export async function getSession(supabase, userId) {
     })];
   }
 
-  let activeModulos = [];
-  let teamMemberIds = [];
-  try {
-    const { data: mods } = await supabase.rpc("resolve_user_modulos", { p_user_id: userId });
-    activeModulos = Array.isArray(mods) ? mods : [];
-  } catch {
-    activeModulos = [];
-  }
-  try {
-    const { data: team } = await supabase.rpc("team_member_ids", { p_gerente_id: userId });
-    teamMemberIds = Array.isArray(team) ? team : [];
-  } catch {
-    teamMemberIds = [];
-  }
-
   const enriched = profile
     ? {
         ...profile,
@@ -98,8 +83,6 @@ export async function getSession(supabase, userId) {
         membership_fecha_inicio: membership.fecha_inicio,
         membership_fecha_proximo_cobro: membership.fecha_proximo_cobro,
         permission_keys: permissionKeys,
-        active_modulos: activeModulos,
-        team_member_ids: teamMemberIds,
       }
     : null;
 
@@ -109,8 +92,6 @@ export async function getSession(supabase, userId) {
     membership,
     premiumFeatures,
     permission_keys: permissionKeys,
-    active_modulos: activeModulos,
-    team_member_ids: teamMemberIds,
   };
 }
 

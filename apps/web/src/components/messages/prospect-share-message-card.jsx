@@ -1,8 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Check, FolderOpen, KeyRound, X } from "lucide-react";
 import { sharingApi } from "@/lib/network-api.js";
-import { fetchProfile } from "@/lib/session-api.js";
 import { toast } from "@/lib/toast";
 
 const PERM_KEY = {
@@ -30,23 +29,10 @@ export function ProspectShareMessageCard({ message, t, onResolved }) {
   const meta = message?.metadata || {};
   const type = message?.message_type || "text";
   const [busy, setBusy] = useState(false);
-  const [myUserId, setMyUserId] = useState(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    fetchProfile().then((p) => {
-      if (!cancelled && p?.id) setMyUserId(p.id);
-    }).catch(() => {});
-    return () => { cancelled = true; };
-  }, []);
 
   const ownerId = meta.owner_id;
   const prospectId = meta.prospect_id;
-  let shareId = meta.share_id;
-  if (meta.group_share && Array.isArray(meta.shares) && myUserId) {
-    const mine = meta.shares.find((s) => s.shared_with_id === myUserId);
-    if (mine?.share_id) shareId = mine.share_id;
-  }
+  const shareId = meta.share_id;
   const requestId = meta.request_id;
   const permission = meta.permission;
   const requested = meta.requested_permission || "edit";

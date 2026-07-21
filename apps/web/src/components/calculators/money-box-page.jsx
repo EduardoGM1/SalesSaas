@@ -5,7 +5,6 @@ import { Topbar } from "@/components/layout/topbar";
 import { PageBack } from "@/components/layout/page-back.jsx";
 import { CollapsibleSection } from "@/components/ui/collapsible-section.jsx";
 import { useFeatureAccess } from "@/hooks/use-feature-access.js";
-import { useModuloAccess } from "@/hooks/use-modulo-access.js";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { useMoney } from "@/hooks/use-money.js";
 import { selectOnFocus } from "@/lib/focus-select.js";
@@ -244,7 +243,6 @@ function applySavedRestrictions(cfg, setters) {
 export function MoneyBoxPage({ clientId, shared }) {
   const { t } = useI18n();
   const { allowed, locked, loading, ready } = useFeatureAccess("money_box");
-  const modulo = useModuloAccess("money_box");
   const worksheetConfig = useDbStore((s) => s.db.settings?.worksheetConfig, shallow);
   const moneyBoxConfig = useDbStore((s) => s.db.settings?.moneyBoxConfig, shallow);
 
@@ -360,7 +358,7 @@ export function MoneyBoxPage({ clientId, shared }) {
     );
   }
 
-  if ((!modulo.loading && !modulo.moduloActivo) || locked || !allowed) {
+  if (locked || !allowed) {
     return <Navigate to={backHref} replace />;
   }
 

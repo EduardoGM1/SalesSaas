@@ -9,7 +9,6 @@ import { getDashboardWeeks, normalizeGoal, workingDaysRemaining } from "@/lib/ca
 import { productionTourSaleCounts } from "@/lib/calculations/tour-summary";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { useMoney } from "@/hooks/use-money.js";
-import { useUserPermissions } from "@/hooks/use-user-permissions.js";
 import { calKey } from "@/lib/format/dates";
 import { DEFAULT_TOUR_TYPES, EMPTY_CAL_MONTH } from "@/lib/store-empty.js";
 import { useAppStore } from "@/stores/app-store";
@@ -18,9 +17,6 @@ import { shallow } from "zustand/shallow";
 
 export function GoalsPage() {
   const { t, months } = useI18n();
-  const { can, profile } = useUserPermissions();
-  const teamIds = Array.isArray(profile?.team_member_ids) ? profile.team_member_ids : [];
-  const showTeamHint = can("dashboard:ver_equipo") && teamIds.length > 0;
   const { fmt, fmtN, settings: moneySettings } = useMoney();
   /** Formato KPI: "5,000 USD" (número + espacio + código). */
   const kpiMoney = (n) => `${fmtN(n)} ${moneySettings.currency || "USD"}`;
@@ -241,9 +237,6 @@ export function GoalsPage() {
         <div className="dash-page-nav">
           <PageBack inline />
         </div>
-        {showTeamHint ? (
-          <p className="admin-sub" style={{ margin: "0 0 12px" }}>{t("dashboard.team.hint")}</p>
-        ) : null}
         <div className="local-month-nav dash-month-nav">
           <button type="button" className="tb-nav-btn" onClick={calPrev} aria-label={t("common.previousMonth")}>‹</button>
           <div className="local-month-label">{months[calMonth]} {calYear}</div>

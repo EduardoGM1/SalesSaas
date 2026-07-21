@@ -6,7 +6,6 @@ import {
   PERMISSION_CATALOG,
 } from "@salesapp/shared/auth/permission-catalog.js";
 import {
-  buildPermissionOriginMatrix,
   featureAllowlistFromResolved,
   overridesFromFeatureAllowlist,
   resolveUserPermissions,
@@ -153,10 +152,7 @@ export async function setUserRoleId(supabase, adminProfile, targetId, roleId, ac
 export async function setUserOverrides(supabase, adminProfile, targetId, overrides, actorId = null, { skipAudit = false } = {}) {
   assertSuperAdmin(adminProfile);
   if (!targetId) throw new ServiceError("Usuario inválido.");
-  const overridable = new Set(
-    PERMISSION_CATALOG.filter((p) => p.permite_override === true).map((p) => p.clave),
-  );
-  const list = (Array.isArray(overrides) ? overrides : []).filter((o) => overridable.has(o?.clave));
+  const list = Array.isArray(overrides) ? overrides : [];
   const { error } = await supabase.rpc("admin_set_user_permission_overrides", {
     p_target_id: targetId,
     p_overrides: list,
@@ -243,20 +239,11 @@ export async function loadUserPermissionContext(supabase, userId) {
     user_permissions: profile.user_permissions ?? [],
   });
 
-  const origin_matrix = buildPermissionOriginMatrix({
-    is_super_admin: profile.is_super_admin === true,
-    role: profile.role,
-    role_permission_keys: rolePermissionKeys,
-    overrides,
-  });
-
   return {
     profile,
     role: roleRow,
-    role_permission_keys: rolePermissionKeys,
     permission_keys: [...resolved],
     feature_allowlist: featureAllowlistFromResolved(resolved),
     overrides,
-    origin_matrix,
   };
 }

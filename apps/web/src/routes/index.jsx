@@ -22,7 +22,6 @@ import { NetworkPage } from "@/pages/NetworkPage.jsx";
 import { ContactPage } from "@/pages/ContactPage.jsx";
 import { MessagesPage } from "@/pages/MessagesPage.jsx";
 import { ToolsHubPage } from "@/pages/ToolsHubPage.jsx";
-import { TeamPage } from "@/pages/TeamPage.jsx";
 import { AdminSection } from "@/layouts/AdminSection.jsx";
 import { ToolPermissionGate } from "@/components/auth/ToolPermissionGate.jsx";
 import {
@@ -38,8 +37,6 @@ import {
   AdminSupportPage,
   AdminRolesPage,
   AdminLogsPage,
-  AdminGroupsPage,
-  AdminModulesPage,
   AdminLegacyRedirect,
 } from "@/routes/lazy-pages.js";
 
@@ -53,6 +50,7 @@ function ClientDetailRoute() {
 }
 
 function gatedTool(tool, page) {
+  if (tool === "money-box") return page;
   return <ToolPermissionGate tool={tool}>{page}</ToolPermissionGate>;
 }
 
@@ -110,7 +108,6 @@ export function AppRoutes() {
       <Route element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
         <Route index element={<CalendarPage />} />
         <Route path="goals" element={<GoalsPage />} />
-        <Route path="team" element={<TeamPage />} />
         <Route path="metas" element={<MetasPage />} />
         <Route path="sales" element={<SalesHistoryPage />} />
         <Route path="clients" element={<ClientsPage />} />
@@ -134,16 +131,13 @@ export function AppRoutes() {
         <Route path="tools/survey" element={gatedTool("survey", <Lazy><SurveyPage /></Lazy>)} />
         <Route path="tools/vacaciones" element={gatedTool("vacaciones", <Lazy><VacacionesPage /></Lazy>)} />
         <Route path="tools/worksheet" element={gatedTool("worksheet", <Lazy><WorksheetPage /></Lazy>)} />
-        <Route path="tools/money-box" element={gatedTool("money-box", <Lazy><MoneyBoxPage /></Lazy>)} />
+        <Route path="tools/money-box" element={<Lazy><MoneyBoxPage /></Lazy>} />
         <Route path="settings" element={<SettingsPage />} />
         <Route path="admin" element={<AdminSection />}>
           <Route index element={<Lazy><AdminOverviewPage /></Lazy>} />
           <Route path="users" element={<Lazy><AdminUsersPage /></Lazy>} />
-          <Route path="groups" element={<Lazy><AdminGroupsPage /></Lazy>} />
-          <Route path="modules" element={<Lazy><AdminModulesPage /></Lazy>} />
           <Route path="roles" element={<Lazy><AdminRolesPage /></Lazy>} />
           <Route path="logs" element={<Lazy><AdminLogsPage /></Lazy>} />
-
           <Route path="goals" element={<Lazy><AdminGoalsPage /></Lazy>} />
           <Route path="tools" element={<Lazy><AdminToolsUsagePage /></Lazy>} />
           <Route path="support" element={<Lazy><AdminSupportPage /></Lazy>} />

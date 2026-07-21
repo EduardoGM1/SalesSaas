@@ -108,15 +108,8 @@ function adminPermissionSetHas(set, perm) {
   return group.some((k) => set.has(k));
 }
 
-function resolvedAdminKeys(profile) {
-  if (Array.isArray(profile?.permission_keys) && profile.permission_keys.length) {
-    return profile.permission_keys;
-  }
-  return profile?.admin_permissions || [];
-}
-
 function permissionGranted(profile, perm) {
-  const set = expandAdminPermissionSet(resolvedAdminKeys(profile));
+  const set = expandAdminPermissionSet(profile.admin_permissions || []);
   return adminPermissionSetHas(set, perm);
 }
 
@@ -129,7 +122,7 @@ function hasPermission(profile, perm) {
 function hasAnyAdminAccess(profile) {
   if (profile.role !== "admin") return false;
   if (isSuperAdmin(profile)) return true;
-  const set = expandAdminPermissionSet(resolvedAdminKeys(profile));
+  const set = expandAdminPermissionSet(profile.admin_permissions || []);
   return [...set].some((p) => ALL_KNOWN_ADMIN_KEYS.has(p));
 }
 
@@ -141,7 +134,7 @@ function effectivePermissions(profile) {
       ...SUPER_ADMIN_ONLY_PERMISSIONS,
     ];
   }
-  const expanded = expandAdminPermissionSet(resolvedAdminKeys(profile));
+  const expanded = expandAdminPermissionSet(profile.admin_permissions || []);
   const out = new Set();
   for (const p of DELEGATABLE_ADMIN_PERMISSIONS) {
     if (adminPermissionSetHas(expanded, p.key)) out.add(p.key);
@@ -159,8 +152,6 @@ function permissionLabel(key) {
 const ADMIN_NAV_PERMISSIONS = {
   "/admin": "ver_resumen",
   "/admin/users": "gestionar_usuarios",
-  "/admin/groups": "gestionar_usuarios",
-  "/admin/modules": "gestionar_roles_permisos",
   "/admin/goals": "gestionar_metas",
   "/admin/tools": "ver_metricas",
   "/admin/support": "gestionar_soporte",
@@ -182,8 +173,6 @@ function canAccessAdminPath(profile, pathname) {
   if (pathname.startsWith("/admin/export/users")) return hasPermission(profile, "gestionar_usuarios");
   if (pathname.startsWith("/admin/export/logs")) return hasPermission(profile, "ver_logs");
   if (pathname.startsWith("/admin/users")) return hasPermission(profile, "gestionar_usuarios");
-  if (pathname.startsWith("/admin/groups")) return hasPermission(profile, "gestionar_usuarios");
-  if (pathname.startsWith("/admin/modules")) return hasPermission(profile, "gestionar_roles_permisos");
   if (pathname.startsWith("/admin/tools")) return hasPermission(profile, "ver_metricas");
   if (pathname.startsWith("/admin/support")) return hasPermission(profile, "gestionar_soporte");
   if (pathname.startsWith("/admin/goals")) return hasPermission(profile, "gestionar_metas");

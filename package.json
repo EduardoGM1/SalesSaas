@@ -22,7 +22,6 @@
     "sync:html-theme": "node scripts/sync-html-theme.mjs",
     "sync:shared": "node scripts/port-shared.mjs && npx esbuild apps/web/src/lib/data/mappers.ts apps/web/src/lib/data/sync.ts apps/web/src/lib/api/validators.ts apps/web/src/lib/storage/types.ts apps/web/src/lib/ids.ts apps/web/src/lib/constants.ts apps/web/src/lib/format/dates.ts apps/web/src/lib/auth/permissions.ts --bundle=false --format=esm --platform=neutral --outdir=packages/shared/src --log-level=error && node scripts/fix-shared-imports.mjs",
     "seed:demo": "node scripts/seed-demo.mjs",
-    "seed:team": "node scripts/seed-team.mjs",
     "seed:eduardo": "node scripts/seed-eduardo-prospects.mjs",
     "db:migrate:0007": "node scripts/apply-migration-0007.mjs",
     "db:migrate:0021": "node scripts/apply-migration-0021.mjs",
