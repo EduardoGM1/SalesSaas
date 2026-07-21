@@ -15,7 +15,7 @@ import type { MonthlyTrendPoint } from "@/lib/admin/types";
 export function AdminTrendChart({ data }: { data: MonthlyTrendPoint[] }) {
   const { t } = useI18n();
 
-  if (!data.length || data.every((d) => d.sales === 0)) {
+  if (!data.length || data.every((d) => d.sales === 0 && d.volume === 0)) {
     return <div className="admin-empty">{t("admin.chart.empty")}</div>;
   }
 

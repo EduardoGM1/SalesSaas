@@ -31,34 +31,75 @@ export async function getSellerOptions(sb) {
   return [...map.values()].sort((a, b) => a.name.localeCompare(b.name));
 }
 
-/** Overview agregado vía RPC — sin PII de clientes. */
+/** Overview agregado vía RPC — sin PII ni desempeño individual. */
 export async function getOverview(sb) {
   const { data, error } = await sb.rpc("admin_platform_overview");
   if (error) throw new Error(error.message || "No se pudo cargar el resumen.");
   const raw = data && typeof data === "object" ? data : {};
-  const trend = Array.isArray(raw.trend)
-    ? raw.trend.map((t) => ({
+
+  const salesTrend = Array.isArray(raw.salesTrend)
+    ? raw.salesTrend
+    : Array.isArray(raw.trend)
+      ? raw.trend
+      : [];
+
+  const mapMonth = (rows, extraKeys = []) =>
+    (Array.isArray(rows) ? rows : []).map((t) => {
+      const row = {
         month: t.month,
         label: monthLabel(t.month),
-        sales: num(t.sales),
-        volume: num(t.volume),
-      }))
-    : [];
+      };
+      for (const k of extraKeys) row[k] = num(t[k]);
+      return row;
+    });
+
+  const monthSales = num(raw.monthSalesCount);
+  const prevMonthSales = num(raw.prevMonthSalesCount);
+  const monthVolume = num(raw.monthVolume);
+  const prevMonthVolume = num(raw.prevMonthVolume);
+
+  const growthPct = (curr, prev) => {
+    if (prev <= 0) return curr > 0 ? 100 : 0;
+    return Math.round(((curr - prev) / prev) * 1000) / 10;
+  };
+
   return {
     usersCount: num(raw.usersCount),
+    usersActive: num(raw.usersActive ?? raw.usersCount),
+    usersCreatedMonth: num(raw.usersCreatedMonth),
     prospectsCount: num(raw.prospectsCount),
+    prospectsClosed: num(raw.prospectsClosed),
+    prospectsMonth: num(raw.prospectsMonth),
+    prospectsLast30Days: num(raw.prospectsLast30Days),
+    prospectsPerDay30: Math.round((num(raw.prospectsLast30Days) / 30) * 10) / 10,
     salesCount: num(raw.salesCount),
     totalVolume: num(raw.totalVolume),
-    monthSalesCount: num(raw.monthSalesCount),
-    monthVolume: num(raw.monthVolume),
-    topSellers: Array.isArray(raw.topSellers)
-      ? raw.topSellers.map((s) => ({
-          name: s.name || "—",
-          sales: num(s.sales),
-          volume: num(s.volume),
+    monthSalesCount: monthSales,
+    monthVolume,
+    prevMonthSalesCount: prevMonthSales,
+    prevMonthVolume,
+    yearSalesCount: num(raw.yearSalesCount),
+    yearVolume: num(raw.yearVolume),
+    avgVolumePerSale: num(raw.avgVolumePerSale),
+    conversionRate: num(raw.conversionRate),
+    growthSalesMoM: growthPct(monthSales, prevMonthSales),
+    growthVolumeMoM: growthPct(monthVolume, prevMonthVolume),
+    toolSavesTotal: num(raw.toolSavesTotal),
+    surveyTotal: num(raw.surveyTotal),
+    surveyLinked: num(raw.surveyLinked),
+    membershipsActive: num(raw.membershipsActive),
+    salesTrend: mapMonth(salesTrend, ["sales", "volume"]),
+    prospectsTrend: mapMonth(raw.prospectsTrend, ["prospects", "closed"]),
+    toolsByTool: Array.isArray(raw.toolsByTool)
+      ? raw.toolsByTool.map((r) => ({
+          tool: r.tool,
+          saves: num(r.saves),
+          libre: num(r.libre),
+          linked: num(r.linked),
         }))
       : [],
-    trend,
+    toolsTrend: mapMonth(raw.toolsTrend, ["survey", "vacaciones", "worksheet"]),
+    generatedAt: raw.generatedAt ? String(raw.generatedAt) : null,
   };
 }
 
