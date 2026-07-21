@@ -35,6 +35,11 @@ router.post("/login", async (req, res) => {
         await sb.auth.signOut();
         return apiError(res, "Tu cuenta fue desactivada. Contacta al administrador.", 403);
       }
+      try {
+        await sb.rpc("platform_session_start", { p_user_id: data.user.id });
+      } catch (sessionErr) {
+        console.warn("[auth/login] platform_session_start", sessionErr);
+      }
     }
     json(res, { ok: true });
   } catch (err) {
@@ -77,6 +82,11 @@ router.post("/signout", async (req, res) => {
     const { data: { user } } = await sb.auth.getUser();
     // Marcar revocación ANTES de signOut: invalida JWT aún no expirados en otros dispositivos.
     if (user?.id) {
+      try {
+        await sb.rpc("platform_session_end", { p_user_id: user.id });
+      } catch (sessionErr) {
+        console.warn("[auth/signout] platform_session_end", sessionErr?.message || sessionErr);
+      }
       const { error: revokeErr } = await sb
         .from("profiles")
         .update({ auth_revoked_at: new Date().toISOString() })

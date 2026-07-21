@@ -4,6 +4,7 @@ import { useAdminFetch } from "@/hooks/use-admin-session.js";
 import { hasPermission } from "@/lib/auth/permissions";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { longDate } from "@/lib/format/dates";
+import { narrateAdminLogDetalle, narrateAdminLogSummary } from "@/lib/admin/log-narrative.js";
 import { ADMIN_AUDIT_ACTIONS } from "@salesapp/shared/auth/permission-catalog.js";
 
 const ACTION_OPTIONS = [
@@ -20,7 +21,7 @@ const ACTION_OPTIONS = [
   { value: ADMIN_AUDIT_ACTIONS.CAMBIO_ESTADO_TICKET, key: "admin.logs.action.cambio_estado_ticket" },
 ];
 
-function formatDetalle(detalle) {
+function formatDetalleRaw(detalle) {
   if (!detalle || typeof detalle !== "object") return "—";
   try {
     return JSON.stringify(detalle, null, 2);
@@ -29,21 +30,12 @@ function formatDetalle(detalle) {
   }
 }
 
-function detailSummary(detalle) {
-  if (!detalle || typeof detalle !== "object") return "—";
-  if (detalle.de != null || detalle.a != null) {
-    return `${detalle.de ?? "—"} → ${detalle.a ?? "—"}`;
-  }
-  if (detalle.fragmento) return String(detalle.fragmento);
-  if (detalle.tipo) return String(detalle.tipo);
-  return "…";
-}
-
 export function AdminLogsPage() {
   const { t, lang } = useI18n();
   const session = useOutletContext();
   const [searchParams] = useSearchParams();
   const [expanded, setExpanded] = useState(null);
+  const [showRaw, setShowRaw] = useState(null);
 
   const filters = useMemo(() => ({
     from: searchParams.get("from") || "",
@@ -139,6 +131,8 @@ export function AdminLogsPage() {
               <tbody>
                 {items.map((row) => {
                   const open = expanded === row.id;
+                  const rawOpen = showRaw === row.id;
+                  const narrative = narrateAdminLogDetalle(row.detalle, t);
                   return (
                     <tr key={row.id}>
                       <td className="admin-cell-date">
@@ -155,18 +149,35 @@ export function AdminLogsPage() {
                         {row.entidad_afectada}
                         {row.entidad_id ? ` · ${String(row.entidad_id).slice(0, 8)}…` : ""}
                       </td>
-                      <td>
+                      <td className="admin-logs-detail-cell">
                         <button
                           type="button"
-                          className="btn btn-sm btn-ghost"
-                          onClick={() => setExpanded(open ? null : row.id)}
+                          className="btn btn-sm btn-ghost admin-logs-summary-btn"
+                          onClick={() => {
+                            setExpanded(open ? null : row.id);
+                            if (open) setShowRaw(null);
+                          }}
                         >
-                          {open ? t("admin.logs.detail.hide") : detailSummary(row.detalle)}
+                          {open ? t("admin.logs.detail.hide") : narrateAdminLogSummary(row.detalle, t)}
                         </button>
                         {open && (
-                          <pre className="admin-confirm-body" style={{ marginTop: 8, whiteSpace: "pre-wrap", fontSize: 12 }}>
-                            {formatDetalle(row.detalle)}
-                          </pre>
+                          <div className="admin-logs-narrative">
+                            <ul className="admin-logs-narrative-list">
+                              {narrative.map((line, i) => (
+                                <li key={`${row.id}-${i}`}>{line}</li>
+                              ))}
+                            </ul>
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-ghost"
+                              onClick={() => setShowRaw(rawOpen ? null : row.id)}
+                            >
+                              {rawOpen ? t("admin.logs.detail.hideRaw") : t("admin.logs.detail.showRaw")}
+                            </button>
+                            {rawOpen && (
+                              <pre className="admin-logs-raw">{formatDetalleRaw(row.detalle)}</pre>
+                            )}
+                          </div>
                         )}
                       </td>
                     </tr>

@@ -4,7 +4,6 @@ import { requireApiAdmin } from "../middleware/admin-auth.js";
 import { apiError, json } from "../lib/http.js";
 import {
   adminPermissionSetHas,
-  canViewUserFinancialMetrics,
   effectivePermissions,
   expandAdminPermissionSet,
   hasAnyAdminAccess,
@@ -244,10 +243,7 @@ router.get("/users", async (req, res) => {
   if (!a) return;
   try {
     const filters = parseUserAdminFilters(req.query);
-    const includeMetrics = canViewUserFinancialMetrics({
-      isSuperAdmin: a.isSuperAdmin === true,
-      permissions: a.permissions || [],
-    });
+    const includeMetrics = false;
     const data = await getUsers(a.supabase, filters, { includeMetrics });
     json(res, { data });
   } catch (err) {
@@ -280,28 +276,19 @@ router.get("/export/users", async (req, res) => {
   if (!a) return;
   try {
     const filters = parseUserAdminFilters(req.query);
-    const includeMetrics = canViewUserFinancialMetrics({
-      isSuperAdmin: a.isSuperAdmin === true,
-      permissions: a.permissions || [],
-    });
-    const users = await getUsers(a.supabase, filters, { includeMetrics });
+    const users = await getUsers(a.supabase, filters, { includeMetrics: false });
     const ROLE_LABEL = { vendedor: "Vendedor", gerente: "Gerente", admin: "Admin" };
-    const headers = includeMetrics
-      ? ["Nombre", "Correo", "Rol", "Estado", "Expedientes", "Ventas", "Volumen", "Alta"]
-      : ["Nombre", "Correo", "Rol", "Estado", "Alta"];
+    const headers = ["Nombre", "Correo", "Rol", "Estado", "Alta", "Último acceso"];
     const csv = toCsv(
       headers,
-      users.map((u) => {
-        const base = [
-          u.name,
-          u.email,
-          ROLE_LABEL[u.role] ?? u.role,
-          u.is_active ? "Activa" : "Desactivada",
-        ];
-        if (includeMetrics) base.push(u.prospects, u.sales, u.volume);
-        base.push(u.created_at ? String(u.created_at).slice(0, 10) : "");
-        return base;
-      }),
+      users.map((u) => [
+        u.name,
+        u.email,
+        ROLE_LABEL[u.role] ?? u.role,
+        u.is_active ? "Activa" : "Desactivada",
+        u.created_at ? String(u.created_at).slice(0, 10) : "",
+        u.last_seen_at ? String(u.last_seen_at).slice(0, 16).replace("T", " ") : "",
+      ]),
     );
     res.setHeader("Content-Type", "text/csv; charset=utf-8");
     res.setHeader("Content-Disposition", `attachment; filename="usuarios-${new Date().toISOString().slice(0, 10)}.csv"`);

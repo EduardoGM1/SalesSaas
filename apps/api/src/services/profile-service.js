@@ -53,6 +53,11 @@ export async function updateProfile(supabase, userId, body) {
 
 export async function markPresenceOffline(supabase, userId) {
   const now = new Date().toISOString();
+  try {
+    await supabase.rpc("platform_session_end", { p_user_id: userId });
+  } catch {
+    // fallback: solo last_seen si la migración aún no está aplicada
+  }
   const { data, error } = await supabase
     .from("profiles")
     .update({ last_seen_at: now })

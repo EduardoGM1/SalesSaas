@@ -31,17 +31,11 @@ export async function getSellerOptions(sb) {
   return [...map.values()].sort((a, b) => a.name.localeCompare(b.name));
 }
 
-/** Overview agregado vía RPC — sin PII ni desempeño individual. */
+/** Overview agregado — uso/crecimiento de plataforma (sin desempeño comercial individual). */
 export async function getOverview(sb) {
   const { data, error } = await sb.rpc("admin_platform_overview");
   if (error) throw new Error(error.message || "No se pudo cargar el resumen.");
   const raw = data && typeof data === "object" ? data : {};
-
-  const salesTrend = Array.isArray(raw.salesTrend)
-    ? raw.salesTrend
-    : Array.isArray(raw.trend)
-      ? raw.trend
-      : [];
 
   const mapMonth = (rows, extraKeys = []) =>
     (Array.isArray(rows) ? rows : []).map((t) => {
@@ -53,43 +47,39 @@ export async function getOverview(sb) {
       return row;
     });
 
-  const monthSales = num(raw.monthSalesCount);
-  const prevMonthSales = num(raw.prevMonthSalesCount);
-  const monthVolume = num(raw.monthVolume);
-  const prevMonthVolume = num(raw.prevMonthVolume);
+  const usersMonth = num(raw.usersCreatedMonth);
+  const usersPrev = num(raw.usersCreatedPrevMonth);
+  const growthUsersMoM = usersPrev <= 0
+    ? (usersMonth > 0 ? 100 : 0)
+    : Math.round(((usersMonth - usersPrev) / usersPrev) * 1000) / 10;
 
-  const growthPct = (curr, prev) => {
-    if (prev <= 0) return curr > 0 ? 100 : 0;
-    return Math.round(((curr - prev) / prev) * 1000) / 10;
-  };
+  const usersActiveAcct = num(raw.usersActiveAccounts ?? raw.usersActive ?? raw.usersCount);
 
   return {
     usersCount: num(raw.usersCount),
-    usersActive: num(raw.usersActive ?? raw.usersCount),
-    usersCreatedMonth: num(raw.usersCreatedMonth),
+    usersActiveAccounts: usersActiveAcct,
+    usersInactiveAccounts: num(raw.usersInactiveAccounts),
+    usersCreatedToday: num(raw.usersCreatedToday),
+    usersCreatedWeek: num(raw.usersCreatedWeek),
+    usersCreatedMonth: usersMonth,
+    usersCreatedPrevMonth: usersPrev,
+    growthUsersMoM,
+    usersActiveToday: num(raw.usersActiveToday),
+    usersActiveWeek: num(raw.usersActiveWeek),
+    usersActiveMonth: num(raw.usersActiveMonth),
+    pctActiveAccounts: num(raw.pctActiveAccounts),
+    pctActiveWeek: num(raw.pctActiveWeek),
+    sessionsCompleted30d: num(raw.sessionsCompleted30d),
+    avgSessionMinutes: num(raw.avgSessionMinutes),
+    totalSessionHours30d: num(raw.totalSessionHours30d),
+    avgSessionsPerUser30d: num(raw.avgSessionsPerUser30d),
     prospectsCount: num(raw.prospectsCount),
-    prospectsClosed: num(raw.prospectsClosed),
     prospectsMonth: num(raw.prospectsMonth),
-    prospectsLast30Days: num(raw.prospectsLast30Days),
-    prospectsPerDay30: Math.round((num(raw.prospectsLast30Days) / 30) * 10) / 10,
-    salesCount: num(raw.salesCount),
-    totalVolume: num(raw.totalVolume),
-    monthSalesCount: monthSales,
-    monthVolume,
-    prevMonthSalesCount: prevMonthSales,
-    prevMonthVolume,
-    yearSalesCount: num(raw.yearSalesCount),
-    yearVolume: num(raw.yearVolume),
-    avgVolumePerSale: num(raw.avgVolumePerSale),
-    conversionRate: num(raw.conversionRate),
-    growthSalesMoM: growthPct(monthSales, prevMonthSales),
-    growthVolumeMoM: growthPct(monthVolume, prevMonthVolume),
     toolSavesTotal: num(raw.toolSavesTotal),
     surveyTotal: num(raw.surveyTotal),
     surveyLinked: num(raw.surveyLinked),
     membershipsActive: num(raw.membershipsActive),
-    salesTrend: mapMonth(salesTrend, ["sales", "volume"]),
-    prospectsTrend: mapMonth(raw.prospectsTrend, ["prospects", "closed"]),
+    usersTrend: mapMonth(raw.usersTrend, ["users"]),
     toolsByTool: Array.isArray(raw.toolsByTool)
       ? raw.toolsByTool.map((r) => ({
           tool: r.tool,
@@ -114,7 +104,7 @@ export async function getUsers(sb, filters = {}, options = {}) {
 
   let profilesQuery = sb
     .from("profiles")
-    .select("id, full_name, email, role, role_id, created_at, is_active, is_super_admin, admin_permissions, user_permissions")
+    .select("id, full_name, email, role, role_id, created_at, is_active, is_super_admin, admin_permissions, user_permissions, last_seen_at")
     .order("created_at", { ascending: true });
 
   if (filters.role) profilesQuery = profilesQuery.eq("role", filters.role);
@@ -197,6 +187,7 @@ export async function getUsers(sb, filters = {}, options = {}) {
       role_nombre: roleMeta?.nombre ?? null,
       role_slug: roleMeta?.slug ?? null,
       created_at: p.created_at ?? null,
+      last_seen_at: p.last_seen_at ?? null,
       is_active: p.is_active ?? true,
       is_super_admin: p.is_super_admin ?? false,
       admin_permissions: p.admin_permissions ?? [],

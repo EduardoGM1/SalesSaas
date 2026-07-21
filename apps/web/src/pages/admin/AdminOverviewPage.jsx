@@ -1,5 +1,4 @@
-import { AdminTrendChart } from "@/components/admin/admin-trend-chart.jsx";
-import { AdminProspectsTrendChart } from "@/components/admin/admin-prospects-trend-chart.jsx";
+import { AdminUsersGrowthChart } from "@/components/admin/admin-users-growth-chart.jsx";
 import { AdminToolsByToolChart } from "@/components/admin/admin-tools-by-tool-chart.jsx";
 import { AdminToolsTrendChart } from "@/components/admin/admin-tools-trend-chart.jsx";
 import { useAdminFetch } from "@/hooks/use-admin-session.js";
@@ -30,74 +29,103 @@ function KpiCard({ label, value, sub, delta }) {
   );
 }
 
-function Section({ title, children, className = "" }) {
+function Section({ title, children }) {
   return (
-    <section className={`admin-exec-section ${className}`.trim()}>
+    <section className="admin-exec-section">
       <h2 className="admin-exec-section-title">{title}</h2>
       {children}
     </section>
   );
 }
 
+function formatMinutes(mins, t) {
+  const m = Number(mins) || 0;
+  if (m <= 0) return t("admin.kpi.sessionNone");
+  if (m < 60) return t("admin.kpi.sessionMinutes", { n: m });
+  const h = Math.floor(m / 60);
+  const rem = Math.round(m % 60);
+  return t("admin.kpi.sessionHoursMins", { h, m: rem });
+}
+
 export function AdminOverviewPage() {
   const { t } = useI18n();
-  const { fmt, fmtN } = useMoney();
+  const { fmtN } = useMoney();
   const { loading, data, error } = useAdminFetch("overview");
 
   if (loading) return <div className="admin-page">{t("admin.loading.overview")}</div>;
   if (error) return <div className="admin-page admin-empty">{error}</div>;
   if (!data) return null;
 
-  const closedRate =
-    data.prospectsCount > 0
-      ? Math.round((data.prospectsClosed / data.prospectsCount) * 1000) / 10
-      : 0;
-
-  const platformKpis = [
+  const growthKpis = [
     {
-      label: t("admin.kpi.usersActive"),
-      value: fmtN(data.usersActive),
-      sub: t("admin.kpi.usersActiveSub", { total: fmtN(data.usersCount), month: fmtN(data.usersCreatedMonth) }),
+      label: t("admin.kpi.usersToday"),
+      value: fmtN(data.usersCreatedToday),
+      sub: t("admin.kpi.usersTodaySub"),
     },
     {
-      label: t("admin.kpi.files"),
-      value: fmtN(data.prospectsCount),
-      sub: t("admin.kpi.filesMonthSub", { n: fmtN(data.prospectsMonth) }),
+      label: t("admin.kpi.usersWeek"),
+      value: fmtN(data.usersCreatedWeek),
+      sub: t("admin.kpi.usersWeekSub"),
     },
     {
-      label: t("admin.kpi.filesClosed"),
-      value: fmtN(data.prospectsClosed),
-      sub: t("admin.kpi.filesClosedSub", { pct: closedRate }),
-    },
-    {
-      label: t("admin.kpi.conversion"),
-      value: `${fmtN(data.conversionRate)}%`,
-      sub: t("admin.kpi.conversionSub"),
-    },
-  ];
-
-  const commercialKpis = [
-    {
-      label: t("admin.kpi.totalVolume"),
-      value: fmt(data.totalVolume),
-      sub: t("admin.kpi.yearVolumeSub", { n: fmt(data.yearVolume) }),
-    },
-    {
-      label: t("admin.kpi.monthVolume"),
-      value: fmt(data.monthVolume),
-      delta: data.growthVolumeMoM,
+      label: t("admin.kpi.usersMonth"),
+      value: fmtN(data.usersCreatedMonth),
+      delta: data.growthUsersMoM,
       sub: t("admin.kpi.vsPrevMonth"),
     },
     {
-      label: t("admin.kpi.monthSales"),
-      value: fmtN(data.monthSalesCount),
-      delta: data.growthSalesMoM,
-      sub: t("admin.kpi.totalSalesSub", { n: fmtN(data.salesCount) }),
+      label: t("admin.kpi.usersTotal"),
+      value: fmtN(data.usersCount),
+      sub: t("admin.kpi.usersTotalSub", {
+        active: fmtN(data.usersActiveAccounts),
+        inactive: fmtN(data.usersInactiveAccounts),
+      }),
+    },
+  ];
+
+  const activityKpis = [
+    {
+      label: t("admin.kpi.activeToday"),
+      value: fmtN(data.usersActiveToday),
+      sub: t("admin.kpi.activeTodaySub"),
     },
     {
-      label: t("admin.kpi.avgTicket"),
-      value: fmt(data.avgVolumePerSale),
-      sub: t("admin.kpi.avgTicketSub"),
+      label: t("admin.kpi.activeWeek"),
+      value: fmtN(data.usersActiveWeek),
+      sub: t("admin.kpi.pctActiveWeekSub", { pct: fmtN(data.pctActiveWeek) }),
+    },
+    {
+      label: t("admin.kpi.activeMonth"),
+      value: fmtN(data.usersActiveMonth),
+      sub: t("admin.kpi.activeMonthSub"),
+    },
+    {
+      label: t("admin.kpi.pctActiveAccounts"),
+      value: `${fmtN(data.pctActiveAccounts)}%`,
+      sub: t("admin.kpi.pctActiveAccountsSub"),
+    },
+  ];
+
+  const sessionKpis = [
+    {
+      label: t("admin.kpi.avgSession"),
+      value: formatMinutes(data.avgSessionMinutes, t),
+      sub: t("admin.kpi.avgSessionSub"),
+    },
+    {
+      label: t("admin.kpi.sessionHours"),
+      value: fmtN(data.totalSessionHours30d),
+      sub: t("admin.kpi.sessionHoursSub"),
+    },
+    {
+      label: t("admin.kpi.sessionsDone"),
+      value: fmtN(data.sessionsCompleted30d),
+      sub: t("admin.kpi.sessionsDoneSub"),
+    },
+    {
+      label: t("admin.kpi.sessionsPerUser"),
+      value: fmtN(data.avgSessionsPerUser30d),
+      sub: t("admin.kpi.sessionsPerUserSub"),
     },
   ];
 
@@ -118,9 +146,9 @@ export function AdminOverviewPage() {
       sub: t("admin.kpi.membershipsSub"),
     },
     {
-      label: t("admin.kpi.filesPerDay"),
-      value: fmtN(data.prospectsPerDay30),
-      sub: t("admin.kpi.filesPerDaySub"),
+      label: t("admin.kpi.files"),
+      value: fmtN(data.prospectsCount),
+      sub: t("admin.kpi.filesMonthSub", { n: fmtN(data.prospectsMonth) }),
     },
   ];
 
@@ -136,7 +164,7 @@ export function AdminOverviewPage() {
       <div className="admin-page-head">
         <div>
           <h1 className="admin-h1">{t("admin.overview.title")}</h1>
-          <p className="admin-sub">{t("admin.overview.subExec")}</p>
+          <p className="admin-sub">{t("admin.overview.subUsage")}</p>
         </div>
         <div className="admin-exec-health" title={t("admin.overview.healthHint")}>
           <span className="admin-exec-health-dot" aria-hidden />
@@ -149,17 +177,25 @@ export function AdminOverviewPage() {
         </div>
       </div>
 
-      <Section title={t("admin.overview.section.platform")}>
+      <Section title={t("admin.overview.section.growth")}>
         <div className="admin-kpis admin-kpis--exec">
-          {platformKpis.map((k) => (
+          {growthKpis.map((k) => (
             <KpiCard key={k.label} {...k} />
           ))}
         </div>
       </Section>
 
-      <Section title={t("admin.overview.section.commercial")}>
+      <Section title={t("admin.overview.section.activity")}>
         <div className="admin-kpis admin-kpis--exec">
-          {commercialKpis.map((k) => (
+          {activityKpis.map((k) => (
+            <KpiCard key={k.label} {...k} />
+          ))}
+        </div>
+      </Section>
+
+      <Section title={t("admin.overview.section.sessions")}>
+        <div className="admin-kpis admin-kpis--exec">
+          {sessionKpis.map((k) => (
             <KpiCard key={k.label} {...k} />
           ))}
         </div>
@@ -175,24 +211,20 @@ export function AdminOverviewPage() {
 
       <div className="admin-exec-charts">
         <div className="client-table-card admin-chart-card">
-          <div className="admin-card-head">{t("admin.chart.salesTrend")}</div>
-          <AdminTrendChart data={data.salesTrend || []} />
-        </div>
-        <div className="client-table-card admin-chart-card">
-          <div className="admin-card-head">{t("admin.chart.prospectsTrend")}</div>
-          <AdminProspectsTrendChart data={data.prospectsTrend || []} />
+          <div className="admin-card-head">{t("admin.chart.usersGrowth")}</div>
+          <AdminUsersGrowthChart data={data.usersTrend || []} />
         </div>
         <div className="client-table-card admin-chart-card">
           <div className="admin-card-head">{t("admin.chart.toolsMix")}</div>
           <AdminToolsByToolChart byTool={data.toolsByTool || []} />
         </div>
-        <div className="client-table-card admin-chart-card">
+        <div className="client-table-card admin-chart-card admin-chart-card--wide">
           <div className="admin-card-head">{t("admin.chart.toolsTrend")}</div>
           <AdminToolsTrendChart trend={data.toolsTrend || []} />
         </div>
       </div>
 
-      <p className="admin-exec-footnote">{t("admin.overview.privacyFootnote")}</p>
+      <p className="admin-exec-footnote">{t("admin.overview.privacyFootnoteUsage")}</p>
     </div>
   );
 }

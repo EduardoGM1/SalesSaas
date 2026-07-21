@@ -7,7 +7,6 @@ import { CreditCard, Layers, Shield } from "lucide-react";
 import { useAdminFetch } from "@/hooks/use-admin-session.js";
 import {
   adminPermissionSetHas,
-  canViewUserFinancialMetrics,
   DELEGATABLE_ADMIN_PERMISSIONS,
   expandAdminPermissionSet,
   isSuperAdmin,
@@ -293,7 +292,7 @@ function PermissionsModal({ user, onClose, onDone }) {
 
 export function AdminUsersPage() {
   const { t } = useI18n();
-  const { fmt, fmtN } = useMoney();
+  const { fmtN } = useMoney();
   const session = useOutletContext();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -308,10 +307,6 @@ export function AdminUsersPage() {
   const profile = session?.profile;
   const permSet = expandAdminPermissionSet(session?.permissions || profile?.admin_permissions || []);
   const canManageUsers = viewerIsSuper || adminPermissionSetHas(permSet, "gestionar_usuarios");
-  const showUserMetrics = canViewUserFinancialMetrics({
-    isSuperAdmin: viewerIsSuper,
-    permissions: session?.permissions || [],
-  });
   const { data: rolesData } = useAdminFetch(canManageUsers ? "roles" : null, canManageUsers ? `?_=${reloadKey}` : "");
 
   const caps = {
@@ -383,14 +378,8 @@ export function AdminUsersPage() {
                 <th>{t("admin.users.col.plan")}</th>
                 <th>{t("admin.users.col.membership")}</th>
                 <th>{t("admin.users.col.status")}</th>
-                {showUserMetrics && (
-                  <>
-                    <th style={{ textAlign: "right" }}>{t("admin.users.col.files")}</th>
-                    <th style={{ textAlign: "right" }}>{t("admin.users.col.sales")}</th>
-                    <th style={{ textAlign: "right" }}>{t("admin.users.col.volume")}</th>
-                  </>
-                )}
                 <th>{t("admin.users.col.created")}</th>
+                <th>{t("admin.users.col.lastSeen")}</th>
                 {hasActions && <th className="admin-cell-actions">{t("admin.users.col.actions")}</th>}
               </tr>
             </thead>
@@ -436,14 +425,12 @@ export function AdminUsersPage() {
                         {u.is_active ? t("admin.users.status.active") : t("admin.users.status.inactive")}
                       </span>
                     </td>
-                    {showUserMetrics && (
-                      <>
-                        <td className="admin-cell-num" style={{ textAlign: "right" }}>{fmtN(u.prospects)}</td>
-                        <td className="admin-cell-num" style={{ textAlign: "right" }}>{fmtN(u.sales)}</td>
-                        <td className="admin-cell-num" style={{ textAlign: "right" }}>{fmt(u.volume)}</td>
-                      </>
-                    )}
                     <td className="admin-cell-date">{u.created_at ? longDate(String(u.created_at).slice(0, 10)) : "—"}</td>
+                    <td className="admin-cell-date admin-cell-muted">
+                      {u.last_seen_at
+                        ? longDate(String(u.last_seen_at).slice(0, 10))
+                        : t("admin.users.lastSeen.never")}
+                    </td>
                     {hasActions && (
                       <td className="admin-cell-actions">
                         <div className="admin-table-actions">
