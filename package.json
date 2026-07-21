@@ -25,6 +25,7 @@
     "seed:eduardo": "node scripts/seed-eduardo-prospects.mjs",
     "db:migrate:0007": "node scripts/apply-migration-0007.mjs",
     "db:migrate:0021": "node scripts/apply-migration-0021.mjs",
+    "db:migrate:0053": "node scripts/apply-migration-0053.mjs",
     "diag:sync": "node scripts/diag-sync.mjs",
     "verify": "node scripts/verify-smoke.mjs",
     "verify:api": "npm run verify -w @salesapp/api",
