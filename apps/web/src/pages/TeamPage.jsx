@@ -216,7 +216,7 @@ export function TeamPage() {
               </Section>
             </div>
 
-            <div className="team-exec-grid-2">
+            <div className="team-exec-grid-3">
               <Section title={t("team.exec.section.trend")}>
                 <div className="dash-data-card">
                   <TeamTrendChart data={dashboard?.series?.salesTrend || []} />
@@ -227,20 +227,18 @@ export function TeamPage() {
                   <TeamToursWeekChart data={dashboard?.series?.toursByWeek || []} />
                 </div>
               </Section>
-            </div>
-
-            <div className="team-exec-grid-2">
               <Section title={t("team.exec.section.funnel")}>
                 <div className="dash-data-card">
                   <TeamFunnel funnel={dashboard?.funnel || []} />
                 </div>
               </Section>
-              <Section title={t("team.exec.section.tools")}>
-                <div className="dash-data-card">
-                  <TeamToolsDonut tools={dashboard?.tools || []} />
-                </div>
-              </Section>
             </div>
+
+            <Section title={t("team.exec.section.tools")}>
+              <div className="dash-data-card">
+                <TeamToolsDonut tools={dashboard?.tools || []} />
+              </div>
+            </Section>
 
             <Section title={t("team.exec.section.ranking")}>
               <TeamRanking ranking={dashboard?.ranking || []} onOpenMember={openMember} />
