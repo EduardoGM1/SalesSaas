@@ -27,8 +27,9 @@ export function PremiumFeatureCard({
   const { t } = useI18n();
   const { locked, loading, feature } = useFeatureAccess(featureKey);
   const modulo = useModuloAccess(featureKey);
-  if (!modulo.loading && !modulo.moduloActivo) return null;
   const [upgradeOpen, setUpgradeOpen] = useState(false);
+  // Early return DESPUÉS de todos los hooks (evitar React #300).
+  if (!modulo.loading && !modulo.moduloActivo) return null;
   const name = title || feature?.nombre_visible || featureKey;
 
   const className = [
