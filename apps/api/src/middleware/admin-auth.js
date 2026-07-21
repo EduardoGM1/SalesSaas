@@ -42,12 +42,6 @@ export async function requireApiAdmin(auth, perm) {
     // fallback legacy admin_permissions
   }
 
-  if (permissionKeys.includes("support:read")) {
-    for (const k of ["ver_tickets_soporte", "responder_tickets_soporte"]) {
-      if (!permissionKeys.includes(k)) permissionKeys.push(k);
-    }
-  }
-
   const superAdmin = isSuperAdmin(adminProfile);
   if (
     !superAdmin

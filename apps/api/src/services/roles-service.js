@@ -16,11 +16,25 @@ function assertSuperAdmin(profile) {
   if (!isSuperAdmin(profile)) throw new ServiceError("No autorizado.", 403);
 }
 
-export async function listRoles(supabase, adminProfile) {
-  assertSuperAdmin(adminProfile);
-  const { data, error } = await supabase.rpc("admin_list_roles");
+/**
+ * @param {{ full?: boolean }} [opts] full=true (default) exige Superadmin y devuelve permission_keys.
+ * full=false: lista ligera para asignar rol en Usuarios (gestionar_usuarios).
+ */
+export async function listRoles(supabase, adminProfile, opts = {}) {
+  const full = opts.full !== false;
+  if (full) {
+    assertSuperAdmin(adminProfile);
+    const { data, error } = await supabase.rpc("admin_list_roles");
+    if (error) throw new ServiceError(error.message, 400);
+    return data ?? [];
+  }
+  const { data, error } = await supabase
+    .from("roles")
+    .select("id, nombre, slug, es_sistema")
+    .neq("slug", "superadmin")
+    .order("nombre");
   if (error) throw new ServiceError(error.message, 400);
-  return data ?? [];
+  return (data ?? []).map((r) => ({ ...r, permission_keys: [] }));
 }
 
 export async function listPermissionCatalog() {

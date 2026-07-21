@@ -6,9 +6,10 @@ import { IconSave, IconUserCheck, IconUserX } from "@/components/admin/admin-use
 import { CreditCard, Layers, Shield } from "lucide-react";
 import { useAdminFetch } from "@/hooks/use-admin-session.js";
 import {
+  adminPermissionSetHas,
   canViewUserFinancialMetrics,
   DELEGATABLE_ADMIN_PERMISSIONS,
-  hasPermission,
+  expandAdminPermissionSet,
   isSuperAdmin,
 } from "@/lib/auth/permissions";
 import { parseUserAdminFilters, userAdminUrl, userFiltersToSearchParams } from "@/lib/admin/filters";
@@ -236,7 +237,7 @@ function VendorFeaturesModal({ user, onClose, onDone }) {
 function PermissionsModal({ user, onClose, onDone }) {
   const { t } = useI18n();
   const [pending, setPending] = useState(false);
-  const current = new Set(user.admin_permissions);
+  const current = expandAdminPermissionSet(user.admin_permissions);
 
   const submit = async (e) => {
     e.preventDefault();
@@ -270,7 +271,12 @@ function PermissionsModal({ user, onClose, onDone }) {
           <div className="admin-perms-grid">
             {DELEGATABLE_ADMIN_PERMISSIONS.map((p) => (
               <label key={p.key} className="admin-perm-item">
-                <input type="checkbox" name="permissions" value={p.key} defaultChecked={current.has(p.key)} />
+                <input
+                  type="checkbox"
+                  name="permissions"
+                  value={p.key}
+                  defaultChecked={adminPermissionSetHas(current, p.key)}
+                />
                 <span>{t(p.labelKey)}</span>
               </label>
             ))}
@@ -299,19 +305,20 @@ export function AdminUsersPage() {
   const viewerIsSuper = Boolean(
     session?.isSuperAdmin || (session?.profile && isSuperAdmin(session.profile)),
   );
-  const canManageRoles = viewerIsSuper;
+  const profile = session?.profile;
+  const permSet = expandAdminPermissionSet(session?.permissions || profile?.admin_permissions || []);
+  const canManageUsers = viewerIsSuper || adminPermissionSetHas(permSet, "gestionar_usuarios");
   const showUserMetrics = canViewUserFinancialMetrics({
     isSuperAdmin: viewerIsSuper,
     permissions: session?.permissions || [],
   });
-  const { data: rolesData } = useAdminFetch(canManageRoles ? "roles" : null, canManageRoles ? `?_=${reloadKey}` : "");
+  const { data: rolesData } = useAdminFetch(canManageUsers ? "roles" : null, canManageUsers ? `?_=${reloadKey}` : "");
 
-  const profile = session?.profile;
   const caps = {
-    canRole: hasPermission(profile, "users:role"),
-    canDeactivate: hasPermission(profile, "users:deactivate"),
-    canActivate: hasPermission(profile, "users:activate"),
-    canPermissions: hasPermission(profile, "users:permissions"),
+    canRole: canManageUsers,
+    canDeactivate: canManageUsers,
+    canActivate: canManageUsers,
+    canPermissions: canManageUsers,
   };
 
   const assignableRoles = useMemo(() => {
@@ -362,7 +369,7 @@ export function AdminUsersPage() {
         <p className="admin-sub">{t("admin.users.sub", { count: fmtN(users.length) })}</p>
       </div>
       {errorCode && <div className="auth-error" style={{ marginBottom: 16 }}>{t(ERROR_KEYS[errorCode] ?? "admin.users.error.generic")}</div>}
-      <AdminUsersFilters filters={filters} exportHref={exportHref} showExport={hasPermission(profile, "users:export")} />
+      <AdminUsersFilters filters={filters} exportHref={exportHref} showExport={canManageUsers} />
       <div className="client-table-card">
         {users.length === 0 ? (
           <div className="admin-empty">{t("admin.users.empty")}</div>

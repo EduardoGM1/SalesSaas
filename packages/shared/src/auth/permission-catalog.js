@@ -1,4 +1,4 @@
-/** Catálogo canónico de permisos (Fase 2). */
+/** Catálogo canónico de permisos (Fase 2 + consolidación admin por sección). */
 
 export const PERMISSION_MODULES = [
   { id: "expedientes", label: "Expedientes / Clientes" },
@@ -10,6 +10,20 @@ export const PERMISSION_MODULES = [
   { id: "admin", label: "Panel de administración" },
 ];
 
+/**
+ * Permisos admin consolidados (1 por sección del panel).
+ * Excepción: ver_metricas_financieras_usuarios — dato sensible, no es pestaña.
+ */
+export const ADMIN_SECTION_PERMISSIONS = [
+  { clave: "ver_resumen", nombre_visible: "Ver Resumen", modulo: "admin", capa: "admin" },
+  { clave: "gestionar_usuarios", nombre_visible: "Gestionar Usuarios", modulo: "admin", capa: "admin" },
+  { clave: "ver_logs", nombre_visible: "Ver Logs", modulo: "admin", capa: "admin" },
+  { clave: "gestionar_metas", nombre_visible: "Gestionar Metas", modulo: "admin", capa: "admin" },
+  { clave: "ver_metricas", nombre_visible: "Ver Métricas", modulo: "admin", capa: "admin" },
+  { clave: "gestionar_soporte", nombre_visible: "Gestionar Soporte", modulo: "admin", capa: "admin" },
+  { clave: "gestionar_roles_permisos", nombre_visible: "Gestionar Roles y permisos", modulo: "admin", capa: "admin" },
+];
+
 /** @type {{ clave: string, nombre_visible: string, modulo: string, capa: 'app' | 'admin' }[]} */
 export const PERMISSION_CATALOG = [
   // Expedientes
@@ -19,13 +33,13 @@ export const PERMISSION_CATALOG = [
   { clave: "expedientes:eliminar", nombre_visible: "Eliminar expedientes", modulo: "expedientes", capa: "app" },
   { clave: "expedientes:compartir", nombre_visible: "Compartir expedientes", modulo: "expedientes", capa: "app" },
   { clave: "expedientes:ver_equipo", nombre_visible: "Ver expedientes del equipo", modulo: "expedientes", capa: "app" },
-  // Herramientas
+  // Herramientas (app)
   { clave: "herramientas:survey", nombre_visible: "Usar Survey", modulo: "herramientas", capa: "app" },
   { clave: "herramientas:survey_configurar_preguntas", nombre_visible: "Configurar preguntas del Survey", modulo: "herramientas", capa: "app" },
   { clave: "herramientas:vacaciones", nombre_visible: "Usar Proyección de Vacaciones", modulo: "herramientas", capa: "app" },
   { clave: "herramientas:worksheet", nombre_visible: "Usar Worksheet", modulo: "herramientas", capa: "app" },
   { clave: "herramientas:analysis", nombre_visible: "Usar Analysis", modulo: "herramientas", capa: "app" },
-  // Ventas (claves legacy sales:* conservadas)
+  // Ventas
   { clave: "ventas:registrar", nombre_visible: "Registrar ventas", modulo: "ventas", capa: "app" },
   { clave: "ventas:editar", nombre_visible: "Editar ventas", modulo: "ventas", capa: "app" },
   { clave: "ventas:cancelar", nombre_visible: "Cancelar ventas", modulo: "ventas", capa: "app" },
@@ -45,22 +59,15 @@ export const PERMISSION_CATALOG = [
   // Config
   { clave: "notificaciones:configurar_propias", nombre_visible: "Configurar notificaciones propias", modulo: "config", capa: "app" },
   { clave: "config:propia", nombre_visible: "Configuración propia", modulo: "config", capa: "app" },
-  // Admin (claves existentes)
-  { clave: "dashboard:read", nombre_visible: "Admin: ver resumen", modulo: "admin", capa: "admin" },
-  { clave: "users:read", nombre_visible: "Admin: ver usuarios", modulo: "admin", capa: "admin" },
-  { clave: "users:deactivate", nombre_visible: "Admin: desactivar cuentas", modulo: "admin", capa: "admin" },
-  { clave: "users:activate", nombre_visible: "Admin: activar cuentas", modulo: "admin", capa: "admin" },
-  { clave: "users:export", nombre_visible: "Admin: exportar usuarios", modulo: "admin", capa: "admin" },
-  { clave: "users:role", nombre_visible: "Admin: cambiar rol / plan", modulo: "admin", capa: "admin" },
-  { clave: "users:permissions", nombre_visible: "Admin: editar permisos", modulo: "admin", capa: "admin" },
-  { clave: "goals:read", nombre_visible: "Admin: ver metas globales", modulo: "admin", capa: "admin" },
-  { clave: "tools:analytics", nombre_visible: "Admin: analytics de herramientas", modulo: "admin", capa: "admin" },
-  { clave: "support:read", nombre_visible: "Admin: ver soporte (legacy)", modulo: "admin", capa: "admin" },
-  { clave: "ver_tickets_soporte", nombre_visible: "Ver tickets de soporte", modulo: "admin", capa: "admin" },
-  { clave: "responder_tickets_soporte", nombre_visible: "Responder tickets de soporte", modulo: "admin", capa: "admin" },
-  { clave: "ver_logs_administracion", nombre_visible: "Ver logs de administración", modulo: "admin", capa: "admin" },
-  { clave: "ver_metricas_financieras_usuarios", nombre_visible: "Admin: ver métricas financieras por usuario", modulo: "admin", capa: "admin" },
-  { clave: "admin:roles", nombre_visible: "Admin: gestionar roles", modulo: "admin", capa: "admin" },
+  // Admin (secciones)
+  ...ADMIN_SECTION_PERMISSIONS,
+  // Excepción: métricas financieras por usuario (no es pestaña)
+  {
+    clave: "ver_metricas_financieras_usuarios",
+    nombre_visible: "Ver métricas financieras por usuario",
+    modulo: "admin",
+    capa: "admin",
+  },
 ];
 
 export const ALL_PERMISSION_KEYS = PERMISSION_CATALOG.map((p) => p.clave);
@@ -86,35 +93,27 @@ export const VENDEDOR_DEFAULT_PERMISSIONS = APP_PERMISSION_KEYS.filter(
   (k) => !k.endsWith(":ver_equipo"),
 );
 
-/** Admin sistema: app completa + admin delegables (sin users:role/permissions/admin:roles/logs). */
+/** Admin sistema: app + secciones operativas (sin logs ni roles). */
 export const ADMIN_DEFAULT_PERMISSIONS = [
   ...VENDEDOR_DEFAULT_PERMISSIONS,
-  "dashboard:read",
-  "users:read",
-  "users:deactivate",
-  "users:activate",
-  "users:export",
-  "goals:read",
-  "tools:analytics",
-  "support:read",
-  "ver_tickets_soporte",
-  "responder_tickets_soporte",
+  "ver_resumen",
+  "gestionar_usuarios",
+  "gestionar_metas",
+  "ver_metricas",
+  "gestionar_soporte",
 ];
 
-/** Rol sistema Soporte: app base + solo tickets. */
+/** Rol sistema Soporte: app base + solo soporte. */
 export const SOPORTE_DEFAULT_PERMISSIONS = [
   ...VENDEDOR_DEFAULT_PERMISSIONS,
-  "ver_tickets_soporte",
-  "responder_tickets_soporte",
-  "support:read",
+  "gestionar_soporte",
 ];
 
+/** Solo Superadmin por defecto (dato sensible / no asignar a Admin). */
 export const SUPERADMIN_ONLY_KEYS = [
-  "users:role",
-  "users:permissions",
-  "admin:roles",
-  "ver_logs_administracion",
   "ver_metricas_financieras_usuarios",
+  "gestionar_roles_permisos",
+  "ver_logs",
 ];
 
 /** Acciones de auditoría admin (claves estables). */

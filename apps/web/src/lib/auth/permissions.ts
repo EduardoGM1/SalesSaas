@@ -1,39 +1,59 @@
 import { translate } from "@/lib/i18n.js";
 
-/** Permisos delegables a admins (no incluye users:role ni users:permissions). */
+/** Permisos admin delegables (secciones del panel, sin logs/roles/métricas financieras). */
 export const DELEGATABLE_ADMIN_PERMISSIONS = [
-  { key: "dashboard:read", labelKey: "admin.perm.dashboardRead" },
-  { key: "users:read", labelKey: "admin.perm.usersRead" },
-  { key: "users:deactivate", labelKey: "admin.perm.usersDeactivate" },
-  { key: "users:activate", labelKey: "admin.perm.usersActivate" },
-  { key: "users:export", labelKey: "admin.perm.usersExport" },
-  { key: "goals:read", labelKey: "admin.perm.goalsRead" },
-  { key: "tools:analytics", labelKey: "admin.perm.toolsAnalytics" },
-  { key: "support:read", labelKey: "admin.perm.supportRead" },
-  { key: "ver_tickets_soporte", labelKey: "admin.perm.verTicketsSoporte" },
-  { key: "responder_tickets_soporte", labelKey: "admin.perm.responderTicketsSoporte" },
+  { key: "ver_resumen", labelKey: "admin.perm.verResumen" },
+  { key: "gestionar_usuarios", labelKey: "admin.perm.gestionarUsuarios" },
+  { key: "gestionar_metas", labelKey: "admin.perm.gestionarMetas" },
+  { key: "ver_metricas", labelKey: "admin.perm.verMetricas" },
+  { key: "gestionar_soporte", labelKey: "admin.perm.gestionarSoporte" },
 ] as const;
 
 export type DelegatablePermission = (typeof DELEGATABLE_ADMIN_PERMISSIONS)[number]["key"];
 
 export const SUPER_ADMIN_ONLY_PERMISSIONS = [
-  "users:role",
-  "users:permissions",
-  "admin:roles",
-  "ver_logs_administracion",
+  "ver_logs",
+  "gestionar_roles_permisos",
   "ver_metricas_financieras_usuarios",
 ] as const;
 
 /** Métricas por usuario (Expedientes/Ventas/Volumen). El badge Principal usa isSuperAdmin del viewer. */
 export const USER_FINANCIAL_METRICS_PERMISSION = "ver_metricas_financieras_usuarios";
 
+const PERMISSION_EQUIVALENCE_GROUPS: readonly (readonly string[])[] = [
+  ["ver_resumen", "dashboard:read"],
+  [
+    "gestionar_usuarios",
+    "users:read",
+    "users:deactivate",
+    "users:activate",
+    "users:export",
+    "users:role",
+    "users:permissions",
+  ],
+  ["ver_logs", "ver_logs_administracion"],
+  ["gestionar_metas", "goals:read"],
+  ["ver_metricas", "tools:analytics", "worksheets:read"],
+  [
+    "gestionar_soporte",
+    "ver_tickets_soporte",
+    "responder_tickets_soporte",
+    "support:read",
+  ],
+  ["gestionar_roles_permisos", "admin:roles"],
+];
+
+const KEY_TO_GROUP = new Map<string, readonly string[]>();
+for (const group of PERMISSION_EQUIVALENCE_GROUPS) {
+  for (const key of group) KEY_TO_GROUP.set(key, group);
+}
+
 export function canViewUserFinancialMetrics(opts: {
   isSuperAdmin?: boolean;
   permissions?: string[] | null;
 }): boolean {
   if (opts.isSuperAdmin) return true;
-  const list = opts.permissions || [];
-  return list.includes(USER_FINANCIAL_METRICS_PERMISSION);
+  return expandAdminPermissionSet(opts.permissions).has(USER_FINANCIAL_METRICS_PERMISSION);
 }
 
 export type AdminPermission = DelegatablePermission | (typeof SUPER_ADMIN_ONLY_PERMISSIONS)[number];
@@ -46,32 +66,62 @@ export interface AdminAccessProfile {
 }
 
 const DELEGATABLE_KEYS = new Set<string>(DELEGATABLE_ADMIN_PERMISSIONS.map((p) => p.key));
+const ALL_KNOWN_ADMIN_KEYS = new Set<string>([
+  ...DELEGATABLE_KEYS,
+  ...(SUPER_ADMIN_ONLY_PERMISSIONS as readonly string[]),
+  ...PERMISSION_EQUIVALENCE_GROUPS.flat(),
+]);
 
-/** Permisos CRM antiguos → se eliminan o mapean al migrar. */
 const LEGACY_PERMISSION_MAP: Record<string, DelegatablePermission | null> = {
-  "worksheets:read": "tools:analytics",
+  "worksheets:read": "ver_metricas",
   "sales:read": null,
   "sales:export": null,
   "agenda:read": null,
   "prospects:read": null,
   "activity:read": null,
-  "support:read": "ver_tickets_soporte",
-};
-
-const PERMISSION_ALIASES: Record<string, string[]> = {
-  ver_tickets_soporte: ["support:read"],
-  "support:read": ["ver_tickets_soporte"],
-  responder_tickets_soporte: ["support:read"],
+  "support:read": "gestionar_soporte",
+  "dashboard:read": "ver_resumen",
+  "users:read": "gestionar_usuarios",
+  "users:deactivate": "gestionar_usuarios",
+  "users:activate": "gestionar_usuarios",
+  "users:export": "gestionar_usuarios",
+  "users:role": "gestionar_usuarios",
+  "users:permissions": "gestionar_usuarios",
+  "goals:read": "gestionar_metas",
+  "tools:analytics": "ver_metricas",
+  ver_tickets_soporte: "gestionar_soporte",
+  responder_tickets_soporte: "gestionar_soporte",
+  ver_logs_administracion: "ver_logs",
 };
 
 export function isSuperAdmin(profile: AdminAccessProfile): boolean {
   return profile.role === "admin" && profile.is_super_admin === true;
 }
 
+export function expandAdminPermissionSet(permissions: string[] | null | undefined): Set<string> {
+  const set = new Set<string>();
+  for (const raw of permissions || []) {
+    const key = String(raw || "");
+    if (!key) continue;
+    set.add(key);
+    const group = KEY_TO_GROUP.get(key);
+    if (group) {
+      for (const k of group) set.add(k);
+    }
+  }
+  return set;
+}
+
+export function adminPermissionSetHas(set: Set<string>, perm: string): boolean {
+  if (set.has(perm)) return true;
+  const group = KEY_TO_GROUP.get(perm);
+  if (!group) return false;
+  return group.some((k) => set.has(k));
+}
+
 function permissionGranted(profile: AdminAccessProfile, perm: string): boolean {
-  const list = profile.admin_permissions || [];
-  if (list.includes(perm)) return true;
-  return (PERMISSION_ALIASES[perm] || []).some((a) => list.includes(a));
+  const set = expandAdminPermissionSet(profile.admin_permissions || []);
+  return adminPermissionSetHas(set, perm);
 }
 
 export function hasPermission(profile: AdminAccessProfile, perm: string): boolean {
@@ -80,11 +130,11 @@ export function hasPermission(profile: AdminAccessProfile, perm: string): boolea
   return permissionGranted(profile, perm);
 }
 
-/** ¿Puede entrar al panel admin? */
 export function hasAnyAdminAccess(profile: AdminAccessProfile): boolean {
   if (profile.role !== "admin") return false;
   if (isSuperAdmin(profile)) return true;
-  return (profile.admin_permissions || []).some((p) => DELEGATABLE_KEYS.has(p));
+  const set = expandAdminPermissionSet(profile.admin_permissions || []);
+  return [...set].some((p) => ALL_KNOWN_ADMIN_KEYS.has(p));
 }
 
 export function effectivePermissions(profile: AdminAccessProfile): string[] {
@@ -95,15 +145,13 @@ export function effectivePermissions(profile: AdminAccessProfile): string[] {
       ...SUPER_ADMIN_ONLY_PERMISSIONS,
     ];
   }
-  // Roles nuevos pueden vivir solo en permission_keys; no cortar por admin_permissions vacío.
-  const out = new Set(
-    (profile.admin_permissions || []).filter(
-      (p) => DELEGATABLE_KEYS.has(p) || (SUPER_ADMIN_ONLY_PERMISSIONS as readonly string[]).includes(p),
-    ),
-  );
-  if (out.has("support:read")) {
-    out.add("ver_tickets_soporte");
-    out.add("responder_tickets_soporte");
+  const expanded = expandAdminPermissionSet(profile.admin_permissions || []);
+  const out = new Set<string>();
+  for (const p of DELEGATABLE_ADMIN_PERMISSIONS) {
+    if (adminPermissionSetHas(expanded, p.key)) out.add(p.key);
+  }
+  for (const p of SUPER_ADMIN_ONLY_PERMISSIONS) {
+    if (adminPermissionSetHas(expanded, p)) out.add(p);
   }
   return [...out];
 }
@@ -114,17 +162,16 @@ export function permissionLabel(key: string): string {
 }
 
 /** Pestañas del panel → permiso requerido */
-export const ADMIN_NAV_PERMISSIONS: Record<string, AdminPermission> = {
-  "/admin": "dashboard:read",
-  "/admin/users": "users:read",
-  "/admin/goals": "goals:read",
-  "/admin/tools": "tools:analytics",
-  "/admin/support": "ver_tickets_soporte",
-  "/admin/roles": "admin:roles",
-  "/admin/logs": "ver_logs_administracion",
+export const ADMIN_NAV_PERMISSIONS: Record<string, string> = {
+  "/admin": "ver_resumen",
+  "/admin/users": "gestionar_usuarios",
+  "/admin/goals": "gestionar_metas",
+  "/admin/tools": "ver_metricas",
+  "/admin/support": "gestionar_soporte",
+  "/admin/roles": "gestionar_roles_permisos",
+  "/admin/logs": "ver_logs",
 };
 
-/** Orden de pestañas del panel (fallback = primera permitida). */
 export const ADMIN_NAV_ORDER = [
   "/admin",
   "/admin/users",
@@ -135,24 +182,6 @@ export const ADMIN_NAV_ORDER = [
   "/admin/support",
 ] as const;
 
-/** Expande aliases (p. ej. support:read ↔ ver_tickets_soporte). */
-export function expandAdminPermissionSet(permissions: string[] | null | undefined): Set<string> {
-  const set = new Set<string>();
-  for (const raw of permissions || []) {
-    const key = String(raw || "");
-    if (!key) continue;
-    set.add(key);
-    for (const alias of PERMISSION_ALIASES[key] || []) set.add(alias);
-  }
-  return set;
-}
-
-export function adminPermissionSetHas(set: Set<string>, perm: string): boolean {
-  if (set.has(perm)) return true;
-  return (PERMISSION_ALIASES[perm] || []).some((a) => set.has(a));
-}
-
-/** ¿La lista de keys (sesión admin) da acceso a alguna pestaña del panel? */
 export function hasAnyAdminNavPermission(permissions: string[] | null | undefined): boolean {
   const set = expandAdminPermissionSet(permissions);
   return Object.values(ADMIN_NAV_PERMISSIONS).some((perm) => adminPermissionSetHas(set, perm));
@@ -171,10 +200,6 @@ export function getFirstAllowedAdminPath(
   return null;
 }
 
-/**
- * Gate de ruta usando la misma fuente que las tabs (`session.permissions`),
- * no `profile.admin_permissions` (legacy) — evita loops Navigate por drift.
- */
 export function canAccessAdminPathByPermissions(
   permissions: string[] | null | undefined,
   pathname: string,
@@ -183,17 +208,17 @@ export function canAccessAdminPathByPermissions(
   if (isSuper) return true;
   const set = expandAdminPermissionSet(permissions);
   if (pathname.startsWith("/admin/users/") && pathname.includes("/permissions")) {
-    return adminPermissionSetHas(set, "users:permissions");
+    return adminPermissionSetHas(set, "gestionar_usuarios");
   }
-  if (pathname.startsWith("/admin/export/users")) return adminPermissionSetHas(set, "users:export");
-  if (pathname.startsWith("/admin/export/logs")) return adminPermissionSetHas(set, "ver_logs_administracion");
-  if (pathname.startsWith("/admin/users")) return adminPermissionSetHas(set, "users:read");
-  if (pathname.startsWith("/admin/tools")) return adminPermissionSetHas(set, "tools:analytics");
-  if (pathname.startsWith("/admin/support")) return adminPermissionSetHas(set, "ver_tickets_soporte");
-  if (pathname.startsWith("/admin/goals")) return adminPermissionSetHas(set, "goals:read");
-  if (pathname.startsWith("/admin/roles")) return adminPermissionSetHas(set, "admin:roles");
-  if (pathname.startsWith("/admin/logs")) return adminPermissionSetHas(set, "ver_logs_administracion");
-  if (pathname === "/admin") return adminPermissionSetHas(set, "dashboard:read");
+  if (pathname.startsWith("/admin/export/users")) return adminPermissionSetHas(set, "gestionar_usuarios");
+  if (pathname.startsWith("/admin/export/logs")) return adminPermissionSetHas(set, "ver_logs");
+  if (pathname.startsWith("/admin/users")) return adminPermissionSetHas(set, "gestionar_usuarios");
+  if (pathname.startsWith("/admin/tools")) return adminPermissionSetHas(set, "ver_metricas");
+  if (pathname.startsWith("/admin/support")) return adminPermissionSetHas(set, "gestionar_soporte");
+  if (pathname.startsWith("/admin/goals")) return adminPermissionSetHas(set, "gestionar_metas");
+  if (pathname.startsWith("/admin/roles")) return adminPermissionSetHas(set, "gestionar_roles_permisos");
+  if (pathname.startsWith("/admin/logs")) return adminPermissionSetHas(set, "ver_logs");
+  if (pathname === "/admin") return adminPermissionSetHas(set, "ver_resumen");
   return false;
 }
 
@@ -212,7 +237,7 @@ export function sanitizeDelegatedPermissions(perms: string[]): DelegatablePermis
     }
     if (raw in LEGACY_PERMISSION_MAP) {
       const mapped = LEGACY_PERMISSION_MAP[raw];
-      if (mapped) out.add(mapped);
+      if (mapped && DELEGATABLE_KEYS.has(mapped)) out.add(mapped);
     }
   }
   return [...out];

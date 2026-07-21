@@ -65,7 +65,10 @@ export function AdminLogsPage() {
   const { loading, data, error } = useAdminFetch("logs", qs || "?");
   const { data: sellers } = useAdminFetch("sellers", "");
 
-  if (!hasPermission(session?.profile, "ver_logs_administracion")) {
+  if (!(
+    session?.isSuperAdmin
+    || (session?.profile && hasPermission(session.profile, "ver_logs"))
+  )) {
     return <div className="admin-page admin-empty">{t("admin.logs.forbidden")}</div>;
   }
 

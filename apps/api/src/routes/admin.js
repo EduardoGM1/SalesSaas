@@ -3,8 +3,10 @@ import { authenticateApi } from "../middleware/auth.js";
 import { requireApiAdmin } from "../middleware/admin-auth.js";
 import { apiError, json } from "../lib/http.js";
 import {
+  adminPermissionSetHas,
   canViewUserFinancialMetrics,
   effectivePermissions,
+  expandAdminPermissionSet,
   hasAnyAdminAccess,
   hasAnyAdminNavPermission,
   isSuperAdmin,
@@ -87,18 +89,15 @@ router.get("/me", async (req, res) => {
   }
   if (isSuperAdmin(adminProfile)) {
     for (const k of [
-      "admin:roles",
-      "ver_logs_administracion",
+      "ver_resumen",
+      "gestionar_usuarios",
+      "ver_logs",
+      "gestionar_metas",
+      "ver_metricas",
+      "gestionar_soporte",
+      "gestionar_roles_permisos",
       "ver_metricas_financieras_usuarios",
-      "ver_tickets_soporte",
-      "responder_tickets_soporte",
     ]) {
-      if (!permissionKeys.includes(k)) permissionKeys = [...permissionKeys, k];
-    }
-  }
-  // Expandir legacy support:read para nav/gates
-  if (permissionKeys.includes("support:read")) {
-    for (const k of ["ver_tickets_soporte", "responder_tickets_soporte"]) {
       if (!permissionKeys.includes(k)) permissionKeys = [...permissionKeys, k];
     }
   }
@@ -119,9 +118,20 @@ router.get("/me", async (req, res) => {
 });
 
 router.get("/roles", async (req, res) => {
-  const a = await requireSuperAdminApi(req, res);
+  const a = await adminAuth(req, res, null);
   if (!a) return;
-  await runService(res, () => rolesService.listRoles(a.supabase, a.profile), { wrap: "data" });
+  const set = expandAdminPermissionSet(a.permissions);
+  // Lista completa (permission_keys) solo Superadmin — RPC admin_list_roles lo exige.
+  const canFull = a.isSuperAdmin === true;
+  const canLite = canFull
+    || adminPermissionSetHas(set, "gestionar_usuarios")
+    || adminPermissionSetHas(set, "gestionar_roles_permisos");
+  if (!canLite) return apiError(res, "No autorizado.", 403);
+  await runService(
+    res,
+    () => rolesService.listRoles(a.supabase, a.profile, { full: canFull }),
+    { wrap: "data" },
+  );
 });
 
 router.get("/permissions-catalog", async (req, res) => {
@@ -162,7 +172,7 @@ router.patch("/users/:id/role-id", async (req, res) => {
 });
 
 router.get("/logs", async (req, res) => {
-  const a = await adminAuth(req, res, "ver_logs_administracion");
+  const a = await adminAuth(req, res, "ver_logs");
   if (!a) return;
   const filters = {
     from: typeof req.query.from === "string" ? req.query.from : undefined,
@@ -176,7 +186,7 @@ router.get("/logs", async (req, res) => {
 });
 
 router.get("/export/logs", async (req, res) => {
-  const a = await adminAuth(req, res, "ver_logs_administracion");
+  const a = await adminAuth(req, res, "ver_logs");
   if (!a) return;
   try {
     const filters = {
@@ -195,13 +205,13 @@ router.get("/export/logs", async (req, res) => {
 });
 
 router.get("/users/:id/permission-context", async (req, res) => {
-  const a = await adminAuth(req, res, "users:read");
+  const a = await adminAuth(req, res, "gestionar_usuarios");
   if (!a) return;
   await runService(res, () => rolesService.loadUserPermissionContext(a.supabase, req.params.id), { wrap: "data" });
 });
 
 router.get("/overview", async (req, res) => {
-  const a = await adminAuth(req, res, "dashboard:read");
+  const a = await adminAuth(req, res, "ver_resumen");
   if (!a) return;
   try {
     const data = await getOverview(a.supabase);
@@ -214,12 +224,12 @@ router.get("/overview", async (req, res) => {
 router.get("/sellers", async (req, res) => {
   const base = await authenticateApi(req, res);
   if (!base.ok) return apiError(res, base.message, base.status);
-  const a = await requireApiAdmin(base, "dashboard:read");
+  const a = await requireApiAdmin(base, "ver_resumen");
   if (a.ok) {
     const data = await getSellerOptions(a.supabase);
     return json(res, { data });
   }
-  for (const perm of ["goals:read", "tools:analytics", "users:read", "ver_logs_administracion"]) {
+  for (const perm of ["gestionar_metas", "ver_metricas", "gestionar_usuarios", "ver_logs"]) {
     const alt = await requireApiAdmin(base, perm);
     if (alt.ok) {
       const data = await getSellerOptions(alt.supabase);
@@ -230,7 +240,7 @@ router.get("/sellers", async (req, res) => {
 });
 
 router.get("/users", async (req, res) => {
-  const a = await adminAuth(req, res, "users:read");
+  const a = await adminAuth(req, res, "gestionar_usuarios");
   if (!a) return;
   try {
     const filters = parseUserAdminFilters(req.query);
@@ -246,7 +256,7 @@ router.get("/users", async (req, res) => {
 });
 
 router.get("/goals", async (req, res) => {
-  const a = await adminAuth(req, res, "goals:read");
+  const a = await adminAuth(req, res, "gestionar_metas");
   if (!a) return;
   const filters = parseAdminFilters(req.query);
   const data = await getGoals(a.supabase, filters);
@@ -254,7 +264,7 @@ router.get("/goals", async (req, res) => {
 });
 
 router.get("/tools-usage", async (req, res) => {
-  const a = await adminAuth(req, res, "tools:analytics");
+  const a = await adminAuth(req, res, "ver_metricas");
   if (!a) return;
   try {
     const filters = parseAdminFilters(req.query);
@@ -266,7 +276,7 @@ router.get("/tools-usage", async (req, res) => {
 });
 
 router.get("/export/users", async (req, res) => {
-  const a = await adminAuth(req, res, "users:export");
+  const a = await adminAuth(req, res, "gestionar_usuarios");
   if (!a) return;
   try {
     const filters = parseUserAdminFilters(req.query);
@@ -302,7 +312,7 @@ router.get("/export/users", async (req, res) => {
 });
 
 router.patch("/users/:id/role", async (req, res) => {
-  const a = await adminAuth(req, res, "users:role");
+  const a = await adminAuth(req, res, "gestionar_usuarios");
   if (!a) return;
   const body = parseJsonBody(req, res);
   if (!body) return;
@@ -316,14 +326,13 @@ router.patch("/users/:id/status", async (req, res) => {
   const body = parseJsonBody(req, res);
   if (!body) return;
   const isActive = body.is_active ?? body.isActive;
-  const perm = isActive ? "users:activate" : "users:deactivate";
-  const a = await requireApiAdmin(base, perm);
+  const a = await requireApiAdmin(base, "gestionar_usuarios");
   if (!a.ok) return apiError(res, a.message, a.status);
   await runService(res, () => adminUsersService.updateUserStatus(a.supabase, req.params.id, isActive, a.userId), { wrap: "data" });
 });
 
 router.patch("/users/:id/permissions", async (req, res) => {
-  const a = await adminAuth(req, res, "users:permissions");
+  const a = await adminAuth(req, res, "gestionar_usuarios");
   if (!a) return;
   const body = parseJsonBody(req, res);
   if (!body) return;
@@ -332,7 +341,7 @@ router.patch("/users/:id/permissions", async (req, res) => {
 });
 
 router.patch("/users/:id/features", async (req, res) => {
-  const a = await adminAuth(req, res, "users:permissions");
+  const a = await adminAuth(req, res, "gestionar_usuarios");
   if (!a) return;
   const body = parseJsonBody(req, res);
   if (!body) return;
@@ -342,7 +351,7 @@ router.patch("/users/:id/features", async (req, res) => {
 
 /** Asignar plan basico/pro (histórico de membresías). */
 router.patch("/users/:id/membership", async (req, res) => {
-  const a = await adminAuth(req, res, "users:role");
+  const a = await adminAuth(req, res, "gestionar_usuarios");
   if (!a) return;
   const body = parseJsonBody(req, res);
   if (!body) return;
@@ -355,7 +364,7 @@ router.patch("/users/:id/membership", async (req, res) => {
 });
 
 router.get("/support/requests", async (req, res) => {
-  const a = await adminAuth(req, res, "ver_tickets_soporte");
+  const a = await adminAuth(req, res, "gestionar_soporte");
   if (!a) return;
   const status = typeof req.query.status === "string" ? req.query.status : "all";
   const limit = req.query.limit;
@@ -368,7 +377,7 @@ router.get("/support/requests", async (req, res) => {
 });
 
 router.patch("/support/requests/:id", async (req, res) => {
-  const a = await adminAuth(req, res, "ver_tickets_soporte");
+  const a = await adminAuth(req, res, "gestionar_soporte");
   if (!a) return;
   const body = parseJsonBody(req, res);
   if (!body) return;
@@ -381,13 +390,13 @@ router.patch("/support/requests/:id", async (req, res) => {
 });
 
 router.get("/support/requests/:id/replies", async (req, res) => {
-  const a = await adminAuth(req, res, "ver_tickets_soporte");
+  const a = await adminAuth(req, res, "gestionar_soporte");
   if (!a) return;
   await runService(res, () => supportService.listSupportReplies(a.supabase, req.params.id), { wrap: "data" });
 });
 
 router.post("/support/requests/:id/replies", async (req, res) => {
-  const a = await adminAuth(req, res, "responder_tickets_soporte");
+  const a = await adminAuth(req, res, "gestionar_soporte");
   if (!a) return;
   const body = parseJsonBody(req, res);
   if (!body) return;

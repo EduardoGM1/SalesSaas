@@ -128,7 +128,11 @@ export function AdminRolesPage() {
   const { loading, data, error } = useAdminFetch("roles", `?_=${reloadKey}`);
   const modules = useMemo(() => permissionsByModule(), []);
 
-  if (!hasPermission(session?.profile, "admin:roles")) {
+  const canManageRoles = Boolean(
+    session?.isSuperAdmin
+    || (session?.profile && hasPermission(session.profile, "gestionar_roles_permisos")),
+  );
+  if (!canManageRoles) {
     return <div className="admin-page admin-empty">{t("admin.roles.forbidden")}</div>;
   }
 

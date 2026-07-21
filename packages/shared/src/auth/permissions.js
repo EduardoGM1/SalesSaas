@@ -1,71 +1,129 @@
+/**
+ * Permisos admin del panel (secciones consolidadas).
+ * Grupos de equivalencia: claves nuevas ↔ legacy para migración / RLS / cookies viejas.
+ */
+
 const DELEGATABLE_ADMIN_PERMISSIONS = [
-  { key: "dashboard:read", label: "Ver resumen del panel" },
-  { key: "users:read", label: "Ver lista de usuarios" },
-  { key: "users:deactivate", label: "Desactivar cuentas" },
-  { key: "users:activate", label: "Activar cuentas" },
-  { key: "users:export", label: "Exportar usuarios (CSV)" },
-  { key: "goals:read", label: "Ver metas globales" },
-  { key: "tools:analytics", label: "Ver uso de herramientas (agregado)" },
-  { key: "support:read", label: "Ver tickets de Atención a usuario (legacy)" },
-  { key: "ver_tickets_soporte", label: "Ver tickets de soporte" },
-  { key: "responder_tickets_soporte", label: "Responder tickets de soporte" },
+  { key: "ver_resumen", label: "Ver Resumen" },
+  { key: "gestionar_usuarios", label: "Gestionar Usuarios" },
+  { key: "gestionar_metas", label: "Gestionar Metas" },
+  { key: "ver_metricas", label: "Ver Métricas" },
+  { key: "gestionar_soporte", label: "Gestionar Soporte" },
 ];
+
 const SUPER_ADMIN_ONLY_PERMISSIONS = [
-  "users:role",
-  "users:permissions",
-  "admin:roles",
-  "ver_logs_administracion",
+  "ver_logs",
+  "gestionar_roles_permisos",
   "ver_metricas_financieras_usuarios",
 ];
+
 const USER_FINANCIAL_METRICS_PERMISSION = "ver_metricas_financieras_usuarios";
+
+/** Grupos: tener cualquiera implica todas (compat legacy ↔ consolidado). */
+const PERMISSION_EQUIVALENCE_GROUPS = [
+  ["ver_resumen", "dashboard:read"],
+  [
+    "gestionar_usuarios",
+    "users:read",
+    "users:deactivate",
+    "users:activate",
+    "users:export",
+    "users:role",
+    "users:permissions",
+  ],
+  ["ver_logs", "ver_logs_administracion"],
+  ["gestionar_metas", "goals:read"],
+  ["ver_metricas", "tools:analytics", "worksheets:read"],
+  [
+    "gestionar_soporte",
+    "ver_tickets_soporte",
+    "responder_tickets_soporte",
+    "support:read",
+  ],
+  ["gestionar_roles_permisos", "admin:roles"],
+];
+
+const KEY_TO_GROUP = new Map();
+for (const group of PERMISSION_EQUIVALENCE_GROUPS) {
+  for (const key of group) KEY_TO_GROUP.set(key, group);
+}
 
 function canViewUserFinancialMetrics({ isSuperAdmin = false, permissions = [] } = {}) {
   if (isSuperAdmin) return true;
-  return (permissions || []).includes(USER_FINANCIAL_METRICS_PERMISSION);
+  return expandAdminPermissionSet(permissions).has(USER_FINANCIAL_METRICS_PERMISSION);
 }
+
 const DELEGATABLE_KEYS = new Set(DELEGATABLE_ADMIN_PERMISSIONS.map((p) => p.key));
+const ALL_KNOWN_ADMIN_KEYS = new Set([
+  ...DELEGATABLE_KEYS,
+  ...SUPER_ADMIN_ONLY_PERMISSIONS,
+  ...PERMISSION_EQUIVALENCE_GROUPS.flat(),
+]);
+
 const LEGACY_PERMISSION_MAP = {
-  "worksheets:read": "tools:analytics",
+  "worksheets:read": "ver_metricas",
   "sales:read": null,
   "sales:export": null,
   "agenda:read": null,
   "prospects:read": null,
   "activity:read": null,
-  "support:read": "ver_tickets_soporte",
-};
-
-/** Aliases: pedir A también acepta B en admin_permissions. */
-const PERMISSION_ALIASES = {
-  ver_tickets_soporte: ["support:read"],
-  "support:read": ["ver_tickets_soporte"],
-  responder_tickets_soporte: ["support:read"],
+  "support:read": "gestionar_soporte",
+  "dashboard:read": "ver_resumen",
+  "users:read": "gestionar_usuarios",
+  "users:deactivate": "gestionar_usuarios",
+  "users:activate": "gestionar_usuarios",
+  "users:export": "gestionar_usuarios",
+  "users:role": "gestionar_usuarios",
+  "users:permissions": "gestionar_usuarios",
+  "goals:read": "gestionar_metas",
+  "tools:analytics": "ver_metricas",
+  ver_tickets_soporte: "gestionar_soporte",
+  responder_tickets_soporte: "gestionar_soporte",
+  ver_logs_administracion: "ver_logs",
+  "admin:roles": "gestionar_roles_permisos",
 };
 
 function isSuperAdmin(profile) {
   return profile.role === "admin" && profile.is_super_admin === true;
 }
 
+function expandAdminPermissionSet(permissions) {
+  const set = new Set();
+  for (const raw of permissions || []) {
+    const key = String(raw || "");
+    if (!key) continue;
+    set.add(key);
+    const group = KEY_TO_GROUP.get(key);
+    if (group) {
+      for (const k of group) set.add(k);
+    }
+  }
+  return set;
+}
+
+function adminPermissionSetHas(set, perm) {
+  if (set.has(perm)) return true;
+  const group = KEY_TO_GROUP.get(perm);
+  if (!group) return false;
+  return group.some((k) => set.has(k));
+}
+
 function permissionGranted(profile, perm) {
-  const list = profile.admin_permissions || [];
-  if (list.includes(perm)) return true;
-  const aliases = PERMISSION_ALIASES[perm] || [];
-  return aliases.some((a) => list.includes(a));
+  const set = expandAdminPermissionSet(profile.admin_permissions || []);
+  return adminPermissionSetHas(set, perm);
 }
 
 function hasPermission(profile, perm) {
   if (profile.role !== "admin") return false;
   if (isSuperAdmin(profile)) return true;
-  if (SUPER_ADMIN_ONLY_PERMISSIONS.includes(perm)) {
-    // Solo Superadmin por defecto; si está en array (override explícito raro), permitir
-    return permissionGranted(profile, perm);
-  }
   return permissionGranted(profile, perm);
 }
 
 function hasAnyAdminAccess(profile) {
   if (profile.role !== "admin") return false;
   if (isSuperAdmin(profile)) return true;
-  return (profile.admin_permissions || []).some((p) => DELEGATABLE_KEYS.has(p));
+  const set = expandAdminPermissionSet(profile.admin_permissions || []);
+  return [...set].some((p) => ALL_KNOWN_ADMIN_KEYS.has(p));
 }
 
 function effectivePermissions(profile) {
@@ -76,14 +134,13 @@ function effectivePermissions(profile) {
       ...SUPER_ADMIN_ONLY_PERMISSIONS,
     ];
   }
-  // No exigir hasAnyAdminAccess aquí: roles nuevos pueden vivir solo en permission_keys.
-  const out = new Set(
-    (profile.admin_permissions || []).filter((p) => DELEGATABLE_KEYS.has(p) || SUPER_ADMIN_ONLY_PERMISSIONS.includes(p)),
-  );
-  // Expandir legacy support:read
-  if (out.has("support:read")) {
-    out.add("ver_tickets_soporte");
-    out.add("responder_tickets_soporte");
+  const expanded = expandAdminPermissionSet(profile.admin_permissions || []);
+  const out = new Set();
+  for (const p of DELEGATABLE_ADMIN_PERMISSIONS) {
+    if (adminPermissionSetHas(expanded, p.key)) out.add(p.key);
+  }
+  for (const p of SUPER_ADMIN_ONLY_PERMISSIONS) {
+    if (adminPermissionSetHas(expanded, p)) out.add(p);
   }
   return [...out];
 }
@@ -93,32 +150,15 @@ function permissionLabel(key) {
 }
 
 const ADMIN_NAV_PERMISSIONS = {
-  "/admin": "dashboard:read",
-  "/admin/users": "users:read",
-  "/admin/goals": "goals:read",
-  "/admin/tools": "tools:analytics",
-  "/admin/support": "ver_tickets_soporte",
-  "/admin/roles": "admin:roles",
-  "/admin/logs": "ver_logs_administracion",
+  "/admin": "ver_resumen",
+  "/admin/users": "gestionar_usuarios",
+  "/admin/goals": "gestionar_metas",
+  "/admin/tools": "ver_metricas",
+  "/admin/support": "gestionar_soporte",
+  "/admin/roles": "gestionar_roles_permisos",
+  "/admin/logs": "ver_logs",
 };
 
-function expandAdminPermissionSet(permissions) {
-  const set = new Set();
-  for (const raw of permissions || []) {
-    const key = String(raw || "");
-    if (!key) continue;
-    set.add(key);
-    for (const alias of PERMISSION_ALIASES[key] || []) set.add(alias);
-  }
-  return set;
-}
-
-function adminPermissionSetHas(set, perm) {
-  if (set.has(perm)) return true;
-  return (PERMISSION_ALIASES[perm] || []).some((a) => set.has(a));
-}
-
-/** Keys de rol/sesión que abren alguna pestaña del panel. */
 function hasAnyAdminNavPermission(permissions) {
   const set = expandAdminPermissionSet(permissions);
   return Object.values(ADMIN_NAV_PERMISSIONS).some((perm) => adminPermissionSetHas(set, perm));
@@ -126,19 +166,20 @@ function hasAnyAdminNavPermission(permissions) {
 
 function canAccessAdminPath(profile, pathname) {
   if (!hasAnyAdminAccess(profile)) return false;
+  if (isSuperAdmin(profile)) return true;
   if (pathname.startsWith("/admin/users/") && pathname.includes("/permissions")) {
-    return hasPermission(profile, "users:permissions");
+    return hasPermission(profile, "gestionar_usuarios");
   }
-  if (pathname.startsWith("/admin/export/users")) return hasPermission(profile, "users:export");
-  if (pathname.startsWith("/admin/export/logs")) return hasPermission(profile, "ver_logs_administracion");
-  if (pathname.startsWith("/admin/users")) return hasPermission(profile, "users:read");
-  if (pathname.startsWith("/admin/tools")) return hasPermission(profile, "tools:analytics");
-  if (pathname.startsWith("/admin/support")) return hasPermission(profile, "ver_tickets_soporte");
-  if (pathname.startsWith("/admin/goals")) return hasPermission(profile, "goals:read");
-  if (pathname.startsWith("/admin/roles")) return hasPermission(profile, "admin:roles");
-  if (pathname.startsWith("/admin/logs")) return hasPermission(profile, "ver_logs_administracion");
-  if (pathname === "/admin") return hasPermission(profile, "dashboard:read");
-  return isSuperAdmin(profile);
+  if (pathname.startsWith("/admin/export/users")) return hasPermission(profile, "gestionar_usuarios");
+  if (pathname.startsWith("/admin/export/logs")) return hasPermission(profile, "ver_logs");
+  if (pathname.startsWith("/admin/users")) return hasPermission(profile, "gestionar_usuarios");
+  if (pathname.startsWith("/admin/tools")) return hasPermission(profile, "ver_metricas");
+  if (pathname.startsWith("/admin/support")) return hasPermission(profile, "gestionar_soporte");
+  if (pathname.startsWith("/admin/goals")) return hasPermission(profile, "gestionar_metas");
+  if (pathname.startsWith("/admin/roles")) return hasPermission(profile, "gestionar_roles_permisos");
+  if (pathname.startsWith("/admin/logs")) return hasPermission(profile, "ver_logs");
+  if (pathname === "/admin") return hasPermission(profile, "ver_resumen");
+  return false;
 }
 
 function sanitizeDelegatedPermissions(perms) {
@@ -150,7 +191,7 @@ function sanitizeDelegatedPermissions(perms) {
     }
     if (Object.prototype.hasOwnProperty.call(LEGACY_PERMISSION_MAP, raw)) {
       const mapped = LEGACY_PERMISSION_MAP[raw];
-      if (mapped) out.add(mapped);
+      if (mapped && DELEGATABLE_KEYS.has(mapped)) out.add(mapped);
     }
   }
   return [...out];
@@ -159,6 +200,7 @@ function sanitizeDelegatedPermissions(perms) {
 export {
   ADMIN_NAV_PERMISSIONS,
   DELEGATABLE_ADMIN_PERMISSIONS,
+  PERMISSION_EQUIVALENCE_GROUPS,
   SUPER_ADMIN_ONLY_PERMISSIONS,
   USER_FINANCIAL_METRICS_PERMISSION,
   adminPermissionSetHas,

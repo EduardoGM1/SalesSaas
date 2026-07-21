@@ -66,8 +66,10 @@ export function AdminSupportPage() {
   const [replyDraft, setReplyDraft] = useState({});
   const [replyBusy, setReplyBusy] = useState(null);
 
-  const canReply = hasPermission(session?.profile, "responder_tickets_soporte")
-    || hasPermission(session?.profile, "support:read");
+  const canReply = Boolean(
+    session?.isSuperAdmin
+    || (session?.profile && hasPermission(session.profile, "gestionar_soporte")),
+  );
 
   const load = useCallback(async () => {
     setLoading(true);

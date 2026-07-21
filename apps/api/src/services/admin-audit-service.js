@@ -37,7 +37,7 @@ export async function writeAdminLog(supabase, {
 }
 
 export async function listAdminLogs(supabase, adminProfile, filters = {}) {
-  if (!isSuperAdmin(adminProfile) && !hasPermission(adminProfile, "ver_logs_administracion")) {
+  if (!isSuperAdmin(adminProfile) && !hasPermission(adminProfile, "ver_logs")) {
     throw new ServiceError("No autorizado.", 403);
   }
   const { data, error } = await supabase.rpc("admin_list_logs", {

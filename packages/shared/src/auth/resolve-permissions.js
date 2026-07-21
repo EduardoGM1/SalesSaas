@@ -92,9 +92,12 @@ export function legacyUserPermissionsFromResolved(resolvedSet) {
 }
 
 export function legacyAdminPermissionsFromResolved(resolvedSet) {
-  const delegable = ADMIN_PERMISSION_KEYS.filter(
-    (k) => !["users:role", "users:permissions", "admin:roles"].includes(k),
-  );
+  const elevated = new Set([
+    "gestionar_roles_permisos",
+    "ver_logs",
+    "ver_metricas_financieras_usuarios",
+  ]);
+  const delegable = ADMIN_PERMISSION_KEYS.filter((k) => !elevated.has(k));
   return delegable.filter((k) => resolvedSet.has(k));
 }
 
