@@ -231,7 +231,13 @@ export async function getPushDiagnosticsForUser(supabase, userId) {
   };
 }
 
-export async function notifyNewMessage(recipientId, { senderId, senderName, body }) {
+export async function notifyNewMessage(recipientId, {
+  senderId,
+  senderName,
+  body,
+  conversationId = null,
+  groupName = null,
+}) {
   const serviceSb = createServiceSupabaseClient();
   if (!serviceSb || !isPushConfigured()) return;
 
@@ -241,15 +247,24 @@ export async function notifyNewMessage(recipientId, { senderId, senderName, body
   const preview = String(body ?? "").trim();
   const short = preview.length > 120 ? `${preview.slice(0, 120)}…` : preview;
   const origin = primaryWebOrigin();
-  const path = messagePath(senderId);
+  const path = conversationId
+    ? `/messages?c=${encodeURIComponent(conversationId)}`
+    : messagePath(senderId);
+
+  const title = conversationId
+    ? (groupName ? `${groupName}` : "Mensaje de equipo")
+    : (senderName || "Nuevo mensaje");
+  const bodyText = conversationId
+    ? `${senderName || "Alguien"}: ${short || "Tienes un mensaje nuevo"}`
+    : (short || "Tienes un mensaje nuevo");
 
   await sendToUser(serviceSb, recipientId, {
-    title: senderName || "Nuevo mensaje",
-    body: short || "Tienes un mensaje nuevo",
+    title,
+    body: bodyText,
     url: pushUrl(origin, path),
     path,
     type: PushType.MESSAGE,
-    tag: `message-${senderId}`,
+    tag: conversationId ? `message-group-${conversationId}` : `message-${senderId}`,
   });
 }
 

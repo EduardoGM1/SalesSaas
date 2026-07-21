@@ -93,6 +93,7 @@ export async function listConversations(supabase, userId) {
       const unread = row.recipient_id === userId && !row.read_at ? 1 : 0;
       const peer = profiles.get(peerId);
       byPeer.set(peerId, {
+        kind: "direct",
         peer: peerPublic(peer, peerId),
         last_message: {
           body: previewBody(row),
@@ -106,7 +107,22 @@ export async function listConversations(supabase, userId) {
       byPeer.get(peerId).unread_count += 1;
     }
   }
-  return [...byPeer.values()];
+
+  let groups = [];
+  try {
+    const { listGroupConversations } = await import("./group-chat-service.js");
+    groups = await listGroupConversations(supabase, userId);
+  } catch {
+    groups = [];
+  }
+
+  const merged = [...byPeer.values(), ...groups];
+  merged.sort((a, b) => {
+    const ta = a.last_message?.created_at || "";
+    const tb = b.last_message?.created_at || "";
+    return tb.localeCompare(ta);
+  });
+  return merged;
 }
 
 export async function listMessagesWithUser(supabase, userId, peerId, { limit = 100 } = {}) {
@@ -226,7 +242,14 @@ export async function countUnread(supabase, userId) {
     .eq("recipient_id", userId)
     .is("read_at", null);
   if (error) throw new ServiceError(error.message, 500);
-  return { count: count ?? 0 };
+  let groupUnread = 0;
+  try {
+    const { countGroupUnread } = await import("./group-chat-service.js");
+    groupUnread = await countGroupUnread(supabase, userId);
+  } catch {
+    groupUnread = 0;
+  }
+  return { count: (count ?? 0) + groupUnread };
 }
 
 export async function getMessage(supabase, userId, messageId) {

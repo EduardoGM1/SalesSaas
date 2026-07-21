@@ -30,12 +30,22 @@ export const networkApi = {
 export const messagesApi = {
   conversations: () => apiFetch("/messages/conversations", { cache: "no-store" }),
   thread: (userId) => apiFetch(`/messages?with=${encodeURIComponent(userId)}`, { cache: "no-store" }),
+  groupThread: (conversationId) => apiFetch(`/messages?c=${encodeURIComponent(conversationId)}`, { cache: "no-store" }),
   send: (recipientId, body) => apiFetch("/messages", {
     method: "POST",
     cache: "no-store",
     body: JSON.stringify({ recipient_id: recipientId, body }),
   }),
+  sendGroup: (conversationId, body) => apiFetch("/messages", {
+    method: "POST",
+    cache: "no-store",
+    body: JSON.stringify({ conversation_id: conversationId, body }),
+  }),
   markRead: (userId) => apiFetch(`/messages/read?with=${encodeURIComponent(userId)}`, {
+    method: "PATCH",
+    cache: "no-store",
+  }),
+  markGroupRead: (conversationId) => apiFetch(`/messages/read?c=${encodeURIComponent(conversationId)}`, {
     method: "PATCH",
     cache: "no-store",
   }),
@@ -54,6 +64,10 @@ export const sharingApi = {
   create: (prospectId, sharedWithId, permission) => apiFetch(`/prospects/${prospectId}/shares`, {
     method: "POST",
     body: JSON.stringify({ shared_with_id: sharedWithId, permission }),
+  }),
+  createToGroup: (prospectId, conversationId, permission) => apiFetch(`/prospects/${prospectId}/shares`, {
+    method: "POST",
+    body: JSON.stringify({ conversation_id: conversationId, permission }),
   }),
   createInvite: (prospectId, permission = "view") => apiFetch(`/prospects/${prospectId}/share-invites`, {
     method: "POST",

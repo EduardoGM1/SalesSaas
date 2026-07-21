@@ -67,12 +67,13 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
   const [shareMeta, setShareMeta] = useState({ shareId: null, addedAt: null, canPin: false });
   const [pinBusy, setPinBusy] = useState(false);
   const [remoteLoading, setRemoteLoading] = useState(sharedRemote);
+  const [teamRemote, setTeamRemote] = useState(false);
 
-  const c = sharedRemote ? remoteClient : localC;
+  const c = sharedRemote || teamRemote ? remoteClient : localC;
   const perm = sharedRemote ? sharePerm : "owner";
-  const canEdit = canEditShared(perm);
-  const canComment = canCommentShared(perm);
-  const isOwner = perm === "owner";
+  const canEdit = sharedRemote ? canEditShared(perm) : !teamRemote;
+  const canComment = sharedRemote ? canCommentShared(perm) : !teamRemote;
+  const isOwner = perm === "owner" && !teamRemote;
   const showAddToWorkspace = sharedRemote
     && canAddToWorkspace(perm)
     && shareMeta.canPin
@@ -101,6 +102,35 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
       .catch((err) => toast.error(err.message))
       .finally(() => setRemoteLoading(false));
   }, [id, sharedRemote]);
+
+  // Gerente: expediente de un vendedor del grupo (RLS SELECT) si no está en DB local
+  useEffect(() => {
+    if (sharedRemote || !id || !hydrated || localC) {
+      setTeamRemote(false);
+      return;
+    }
+    let cancelled = false;
+    setRemoteLoading(true);
+    fetch(`/api/v1/prospects/${id}`, { credentials: "include", cache: "no-store" })
+      .then(async (res) => {
+        const body = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(body.error || "No encontrado");
+        return body.data ?? body;
+      })
+      .then((row) => {
+        if (cancelled || !row) return;
+        setTeamRemote(true);
+        setRemoteClient(prospectRowToClient(row, { sales: [], activities: [], tools: {} }));
+        setSharePerm("view");
+      })
+      .catch(() => {
+        if (!cancelled) setTeamRemote(false);
+      })
+      .finally(() => {
+        if (!cancelled) setRemoteLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [id, sharedRemote, hydrated, localC]);
 
   const reloadRemote = async () => {
     const data = await sharingApi.getSharedProspect(id);
@@ -176,8 +206,8 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hydrated, localC?.id, id, navigate, sharedRemote]);
 
-  if (sharedRemote && remoteLoading) return <Topbar title={t("exp.title")} subtitle={t("exp.loading")} />;
-  if (!sharedRemote && !hydrated) return <Topbar title={t("exp.title")} subtitle={t("exp.loading")} />;
+  if ((sharedRemote || teamRemote) && remoteLoading) return <Topbar title={t("exp.title")} subtitle={t("exp.loading")} />;
+  if (!sharedRemote && !teamRemote && !hydrated) return <Topbar title={t("exp.title")} subtitle={t("exp.loading")} />;
   if (!c) return (
     <>
       <Topbar title={t("exp.title")} subtitle={t("exp.notFound")} />

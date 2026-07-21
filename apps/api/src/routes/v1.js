@@ -21,6 +21,8 @@ import * as sharingService from "../services/sharing-service.js";
 import * as pushService from "../services/push-notifications-service.js";
 import * as supportService from "../services/support-service.js";
 import * as groupsService from "../services/groups-service.js";
+import * as groupChatService from "../services/group-chat-service.js";
+import * as teamService from "../services/team-service.js";
 import { ServiceError } from "../lib/service-error.js";
 
 const router = Router();
@@ -108,6 +110,28 @@ router.get("/team/members", async (req, res) => {
   const a = await requireAuth(req, res);
   if (!a) return;
   await runService(res, () => groupsService.listMyTeam(a.supabase, a.userId), { wrap: "data" });
+});
+
+router.get("/team/dashboard", async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  const year = req.query.year;
+  const month = req.query.month;
+  await runService(
+    res,
+    () => teamService.getTeamDashboardMetrics(a.supabase, a.userId, { year, month }),
+    { wrap: "data" },
+  );
+});
+
+router.get("/team/members/:memberId/prospects", async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  await runService(
+    res,
+    () => teamService.listTeamMemberProspects(a.supabase, a.userId, req.params.memberId),
+    { wrap: "data" },
+  );
 });
 
 router.get("/geo/countries", (_req, res) => {
@@ -457,8 +481,13 @@ router.get("/messages/unread-count", async (req, res) => {
 router.get("/messages", async (req, res) => {
   const a = await requireAuth(req, res);
   if (!a) return;
+  const conversationId = typeof req.query.c === "string" ? req.query.c : null;
   const withUser = req.query.with;
-  if (!withUser) return apiError(res, "Parámetro with requerido.");
+  if (conversationId) {
+    await runService(res, () => groupChatService.listGroupMessages(a.supabase, a.userId, conversationId), { wrap: "data" });
+    return;
+  }
+  if (!withUser) return apiError(res, "Parámetro with o c requerido.");
   await runService(res, () => messagesService.listMessagesWithUser(a.supabase, a.userId, withUser), { wrap: "data" });
 });
 
@@ -467,14 +496,23 @@ router.post("/messages", async (req, res) => {
   if (!a) return;
   const body = parseJsonBody(req, res);
   if (!body) return;
+  if (body.conversation_id) {
+    await runService(res, () => groupChatService.sendGroupMessage(a.supabase, a.userId, body), { wrap: "data", successStatus: 201 });
+    return;
+  }
   await runService(res, () => messagesService.sendMessage(a.supabase, a.userId, body), { wrap: "data", successStatus: 201 });
 });
 
 router.patch("/messages/read", async (req, res) => {
   const a = await requireAuth(req, res);
   if (!a) return;
+  const conversationId = typeof req.query.c === "string" ? req.query.c : null;
   const withUser = req.query.with;
-  if (!withUser) return apiError(res, "Parámetro with requerido.");
+  if (conversationId) {
+    await runService(res, () => groupChatService.markGroupRead(a.supabase, a.userId, conversationId), { wrap: "ok" });
+    return;
+  }
+  if (!withUser) return apiError(res, "Parámetro with o c requerido.");
   await runService(res, () => messagesService.markThreadRead(a.supabase, a.userId, withUser), { wrap: "ok" });
 });
 
@@ -645,6 +683,14 @@ router.post("/prospects/:id/shares", async (req, res) => {
   if (!a) return;
   const body = parseJsonBody(req, res);
   if (!body) return;
+  if (body.conversation_id) {
+    await runService(
+      res,
+      () => sharingService.createShareToGroup(a.supabase, a.userId, req.params.id, body),
+      { wrap: "data", successStatus: 201 },
+    );
+    return;
+  }
   await runService(res, () => sharingService.createShare(a.supabase, a.userId, req.params.id, body), { wrap: "data", successStatus: 201 });
 });
 
