@@ -63,6 +63,7 @@ export interface AdminAccessProfile {
   role: string;
   is_super_admin: boolean;
   admin_permissions: string[];
+  permission_keys?: string[];
 }
 
 const DELEGATABLE_KEYS = new Set<string>(DELEGATABLE_ADMIN_PERMISSIONS.map((p) => p.key));
@@ -119,8 +120,15 @@ export function adminPermissionSetHas(set: Set<string>, perm: string): boolean {
   return group.some((k) => set.has(k));
 }
 
+function resolvedAdminKeys(profile: AdminAccessProfile): string[] {
+  if (Array.isArray(profile.permission_keys) && profile.permission_keys.length) {
+    return profile.permission_keys;
+  }
+  return profile.admin_permissions || [];
+}
+
 function permissionGranted(profile: AdminAccessProfile, perm: string): boolean {
-  const set = expandAdminPermissionSet(profile.admin_permissions || []);
+  const set = expandAdminPermissionSet(resolvedAdminKeys(profile));
   return adminPermissionSetHas(set, perm);
 }
 
@@ -133,7 +141,7 @@ export function hasPermission(profile: AdminAccessProfile, perm: string): boolea
 export function hasAnyAdminAccess(profile: AdminAccessProfile): boolean {
   if (profile.role !== "admin") return false;
   if (isSuperAdmin(profile)) return true;
-  const set = expandAdminPermissionSet(profile.admin_permissions || []);
+  const set = expandAdminPermissionSet(resolvedAdminKeys(profile));
   return [...set].some((p) => ALL_KNOWN_ADMIN_KEYS.has(p));
 }
 
@@ -145,7 +153,7 @@ export function effectivePermissions(profile: AdminAccessProfile): string[] {
       ...SUPER_ADMIN_ONLY_PERMISSIONS,
     ];
   }
-  const expanded = expandAdminPermissionSet(profile.admin_permissions || []);
+  const expanded = expandAdminPermissionSet(resolvedAdminKeys(profile));
   const out = new Set<string>();
   for (const p of DELEGATABLE_ADMIN_PERMISSIONS) {
     if (adminPermissionSetHas(expanded, p.key)) out.add(p.key);
@@ -165,6 +173,8 @@ export function permissionLabel(key: string): string {
 export const ADMIN_NAV_PERMISSIONS: Record<string, string> = {
   "/admin": "ver_resumen",
   "/admin/users": "gestionar_usuarios",
+  "/admin/groups": "gestionar_usuarios",
+  "/admin/modules": "gestionar_roles_permisos",
   "/admin/goals": "gestionar_metas",
   "/admin/tools": "ver_metricas",
   "/admin/support": "gestionar_soporte",
@@ -213,6 +223,8 @@ export function canAccessAdminPathByPermissions(
   if (pathname.startsWith("/admin/export/users")) return adminPermissionSetHas(set, "gestionar_usuarios");
   if (pathname.startsWith("/admin/export/logs")) return adminPermissionSetHas(set, "ver_logs");
   if (pathname.startsWith("/admin/users")) return adminPermissionSetHas(set, "gestionar_usuarios");
+  if (pathname.startsWith("/admin/groups")) return adminPermissionSetHas(set, "gestionar_usuarios");
+  if (pathname.startsWith("/admin/modules")) return adminPermissionSetHas(set, "gestionar_roles_permisos");
   if (pathname.startsWith("/admin/tools")) return adminPermissionSetHas(set, "ver_metricas");
   if (pathname.startsWith("/admin/support")) return adminPermissionSetHas(set, "gestionar_soporte");
   if (pathname.startsWith("/admin/goals")) return adminPermissionSetHas(set, "gestionar_metas");
@@ -225,7 +237,7 @@ export function canAccessAdminPathByPermissions(
 export function canAccessAdminPath(profile: AdminAccessProfile, pathname: string): boolean {
   if (!hasAnyAdminAccess(profile)) return false;
   if (isSuperAdmin(profile)) return true;
-  return canAccessAdminPathByPermissions(profile.admin_permissions || [], pathname, false);
+  return canAccessAdminPathByPermissions(resolvedAdminKeys(profile), pathname, false);
 }
 
 export function sanitizeDelegatedPermissions(perms: string[]): DelegatablePermission[] {

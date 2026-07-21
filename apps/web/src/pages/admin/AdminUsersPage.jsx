@@ -140,11 +140,21 @@ function MembershipModal({ user, onClose, onDone }) {
   );
 }
 
+function originLabel(t, origen, roleName) {
+  if (origen === "override_grant") return t("admin.users.perms.origin.overrideGrant");
+  if (origen === "override_deny") return t("admin.users.perms.origin.overrideDeny");
+  if (origen === "rol") return t("admin.users.perms.origin.role", { role: roleName || t("admin.users.role.admin") });
+  if (origen === "superadmin") return t("admin.users.perms.origin.super");
+  return t("admin.users.perms.origin.none");
+}
+
 function VendorFeaturesModal({ user, onClose, onDone }) {
   const { t } = useI18n();
   const [pending, setPending] = useState(false);
   const [loading, setLoading] = useState(true);
   const [checked, setChecked] = useState(() => new Set(VENDOR_FEATURE_PERMISSIONS.map((p) => p.key)));
+  const [matrix, setMatrix] = useState([]);
+  const [roleName, setRoleName] = useState(user.role_nombre || "");
 
   useEffect(() => {
     let cancelled = false;
@@ -156,7 +166,11 @@ function VendorFeaturesModal({ user, onClose, onDone }) {
         const allow = Array.isArray(body.data?.feature_allowlist)
           ? body.data.feature_allowlist
           : VENDOR_FEATURE_PERMISSIONS.map((p) => p.key);
-        if (!cancelled) setChecked(new Set(allow));
+        if (!cancelled) {
+          setChecked(new Set(allow));
+          setMatrix(Array.isArray(body.data?.origin_matrix) ? body.data.origin_matrix : []);
+          setRoleName(body.data?.role?.nombre || user.role_nombre || "");
+        }
       })
       .catch(() => {
         const legacy = new Set(user.user_permissions || []);
@@ -172,7 +186,7 @@ function VendorFeaturesModal({ user, onClose, onDone }) {
         if (!cancelled) setLoading(false);
       });
     return () => { cancelled = true; };
-  }, [user.id, user.user_permissions]);
+  }, [user.id, user.user_permissions, user.role_nombre]);
 
   const submit = async (e) => {
     e.preventDefault();
@@ -211,16 +225,24 @@ function VendorFeaturesModal({ user, onClose, onDone }) {
         ) : (
           <form onSubmit={submit}>
             <div className="admin-perms-grid">
-              {VENDOR_FEATURE_PERMISSIONS.map((p) => (
-                <label key={p.key} className="admin-perm-item">
-                  <input
-                    type="checkbox"
-                    checked={checked.has(p.key)}
-                    onChange={() => toggle(p.key)}
-                  />
-                  <span>{t(p.labelKey)}</span>
-                </label>
-              ))}
+              {VENDOR_FEATURE_PERMISSIONS.map((p) => {
+                const row = matrix.find((m) => m.clave === p.key);
+                return (
+                  <label key={p.key} className="admin-perm-item">
+                    <input
+                      type="checkbox"
+                      checked={checked.has(p.key)}
+                      onChange={() => toggle(p.key)}
+                    />
+                    <span>
+                      {t(p.labelKey)}
+                      <span className="admin-cell-muted" style={{ display: "block", fontSize: 12 }}>
+                        {originLabel(t, row?.origen, roleName)}
+                      </span>
+                    </span>
+                  </label>
+                );
+              })}
             </div>
             <div className="btn-row">
               <button type="button" className="btn btn-ghost" onClick={onClose}>{t("common.cancel")}</button>
@@ -236,13 +258,41 @@ function VendorFeaturesModal({ user, onClose, onDone }) {
 function PermissionsModal({ user, onClose, onDone }) {
   const { t } = useI18n();
   const [pending, setPending] = useState(false);
-  const current = expandAdminPermissionSet(user.admin_permissions);
+  const [loading, setLoading] = useState(true);
+  const [checked, setChecked] = useState(() => expandAdminPermissionSet(user.admin_permissions));
+  const [matrix, setMatrix] = useState([]);
+  const [roleName, setRoleName] = useState(user.role_nombre || "");
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    fetch(`/api/v1/admin/users/${user.id}/permission-context`, { credentials: "include" })
+      .then(async (res) => {
+        const body = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(body.error || "Error");
+        const keys = Array.isArray(body.data?.permission_keys) ? body.data.permission_keys : [];
+        const origin = Array.isArray(body.data?.origin_matrix) ? body.data.origin_matrix : [];
+        if (!cancelled) {
+          setChecked(expandAdminPermissionSet(keys));
+          setMatrix(origin);
+          setRoleName(body.data?.role?.nombre || user.role_nombre || "");
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setChecked(expandAdminPermissionSet(user.admin_permissions));
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [user.id, user.admin_permissions, user.role_nombre]);
 
   const submit = async (e) => {
     e.preventDefault();
     setPending(true);
-    const fd = new FormData(e.currentTarget);
-    const permissions = fd.getAll("permissions").map(String);
+    const permissions = DELEGATABLE_ADMIN_PERMISSIONS
+      .map((p) => p.key)
+      .filter((k) => adminPermissionSetHas(checked, k));
     try {
       await patchAdmin(`users/${user.id}/permissions`, { permissions });
       try {
@@ -258,6 +308,15 @@ function PermissionsModal({ user, onClose, onDone }) {
     }
   };
 
+  const toggle = (key) => {
+    setChecked((prev) => {
+      const next = new Set(prev);
+      if (adminPermissionSetHas(next, key)) next.delete(key);
+      else next.add(key);
+      return expandAdminPermissionSet([...next]);
+    });
+  };
+
   return (
     <>
       <button type="button" className="modal-backdrop" aria-label={t("common.cancel")} onClick={onClose} />
@@ -266,25 +325,37 @@ function PermissionsModal({ user, onClose, onDone }) {
           <span className="admin-confirm-title">{t("admin.users.perms.title")}</span>
           <span className="admin-confirm-sub">{user.name}</span>
         </div>
-        <form onSubmit={submit}>
-          <div className="admin-perms-grid">
-            {DELEGATABLE_ADMIN_PERMISSIONS.map((p) => (
-              <label key={p.key} className="admin-perm-item">
-                <input
-                  type="checkbox"
-                  name="permissions"
-                  value={p.key}
-                  defaultChecked={adminPermissionSetHas(current, p.key)}
-                />
-                <span>{t(p.labelKey)}</span>
-              </label>
-            ))}
-          </div>
-          <div className="btn-row">
-            <button type="button" className="btn btn-ghost" onClick={onClose}>{t("common.cancel")}</button>
-            <button type="submit" className="btn btn-primary" disabled={pending}>{pending ? t("admin.users.confirm.saving") : t("admin.users.perms.save")}</button>
-          </div>
-        </form>
+        <p className="admin-confirm-body">{t("admin.users.perms.hintOrigin")}</p>
+        {loading ? (
+          <p className="admin-confirm-body">{t("admin.users.confirm.saving")}</p>
+        ) : (
+          <form onSubmit={submit}>
+            <div className="admin-perms-grid">
+              {DELEGATABLE_ADMIN_PERMISSIONS.map((p) => {
+                const row = matrix.find((m) => m.clave === p.key);
+                return (
+                  <label key={p.key} className="admin-perm-item">
+                    <input
+                      type="checkbox"
+                      checked={adminPermissionSetHas(checked, p.key)}
+                      onChange={() => toggle(p.key)}
+                    />
+                    <span>
+                      {t(p.labelKey)}
+                      <span className="admin-cell-muted" style={{ display: "block", fontSize: 12 }}>
+                        {originLabel(t, row?.origen, roleName)}
+                      </span>
+                    </span>
+                  </label>
+                );
+              })}
+            </div>
+            <div className="btn-row">
+              <button type="button" className="btn btn-ghost" onClick={onClose}>{t("common.cancel")}</button>
+              <button type="submit" className="btn btn-primary" disabled={pending}>{pending ? t("admin.users.confirm.saving") : t("admin.users.perms.save")}</button>
+            </div>
+          </form>
+        )}
       </div>
     </>
   );

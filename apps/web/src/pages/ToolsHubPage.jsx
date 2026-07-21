@@ -8,20 +8,32 @@ import { PremiumFeatureCard } from "@/components/premium/premium-feature-card.js
 import { useAppStore } from "@/stores/app-store.js";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { useUserPermissions } from "@/hooks/use-user-permissions.js";
+import { useModuloAccess } from "@/hooks/use-modulo-access.js";
 import { TOOL_PERMISSION_KEYS } from "@/lib/auth/tool-permissions.js";
+
+function useToolVisible(tool) {
+  const { can } = useUserPermissions();
+  const { allowed, loading } = useModuloAccess(tool);
+  const perm = TOOL_PERMISSION_KEYS[tool];
+  if (loading) return can(perm);
+  return allowed && can(perm);
+}
 
 export function ToolsHubPage() {
   const navigate = useNavigate();
   const setToolMode = useAppStore((s) => s.setToolMode);
   const { t } = useI18n();
-  const { can } = useUserPermissions();
+  const surveyOk = useToolVisible("survey");
+  const vacOk = useToolVisible("vacaciones");
+  const wsOk = useToolVisible("worksheet");
+  const money = useModuloAccess("money_box");
   const [newClientOpen, setNewClientOpen] = useState(false);
 
   const TOOLS = [
-    { href: "/tools/survey", tool: "survey", labelKey: "tools.survey", descKey: "tools.surveyDesc", icon: FileText, tone: "blue" },
-    { href: "/tools/vacaciones", tool: "vacaciones", labelKey: "tools.vacation", descKey: "tools.vacationDesc", icon: Palmtree, tone: "green" },
-    { href: "/tools/worksheet", tool: "worksheet", labelKey: "tools.worksheet", descKey: "tools.worksheetDesc", icon: DollarSign, tone: "purple" },
-  ].filter((tool) => can(TOOL_PERMISSION_KEYS[tool.tool]));
+    { href: "/tools/survey", tool: "survey", labelKey: "tools.survey", descKey: "tools.surveyDesc", icon: FileText, tone: "blue", ok: surveyOk },
+    { href: "/tools/vacaciones", tool: "vacaciones", labelKey: "tools.vacation", descKey: "tools.vacationDesc", icon: Palmtree, tone: "green", ok: vacOk },
+    { href: "/tools/worksheet", tool: "worksheet", labelKey: "tools.worksheet", descKey: "tools.worksheetDesc", icon: DollarSign, tone: "purple", ok: wsOk },
+  ].filter((tool) => tool.ok);
 
   return (
     <>
@@ -43,7 +55,7 @@ export function ToolsHubPage() {
                   </div>
                   <div style={{ color: "var(--muted2)", marginLeft: "auto", fontSize: 18 }}>›</div>
                 </Link>
-                {tool.tool === "worksheet" && (
+                {tool.tool === "worksheet" && money.moduloActivo && (
                   <PremiumFeatureCard
                     featureKey="money_box"
                     title={t("moneyBox.title")}
@@ -57,7 +69,7 @@ export function ToolsHubPage() {
               </div>
             );
           })}
-          {!TOOLS.some((tool) => tool.tool === "worksheet") && (
+          {!TOOLS.some((tool) => tool.tool === "worksheet") && money.moduloActivo && (
             <div className="tool-card-stack">
               <PremiumFeatureCard
                 featureKey="money_box"

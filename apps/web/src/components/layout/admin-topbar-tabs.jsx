@@ -18,6 +18,8 @@ import { useI18n } from "@/hooks/use-i18n.js";
 export const ADMIN_TABS = [
   { href: "/admin", labelKey: "admin.tab.overview", icon: NavIconDashboard, exact: true },
   { href: "/admin/users", labelKey: "admin.tab.users", icon: NavIconUsers },
+  { href: "/admin/groups", labelKey: "admin.tab.groups", icon: NavIconUsers, superOnly: true },
+  { href: "/admin/modules", labelKey: "admin.tab.modules", icon: NavIconTools, superOnly: true },
   { href: "/admin/roles", labelKey: "admin.tab.roles", icon: NavIconRoles },
   { href: "/admin/logs", labelKey: "admin.tab.logs", icon: NavIconLogs },
   { href: "/admin/goals", labelKey: "admin.tab.goals", icon: NavIconGoals },
@@ -36,6 +38,7 @@ export function AdminTopbarTabs({ permissions, pathname, isSuperAdmin = false })
   const visibleTabs = isSuperAdmin
     ? ADMIN_TABS
     : ADMIN_TABS.filter((tab) => {
+      if (tab.superOnly) return false;
       const perm = ADMIN_NAV_PERMISSIONS[tab.href];
       return perm ? adminPermissionSetHas(allowed, perm) : false;
     });

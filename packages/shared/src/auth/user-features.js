@@ -18,7 +18,7 @@ const VENDOR_FEATURE_KEYS = new Set([
 
 export function hasUserFeature(profile, key) {
   if (!profile) return true;
-  if (profile.role === "admin" && String(key).startsWith("sales:")) return true;
+  // Fuente de verdad: permission_keys resueltos (rol + overrides). Sin bypass admin.
   if (Array.isArray(profile.permission_keys)) {
     return profile.permission_keys.includes(key);
   }

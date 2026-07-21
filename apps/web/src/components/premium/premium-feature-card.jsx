@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Lock } from "lucide-react";
 import { useFeatureAccess } from "@/hooks/use-feature-access.js";
+import { useModuloAccess } from "@/hooks/use-modulo-access.js";
 import { UpgradeComingSoonModal } from "@/components/premium/upgrade-coming-soon-modal.jsx";
 import { useI18n } from "@/hooks/use-i18n.js";
 
@@ -10,6 +11,7 @@ import { useI18n } from "@/hooks/use-i18n.js";
  * - loading: estado neutro (sin candado), no navega ni abre upgrade
  * - locked (confirmado): modal Próximamente
  * - unlocked: navega a `to` o llama `onOpen`
+ * - módulo off: no se renderiza
  */
 export function PremiumFeatureCard({
   featureKey,
@@ -24,6 +26,8 @@ export function PremiumFeatureCard({
 }) {
   const { t } = useI18n();
   const { locked, loading, feature } = useFeatureAccess(featureKey);
+  const modulo = useModuloAccess(featureKey);
+  if (!modulo.loading && !modulo.moduloActivo) return null;
   const [upgradeOpen, setUpgradeOpen] = useState(false);
   const name = title || feature?.nombre_visible || featureKey;
 

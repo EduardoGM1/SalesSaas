@@ -20,6 +20,7 @@ import * as messagesService from "../services/messages-service.js";
 import * as sharingService from "../services/sharing-service.js";
 import * as pushService from "../services/push-notifications-service.js";
 import * as supportService from "../services/support-service.js";
+import * as groupsService from "../services/groups-service.js";
 import { ServiceError } from "../lib/service-error.js";
 
 const router = Router();
@@ -102,6 +103,13 @@ router.get("/auth/realtime-session", async (req, res) => {
   await runService(res, () => sessionService.getRealtimeSession(a.supabase), { wrap: "data" });
 });
 
+/** Equipo del gerente autenticado (Tema 2 MVP). */
+router.get("/team/members", async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  await runService(res, () => groupsService.listMyTeam(a.supabase, a.userId), { wrap: "data" });
+});
+
 router.get("/geo/countries", (_req, res) => {
   json(res, { data: geoService.getCountries() });
 });
@@ -168,7 +176,14 @@ router.get("/prospects", async (req, res) => {
   const a = await requireAuth(req, res);
   if (!a) return;
   const paging = parseLimitOffset(req.query);
-  await runService(res, () => prospectsService.listProspects(a.supabase, a.userId, { ...paging, status: req.query.status }));
+  const scope = typeof req.query.scope === "string" ? req.query.scope : undefined;
+  const memberId = typeof req.query.member_id === "string" ? req.query.member_id : undefined;
+  await runService(res, () => prospectsService.listProspects(a.supabase, a.userId, {
+    ...paging,
+    status: req.query.status,
+    scope,
+    memberId,
+  }));
 });
 
 router.post("/prospects", async (req, res) => {
