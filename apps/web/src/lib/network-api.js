@@ -102,6 +102,7 @@ export const sharingApi = {
     method: "POST",
     body: JSON.stringify({ to_user_id: toUserId }),
   }),
+  listAudit: (prospectId, limit = 50) => apiFetch(`/prospects/${prospectId}/audit?limit=${limit}`),
 };
 
 export const workspacesApi = {

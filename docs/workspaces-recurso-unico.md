@@ -68,6 +68,14 @@ npm run db:migrate:0054
 # o pegar el SQL en Supabase → SQL Editor
 ```
 
+## UI
+
+- Configuración → **Espacios de trabajo** (`/settings/workspaces`): org, salas, miembros, workspace activo.
+- Clientes: sección **En mi espacio** (pins + `recurso_workspace_referencias`).
+- Compartir: solo Ver / Editar (`workspace` legacy → edit). Pin = “Agregar a mi espacio”.
+- Re-compartir: si el share tiene `puede_volver_a_compartir`.
+- Historial: botón en detalle del expediente → `GET /prospects/:id/audit`.
+
 ## Casos de prueba
 
 1. Usuario nuevo → workspace personal; nuevos expedientes con `workspace_propietario_id`.
@@ -77,3 +85,5 @@ npm run db:migrate:0054
 5. Transferir → cambia owner/workspace; entrada en `historial_auditoria`.
 6. Vincular a sala de otra org → 403.
 7. Receptor no-owner no puede transferir.
+8. Receptor con `puede_volver_a_compartir` puede re-compartir; sin el flag → 403.
+9. Cambiar workspace activo y pinnear → referencia en ese workspace.

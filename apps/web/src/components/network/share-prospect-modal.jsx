@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Eye, FolderPlus, Pencil } from "lucide-react";
+import { Eye, Pencil } from "lucide-react";
 import { SalesModal } from "@/components/ui/sales-modal";
 import { networkApi, sharingApi } from "@/lib/network-api.js";
 import { useI18n } from "@/hooks/use-i18n.js";
@@ -13,18 +13,21 @@ import {
   shareExternally,
 } from "@/lib/share-external.js";
 
+/** Ver / Editar. "Agregar a mi espacio" es acción aparte (pin/referencia). Legacy `workspace` → edit. */
 const LEVELS = [
   { value: "view", icon: Eye, key: "network.shareLevel.view", recommended: false },
   { value: "edit", icon: Pencil, key: "network.shareLevel.edit", recommended: true },
-  { value: "workspace", icon: FolderPlus, key: "network.shareLevel.workspace", recommended: false },
 ];
 
 const PERM_OPTIONS = [
   { value: "view", key: "network.permView" },
   { value: "edit", key: "network.permEdit" },
-  { value: "workspace", key: "network.permWorkspace" },
-  { value: "comment", key: "network.permComment" },
 ];
+
+function normalizePerm(permission) {
+  if (permission === "workspace" || permission === "comment") return "edit";
+  return permission || "view";
+}
 
 function displayName(user) {
   return user?.full_name?.trim() || user?.email?.split("@")[0] || "Usuario";
@@ -40,9 +43,10 @@ function UserAvatar({ user }) {
 
 function ShareRow({ share, onPermissionChange, onRemove, t }) {
   const [saved, setSaved] = useState(false);
+  const current = normalizePerm(share.permission);
 
   const handlePerm = async (permission) => {
-    if (permission === share.permission) return;
+    if (permission === current) return;
     try {
       await onPermissionChange(share.id, permission);
       setSaved(true);
@@ -58,11 +62,11 @@ function ShareRow({ share, onPermissionChange, onRemove, t }) {
       <div className="share-row-name">{displayName(share.shared_with)}</div>
       <select
         className="share-perm-select"
-        value={share.permission === "comment" ? "view" : share.permission}
+        value={current}
         onChange={(e) => handlePerm(e.target.value)}
         aria-label={t("network.permission")}
       >
-        {PERM_OPTIONS.filter((o) => o.value !== "comment").map(({ value, key }) => (
+        {PERM_OPTIONS.map(({ value, key }) => (
           <option key={value} value={value}>{t(key)}</option>
         ))}
       </select>
@@ -74,7 +78,14 @@ function ShareRow({ share, onPermissionChange, onRemove, t }) {
   );
 }
 
-export function ShareProspectModal({ open, onOpenChange, prospectId, prospectName, prospect }) {
+export function ShareProspectModal({
+  open,
+  onOpenChange,
+  prospectId,
+  prospectName,
+  prospect,
+  reshareMode = false,
+}) {
   const { t, lang } = useI18n();
   const [mode, setMode] = useState("internal");
   const [contacts, setContacts] = useState([]);
@@ -119,16 +130,18 @@ export function ShareProspectModal({ open, onOpenChange, prospectId, prospectNam
       setCanReshare(false);
       setExternalPermission("edit");
       refresh();
-      fetchProfile().then((p) => {
-        if (p?.full_name) setSharerName(p.full_name.trim());
-        else if (p?.email) setSharerName(p.email.split("@")[0]);
-      }).catch(() => {});
+      if (!reshareMode) {
+        fetchProfile().then((p) => {
+          if (p?.full_name) setSharerName(p.full_name.trim());
+          else if (p?.email) setSharerName(p.email.split("@")[0]);
+        }).catch(() => {});
+      }
     } else {
       setSelectedId("");
       setInvitePayload(null);
       setMode("internal");
     }
-  }, [open, prospectId]);
+  }, [open, prospectId, reshareMode]);
 
   useEffect(() => {
     if (!open || mode !== "external" || !prospectId || typeof window === "undefined") {
@@ -220,32 +233,34 @@ export function ShareProspectModal({ open, onOpenChange, prospectId, prospectNam
     <SalesModal
       open={open}
       onOpenChange={onOpenChange}
-      title={t("network.shareTitle")}
-      sub={t("network.shareSub", { name: prospectName })}
+      title={reshareMode ? t("network.reshareTitle") : t("network.shareTitle")}
+      sub={t(reshareMode ? "network.reshareSub" : "network.shareSub", { name: prospectName })}
       maxWidth={640}
     >
-      <div className="share-mode-tabs" role="tablist" aria-label={t("network.shareTitle")}>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={mode === "internal"}
-          className={`share-mode-tab${mode === "internal" ? " on" : ""}`}
-          onClick={() => setMode("internal")}
-        >
-          {t("network.shareModeInternal")}
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={mode === "external"}
-          className={`share-mode-tab${mode === "external" ? " on" : ""}`}
-          onClick={() => setMode("external")}
-        >
-          {t("network.shareModeExternal")}
-        </button>
-      </div>
+      {!reshareMode && (
+        <div className="share-mode-tabs" role="tablist" aria-label={t("network.shareTitle")}>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={mode === "internal"}
+            className={`share-mode-tab${mode === "internal" ? " on" : ""}`}
+            onClick={() => setMode("internal")}
+          >
+            {t("network.shareModeInternal")}
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={mode === "external"}
+            className={`share-mode-tab${mode === "external" ? " on" : ""}`}
+            onClick={() => setMode("external")}
+          >
+            {t("network.shareModeExternal")}
+          </button>
+        </div>
+      )}
 
-      {mode === "external" ? (
+      {mode === "external" && !reshareMode ? (
         <div className="share-external-panel">
           <div className="share-level-grid">
             {LEVELS.map((lvl) => {
@@ -337,17 +352,22 @@ export function ShareProspectModal({ open, onOpenChange, prospectId, prospectNam
                       ))}
                   </select>
                 </div>
-                <div className="prospect-field full">
-                  <label className="share-reshare-label">
-                    <input
-                      type="checkbox"
-                      checked={canReshare}
-                      onChange={(e) => setCanReshare(e.target.checked)}
-                    />
-                    {" "}
-                    {t("network.canReshare")}
-                  </label>
-                </div>
+                {!reshareMode && (
+                  <div className="prospect-field full">
+                    <label className="share-reshare-label">
+                      <input
+                        type="checkbox"
+                        checked={canReshare}
+                        onChange={(e) => setCanReshare(e.target.checked)}
+                      />
+                      {" "}
+                      {t("network.canReshare")}
+                    </label>
+                  </div>
+                )}
+                {reshareMode && (
+                  <p className="route-note">{t("network.reshareHint")}</p>
+                )}
               </div>
               <div className="btn-row" style={{ marginTop: 0, marginBottom: 16 }}>
                 <button type="button" className="btn btn-primary btn-sm" disabled={!selectedId} onClick={handleShare}>

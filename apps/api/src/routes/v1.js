@@ -19,6 +19,7 @@ import * as networkService from "../services/network-service.js";
 import * as messagesService from "../services/messages-service.js";
 import * as sharingService from "../services/sharing-service.js";
 import * as workspaceService from "../services/workspace-service.js";
+import * as resourceAuditService from "../services/resource-audit-service.js";
 import * as pushService from "../services/push-notifications-service.js";
 import * as supportService from "../services/support-service.js";
 import { ServiceError } from "../lib/service-error.js";
@@ -234,6 +235,19 @@ router.post("/prospects/:id/transfer", async (req, res) => {
   await runService(
     res,
     () => prospectsService.transferProspect(a.supabase, a.userId, req.params.id, body),
+    { wrap: "data" },
+  );
+});
+
+router.get("/prospects/:id/audit", async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  await runService(
+    res,
+    () => resourceAuditService.listResourceAudit(a.supabase, a.userId, {
+      entidadId: req.params.id,
+      limit: req.query.limit,
+    }),
     { wrap: "data" },
   );
 });

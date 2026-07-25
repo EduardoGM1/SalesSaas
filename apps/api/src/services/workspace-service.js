@@ -243,4 +243,13 @@ export async function getPersonalWorkspaceId(supabase, userId) {
   return data?.id ?? null;
 }
 
+export async function getActiveWorkspaceId(supabase, userId) {
+  try {
+    const listed = await listMyWorkspaces(supabase, userId);
+    return listed.active_workspace_id || null;
+  } catch {
+    return null;
+  }
+}
+
 export { ensurePersonalWorkspace };

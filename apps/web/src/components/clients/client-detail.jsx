@@ -57,10 +57,14 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
   const { can } = useUserPermissions();
 
   const [shareOpen, setShareOpen] = useState(false);
+  const [canReshare, setCanReshare] = useState(false);
   const [transferOpen, setTransferOpen] = useState(false);
   const [transferContacts, setTransferContacts] = useState([]);
   const [transferTarget, setTransferTarget] = useState("");
   const [actionBusy, setActionBusy] = useState(false);
+  const [auditOpen, setAuditOpen] = useState(false);
+  const [auditRows, setAuditRows] = useState([]);
+  const [auditLoading, setAuditLoading] = useState(false);
   const [recordModal, setRecordModal] = useState(null);
   const [noteOpen, setNoteOpen] = useState(false);
   const [form, setForm] = useState({});
@@ -95,6 +99,7 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
       addedAt: data.added_to_workspace_at || null,
       canPin: data.can_add_to_workspace === true || canAddToWorkspace(data.permission),
     });
+    setCanReshare(data.can_reshare === true || data.puede_volver_a_compartir === true);
   };
 
   useEffect(() => {
@@ -398,15 +403,64 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
               }}>{t("exp.delete")}</button>
             </div>
           )}
-          {showAddToWorkspace && (
+          {sharedRemote && (
             <div className="exp-page-actions">
+              {showAddToWorkspace && (
+                <button
+                  type="button"
+                  className="btn btn-primary btn-sm"
+                  disabled={pinBusy}
+                  onClick={handleAddToWorkspace}
+                >
+                  {t("clients.addToWorkspace")}
+                </button>
+              )}
+              {canReshare && (
+                <button type="button" className="btn btn-ghost btn-sm" onClick={() => setShareOpen(true)}>
+                  {t("network.reshareAction")}
+                </button>
+              )}
               <button
                 type="button"
-                className="btn btn-primary btn-sm"
-                disabled={pinBusy}
-                onClick={handleAddToWorkspace}
+                className="btn btn-ghost btn-sm"
+                disabled={auditLoading}
+                onClick={async () => {
+                  setAuditLoading(true);
+                  try {
+                    const rows = await sharingApi.listAudit(id);
+                    setAuditRows(Array.isArray(rows) ? rows : []);
+                    setAuditOpen(true);
+                  } catch (err) {
+                    toast.error(err.message || t("auth.login.errorGeneric"));
+                  } finally {
+                    setAuditLoading(false);
+                  }
+                }}
               >
-                {t("clients.addToWorkspace")}
+                {t("exp.audit")}
+              </button>
+            </div>
+          )}
+          {isOwner && isSupabaseConfigured() && (
+            <div className="exp-page-actions" style={{ marginTop: 4 }}>
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                disabled={auditLoading}
+                onClick={async () => {
+                  setAuditLoading(true);
+                  try {
+                    const rows = await sharingApi.listAudit(id);
+                    setAuditRows(Array.isArray(rows) ? rows : []);
+                    setAuditOpen(true);
+                  } catch (err) {
+                    toast.error(err.message || t("auth.login.errorGeneric"));
+                  } finally {
+                    setAuditLoading(false);
+                  }
+                }}
+              >
+                {t("exp.audit")}
               </button>
             </div>
           )}
@@ -602,15 +656,53 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
         onCancel={closeRecordModal}
       />
 
-      {isOwner && (
+      {(isOwner || canReshare) && (
         <ShareProspectModal
           open={shareOpen}
           onOpenChange={setShareOpen}
           prospectId={id}
           prospectName={clientDisplayName(c)}
           prospect={c}
+          reshareMode={!isOwner && canReshare}
         />
       )}
+
+      <SalesModal
+        open={auditOpen}
+        onOpenChange={setAuditOpen}
+        title={t("exp.audit")}
+        sub={t("exp.auditSub")}
+        maxWidth={560}
+      >
+        {!auditRows.length ? (
+          <div className="dp-empty">{t("exp.auditEmpty")}</div>
+        ) : (
+          <div className="activity-list">
+            {auditRows.map((row) => (
+              <div key={row.id} className="activity-item">
+                <span className="activity-dot" />
+                <div>
+                  <div className="activity-main">
+                    {t(`exp.auditAction.${row.accion}`) !== `exp.auditAction.${row.accion}`
+                      ? t(`exp.auditAction.${row.accion}`)
+                      : row.accion}
+                  </div>
+                  <div className="activity-sub">
+                    {row.detalle?.permission ? `${row.detalle.permission}` : ""}
+                    {row.detalle?.reshare ? ` · ${t("network.reshareAction")}` : ""}
+                  </div>
+                </div>
+                <div className="activity-date">
+                  {row.created_at ? longDate(String(row.created_at).slice(0, 10), lang) : ""}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+        <div className="btn-row">
+          <button type="button" className="btn btn-ghost" onClick={() => setAuditOpen(false)}>{t("common.cancel")}</button>
+        </div>
+      </SalesModal>
 
       {isOwner && (
         <SalesModal

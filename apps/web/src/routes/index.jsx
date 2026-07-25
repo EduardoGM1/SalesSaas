@@ -17,6 +17,7 @@ import { MetasPage } from "@/components/goals/metas-page.jsx";
 import { ClientsPage } from "@/components/clients/clients-page.jsx";
 import { ClientDetail } from "@/components/clients/client-detail.jsx";
 import { SettingsPage } from "@/components/settings/settings-page.tsx";
+import { WorkspacesSettingsPage } from "@/components/settings/workspaces-settings.jsx";
 import { SalesHistoryPage } from "@/pages/SalesHistoryPage.jsx";
 import { NetworkPage } from "@/pages/NetworkPage.jsx";
 import { ContactPage } from "@/pages/ContactPage.jsx";
@@ -133,6 +134,7 @@ export function AppRoutes() {
         <Route path="tools/worksheet" element={gatedTool("worksheet", <Lazy><WorksheetPage /></Lazy>)} />
         <Route path="tools/money-box" element={<Lazy><MoneyBoxPage /></Lazy>} />
         <Route path="settings" element={<SettingsPage />} />
+        <Route path="settings/workspaces" element={<WorkspacesSettingsPage />} />
         <Route path="admin" element={<AdminSection />}>
           <Route index element={<Lazy><AdminOverviewPage /></Lazy>} />
           <Route path="users" element={<Lazy><AdminUsersPage /></Lazy>} />

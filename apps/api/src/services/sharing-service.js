@@ -6,7 +6,7 @@ import { createServiceSupabaseClient } from "../lib/supabase-server.js";
 import { notifyProspectShared, notifyProspectSectionChanged } from "./push-notifications-service.js";
 import { MESSAGE_TYPES, sendStructuredMessage } from "./messages-service.js";
 import { writeResourceAudit, RESOURCE_AUDIT_ACTIONS } from "./resource-audit-service.js";
-import { getPersonalWorkspaceId } from "./workspace-service.js";
+import { getPersonalWorkspaceId, getActiveWorkspaceId, listMyWorkspaces } from "./workspace-service.js";
 
 import { profileDisplayName } from "../lib/profile-display-name.js";
 
@@ -151,7 +151,19 @@ export async function listSharesForProspect(supabase, userId, prospectId) {
     .eq("id", prospectId)
     .eq("user_id", userId)
     .maybeSingle();
-  if (!owned) throw new ServiceError("Expediente no encontrado.", 404);
+  if (!owned) {
+    const { data: myShare } = await supabase
+      .from("prospect_shares")
+      .select("id, puede_volver_a_compartir")
+      .eq("prospect_id", prospectId)
+      .eq("shared_with_id", userId)
+      .maybeSingle();
+    if (myShare?.puede_volver_a_compartir === true) {
+      // Re-compartidor: no gestiona la lista del dueño; solo puede crear nuevos accesos.
+      return [];
+    }
+    throw new ServiceError("Expediente no encontrado.", 404);
+  }
 
   const { data, error } = await supabase
     .from("prospect_shares")
@@ -215,6 +227,12 @@ export async function listSharedWithMe(supabase, userId) {
   return rows.map((row) => mapShare(row, profiles, prospects));
 }
 
+function normalizeSharePermission(permission) {
+  // Legacy `workspace` = edit + derecho a pin (la referencia se crea con "Agregar a mi espacio").
+  if (permission === "workspace") return "edit";
+  return permission;
+}
+
 export async function createShare(supabase, userId, prospectId, {
   shared_with_id: sharedWithId,
   permission = "view",
@@ -225,13 +243,44 @@ export async function createShare(supabase, userId, prospectId, {
   if (!VALID_PERMISSIONS.includes(permission)) throw new ServiceError("Permiso inválido.");
   if (sharedWithId === userId) throw new ServiceError("No puedes compartir contigo mismo.");
 
+  const effectivePermission = normalizeSharePermission(permission);
+
   const { data: owned } = await supabase
     .from("prospects")
-    .select("id")
+    .select("id, user_id, prospect_code, name, name1, name2")
     .eq("id", prospectId)
     .eq("user_id", userId)
     .maybeSingle();
-  if (!owned) throw new ServiceError("Expediente no encontrado.", 404);
+
+  let isReshare = false;
+  let prospectOwnerId = userId;
+  let prospect = owned;
+
+  if (!owned) {
+    const { data: myShare } = await supabase
+      .from("prospect_shares")
+      .select("id, owner_id, permission, puede_volver_a_compartir")
+      .eq("prospect_id", prospectId)
+      .eq("shared_with_id", userId)
+      .maybeSingle();
+    if (!myShare || myShare.puede_volver_a_compartir !== true) {
+      throw new ServiceError("No puedes compartir este expediente.", 403);
+    }
+    // No elevar por encima del permiso propio; no reenviar derecho a re-compartir.
+    if (effectivePermission === "edit" && !canEditPermission(myShare.permission)) {
+      throw new ServiceError("Tu permiso no permite compartir con edición.", 403);
+    }
+    isReshare = true;
+    prospectOwnerId = myShare.owner_id;
+    const { data: row } = await supabase
+      .from("prospects")
+      .select("id, user_id, prospect_code, name, name1, name2")
+      .eq("id", prospectId)
+      .maybeSingle();
+    if (!row) throw new ServiceError("Expediente no encontrado.", 404);
+    prospect = row;
+    prospectOwnerId = row.user_id || myShare.owner_id;
+  }
 
   const { data: priorShare } = await supabase
     .from("prospect_shares")
@@ -242,22 +291,35 @@ export async function createShare(supabase, userId, prospectId, {
 
   const payload = {
     prospect_id: prospectId,
-    owner_id: userId,
+    owner_id: prospectOwnerId,
     shared_with_id: sharedWithId,
-    permission,
-    puede_volver_a_compartir: canReshare === true,
+    permission: effectivePermission,
+    puede_volver_a_compartir: !isReshare && canReshare === true,
   };
+
+  // Re-compartir: el actor no es owner → service_role para cumplir RLS.
+  const writeClient = isReshare ? createServiceSupabaseClient() : supabase;
+
+  if (isReshare) {
+    const { data: link } = await supabase
+      .from("user_connections")
+      .select("id")
+      .eq("status", "accepted")
+      .or(`and(requester_id.eq.${userId},addressee_id.eq.${sharedWithId}),and(requester_id.eq.${sharedWithId},addressee_id.eq.${userId})`)
+      .maybeSingle();
+    if (!link) throw new ServiceError("Solo puedes compartir con contactos aceptados.", 403);
+  }
 
   let data;
   let error;
-  ({ data, error } = await supabase
+  ({ data, error } = await writeClient
     .from("prospect_shares")
     .upsert(payload, { onConflict: "prospect_id,shared_with_id" })
     .select(SHARE_SELECT_FULL)
     .single());
   if (error && String(error.message || "").includes("puede_volver_a_compartir")) {
     delete payload.puede_volver_a_compartir;
-    ({ data, error } = await supabase
+    ({ data, error } = await writeClient
       .from("prospect_shares")
       .upsert(payload, { onConflict: "prospect_id,shared_with_id" })
       .select(SHARE_SELECT)
@@ -269,12 +331,7 @@ export async function createShare(supabase, userId, prospectId, {
     }
     throw new ServiceError(error.message, 400);
   }
-  const profiles = await loadProfiles(supabase, [userId, sharedWithId]);
-  const { data: prospect } = await supabase
-    .from("prospects")
-    .select("id, prospect_code, name, name1, name2")
-    .eq("id", prospectId)
-    .maybeSingle();
+  const profiles = await loadProfiles(supabase, [userId, sharedWithId, prospectOwnerId]);
   const prospects = new Map(prospect ? [[prospect.id, prospect]] : []);
   const mapped = mapShare(data, profiles, prospects);
 
@@ -286,7 +343,7 @@ export async function createShare(supabase, userId, prospectId, {
       prospectId,
       prospectName: mapped.prospect_name,
       prospectCode: mapped.prospect_code,
-      permission,
+      permission: effectivePermission,
     });
   } catch {
     // Share ya creado; no fallar el share si el mensaje tipado falla (p. ej. migración pendiente).
@@ -299,16 +356,18 @@ export async function createShare(supabase, userId, prospectId, {
     detalle: {
       share_id: data.id,
       shared_with_id: sharedWithId,
-      permission,
-      puede_volver_a_compartir: canReshare === true,
+      permission: effectivePermission,
+      puede_volver_a_compartir: payload.puede_volver_a_compartir === true,
+      reshare: isReshare,
+      prospect_owner_id: prospectOwnerId,
     },
   });
 
   if (!priorShare) {
-    const owner = profiles.get(userId);
+    const actor = profiles.get(userId);
     notifyProspectShared(sharedWithId, {
       ownerId: userId,
-      ownerName: profileDisplayName(owner),
+      ownerName: profileDisplayName(actor),
       prospectId,
       prospectName: mapped.prospect_name,
     }).catch(() => {});
@@ -321,7 +380,7 @@ export async function updateSharePermission(supabase, userId, shareId, permissio
   if (permission != null && !VALID_PERMISSIONS.includes(permission)) throw new ServiceError("Permiso inválido.");
 
   const patch = {};
-  if (permission != null) patch.permission = permission;
+  if (permission != null) patch.permission = normalizeSharePermission(permission);
   if (extras.puede_volver_a_compartir !== undefined) {
     patch.puede_volver_a_compartir = extras.puede_volver_a_compartir === true;
   }
@@ -695,17 +754,25 @@ export async function addShareToWorkspace(supabase, userId, shareId) {
     throw new ServiceError("Tu permiso no permite agregar este expediente a tu espacio.", 403);
   }
 
-  const personalWs = await getPersonalWorkspaceId(supabase, userId);
-  if (personalWs) {
+  const targetWs =
+    (await getActiveWorkspaceId(supabase, userId).catch(() => null))
+    || (await getPersonalWorkspaceId(supabase, userId));
+  if (targetWs) {
     await upsertWorkspaceReference(supabase, {
       prospectId: share.prospect_id,
-      workspaceId: personalWs,
+      workspaceId: targetWs,
       userId,
     });
   }
 
   if (share.added_to_workspace_at) {
     const profiles = await loadProfiles(supabase, [share.owner_id, share.shared_with_id]);
+    await writeResourceAudit(supabase, {
+      actorId: userId,
+      accion: RESOURCE_AUDIT_ACTIONS.AGREGAR_A_ESPACIO,
+      entidadId: share.prospect_id,
+      detalle: { share_id: share.id, workspace_id: targetWs, already_pinned: true },
+    });
     return mapShare(share, profiles, new Map());
   }
   const now = new Date().toISOString();
@@ -731,14 +798,14 @@ export async function addShareToWorkspace(supabase, userId, shareId) {
     entidadId: data.prospect_id,
     detalle: {
       share_id: data.id,
-      workspace_id: personalWs,
+      workspace_id: targetWs,
     },
   });
 
   return mapShare(data, profiles, new Map(prospect ? [[prospect.id, prospect]] : []));
 }
 
-/** Expedientes pinneados en el espacio del receptor (mismo registro, no copia). */
+/** Expedientes en el espacio del usuario: pins legacy + referencias (mismo id, no copia). */
 export async function listWorkspacePinned(supabase, userId) {
   const { data, error } = await supabase
     .from("prospect_shares")
@@ -747,22 +814,97 @@ export async function listWorkspacePinned(supabase, userId) {
     .not("added_to_workspace_at", "is", null)
     .order("added_to_workspace_at", { ascending: false });
   if (error) throw new ServiceError(error.message, 500);
-  const rows = data ?? [];
+
+  const byProspect = new Map();
+  for (const row of data ?? []) {
+    byProspect.set(row.prospect_id, {
+      ...row,
+      source: "share_pin",
+    });
+  }
+
+  try {
+    const { workspaces } = await listMyWorkspaces(supabase, userId);
+    const wsIds = (workspaces || []).map((w) => w.id).filter(Boolean);
+    if (wsIds.length) {
+      const { data: refs, error: refErr } = await supabase
+        .from("recurso_workspace_referencias")
+        .select("recurso_id, workspace_id, created_at")
+        .in("workspace_id", wsIds);
+      if (!refErr && refs?.length) {
+        const missing = refs
+          .map((r) => r.recurso_id)
+          .filter((id) => id && !byProspect.has(id));
+        if (missing.length) {
+          const { data: sharesForRefs } = await supabase
+            .from("prospect_shares")
+            .select(SHARE_SELECT)
+            .eq("shared_with_id", userId)
+            .in("prospect_id", missing);
+          for (const row of sharesForRefs ?? []) {
+            byProspect.set(row.prospect_id, { ...row, source: "reference" });
+          }
+          // Referencias sin share propio (p. ej. miembro de sala): aún listar el expediente
+          const stillMissing = missing.filter((id) => !byProspect.has(id));
+          if (stillMissing.length) {
+            const { data: prospectRows } = await supabase
+              .from("prospects")
+              .select("id, user_id, prospect_code, name, name1, name2, tour_date, city, country, status")
+              .in("id", stillMissing);
+            for (const p of prospectRows ?? []) {
+              byProspect.set(p.id, {
+                id: null,
+                prospect_id: p.id,
+                owner_id: p.user_id,
+                shared_with_id: userId,
+                permission: "view",
+                added_to_workspace_at: null,
+                created_at: null,
+                source: "reference",
+                _prospect: p,
+              });
+            }
+          }
+        }
+      }
+    }
+  } catch {
+    // 0054 no aplicada: solo pins legacy
+  }
+
+  const rows = [...byProspect.values()];
   const profiles = await loadProfiles(supabase, rows.flatMap((r) => [r.owner_id, r.shared_with_id]));
   const prospectIds = [...new Set(rows.map((r) => r.prospect_id))];
   const { data: prospectRows } = prospectIds.length
-    ? await supabase.from("prospects").select("id, prospect_code, name, name1, name2, tour_date, city, country, status").in("id", prospectIds)
+    ? await supabase.from("prospects").select("id, prospect_code, name, name1, name2, tour_date, city, country, status, user_id").in("id", prospectIds)
     : { data: [] };
   const prospects = new Map((prospectRows ?? []).map((p) => [p.id, p]));
+
   return rows.map((row) => {
-    const mapped = mapShare(row, profiles, prospects);
-    const p = prospects.get(row.prospect_id);
+    const p = prospects.get(row.prospect_id) || row._prospect;
+    const mapped = row.id
+      ? mapShare(row, profiles, new Map(p ? [[p.id, p]] : []))
+      : {
+          id: null,
+          prospect_id: row.prospect_id,
+          owner_id: row.owner_id,
+          shared_with_id: userId,
+          permission: row.permission || "view",
+          added_to_workspace_at: null,
+          puede_volver_a_compartir: false,
+          created_at: null,
+          prospect_name: prospectDisplayName(p),
+          prospect_code: p?.prospect_code,
+          shared_with: null,
+          owner: profiles.get(row.owner_id) ?? null,
+        };
     return {
       ...mapped,
       tour_date: p?.tour_date ?? null,
       city: p?.city ?? null,
       country: p?.country ?? null,
       status: p?.status ?? null,
+      source: row.source || "share_pin",
       href: `/red/contacto/${row.owner_id}/expediente/${row.prospect_id}`,
     };
   });
@@ -821,7 +963,7 @@ export async function getSharedProspect(supabase, userId, prospectId) {
 
   const { data: share } = await supabase
     .from("prospect_shares")
-    .select("id, permission, owner_id, added_to_workspace_at")
+    .select("id, permission, owner_id, added_to_workspace_at, puede_volver_a_compartir")
     .eq("prospect_id", prospectId)
     .eq("shared_with_id", userId)
     .maybeSingle();
@@ -841,12 +983,17 @@ export async function getSharedProspect(supabase, userId, prospectId) {
     loadProspectActivities(supabase, prospectId),
   ]);
 
+  // Normalizar legacy workspace → edit en respuesta (pin aparte).
+  const permission = share.permission === "workspace" ? "edit" : share.permission;
+
   return {
     prospect,
-    permission: share.permission,
+    permission,
     share_id: share.id,
     owner_id: share.owner_id,
     added_to_workspace_at: share.added_to_workspace_at ?? null,
+    puede_volver_a_compartir: share.puede_volver_a_compartir === true,
+    can_reshare: share.puede_volver_a_compartir === true,
     can_add_to_workspace: canPinPermission(share.permission),
     tools,
     sales,
