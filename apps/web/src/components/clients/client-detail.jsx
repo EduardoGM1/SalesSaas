@@ -8,7 +8,7 @@ import { CollapsibleSection } from "@/components/ui/collapsible-section.jsx";
 import { ShareProspectModal } from "@/components/network/share-prospect-modal.jsx";
 import { PremiumFeatureCard } from "@/components/premium/premium-feature-card.jsx";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
-import { sharingApi } from "@/lib/network-api.js";
+import { networkApi, sharingApi } from "@/lib/network-api.js";
 import { prospectRowToClient, canEditShared, canCommentShared, canAddToWorkspace } from "@/lib/shared-prospect";
 import { useExpedienteRealtime } from "@/hooks/use-expediente-realtime.js";
 import { ExpedientePresenceBar } from "@/components/clients/expediente-presence-bar.jsx";
@@ -57,6 +57,10 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
   const { can } = useUserPermissions();
 
   const [shareOpen, setShareOpen] = useState(false);
+  const [transferOpen, setTransferOpen] = useState(false);
+  const [transferContacts, setTransferContacts] = useState([]);
+  const [transferTarget, setTransferTarget] = useState("");
+  const [actionBusy, setActionBusy] = useState(false);
   const [recordModal, setRecordModal] = useState(null);
   const [noteOpen, setNoteOpen] = useState(false);
   const [form, setForm] = useState({});
@@ -348,6 +352,47 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
               {isSupabaseConfigured() && (
                 <button type="button" className="btn btn-ghost btn-sm" onClick={() => setShareOpen(true)}>{t("network.shareAction")}</button>
               )}
+              {isSupabaseConfigured() && (
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-sm"
+                  disabled={actionBusy}
+                  onClick={async () => {
+                    if (!window.confirm(t("exp.duplicateConfirm"))) return;
+                    setActionBusy(true);
+                    try {
+                      const copy = await sharingApi.duplicate(id, { include_tools: true, include_sales: false });
+                      toast.success(t("exp.duplicateDone"));
+                      if (copy?.id) navigate(`/clients/${copy.id}`);
+                    } catch (err) {
+                      toast.error(err.message || t("auth.login.errorGeneric"));
+                    } finally {
+                      setActionBusy(false);
+                    }
+                  }}
+                >
+                  {t("exp.duplicate")}
+                </button>
+              )}
+              {isSupabaseConfigured() && (
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-sm"
+                  disabled={actionBusy}
+                  onClick={async () => {
+                    try {
+                      const conn = await networkApi.listConnections("accepted");
+                      setTransferContacts(conn.map((x) => x.peer).filter(Boolean));
+                      setTransferTarget("");
+                      setTransferOpen(true);
+                    } catch (err) {
+                      toast.error(err.message || t("auth.login.errorGeneric"));
+                    }
+                  }}
+                >
+                  {t("exp.transfer")}
+                </button>
+              )}
               <button type="button" className="btn btn-danger btn-sm" onClick={async () => {
                 if (await removeClient(id, clientDisplayName(c))) navigate("/clients");
               }}>{t("exp.delete")}</button>
@@ -565,6 +610,54 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
           prospectName={clientDisplayName(c)}
           prospect={c}
         />
+      )}
+
+      {isOwner && (
+        <SalesModal
+          open={transferOpen}
+          onOpenChange={setTransferOpen}
+          title={t("exp.transfer")}
+          sub={t("exp.transferSub", { name: clientDisplayName(c) })}
+          maxWidth={480}
+        >
+          <p className="route-note" style={{ marginBottom: 12 }}>{t("exp.transferHint")}</p>
+          <div className="prospect-field full" style={{ marginBottom: 16 }}>
+            <label>{t("network.shareWith")}</label>
+            <select value={transferTarget} onChange={(e) => setTransferTarget(e.target.value)}>
+              <option value="">{t("network.selectContact")}</option>
+              {transferContacts.map((peer) => (
+                <option key={peer.id} value={peer.id}>
+                  {peer.full_name?.trim() || peer.email?.split("@")[0] || peer.id}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="btn-row">
+            <button type="button" className="btn btn-ghost" onClick={() => setTransferOpen(false)}>{t("common.cancel")}</button>
+            <button
+              type="button"
+              className="btn btn-primary"
+              disabled={!transferTarget || actionBusy}
+              onClick={async () => {
+                if (!transferTarget) return;
+                if (!window.confirm(t("exp.transferConfirm"))) return;
+                setActionBusy(true);
+                try {
+                  await sharingApi.transfer(id, transferTarget);
+                  toast.success(t("exp.transferDone"));
+                  setTransferOpen(false);
+                  navigate("/clients");
+                } catch (err) {
+                  toast.error(err.message || t("auth.login.errorGeneric"));
+                } finally {
+                  setActionBusy(false);
+                }
+              }}
+            >
+              {t("exp.transfer")}
+            </button>
+          </div>
+        </SalesModal>
       )}
 
       <SalesModal open={noteOpen} onOpenChange={setNoteOpen} title={t("exp.note.title")} sub={t("exp.note.sub")}>

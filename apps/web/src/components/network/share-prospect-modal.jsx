@@ -82,6 +82,7 @@ export function ShareProspectModal({ open, onOpenChange, prospectId, prospectNam
   const [loading, setLoading] = useState(false);
   const [selectedId, setSelectedId] = useState("");
   const [permission, setPermission] = useState("edit");
+  const [canReshare, setCanReshare] = useState(false);
   const [externalPermission, setExternalPermission] = useState("edit");
   const [invitePayload, setInvitePayload] = useState(null);
   const [sharingOut, setSharingOut] = useState(false);
@@ -115,6 +116,7 @@ export function ShareProspectModal({ open, onOpenChange, prospectId, prospectNam
     if (open) {
       setMode("internal");
       setPermission("edit");
+      setCanReshare(false);
       setExternalPermission("edit");
       refresh();
       fetchProfile().then((p) => {
@@ -159,9 +161,12 @@ export function ShareProspectModal({ open, onOpenChange, prospectId, prospectNam
   const handleShare = async () => {
     if (!selectedId) return;
     try {
-      await sharingApi.create(prospectId, selectedId, permission);
+      await sharingApi.create(prospectId, selectedId, permission, {
+        puede_volver_a_compartir: canReshare,
+      });
       toast.success(t("network.shareSuccess"));
       setSelectedId("");
+      setCanReshare(false);
       refresh();
       nudgePushPrompt({ contextual: true, reason: "prospect-shared" });
     } catch (err) {
@@ -331,6 +336,17 @@ export function ShareProspectModal({ open, onOpenChange, prospectId, prospectNam
                         <option key={c.id} value={c.id}>{displayName(c)}</option>
                       ))}
                   </select>
+                </div>
+                <div className="prospect-field full">
+                  <label className="share-reshare-label">
+                    <input
+                      type="checkbox"
+                      checked={canReshare}
+                      onChange={(e) => setCanReshare(e.target.checked)}
+                    />
+                    {" "}
+                    {t("network.canReshare")}
+                  </label>
                 </div>
               </div>
               <div className="btn-row" style={{ marginTop: 0, marginBottom: 16 }}>

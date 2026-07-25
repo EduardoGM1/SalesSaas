@@ -18,6 +18,7 @@ import * as remindersService from "../services/reminders-service.js";
 import * as networkService from "../services/network-service.js";
 import * as messagesService from "../services/messages-service.js";
 import * as sharingService from "../services/sharing-service.js";
+import * as workspaceService from "../services/workspace-service.js";
 import * as pushService from "../services/push-notifications-service.js";
 import * as supportService from "../services/support-service.js";
 import { ServiceError } from "../lib/service-error.js";
@@ -79,6 +80,21 @@ router.get("/", (_req, res) => {
         prospect: { GET: "/api/v1/prospects/:id/shares", POST: "/api/v1/prospects/:id/shares" },
         update: { PATCH: "/api/v1/shares/:id" },
         delete: { DELETE: "/api/v1/shares/:id" },
+      },
+      workspaces: {
+        list: { GET: "/api/v1/workspaces" },
+        active: { PATCH: "/api/v1/workspaces/active" },
+        orgs: { POST: "/api/v1/organizaciones" },
+        salas: { POST: "/api/v1/workspaces/salas" },
+        members: {
+          GET: "/api/v1/workspaces/:id/members",
+          POST: "/api/v1/workspaces/:id/members",
+          DELETE: "/api/v1/workspaces/:id/members/:userId",
+        },
+      },
+      prospectActions: {
+        duplicate: { POST: "/api/v1/prospects/:id/duplicate" },
+        transfer: { POST: "/api/v1/prospects/:id/transfer" },
       },
     },
   });
@@ -197,6 +213,103 @@ router.delete("/prospects/:id", async (req, res) => {
   const a = await requireAuth(req, res);
   if (!a) return;
   await runService(res, () => prospectsService.deleteProspect(a.supabase, a.userId, req.params.id), { wrap: "ok" });
+});
+
+router.post("/prospects/:id/duplicate", async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  const body = parseJsonBody(req, res) || {};
+  await runService(
+    res,
+    () => prospectsService.duplicateProspect(a.supabase, a.userId, req.params.id, body),
+    { wrap: "data", successStatus: 201 },
+  );
+});
+
+router.post("/prospects/:id/transfer", async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  const body = parseJsonBody(req, res);
+  if (!body) return;
+  await runService(
+    res,
+    () => prospectsService.transferProspect(a.supabase, a.userId, req.params.id, body),
+    { wrap: "data" },
+  );
+});
+
+router.get("/workspaces", async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  await runService(res, () => workspaceService.listMyWorkspaces(a.supabase, a.userId), { wrap: "data" });
+});
+
+router.patch("/workspaces/active", async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  const body = parseJsonBody(req, res);
+  if (!body) return;
+  await runService(
+    res,
+    () => workspaceService.setActiveWorkspace(a.supabase, a.userId, body.workspace_id || body.active_workspace_id),
+    { wrap: "data" },
+  );
+});
+
+router.post("/organizaciones", async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  const body = parseJsonBody(req, res);
+  if (!body) return;
+  await runService(
+    res,
+    () => workspaceService.createOrganization(a.supabase, a.userId, body),
+    { wrap: "data", successStatus: 201 },
+  );
+});
+
+router.post("/workspaces/salas", async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  const body = parseJsonBody(req, res);
+  if (!body) return;
+  await runService(
+    res,
+    () => workspaceService.createSalaWorkspace(a.supabase, a.userId, body),
+    { wrap: "data", successStatus: 201 },
+  );
+});
+
+router.get("/workspaces/:id/members", async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  await runService(
+    res,
+    () => workspaceService.listWorkspaceMembers(a.supabase, a.userId, req.params.id),
+    { wrap: "data" },
+  );
+});
+
+router.post("/workspaces/:id/members", async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  const body = parseJsonBody(req, res);
+  if (!body) return;
+  await runService(
+    res,
+    () => workspaceService.addWorkspaceMember(a.supabase, a.userId, req.params.id, body),
+    { wrap: "data", successStatus: 201 },
+  );
+});
+
+router.delete("/workspaces/:id/members/:userId", async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  await runService(
+    res,
+    () => workspaceService.removeWorkspaceMember(a.supabase, a.userId, req.params.id, req.params.userId),
+    { wrap: "ok" },
+  );
 });
 
 router.get("/sales", async (req, res) => {
@@ -678,7 +791,17 @@ router.patch("/shares/:id", async (req, res) => {
   if (!a) return;
   const body = parseJsonBody(req, res);
   if (!body) return;
-  await runService(res, () => sharingService.updateSharePermission(a.supabase, a.userId, req.params.id, body.permission), { wrap: "data" });
+  await runService(
+    res,
+    () => sharingService.updateSharePermission(
+      a.supabase,
+      a.userId,
+      req.params.id,
+      body.permission,
+      { puede_volver_a_compartir: body.puede_volver_a_compartir },
+    ),
+    { wrap: "data" },
+  );
 });
 
 router.delete("/shares/:id", async (req, res) => {
