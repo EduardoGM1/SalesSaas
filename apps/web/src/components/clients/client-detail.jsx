@@ -351,13 +351,15 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
             )}
             <ExpedientePresenceBar peers={collab.peers} />
           </div>
-          {isOwner && (
+          {(isOwner || sharedRemote) && (
             <div className="exp-page-actions">
-              <button type="button" className="btn btn-primary btn-sm" onClick={() => openSaleModal()}>{t("exp.registerSale")}</button>
-              {isSupabaseConfigured() && (
+              {isOwner && (
+                <button type="button" className="btn btn-primary btn-sm" onClick={() => openSaleModal()}>{t("exp.registerSale")}</button>
+              )}
+              {isOwner && isSupabaseConfigured() && (
                 <button type="button" className="btn btn-ghost btn-sm" onClick={() => setShareOpen(true)}>{t("network.shareAction")}</button>
               )}
-              {isSupabaseConfigured() && (
+              {isOwner && isSupabaseConfigured() && (
                 <button
                   type="button"
                   className="btn btn-ghost btn-sm"
@@ -379,7 +381,7 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
                   {t("exp.duplicate")}
                 </button>
               )}
-              {isSupabaseConfigured() && (
+              {isOwner && isSupabaseConfigured() && (
                 <button
                   type="button"
                   className="btn btn-ghost btn-sm"
@@ -398,13 +400,11 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
                   {t("exp.transfer")}
                 </button>
               )}
-              <button type="button" className="btn btn-danger btn-sm" onClick={async () => {
-                if (await removeClient(id, clientDisplayName(c))) navigate("/clients");
-              }}>{t("exp.delete")}</button>
-            </div>
-          )}
-          {sharedRemote && (
-            <div className="exp-page-actions">
+              {isOwner && (
+                <button type="button" className="btn btn-danger btn-sm" onClick={async () => {
+                  if (await removeClient(id, clientDisplayName(c))) navigate("/clients");
+                }}>{t("exp.delete")}</button>
+              )}
               {showAddToWorkspace && (
                 <button
                   type="button"
@@ -415,53 +415,32 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
                   {t("clients.addToWorkspace")}
                 </button>
               )}
-              {canReshare && (
+              {sharedRemote && canReshare && (
                 <button type="button" className="btn btn-ghost btn-sm" onClick={() => setShareOpen(true)}>
                   {t("network.reshareAction")}
                 </button>
               )}
-              <button
-                type="button"
-                className="btn btn-ghost btn-sm"
-                disabled={auditLoading}
-                onClick={async () => {
-                  setAuditLoading(true);
-                  try {
-                    const rows = await sharingApi.listAudit(id);
-                    setAuditRows(Array.isArray(rows) ? rows : []);
-                    setAuditOpen(true);
-                  } catch (err) {
-                    toast.error(err.message || t("auth.login.errorGeneric"));
-                  } finally {
-                    setAuditLoading(false);
-                  }
-                }}
-              >
-                {t("exp.audit")}
-              </button>
-            </div>
-          )}
-          {isOwner && isSupabaseConfigured() && (
-            <div className="exp-page-actions" style={{ marginTop: 4 }}>
-              <button
-                type="button"
-                className="btn btn-ghost btn-sm"
-                disabled={auditLoading}
-                onClick={async () => {
-                  setAuditLoading(true);
-                  try {
-                    const rows = await sharingApi.listAudit(id);
-                    setAuditRows(Array.isArray(rows) ? rows : []);
-                    setAuditOpen(true);
-                  } catch (err) {
-                    toast.error(err.message || t("auth.login.errorGeneric"));
-                  } finally {
-                    setAuditLoading(false);
-                  }
-                }}
-              >
-                {t("exp.audit")}
-              </button>
+              {isSupabaseConfigured() && (
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-sm"
+                  disabled={auditLoading}
+                  onClick={async () => {
+                    setAuditLoading(true);
+                    try {
+                      const rows = await sharingApi.listAudit(id);
+                      setAuditRows(Array.isArray(rows) ? rows : []);
+                      setAuditOpen(true);
+                    } catch (err) {
+                      toast.error(err.message || t("auth.login.errorGeneric"));
+                    } finally {
+                      setAuditLoading(false);
+                    }
+                  }}
+                >
+                  {t("exp.audit")}
+                </button>
+              )}
             </div>
           )}
         </header>
