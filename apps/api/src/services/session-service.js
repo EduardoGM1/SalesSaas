@@ -2,7 +2,6 @@ import { ServiceError } from "../lib/service-error.js";
 import { getCurrentMembership, listPremiumFeatures } from "./membership-service.js";
 import { resolveUserPermissions } from "@salesapp/shared/auth/resolve-permissions.js";
 import { VENDEDOR_DEFAULT_PERMISSIONS } from "@salesapp/shared/auth/permission-catalog.js";
-import * as workspaceService from "./workspace-service.js";
 
 export async function getSession(supabase, userId) {
   const { data: { user } } = await supabase.auth.getUser();
@@ -76,17 +75,6 @@ export async function getSession(supabase, userId) {
     })];
   }
 
-  let workspacesPayload = {
-    workspaces: [],
-    active_workspace_id: null,
-    organizacion_id: null,
-  };
-  try {
-    workspacesPayload = await workspaceService.listMyWorkspaces(supabase, userId);
-  } catch {
-    // Migración 0054 no aplicada
-  }
-
   const enriched = profile
     ? {
         ...profile,
@@ -95,8 +83,6 @@ export async function getSession(supabase, userId) {
         membership_fecha_inicio: membership.fecha_inicio,
         membership_fecha_proximo_cobro: membership.fecha_proximo_cobro,
         permission_keys: permissionKeys,
-        active_workspace_id: workspacesPayload.active_workspace_id,
-        organizacion_id: workspacesPayload.organizacion_id,
       }
     : null;
 
@@ -106,9 +92,6 @@ export async function getSession(supabase, userId) {
     membership,
     premiumFeatures,
     permission_keys: permissionKeys,
-    workspaces: workspacesPayload.workspaces,
-    active_workspace_id: workspacesPayload.active_workspace_id,
-    organizacion_id: workspacesPayload.organizacion_id,
   };
 }
 

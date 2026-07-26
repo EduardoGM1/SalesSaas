@@ -162,17 +162,7 @@ export function ClientsPage() {
                   const nodes = [];
                   let prevYm = "";
                   let prevYear = null;
-                  let pinnedSectionAdded = false;
                   for (const c of allRows) {
-                    if (c.pinned && !pinnedSectionAdded) {
-                      nodes.push(
-                        <tr key="sep-pinned" className="client-period-sep" aria-hidden="true">
-                          <td colSpan={4}>{t("clients.pinnedSection")}</td>
-                        </tr>,
-                      );
-                      pinnedSectionAdded = true;
-                      prevYm = "";
-                    }
                     const ymd = clientListYmd(c);
                     const ym = ymd.length >= 7 ? ymd.slice(0, 7) : "";
                     if (ym && ym !== prevYm) {

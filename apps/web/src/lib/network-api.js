@@ -51,13 +51,9 @@ export const sharingApi = {
     body: JSON.stringify({ data }),
   }),
   listForProspect: (prospectId) => apiFetch(`/prospects/${prospectId}/shares`),
-  create: (prospectId, sharedWithId, permission, extras = {}) => apiFetch(`/prospects/${prospectId}/shares`, {
+  create: (prospectId, sharedWithId, permission) => apiFetch(`/prospects/${prospectId}/shares`, {
     method: "POST",
-    body: JSON.stringify({
-      shared_with_id: sharedWithId,
-      permission,
-      puede_volver_a_compartir: extras.puede_volver_a_compartir === true,
-    }),
+    body: JSON.stringify({ shared_with_id: sharedWithId, permission }),
   }),
   createInvite: (prospectId, permission = "view") => apiFetch(`/prospects/${prospectId}/share-invites`, {
     method: "POST",
@@ -80,51 +76,13 @@ export const sharingApi = {
     method: "POST",
     body: JSON.stringify({ decision }),
   }),
-  updatePermission: (shareId, permission, extras = {}) => apiFetch(`/shares/${shareId}`, {
+  updatePermission: (shareId, permission) => apiFetch(`/shares/${shareId}`, {
     method: "PATCH",
-    body: JSON.stringify({
-      permission,
-      ...(extras.puede_volver_a_compartir !== undefined
-        ? { puede_volver_a_compartir: extras.puede_volver_a_compartir === true }
-        : {}),
-    }),
+    body: JSON.stringify({ permission }),
   }),
   remove: (shareId) => apiFetch(`/shares/${shareId}`, { method: "DELETE" }),
   updateProspect: (prospectId, body) => apiFetch(`/shared-prospects/${prospectId}`, {
     method: "PATCH",
     body: JSON.stringify(body),
-  }),
-  duplicate: (prospectId, opts = {}) => apiFetch(`/prospects/${prospectId}/duplicate`, {
-    method: "POST",
-    body: JSON.stringify(opts),
-  }),
-  transfer: (prospectId, toUserId) => apiFetch(`/prospects/${prospectId}/transfer`, {
-    method: "POST",
-    body: JSON.stringify({ to_user_id: toUserId }),
-  }),
-  listAudit: (prospectId, limit = 50) => apiFetch(`/prospects/${prospectId}/audit?limit=${limit}`),
-};
-
-export const workspacesApi = {
-  list: () => apiFetch("/workspaces"),
-  setActive: (workspaceId) => apiFetch("/workspaces/active", {
-    method: "PATCH",
-    body: JSON.stringify({ workspace_id: workspaceId }),
-  }),
-  createOrg: (nombre) => apiFetch("/organizaciones", {
-    method: "POST",
-    body: JSON.stringify({ nombre }),
-  }),
-  createSala: (nombre, organizacionId) => apiFetch("/workspaces/salas", {
-    method: "POST",
-    body: JSON.stringify({ nombre, organizacion_id: organizacionId }),
-  }),
-  listMembers: (workspaceId) => apiFetch(`/workspaces/${workspaceId}/members`),
-  addMember: (workspaceId, usuarioId, rol = "vendedor") => apiFetch(`/workspaces/${workspaceId}/members`, {
-    method: "POST",
-    body: JSON.stringify({ usuario_id: usuarioId, rol }),
-  }),
-  removeMember: (workspaceId, usuarioId) => apiFetch(`/workspaces/${workspaceId}/members/${usuarioId}`, {
-    method: "DELETE",
   }),
 };
