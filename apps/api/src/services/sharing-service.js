@@ -638,7 +638,10 @@ export async function listWorkspacePinned(supabase, userId) {
   const profiles = await loadProfiles(supabase, rows.flatMap((r) => [r.owner_id, r.shared_with_id]));
   const prospectIds = [...new Set(rows.map((r) => r.prospect_id))];
   const { data: prospectRows } = prospectIds.length
-    ? await supabase.from("prospects").select("id, prospect_code, name, name1, name2, tour_date, city, country, status").in("id", prospectIds)
+    ? await supabase
+      .from("prospects")
+      .select("id, prospect_code, name, name1, name2, tour_date, city, country, status, tipo_tour, tour_cuantificable")
+      .in("id", prospectIds)
     : { data: [] };
   const prospects = new Map((prospectRows ?? []).map((p) => [p.id, p]));
   return rows.map((row) => {
@@ -646,10 +649,13 @@ export async function listWorkspacePinned(supabase, userId) {
     const p = prospects.get(row.prospect_id);
     return {
       ...mapped,
+      // Datos del recurso vivo (prospects), nunca de una copia de la referencia/pin.
       tour_date: p?.tour_date ?? null,
       city: p?.city ?? null,
       country: p?.country ?? null,
       status: p?.status ?? null,
+      tipo_tour: p?.tipo_tour ?? null,
+      tour_cuantificable: p?.tour_cuantificable ?? null,
       href: `/red/contacto/${row.owner_id}/expediente/${row.prospect_id}`,
     };
   });

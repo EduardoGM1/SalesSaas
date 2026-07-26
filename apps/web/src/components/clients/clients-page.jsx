@@ -1,6 +1,6 @@
 
-import { Link, useNavigate } from "react-router-dom";
-import { useEffect, useMemo, useState } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Eye, Share2, Trash2 } from "lucide-react";
 import { ShareProspectModal } from "@/components/network/share-prospect-modal.jsx";
 import { NewClientModal } from "@/components/clients/new-client-modal.jsx";
@@ -32,8 +32,9 @@ function pinnedToRow(share) {
     name1: name,
     tourDate: share.tour_date || null,
     createdYmd: share.tour_date || null,
-    tipo_tour: null,
-    tour_cuantificable: true,
+    // Calificación/tipo_tour viene del recurso vivo (API → prospects), no del pin.
+    tipo_tour: share.tipo_tour ?? null,
+    tour_cuantificable: share.tour_cuantificable != null ? !!share.tour_cuantificable : true,
     pinned: true,
     shareId: share.id,
     href: share.href || `/red/contacto/${share.owner_id}/expediente/${share.prospect_id}`,
@@ -63,6 +64,7 @@ function clientListYmd(c) {
 export function ClientsPage() {
   const { t, lang, months } = useI18n();
   const navigate = useNavigate();
+  const location = useLocation();
   const hydrated = useAppStore((s) => s.hydrated);
   const { searchClients, removeClient } = useClientActions();
   const [open, setOpen] = useState(false);
@@ -72,19 +74,31 @@ export function ClientsPage() {
   const canShare = isSupabaseConfigured();
   const currentYear = new Date().getFullYear();
 
-  useEffect(() => {
-    if (!canShare || !hydrated) return;
-    let active = true;
-    sharingApi.listWorkspace()
+  const refreshPinned = useCallback(() => {
+    if (!canShare) return Promise.resolve();
+    return sharingApi.listWorkspace()
       .then((rows) => {
-        if (!active) return;
         setPinned(Array.isArray(rows) ? rows.map(pinnedToRow) : []);
       })
       .catch(() => {
-        if (active) setPinned([]);
+        setPinned([]);
       });
-    return () => { active = false; };
-  }, [canShare, hydrated]);
+  }, [canShare]);
+
+  // Refetch al entrar/volver a /clients (p. ej. tras editar un pin en detalle).
+  useEffect(() => {
+    if (!canShare || !hydrated) return;
+    refreshPinned();
+  }, [canShare, hydrated, location.key, refreshPinned]);
+
+  useEffect(() => {
+    if (!canShare || !hydrated) return;
+    const onVisible = () => {
+      if (document.visibilityState === "visible") refreshPinned();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [canShare, hydrated, refreshPinned]);
 
   const ownedAll = searchClients("");
   const ownedIds = useMemo(() => new Set(ownedAll.map((c) => c.id)), [ownedAll]);
