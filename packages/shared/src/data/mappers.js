@@ -124,7 +124,7 @@ function normalizeIds(db) {
 function generateProspectId() {
   return generateSaleId();
 }
-function dbToRows(db, userId) {
+function dbToRows(db, userId, workspaceId = null) {
   const prospects = [];
   const sales = [];
   const calendar_entries = [];
@@ -279,6 +279,14 @@ function dbToRows(db, userId) {
   for (const tool of TOOLS) {
     const data = nonEmptyData(db.libre[tool]);
     if (data) tool_calculations.push({ user_id: userId, prospect_id: null, tool, data });
+  }
+  if (workspaceId) {
+    for (const row of prospects) row.workspace_id = workspaceId;
+    for (const row of sales) row.workspace_id = workspaceId;
+    for (const row of calendar_entries) row.workspace_id = workspaceId;
+    for (const row of goals) row.workspace_id = workspaceId;
+    for (const row of activities) row.workspace_id = workspaceId;
+    for (const row of tool_calculations) row.workspace_id = workspaceId;
   }
   return { prospects, sales, calendar_entries, goals, activities, tool_calculations };
 }

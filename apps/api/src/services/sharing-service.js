@@ -7,6 +7,14 @@ import { notifyProspectShared, notifyProspectSectionChanged } from "./push-notif
 import { MESSAGE_TYPES, sendStructuredMessage } from "./messages-service.js";
 
 import { profileDisplayName } from "../lib/profile-display-name.js";
+import {
+  CROSS_BOUNDARY_MSG,
+  assertWorkspaceBoundary,
+  userInWorkspace,
+  resolveActiveWorkspaceId,
+} from "./workspace-service.js";
+import { generateClientId, generateProspectCode } from "@salesapp/shared/ids.js";
+import { getRequestWorkspaceId } from "../lib/workspace-scope.js";
 
 async function loadProfiles(supabase, ids) {
   const unique = [...new Set(ids.filter(Boolean))];
@@ -199,11 +207,25 @@ export async function createShare(supabase, userId, prospectId, { shared_with_id
 
   const { data: owned } = await supabase
     .from("prospects")
-    .select("id")
+    .select("id, workspace_id")
     .eq("id", prospectId)
     .eq("user_id", userId)
     .maybeSingle();
   if (!owned) throw new ServiceError("Expediente no encontrado.", 404);
+
+  if (owned.workspace_id) {
+    const activeWs = await resolveActiveWorkspaceId(supabase, userId);
+    if (activeWs && activeWs !== owned.workspace_id) {
+      throw new ServiceError("Solo puedes compartir expedientes del workspace activo.", 403);
+    }
+    const recipientInWs = await userInWorkspace(supabase, sharedWithId, owned.workspace_id);
+    if (!recipientInWs) {
+      throw new ServiceError(
+        "Solo puedes compartir con miembros del mismo workspace. " + CROSS_BOUNDARY_MSG,
+        403,
+      );
+    }
+  }
 
   const { data: priorShare } = await supabase
     .from("prospect_shares")
@@ -603,6 +625,21 @@ export async function addShareToWorkspace(supabase, userId, shareId) {
   if (!canPinPermission(share.permission)) {
     throw new ServiceError("Tu permiso no permite agregar este expediente a tu espacio.", 403);
   }
+
+  const { data: prospect } = await supabase
+    .from("prospects")
+    .select("id, prospect_code, name, name1, name2, workspace_id")
+    .eq("id", share.prospect_id)
+    .maybeSingle();
+  if (prospect?.workspace_id) {
+    const activeWs = await getRequestWorkspaceId(supabase, userId);
+    if (activeWs && activeWs !== prospect.workspace_id) {
+      throw new ServiceError(CROSS_BOUNDARY_MSG, 403);
+    }
+    const inWs = await userInWorkspace(supabase, userId, prospect.workspace_id);
+    if (!inWs) throw new ServiceError(CROSS_BOUNDARY_MSG, 403);
+  }
+
   if (share.added_to_workspace_at) {
     return mapShare(share, await loadProfiles(supabase, [share.owner_id, share.shared_with_id]), new Map());
   }
@@ -617,12 +654,94 @@ export async function addShareToWorkspace(supabase, userId, shareId) {
   if (upErr) throw new ServiceError(upErr.message, 400);
   assertFound(data, "Compartido no encontrado.");
   const profiles = await loadProfiles(supabase, [data.owner_id, data.shared_with_id]);
-  const { data: prospect } = await supabase
-    .from("prospects")
-    .select("id, prospect_code, name, name1, name2")
-    .eq("id", data.prospect_id)
-    .maybeSingle();
   return mapShare(data, profiles, new Map(prospect ? [[prospect.id, prospect]] : []));
+}
+
+/** Duplica expediente al workspace destino (misma frontera que transfer). */
+export async function duplicateProspect(supabase, userId, prospectId, { target_workspace_id: targetWorkspaceId } = {}) {
+  if (!isUuid(prospectId)) throw new ServiceError("Expediente inválido.");
+  const { data: src, error } = await supabase
+    .from("prospects")
+    .select("*")
+    .eq("id", prospectId)
+    .maybeSingle();
+  if (error) throw new ServiceError(error.message, 500);
+  assertFound(src, "Expediente no encontrado.");
+
+  const inSrc = await userInWorkspace(supabase, userId, src.workspace_id);
+  if (!inSrc && src.user_id !== userId) throw new ServiceError("Sin acceso al expediente.", 403);
+
+  const dstWs = targetWorkspaceId || (await getRequestWorkspaceId(supabase, userId));
+  if (!dstWs) throw new ServiceError("workspace destino requerido.");
+  await assertWorkspaceBoundary(supabase, src.workspace_id, dstWs);
+  const inDst = await userInWorkspace(supabase, userId, dstWs);
+  if (!inDst) throw new ServiceError("No perteneces al workspace destino.", 403);
+
+  const newId = generateClientId();
+  const { id: _omit, created_at: _c, updated_at: _u, ...rest } = src;
+  const row = {
+    ...rest,
+    id: newId,
+    user_id: userId,
+    workspace_id: dstWs,
+    prospect_code: generateProspectCode(newId),
+  };
+  const { data: created, error: insErr } = await supabase.from("prospects").insert(row).select().single();
+  if (insErr) throw new ServiceError(insErr.message, 400);
+
+  const { data: tools } = await supabase
+    .from("tool_calculations")
+    .select("tool, data")
+    .eq("prospect_id", prospectId);
+  if (tools?.length) {
+    await supabase.from("tool_calculations").insert(
+      tools.map((t) => ({
+        user_id: userId,
+        workspace_id: dstWs,
+        prospect_id: newId,
+        tool: t.tool,
+        data: t.data,
+      })),
+    );
+  }
+  return created;
+}
+
+/** Transfiere propiedad de workspace del expediente (nunca personal↔sala). */
+export async function transferProspectOwnership(supabase, userId, prospectId, {
+  target_workspace_id: targetWorkspaceId,
+  new_owner_id: newOwnerId,
+} = {}) {
+  if (!isUuid(prospectId)) throw new ServiceError("Expediente inválido.");
+  const { data: src, error } = await supabase
+    .from("prospects")
+    .select("*")
+    .eq("id", prospectId)
+    .maybeSingle();
+  if (error) throw new ServiceError(error.message, 500);
+  assertFound(src, "Expediente no encontrado.");
+  if (src.user_id !== userId) {
+    throw new ServiceError("Solo el dueño puede transferir la propiedad.", 403);
+  }
+
+  const dstWs = targetWorkspaceId || (await getRequestWorkspaceId(supabase, userId));
+  if (!dstWs) throw new ServiceError("workspace destino requerido.");
+  await assertWorkspaceBoundary(supabase, src.workspace_id, dstWs);
+
+  const ownerId = newOwnerId && isUuid(newOwnerId) ? newOwnerId : userId;
+  const ownerInDst = await userInWorkspace(supabase, ownerId, dstWs);
+  if (!ownerInDst) throw new ServiceError("El nuevo dueño debe ser miembro del workspace destino.", 403);
+
+  const patch = { workspace_id: dstWs, user_id: ownerId };
+  const { data, error: upErr } = await supabase
+    .from("prospects")
+    .update(patch)
+    .eq("id", prospectId)
+    .eq("user_id", userId)
+    .select()
+    .maybeSingle();
+  if (upErr) throw new ServiceError(upErr.message, 400);
+  return assertFound(data, "Expediente no encontrado.");
 }
 
 /** Expedientes pinneados en el espacio del receptor (mismo registro, no copia). */

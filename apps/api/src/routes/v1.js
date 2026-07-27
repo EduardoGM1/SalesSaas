@@ -96,6 +96,15 @@ router.get("/auth/session", async (req, res) => {
   }
 });
 
+router.post("/auth/workspace", async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  const body = parseJsonBody(req, res);
+  if (!body) return;
+  const workspaceId = body.workspace_id ?? body.workspaceId;
+  await runService(res, () => sessionService.switchWorkspace(a.supabase, a.userId, workspaceId));
+});
+
 router.get("/auth/realtime-session", async (req, res) => {
   const a = await requireAuth(req, res);
   if (!a) return;
@@ -656,6 +665,34 @@ router.post("/shares/:id/add-to-workspace", async (req, res) => {
   const a = await requireAuth(req, res);
   if (!a) return;
   await runService(res, () => sharingService.addShareToWorkspace(a.supabase, a.userId, req.params.id), { wrap: "data" });
+});
+
+router.post("/prospects/:id/duplicate", async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  let body = {};
+  try {
+    if (req.body && typeof req.body === "object") body = req.body;
+  } catch {
+    body = {};
+  }
+  await runService(
+    res,
+    () => sharingService.duplicateProspect(a.supabase, a.userId, req.params.id, body),
+    { wrap: "data", successStatus: 201 },
+  );
+});
+
+router.post("/prospects/:id/transfer", async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  const body = parseJsonBody(req, res);
+  if (!body) return;
+  await runService(
+    res,
+    () => sharingService.transferProspectOwnership(a.supabase, a.userId, req.params.id, body),
+    { wrap: "data" },
+  );
 });
 
 router.post("/shares/:id/permission-requests", async (req, res) => {

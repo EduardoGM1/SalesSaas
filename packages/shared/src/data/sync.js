@@ -1,15 +1,20 @@
 import { dbToRows, rowsToDb } from "./mappers.js";
-async function pullAll(sb, userId) {
+
+async function pullAll(sb, userId, workspaceId = null) {
   const tables = [
     "prospects",
     "sales",
     "calendar_entries",
     "goals",
     "activities",
-    "tool_calculations"
+    "tool_calculations",
   ];
   const results = await Promise.all(
-    tables.map((t) => sb.from(t).select("*").eq("user_id", userId))
+    tables.map((t) => {
+      let q = sb.from(t).select("*").eq("user_id", userId);
+      if (workspaceId) q = q.eq("workspace_id", workspaceId);
+      return q;
+    }),
   );
   results.forEach((res, i) => {
     if (res.error) throw new Error(`pull ${tables[i]}: ${res.error.message}`);
@@ -20,26 +25,29 @@ async function pullAll(sb, userId) {
     calendar_entries: results[2].data ?? [],
     goals: results[3].data ?? [],
     activities: results[4].data ?? [],
-    tool_calculations: results[5].data ?? []
+    tool_calculations: results[5].data ?? [],
   };
   return rowsToDb(rows);
 }
+
 async function upsert(sb, table, rows, onConflict) {
   if (rows.length === 0) return;
   const { error } = await sb.from(table).upsert(rows, onConflict ? { onConflict } : void 0);
   if (error) throw new Error(`upsert ${table}: ${error.message}`);
 }
-async function deleteMissing(sb, table, userId, keepIds) {
+
+async function deleteMissing(sb, table, userId, keepIds, workspaceId = null) {
   let q = sb.from(table).delete().eq("user_id", userId);
+  if (workspaceId) q = q.eq("workspace_id", workspaceId);
   if (keepIds.length > 0) q = q.not("id", "in", `(${keepIds.join(",")})`);
   const { error } = await q;
   if (error) throw new Error(`delete ${table}: ${error.message}`);
 }
-async function deleteMissingToolCalculations(sb, userId, keepRows) {
-  const { data: existing, error: fetchErr } = await sb
-    .from("tool_calculations")
-    .select("id, prospect_id, tool")
-    .eq("user_id", userId);
+
+async function deleteMissingToolCalculations(sb, userId, keepRows, workspaceId = null) {
+  let q = sb.from("tool_calculations").select("id, prospect_id, tool").eq("user_id", userId);
+  if (workspaceId) q = q.eq("workspace_id", workspaceId);
+  const { data: existing, error: fetchErr } = await q;
   if (fetchErr) throw new Error(`fetch tool_calculations: ${fetchErr.message}`);
   const keepSet = new Set(
     keepRows.map((r) => `${r.prospect_id ?? "null"}:${r.tool}`),
@@ -54,8 +62,9 @@ async function deleteMissingToolCalculations(sb, userId, keepRows) {
     .in("id", toDelete.map((r) => r.id));
   if (error) throw new Error(`delete tool_calculations: ${error.message}`);
 }
-async function reconcile(sb, db, userId) {
-  const rows = dbToRows(db, userId);
+
+async function reconcile(sb, db, userId, workspaceId = null) {
+  const rows = dbToRows(db, userId, workspaceId);
   await upsert(sb, "prospects", rows.prospects);
   await upsert(sb, "sales", rows.sales);
   await upsert(sb, "calendar_entries", rows.calendar_entries);
@@ -65,19 +74,21 @@ async function reconcile(sb, db, userId) {
     sb,
     "tool_calculations",
     rows.tool_calculations,
-    "user_id,prospect_id,tool"
+    "user_id,prospect_id,tool",
   );
   await deleteMissingToolCalculations(
     sb,
     userId,
     rows.tool_calculations.map((r) => ({ prospect_id: r.prospect_id, tool: r.tool })),
+    workspaceId,
   );
-  await deleteMissing(sb, "calendar_entries", userId, rows.calendar_entries.map((r) => r.id));
-  await deleteMissing(sb, "activities", userId, rows.activities.map((r) => r.id));
-  await deleteMissing(sb, "sales", userId, rows.sales.map((r) => r.id));
-  await deleteMissing(sb, "prospects", userId, rows.prospects.map((r) => r.id));
+  await deleteMissing(sb, "calendar_entries", userId, rows.calendar_entries.map((r) => r.id), workspaceId);
+  await deleteMissing(sb, "activities", userId, rows.activities.map((r) => r.id), workspaceId);
+  await deleteMissing(sb, "sales", userId, rows.sales.map((r) => r.id), workspaceId);
+  await deleteMissing(sb, "prospects", userId, rows.prospects.map((r) => r.id), workspaceId);
 }
+
 export {
   pullAll,
-  reconcile
+  reconcile,
 };

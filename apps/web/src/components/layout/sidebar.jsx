@@ -4,6 +4,7 @@ import { ADMIN_NAV_ITEM, isNavItemActive } from "@/lib/nav-config.js";
 import { cn } from "@/lib/utils";
 import { navLabel } from "@/lib/i18n.js";
 import { useAppNav } from "@/hooks/use-app-nav.js";
+import { WorkspaceRail } from "@/components/layout/workspace-rail.jsx";
 
 export function Sidebar() {
   const { pathname } = useLocation();
@@ -18,6 +19,7 @@ export function Sidebar() {
 
   return (
     <aside className="sidebar" id="sidebar">
+      <WorkspaceRail />
       <Link to="/" className="sb-logo" title="Usuario">
         <div className="sb-user-avatar" id="sb-user-avatar" suppressHydrationWarning>
           {avatarUrl ? (

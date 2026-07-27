@@ -26,6 +26,7 @@ import * as membershipService from "../services/membership-service.js";
 import * as rolesService from "../services/roles-service.js";
 import * as adminAuditService from "../services/admin-audit-service.js";
 import * as flagsService from "../services/flags-service.js";
+import * as workspaceService from "../services/workspace-service.js";
 
 const router = Router();
 
@@ -381,6 +382,65 @@ router.put("/flags/:id/rules", async (req, res) => {
     () => flagsService.replaceFlagRules(a.supabase, a.profile, req.params.id, body.rules ?? body),
     { wrap: "data" },
   );
+});
+
+router.get("/empresas", async (req, res) => {
+  const a = await requireSuperAdminApi(req, res);
+  if (!a) return;
+  await runService(res, () => workspaceService.listEmpresas(a.profile), { wrap: "data" });
+});
+
+router.post("/empresas", async (req, res) => {
+  const a = await requireSuperAdminApi(req, res);
+  if (!a) return;
+  const body = parseJsonBody(req, res);
+  if (!body) return;
+  await runService(res, () => workspaceService.createEmpresa(a.profile, body), { wrap: "data", successStatus: 201 });
+});
+
+router.patch("/empresas/:id", async (req, res) => {
+  const a = await requireSuperAdminApi(req, res);
+  if (!a) return;
+  const body = parseJsonBody(req, res);
+  if (!body) return;
+  await runService(res, () => workspaceService.updateEmpresa(a.profile, req.params.id, body), { wrap: "data" });
+});
+
+router.get("/salas", async (req, res) => {
+  const a = await requireSuperAdminApi(req, res);
+  if (!a) return;
+  const empresaId = typeof req.query.empresa_id === "string" ? req.query.empresa_id : null;
+  await runService(res, () => workspaceService.listSalas(a.profile, empresaId), { wrap: "data" });
+});
+
+router.post("/salas", async (req, res) => {
+  const a = await requireSuperAdminApi(req, res);
+  if (!a) return;
+  const body = parseJsonBody(req, res);
+  if (!body) return;
+  await runService(res, () => workspaceService.createSala(a.profile, body), { wrap: "data", successStatus: 201 });
+});
+
+router.patch("/salas/:id", async (req, res) => {
+  const a = await requireSuperAdminApi(req, res);
+  if (!a) return;
+  const body = parseJsonBody(req, res);
+  if (!body) return;
+  await runService(res, () => workspaceService.updateSala(a.profile, req.params.id, body), { wrap: "data" });
+});
+
+router.post("/salas/:id/members", async (req, res) => {
+  const a = await requireSuperAdminApi(req, res);
+  if (!a) return;
+  const body = parseJsonBody(req, res);
+  if (!body) return;
+  await runService(res, () => workspaceService.addSalaMember(a.profile, req.params.id, body), { wrap: "data", successStatus: 201 });
+});
+
+router.delete("/salas/:id/members/:userId", async (req, res) => {
+  const a = await requireSuperAdminApi(req, res);
+  if (!a) return;
+  await runService(res, () => workspaceService.removeSalaMember(a.profile, req.params.id, req.params.userId), { wrap: "data" });
 });
 
 router.get("/support/requests", async (req, res) => {

@@ -3,6 +3,7 @@ import { getCurrentMembership, listPremiumFeatures } from "./membership-service.
 import { resolveUserPermissions } from "@salesapp/shared/auth/resolve-permissions.js";
 import { VENDEDOR_DEFAULT_PERMISSIONS } from "@salesapp/shared/auth/permission-catalog.js";
 import { resolveAllFlags } from "./flags-service.js";
+import * as workspaceService from "./workspace-service.js";
 
 export async function getSession(supabase, userId) {
   const { data: { user } } = await supabase.auth.getUser();
@@ -10,7 +11,7 @@ export async function getSession(supabase, userId) {
   {
     const withRoleId = await supabase
       .from("profiles")
-      .select("id, email, full_name, role, phone, avatar_url, settings, is_super_admin, admin_permissions, user_permissions, role_id")
+      .select("id, email, full_name, role, phone, avatar_url, settings, is_super_admin, admin_permissions, user_permissions, role_id, workspace_activo_id")
       .eq("id", userId)
       .single();
     if (!withRoleId.error) {
@@ -67,7 +68,6 @@ export async function getSession(supabase, userId) {
       user_permissions: profile?.user_permissions ?? [],
     })];
   } catch {
-    // Migración 0041 no aplicada: defaults de vendedor + legacy arrays.
     permissionKeys = [...resolveUserPermissions({
       is_super_admin: profile?.is_super_admin === true,
       role: profile?.role,
@@ -83,6 +83,26 @@ export async function getSession(supabase, userId) {
     flags = {};
   }
 
+  let workspaces = [];
+  let workspaceActivoId = null;
+  let workspaceActivo = null;
+  try {
+    workspaces = await workspaceService.listUserWorkspaces(supabase, userId);
+    workspaceActivoId = await workspaceService.resolveActiveWorkspaceId(
+      supabase,
+      userId,
+      profile?.workspace_activo_id,
+    );
+    workspaceActivo = workspaces.find((w) => w.id === workspaceActivoId) || null;
+    if (workspaceActivoId && profile?.workspace_activo_id !== workspaceActivoId) {
+      await workspaceService.setActiveWorkspace(supabase, userId, workspaceActivoId);
+    }
+  } catch {
+    workspaces = [];
+    workspaceActivoId = null;
+    workspaceActivo = null;
+  }
+
   const enriched = profile
     ? {
         ...profile,
@@ -92,6 +112,7 @@ export async function getSession(supabase, userId) {
         membership_fecha_proximo_cobro: membership.fecha_proximo_cobro,
         permission_keys: permissionKeys,
         flags,
+        workspace_activo_id: workspaceActivoId,
       }
     : null;
 
@@ -102,7 +123,15 @@ export async function getSession(supabase, userId) {
     premiumFeatures,
     permission_keys: permissionKeys,
     flags,
+    workspaces,
+    workspace_activo_id: workspaceActivoId,
+    workspace_activo: workspaceActivo,
   };
+}
+
+export async function switchWorkspace(supabase, userId, workspaceId) {
+  await workspaceService.setActiveWorkspace(supabase, userId, workspaceId);
+  return getSession(supabase, userId);
 }
 
 export async function getRealtimeSession(supabase) {

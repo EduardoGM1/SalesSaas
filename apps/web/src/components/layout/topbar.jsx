@@ -5,6 +5,8 @@ import { useI18n } from "@/hooks/use-i18n.js";
 import { useAppStore } from "@/stores/app-store";
 import { AdminTopbarTabs } from "@/components/layout/admin-topbar-tabs.jsx";
 import { MobileTopAvatar, MobileTopNavActions, DesktopTopNavActions } from "@/components/layout/mobile-top-nav.jsx";
+import { WorkspaceActiveBadge } from "@/components/layout/workspace-rail.jsx";
+import { useWorkspace } from "@/hooks/use-workspace.js";
 
 export function Topbar({ title, subtitle, showMonthNav, admin }) {
   const { t, months } = useI18n();
@@ -13,6 +15,7 @@ export function Topbar({ title, subtitle, showMonthNav, admin }) {
   const calMonth = useAppStore((s) => s.calMonth);
   const calPrev = useAppStore((s) => s.calPrev);
   const calNext = useAppStore((s) => s.calNext);
+  const { brand, active } = useWorkspace();
 
   if (admin) {
     const { permissions, isSuperAdmin, pathname } = admin;
@@ -50,9 +53,15 @@ export function Topbar({ title, subtitle, showMonthNav, admin }) {
     );
   }
 
+  const brandName = brand?.nombre || "Saletse";
+  const brandLogo = brand?.logo_url;
   const saletseLogo = (
-    <div className="topbar-brand" title="Saletse" aria-label="Saletse">
-      <Image src="/saletse-logo.png" alt="Saletse" width={132} height={30} priority />
+    <div className="topbar-brand" title={brandName} aria-label={brandName}>
+      {brandLogo && active?.tipo === "sala_de_venta" ? (
+        <img src={brandLogo} alt={brandName} className="topbar-brand-ws-logo" width={132} height={30} />
+      ) : (
+        <Image src="/saletse-logo.png" alt="Saletse" width={132} height={30} priority />
+      )}
     </div>
   );
 
@@ -67,7 +76,10 @@ export function Topbar({ title, subtitle, showMonthNav, admin }) {
           </button>
           <div className="tb-page-copy">
             <div className="tb-page-title">{title}</div>
-            <div className="tb-page-sub">{subtitle}</div>
+            <div className="tb-page-sub">
+              <WorkspaceActiveBadge />
+              {subtitle ? <span className="tb-page-sub-extra">{subtitle}</span> : null}
+            </div>
           </div>
         </div>
         <div className="tb-right">

@@ -21,6 +21,7 @@ export const ADMIN_TABS = [
   { href: "/admin/users", labelKey: "admin.tab.users", icon: NavIconUsers },
   { href: "/admin/roles", labelKey: "admin.tab.roles", icon: NavIconRoles },
   { href: "/admin/modules", labelKey: "admin.tab.modules", icon: NavIconModules },
+  { href: "/admin/empresas", labelKey: "admin.tab.empresas", icon: NavIconUsers },
   { href: "/admin/logs", labelKey: "admin.tab.logs", icon: NavIconLogs },
   { href: "/admin/goals", labelKey: "admin.tab.goals", icon: NavIconGoals },
   { href: "/admin/tools", labelKey: "admin.tab.tools", icon: NavIconTools },

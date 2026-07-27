@@ -24,9 +24,13 @@ function toDateOrNull(v) {
   const s = v.slice(0, 10);
   return /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : null;
 }
-function bodyToProspectInsert(body, userId) {
+function withWorkspace(row, workspaceId) {
+  if (workspaceId) row.workspace_id = workspaceId;
+  return row;
+}
+function bodyToProspectInsert(body, userId, workspaceId) {
   const id = isUuid(body.id) ? String(body.id) : generateClientId();
-  return {
+  return withWorkspace({
     id,
     user_id: userId,
     prospect_code: typeof body.prospect_code === "string" && body.prospect_code || typeof body.prospectCode === "string" && body.prospectCode || generateProspectCode(id),
@@ -49,7 +53,7 @@ function bodyToProspectInsert(body, userId) {
     tour_cuantificable: body.tour_cuantificable != null ? Boolean(body.tour_cuantificable) : body.tourCuantificable != null ? Boolean(body.tourCuantificable) : null,
     completed: Boolean(body.completed ?? body.completedExpedient ?? false),
     quick_expedient: Boolean(body.quick_expedient ?? body.quickExpedient ?? false)
-  };
+  }, workspaceId);
 }
 function bodyToProspectPatch(body) {
   const patch = {};
@@ -94,12 +98,12 @@ function bodyToProspectPatch(body) {
   }
   return patch;
 }
-function bodyToSaleInsert(body, userId, defaultProspectId) {
+function bodyToSaleInsert(body, userId, defaultProspectId, workspaceId) {
   const prospectId = body.prospect_id ?? body.prospectId ?? defaultProspectId;
   if (!isUuid(prospectId)) return null;
   const saleDate = toDateOrNull(body.sale_date ?? body.date ?? body.saleDate);
   if (!saleDate) return null;
-  return {
+  return withWorkspace({
     id: isUuid(body.id) ? body.id : isUuid(body.saleId) ? body.saleId : generateSaleId(),
     user_id: userId,
     prospect_id: prospectId,
@@ -112,13 +116,13 @@ function bodyToSaleInsert(body, userId, defaultProspectId) {
     process_date: toDateOrNull(body.process_date ?? body.processDate),
     add_processing_followup: Boolean(body.add_processing_followup ?? body.addProcessingFollowup ?? false),
     note: body.note ?? null
-  };
+  }, workspaceId);
 }
-function bodyToCalInsert(body, userId) {
+function bodyToCalInsert(body, userId, workspaceId) {
   const type = sanitizeEntryType(body.type ?? body.t);
   const entryDate = toDateOrNull(body.entry_date ?? body.entryDate ?? body.date);
   if (!type || !entryDate) return null;
-  return {
+  return withWorkspace({
     id: isUuid(body.id) ? body.id : generateEntryId(),
     user_id: userId,
     prospect_id: isUuid(body.prospect_id ?? body.prospectId ?? body.clientId) ? body.prospect_id ?? body.prospectId ?? body.clientId : null,
@@ -136,13 +140,13 @@ function bodyToCalInsert(body, userId) {
     completed: Boolean(body.completed ?? false),
     kind: body.kind ?? null,
     client_name: body.client_name ?? body.clientName ?? null
-  };
+  }, workspaceId);
 }
-function bodyToGoalUpsert(body, userId) {
+function bodyToGoalUpsert(body, userId, workspaceId) {
   const year = Math.trunc(Number(body.year));
   const month = Math.trunc(Number(body.month));
   if (!year || month < 0 || month > 11) return null;
-  return {
+  return withWorkspace({
     user_id: userId,
     year,
     month,
@@ -151,13 +155,13 @@ function bodyToGoalUpsert(body, userId) {
     ventas: Math.trunc(Number(body.ventas ?? 0) || 0),
     dias: Math.trunc(Number(body.dias ?? 0) || 0),
     descansos: Math.trunc(Number(body.descansos ?? body.desc ?? 0) || 0)
-  };
+  }, workspaceId);
 }
-function bodyToActivityInsert(body, userId) {
+function bodyToActivityInsert(body, userId, workspaceId) {
   const type = typeof body.type === "string" ? body.type : null;
   if (!type) return null;
   const prospectRaw = body.prospect_id ?? body.prospectId;
-  return {
+  return withWorkspace({
     id: isUuid(body.id) ? body.id : generateActivityId(),
     user_id: userId,
     prospect_id: isUuid(prospectRaw) ? prospectRaw : null,
@@ -170,9 +174,9 @@ function bodyToActivityInsert(body, userId) {
     vol: body.vol != null ? Number(body.vol) : null,
     tours: body.tours != null ? Math.trunc(Number(body.tours)) : null,
     contract: body.contract ?? null
-  };
+  }, workspaceId);
 }
-function bodyToToolUpsert(body, userId) {
+function bodyToToolUpsert(body, userId, workspaceId) {
   const tool = sanitizeTool(body.tool);
   if (!tool) return null;
   const prospectRaw = body.prospect_id ?? body.prospectId;
@@ -180,7 +184,7 @@ function bodyToToolUpsert(body, userId) {
   if (prospectRaw && prospectRaw !== "libre" && !prospectId) return null;
   const data = body.data;
   if (!data || typeof data !== "object" || Array.isArray(data)) return null;
-  return { user_id: userId, prospect_id: prospectId, tool, data };
+  return withWorkspace({ user_id: userId, prospect_id: prospectId, tool, data }, workspaceId);
 }
 export {
   bodyToActivityInsert,
