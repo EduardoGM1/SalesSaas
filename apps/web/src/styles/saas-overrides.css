@@ -2650,6 +2650,14 @@ button.tool-card {
 .admin-perms-modal { max-width: 480px; max-height: min(90vh, 640px); overflow-y: auto; }
 .admin-perms-modal .admin-perms-grid { padding: 0 20px 4px; }
 .admin-perms-modal .btn-row { padding: 16px 20px 20px; }
+
+/* Modal Módulos: +30% en desktop (base 640×640 → 832×832) */
+.admin-modules-modal { max-width: 640px; max-height: min(90vh, 640px); }
+.admin-modules-modal-body { max-height: 360px; overflow: auto; }
+@media (min-width: 768px) {
+  .admin-modules-modal { max-width: 832px; max-height: min(90vh, 832px); }
+  .admin-modules-modal-body { max-height: 468px; }
+}
 .admin-back-icon { font-size: 15px; line-height: 1; }
 .admin-loading .admin-skeleton { background: linear-gradient(90deg, var(--border) 25%, #f1f5f9 50%, var(--border) 75%); background-size: 200% 100%; animation: admin-shimmer 1.2s ease-in-out infinite; border-radius: 8px; }
 .admin-skeleton-title { height: 28px; width: 220px; margin-bottom: 8px; }

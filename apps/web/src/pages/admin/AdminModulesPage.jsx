@@ -89,7 +89,7 @@ function FlagRulesEditor({
   return (
     <>
       <button type="button" className="modal-backdrop" aria-label={t("common.cancel")} onClick={onClose} />
-      <div className="admin-confirm-panel admin-perms-modal" role="dialog" aria-modal="true" style={{ maxWidth: 640 }}>
+      <div className="admin-confirm-panel admin-perms-modal admin-modules-modal" role="dialog" aria-modal="true">
         <div className="admin-confirm-head">
           <span className="admin-confirm-title">{flag.nombre_visible}</span>
           <span className="admin-cell-muted" style={{ fontSize: 12 }}>{flag.clave}</span>
@@ -109,7 +109,7 @@ function FlagRulesEditor({
             </p>
           </div>
 
-          <div className="admin-confirm-body" style={{ maxHeight: 360, overflow: "auto" }}>
+          <div className="admin-confirm-body admin-modules-modal-body">
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
               <div className="section-label" style={{ marginBottom: 0 }}>{t("admin.modules.rules")}</div>
               <div style={{ display: "flex", gap: 8 }}>
