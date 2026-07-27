@@ -217,6 +217,7 @@ export function canAccessAdminPathByPermissions(
   if (pathname.startsWith("/admin/support")) return adminPermissionSetHas(set, "gestionar_soporte");
   if (pathname.startsWith("/admin/goals")) return adminPermissionSetHas(set, "gestionar_metas");
   if (pathname.startsWith("/admin/roles")) return adminPermissionSetHas(set, "gestionar_roles_permisos");
+  if (pathname.startsWith("/admin/modules")) return false; // solo Superadmin
   if (pathname.startsWith("/admin/logs")) return adminPermissionSetHas(set, "ver_logs");
   if (pathname === "/admin") return adminPermissionSetHas(set, "ver_resumen");
   return false;

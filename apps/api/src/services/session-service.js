@@ -2,6 +2,7 @@ import { ServiceError } from "../lib/service-error.js";
 import { getCurrentMembership, listPremiumFeatures } from "./membership-service.js";
 import { resolveUserPermissions } from "@salesapp/shared/auth/resolve-permissions.js";
 import { VENDEDOR_DEFAULT_PERMISSIONS } from "@salesapp/shared/auth/permission-catalog.js";
+import { resolveAllFlags } from "./flags-service.js";
 
 export async function getSession(supabase, userId) {
   const { data: { user } } = await supabase.auth.getUser();
@@ -75,6 +76,13 @@ export async function getSession(supabase, userId) {
     })];
   }
 
+  let flags = {};
+  try {
+    flags = await resolveAllFlags(supabase, userId);
+  } catch {
+    flags = {};
+  }
+
   const enriched = profile
     ? {
         ...profile,
@@ -83,6 +91,7 @@ export async function getSession(supabase, userId) {
         membership_fecha_inicio: membership.fecha_inicio,
         membership_fecha_proximo_cobro: membership.fecha_proximo_cobro,
         permission_keys: permissionKeys,
+        flags,
       }
     : null;
 
@@ -92,6 +101,7 @@ export async function getSession(supabase, userId) {
     membership,
     premiumFeatures,
     permission_keys: permissionKeys,
+    flags,
   };
 }
 

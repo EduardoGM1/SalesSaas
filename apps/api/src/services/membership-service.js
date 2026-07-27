@@ -126,6 +126,13 @@ export async function assignMembership(userId, planNombre, options = {}) {
     }
   }
 
+  try {
+    const { syncMoneyBoxFlagForUser } = await import("./flags-service.js");
+    await syncMoneyBoxFlagForUser(userId, plan.nombre);
+  } catch (err) {
+    console.warn("[membership] money_box flag sync:", err instanceof Error ? err.message : err);
+  }
+
   return {
     plan: plan.nombre,
     status: inserted.estado,

@@ -12,5 +12,6 @@ export const AdminGoalsPage = namedLazy(() => import("@/pages/admin/AdminGoalsPa
 export const AdminToolsUsagePage = namedLazy(() => import("@/pages/admin/AdminToolsUsagePage.jsx"), "AdminToolsUsagePage");
 export const AdminSupportPage = namedLazy(() => import("@/pages/admin/AdminSupportPage.jsx"), "AdminSupportPage");
 export const AdminRolesPage = namedLazy(() => import("@/pages/admin/AdminRolesPage.jsx"), "AdminRolesPage");
+export const AdminModulesPage = namedLazy(() => import("@/pages/admin/AdminModulesPage.jsx"), "AdminModulesPage");
 export const AdminLogsPage = namedLazy(() => import("@/pages/admin/AdminLogsPage.jsx"), "AdminLogsPage");
 export const AdminLegacyRedirect = namedLazy(() => import("@/components/layout/admin-topbar-tabs.jsx"), "AdminLegacyRedirect");

@@ -7,6 +7,7 @@ import {
   NavIconSupport,
   NavIconRoles,
   NavIconLogs,
+  NavIconModules,
 } from "@/components/admin/admin-nav-icons";
 import {
   ADMIN_NAV_PERMISSIONS,
@@ -19,6 +20,7 @@ export const ADMIN_TABS = [
   { href: "/admin", labelKey: "admin.tab.overview", icon: NavIconDashboard, exact: true },
   { href: "/admin/users", labelKey: "admin.tab.users", icon: NavIconUsers },
   { href: "/admin/roles", labelKey: "admin.tab.roles", icon: NavIconRoles },
+  { href: "/admin/modules", labelKey: "admin.tab.modules", icon: NavIconModules },
   { href: "/admin/logs", labelKey: "admin.tab.logs", icon: NavIconLogs },
   { href: "/admin/goals", labelKey: "admin.tab.goals", icon: NavIconGoals },
   { href: "/admin/tools", labelKey: "admin.tab.tools", icon: NavIconTools },

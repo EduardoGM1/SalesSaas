@@ -8,20 +8,29 @@ import { PremiumFeatureCard } from "@/components/premium/premium-feature-card.js
 import { useAppStore } from "@/stores/app-store.js";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { useUserPermissions } from "@/hooks/use-user-permissions.js";
+import { useFlags } from "@/hooks/use-flag.js";
 import { TOOL_PERMISSION_KEYS } from "@/lib/auth/tool-permissions.js";
+import { TOOL_FLAG_KEYS } from "@/lib/auth/tool-flags.js";
 
 export function ToolsHubPage() {
   const navigate = useNavigate();
   const setToolMode = useAppStore((s) => s.setToolMode);
   const { t } = useI18n();
   const { can } = useUserPermissions();
+  const { isEnabled, hasCatalog } = useFlags();
   const [newClientOpen, setNewClientOpen] = useState(false);
+
+  const toolAllowed = (tool) => {
+    const flagKey = TOOL_FLAG_KEYS[tool];
+    if (hasCatalog && flagKey) return isEnabled(flagKey) === true;
+    return can(TOOL_PERMISSION_KEYS[tool]);
+  };
 
   const TOOLS = [
     { href: "/tools/survey", tool: "survey", labelKey: "tools.survey", descKey: "tools.surveyDesc", icon: FileText, tone: "blue" },
     { href: "/tools/vacaciones", tool: "vacaciones", labelKey: "tools.vacation", descKey: "tools.vacationDesc", icon: Palmtree, tone: "green" },
     { href: "/tools/worksheet", tool: "worksheet", labelKey: "tools.worksheet", descKey: "tools.worksheetDesc", icon: DollarSign, tone: "purple" },
-  ].filter((tool) => can(TOOL_PERMISSION_KEYS[tool.tool]));
+  ].filter((tool) => toolAllowed(tool.tool));
 
   return (
     <>

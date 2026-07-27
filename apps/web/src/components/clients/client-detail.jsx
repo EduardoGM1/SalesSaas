@@ -21,7 +21,9 @@ import { statusLabel } from "@/lib/format/status";
 import { useMoney } from "@/hooks/use-money.js";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { useUserPermissions } from "@/hooks/use-user-permissions.js";
+import { useFlags } from "@/hooks/use-flag.js";
 import { TOOL_PERMISSION_KEYS } from "@/lib/auth/tool-permissions.js";
+import { TOOL_FLAG_KEYS } from "@/lib/auth/tool-flags.js";
 import { useDbStore } from "@/stores/db-store";
 import { useAppStore } from "@/stores/app-store";
 import { shallow } from "zustand/shallow";
@@ -55,6 +57,12 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
   const { fmt } = useMoney();
   const { t, lang } = useI18n();
   const { can } = useUserPermissions();
+  const { isEnabled, hasCatalog } = useFlags();
+  const toolAllowed = (toolKey) => {
+    const flagKey = TOOL_FLAG_KEYS[toolKey];
+    if (hasCatalog && flagKey) return isEnabled(flagKey) === true;
+    return can(TOOL_PERMISSION_KEYS[toolKey]);
+  };
 
   const [shareOpen, setShareOpen] = useState(false);
   const [recordModal, setRecordModal] = useState(null);
@@ -304,7 +312,7 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
     ? [saleCard, notesCard].filter(Boolean)
     : [
         ...TOOL_DEFS
-          .filter((tool) => can(TOOL_PERMISSION_KEYS[tool.key]))
+          .filter((tool) => toolAllowed(tool.key))
           .map((tool) => ({
             toolKey: tool.key,
             label: t(tool.labelKey),

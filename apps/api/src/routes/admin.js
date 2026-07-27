@@ -25,6 +25,7 @@ import * as supportService from "../services/support-service.js";
 import * as membershipService from "../services/membership-service.js";
 import * as rolesService from "../services/roles-service.js";
 import * as adminAuditService from "../services/admin-audit-service.js";
+import * as flagsService from "../services/flags-service.js";
 
 const router = Router();
 
@@ -346,6 +347,38 @@ router.patch("/users/:id/membership", async (req, res) => {
   await runService(
     res,
     () => membershipService.assignMembership(req.params.id, plan, { changedBy: a.userId }),
+    { wrap: "data" },
+  );
+});
+
+/** Catálogo + árbol de feature flags (motor genérico). */
+router.get("/flags", async (req, res) => {
+  const a = await requireSuperAdminApi(req, res);
+  if (!a) return;
+  await runService(res, () => flagsService.listFlagsTree(a.supabase, a.profile), { wrap: "data" });
+});
+
+router.patch("/flags/:id", async (req, res) => {
+  const a = await requireSuperAdminApi(req, res);
+  if (!a) return;
+  const body = parseJsonBody(req, res);
+  if (!body) return;
+  const def = body.default_global ?? body.defaultGlobal;
+  await runService(
+    res,
+    () => flagsService.updateFlagDefault(a.supabase, a.profile, req.params.id, def),
+    { wrap: "data" },
+  );
+});
+
+router.put("/flags/:id/rules", async (req, res) => {
+  const a = await requireSuperAdminApi(req, res);
+  if (!a) return;
+  const body = parseJsonBody(req, res);
+  if (!body) return;
+  await runService(
+    res,
+    () => flagsService.replaceFlagRules(a.supabase, a.profile, req.params.id, body.rules ?? body),
     { wrap: "data" },
   );
 });

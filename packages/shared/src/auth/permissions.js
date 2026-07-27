@@ -177,6 +177,7 @@ function canAccessAdminPath(profile, pathname) {
   if (pathname.startsWith("/admin/support")) return hasPermission(profile, "gestionar_soporte");
   if (pathname.startsWith("/admin/goals")) return hasPermission(profile, "gestionar_metas");
   if (pathname.startsWith("/admin/roles")) return hasPermission(profile, "gestionar_roles_permisos");
+  if (pathname.startsWith("/admin/modules")) return false; // solo Superadmin
   if (pathname.startsWith("/admin/logs")) return hasPermission(profile, "ver_logs");
   if (pathname === "/admin") return hasPermission(profile, "ver_resumen");
   return false;

@@ -27,6 +27,8 @@ import { TimesharePanel } from "@/components/calculators/survey/timeshare-panel.
 import { GastosPanel } from "@/components/calculators/survey/gastos-panel.jsx";
 import { ResumenPanel } from "@/components/calculators/survey/resumen-panel.jsx";
 import { ConfigureQuestionsModal } from "@/components/calculators/survey/configure-questions-modal.jsx";
+import { useFlags } from "@/hooks/use-flag.js";
+import { SURVEY_TAB_FLAGS } from "@/lib/auth/tool-flags.js";
 
 const EMPTY_DATA: Record<string, string> = {
   nights: "", total: "", hpct: "",
@@ -54,6 +56,7 @@ interface SurveyPageProps {
 
 export function SurveyPage({ clientId, shared }: SurveyPageProps) {
   const { t } = useI18n();
+  const { flags, hasCatalog } = useFlags();
   const session = useToolSession({ clientId, shared, section: "survey" });
   const {
     ready, readOnly, backHref, getBucket, saveBucket, syncProspectFields,
@@ -146,6 +149,21 @@ export function SurveyPage({ clientId, shared }: SurveyPageProps) {
   const answered = countAnswered(discovery, progressIds);
   const totalQuestions = progressIds.length;
   const progressPct = totalQuestions ? Math.round((answered / totalQuestions) * 100) : 0;
+
+  const visibleTabs = useMemo(() => {
+    if (!hasCatalog) return TABS;
+    return TABS.filter((item) => {
+      const flagKey = SURVEY_TAB_FLAGS[item.id];
+      return !flagKey || flags[flagKey] === true;
+    });
+  }, [hasCatalog, flags]);
+
+  useEffect(() => {
+    if (!visibleTabs.length) return;
+    if (!visibleTabs.some((item) => item.id === tab)) {
+      setTab(visibleTabs[0].id);
+    }
+  }, [visibleTabs, tab]);
 
   const syncProspectToClient = (next: Record<string, string>) => {
     if (!clientId || isShared) return;
@@ -427,23 +445,25 @@ export function SurveyPage({ clientId, shared }: SurveyPageProps) {
             </div>
           </div>
 
-          <div className="seg disc-tabs" role="tablist" aria-label="Secciones del Discovery">
-            {TABS.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                role="tab"
-                aria-selected={tab === item.id}
-                className={`seg-btn${tab === item.id ? " on" : ""}`}
-                onClick={() => setTab(item.id)}
-              >
-                {t(item.labelKey)}
-              </button>
-            ))}
-          </div>
+          {visibleTabs.length > 0 && (
+            <div className="seg disc-tabs" role="tablist" aria-label="Secciones del Discovery">
+              {visibleTabs.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={tab === item.id}
+                  className={`seg-btn${tab === item.id ? " on" : ""}`}
+                  onClick={() => setTab(item.id)}
+                >
+                  {t(item.labelKey)}
+                </button>
+              ))}
+            </div>
+          )}
 
           <div className="card disc-tab-panel" role="tabpanel">
-            {tab === "motivaciones" && (
+            {tab === "motivaciones" && visibleTabs.some((item) => item.id === "motivaciones") && (
               <MotivacionesPanel
                 discovery={discovery}
                 disabled={readOnly}
@@ -455,7 +475,7 @@ export function SurveyPage({ clientId, shared }: SurveyPageProps) {
                 afterQuestions={grouped.motivacionesAfter}
               />
             )}
-            {tab === "timeshare" && (
+            {tab === "timeshare" && visibleTabs.some((item) => item.id === "timeshare") && (
               <TimesharePanel
                 discovery={discovery}
                 disabled={readOnly}
@@ -466,7 +486,7 @@ export function SurveyPage({ clientId, shared }: SurveyPageProps) {
                 hasTsQuestion={grouped.hasTsQuestion}
               />
             )}
-            {tab === "gastos" && (
+            {tab === "gastos" && visibleTabs.some((item) => item.id === "gastos") && (
               <GastosPanel
                 t={t}
                 data={data}
@@ -485,7 +505,7 @@ export function SurveyPage({ clientId, shared }: SurveyPageProps) {
                 isFileMode={isFileMode}
               />
             )}
-            {tab === "resumen" && (
+            {tab === "resumen" && visibleTabs.some((item) => item.id === "resumen") && (
               <ResumenPanel discovery={discovery} result={result} fmt={fmt} grouped={grouped} />
             )}
           </div>
