@@ -52,6 +52,15 @@ function loadEnvLocal() {
   }
 }
 
+/** Misma semántica que session-service + resolveUserPermissions (fallback Vendedor). */
+const VENDEDOR_TOOL_DEFAULTS = new Set([
+  "herramientas:survey",
+  "herramientas:survey_configurar_preguntas",
+  "herramientas:vacaciones",
+  "herramientas:worksheet",
+  "herramientas:analysis",
+]);
+
 async function legacyToolAccess(sb, userId, roleId, isSuperAdmin, permClave) {
   if (isSuperAdmin) return true;
 
@@ -64,6 +73,9 @@ async function legacyToolAccess(sb, userId, roleId, isSuperAdmin, permClave) {
       .eq("permisos.clave", permClave)
       .maybeSingle();
     roleHas = Boolean(data);
+  } else {
+    // Sin role_id: la sesión cae a VENDEDOR_DEFAULT_PERMISSIONS (incluye herramientas).
+    roleHas = VENDEDOR_TOOL_DEFAULTS.has(permClave);
   }
 
   const { data: ov } = await sb
