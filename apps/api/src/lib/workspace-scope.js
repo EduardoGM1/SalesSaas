@@ -2,7 +2,7 @@
  * Resuelve workspace activo validado (membresía) para requests de API.
  * Si 0052 no está, retorna null y los callers degradan a filtro solo user_id.
  */
-import * as workspaceService from "./workspace-service.js";
+import * as workspaceService from "../services/workspace-service.js";
 
 export async function getRequestWorkspaceId(supabase, userId) {
   try {
