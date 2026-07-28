@@ -51,7 +51,10 @@ export function ProspectWorkflowPanel({ prospectId, enabled = true }) {
         if (response.ok) setPeers(Array.isArray(body.data) ? body.data : []);
       }
     } catch (loadError) {
-      if ([404, 409].includes(loadError?.status)) setHidden(true);
+      if (
+        [404, 409].includes(loadError?.status)
+        || /prospect_workflows|schema cache|does not exist/i.test(loadError?.message || "")
+      ) setHidden(true);
       else setError(loadError instanceof Error ? loadError.message : "No fue posible cargar el workflow.");
     }
   }, [enabled, prospectId]);
