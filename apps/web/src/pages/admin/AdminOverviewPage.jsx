@@ -1,230 +1,179 @@
+import { Link, useOutletContext } from "react-router-dom";
+import { Activity, Building2, Database, Mail, Radio, Server, Users } from "lucide-react";
 import { AdminUsersGrowthChart } from "@/components/admin/admin-users-growth-chart.jsx";
 import { AdminToolsByToolChart } from "@/components/admin/admin-tools-by-tool-chart.jsx";
 import { AdminToolsTrendChart } from "@/components/admin/admin-tools-trend-chart.jsx";
+import {
+  AdminCard,
+  AdminChartCard,
+  AdminKpiCard,
+  AdminPageHeader,
+  AdminPageState,
+  AdminStatusBadge,
+  AdminTimeline,
+} from "@/components/admin/admin-ui.jsx";
 import { useAdminFetch } from "@/hooks/use-admin-session.js";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { useMoney } from "@/hooks/use-money.js";
-
-function GrowthBadge({ value }) {
-  const n = Number(value) || 0;
-  const tone = n > 0 ? "up" : n < 0 ? "down" : "flat";
-  const sign = n > 0 ? "+" : "";
-  return (
-    <span className={`admin-kpi-delta admin-kpi-delta--${tone}`}>
-      {sign}{n}%
-    </span>
-  );
-}
-
-function KpiCard({ label, value, sub, delta }) {
-  return (
-    <div className="admin-kpi admin-kpi--exec">
-      <div className="admin-kpi-label">{label}</div>
-      <div className="admin-kpi-value-row">
-        <div className="admin-kpi-value">{value}</div>
-        {delta != null ? <GrowthBadge value={delta} /> : null}
-      </div>
-      {sub ? <div className="admin-kpi-sub">{sub}</div> : null}
-    </div>
-  );
-}
-
-function Section({ title, children }) {
-  return (
-    <section className="admin-exec-section">
-      <h2 className="admin-exec-section-title">{title}</h2>
-      {children}
-    </section>
-  );
-}
+import { hasPermission } from "@/lib/auth/permissions";
+import { narrateAdminLogSummary } from "@/lib/admin/log-narrative.js";
 
 function formatMinutes(mins, t) {
   const m = Number(mins) || 0;
   if (m <= 0) return t("admin.kpi.sessionNone");
   if (m < 60) return t("admin.kpi.sessionMinutes", { n: m });
-  const h = Math.floor(m / 60);
-  const rem = Math.round(m % 60);
-  return t("admin.kpi.sessionHoursMins", { h, m: rem });
+  return t("admin.kpi.sessionHoursMins", { h: Math.floor(m / 60), m: Math.round(m % 60) });
+}
+
+function CompaniesMetric({ enabled, fmtN }) {
+  const { data } = useAdminFetch(enabled ? "empresas" : "");
+  return (
+    <div className="admin-hero-stat">
+      <Building2 size={16} aria-hidden />
+      <div><strong>{enabled && Array.isArray(data) ? fmtN(data.length) : "—"}</strong><span>Empresas</span></div>
+    </div>
+  );
+}
+
+function RecentActivity({ enabled }) {
+  const { t } = useI18n();
+  const { loading, data, error } = useAdminFetch(enabled ? "logs" : "", "?");
+  if (!enabled) {
+    return <p className="admin-card-muted">Tu rol no incluye acceso a la bitácora administrativa.</p>;
+  }
+  const items = Array.isArray(data?.items) ? data.items.slice(0, 6) : [];
+  return (
+    <AdminPageState loading={loading} error={error}>
+      <AdminTimeline
+        items={items}
+        emptyTitle={t("admin.logs.empty")}
+        renderItem={(item) => (
+          <>
+            <div className="admin-timeline-title">
+              {item.actor_nombre || "Sistema"} · {narrateAdminLogSummary(item.detalle, t)}
+            </div>
+            <time className="admin-timeline-time">
+              {item.fecha ? new Date(item.fecha).toLocaleString() : "—"}
+            </time>
+          </>
+        )}
+      />
+    </AdminPageState>
+  );
+}
+
+function ToolUsage({ items = [], fmtN }) {
+  const max = Math.max(1, ...items.map((item) => Number(item.count ?? item.total ?? item.value) || 0));
+  if (!items.length) return <p className="admin-card-muted">Todavía no hay uso registrado.</p>;
+  return (
+    <div className="admin-tool-bars">
+      {items.slice(0, 8).map((item, index) => {
+        const value = Number(item.count ?? item.total ?? item.value) || 0;
+        const label = item.label || item.tool || item.name || `Herramienta ${index + 1}`;
+        return (
+          <div key={item.tool || item.name || index} className="admin-tool-bar">
+            <div className="admin-tool-bar-head"><span>{label}</span><strong>{fmtN(value)}</strong></div>
+            <div className="admin-tool-bar-track"><span style={{ width: `${Math.max(3, (value / max) * 100)}%` }} /></div>
+          </div>
+        );
+      })}
+    </div>
+  );
 }
 
 export function AdminOverviewPage() {
   const { t } = useI18n();
   const { fmtN } = useMoney();
+  const session = useOutletContext();
   const { loading, data, error } = useAdminFetch("overview");
+  const canSeeLogs = Boolean(session?.isSuperAdmin || hasPermission(session?.profile, "ver_logs"));
+  const canSeeCompanies = Boolean(session?.isSuperAdmin);
 
-  if (loading) return <div className="admin-page">{t("admin.loading.overview")}</div>;
-  if (error) return <div className="admin-page admin-empty">{error}</div>;
-  if (!data) return null;
-
-  const growthKpis = [
-    {
-      label: t("admin.kpi.usersToday"),
-      value: fmtN(data.usersCreatedToday),
-      sub: t("admin.kpi.usersTodaySub"),
-    },
-    {
-      label: t("admin.kpi.usersWeek"),
-      value: fmtN(data.usersCreatedWeek),
-      sub: t("admin.kpi.usersWeekSub"),
-    },
-    {
-      label: t("admin.kpi.usersMonth"),
-      value: fmtN(data.usersCreatedMonth),
-      delta: data.growthUsersMoM,
-      sub: t("admin.kpi.vsPrevMonth"),
-    },
-    {
-      label: t("admin.kpi.usersTotal"),
-      value: fmtN(data.usersCount),
-      sub: t("admin.kpi.usersTotalSub", {
-        active: fmtN(data.usersActiveAccounts),
-        inactive: fmtN(data.usersInactiveAccounts),
-      }),
-    },
-  ];
-
-  const activityKpis = [
-    {
-      label: t("admin.kpi.activeToday"),
-      value: fmtN(data.usersActiveToday),
-      sub: t("admin.kpi.activeTodaySub"),
-    },
-    {
-      label: t("admin.kpi.activeWeek"),
-      value: fmtN(data.usersActiveWeek),
-      sub: t("admin.kpi.pctActiveWeekSub", { pct: fmtN(data.pctActiveWeek) }),
-    },
-    {
-      label: t("admin.kpi.activeMonth"),
-      value: fmtN(data.usersActiveMonth),
-      sub: t("admin.kpi.activeMonthSub"),
-    },
-    {
-      label: t("admin.kpi.pctActiveAccounts"),
-      value: `${fmtN(data.pctActiveAccounts)}%`,
-      sub: t("admin.kpi.pctActiveAccountsSub"),
-    },
-  ];
-
-  const sessionKpis = [
-    {
-      label: t("admin.kpi.avgSession"),
-      value: formatMinutes(data.avgSessionMinutes, t),
-      sub: t("admin.kpi.avgSessionSub"),
-    },
-    {
-      label: t("admin.kpi.sessionHours"),
-      value: fmtN(data.totalSessionHours30d),
-      sub: t("admin.kpi.sessionHoursSub"),
-    },
-    {
-      label: t("admin.kpi.sessionsDone"),
-      value: fmtN(data.sessionsCompleted30d),
-      sub: t("admin.kpi.sessionsDoneSub"),
-    },
-    {
-      label: t("admin.kpi.sessionsPerUser"),
-      value: fmtN(data.avgSessionsPerUser30d),
-      sub: t("admin.kpi.sessionsPerUserSub"),
-    },
-  ];
-
-  const adoptionKpis = [
-    {
-      label: t("admin.kpi.toolSaves"),
-      value: fmtN(data.toolSavesTotal),
-      sub: t("admin.kpi.toolSavesSub"),
-    },
-    {
-      label: t("admin.kpi.discoveryLinked"),
-      value: fmtN(data.surveyLinked),
-      sub: t("admin.kpi.discoverySub", { total: fmtN(data.surveyTotal) }),
-    },
-    {
-      label: t("admin.kpi.memberships"),
-      value: fmtN(data.membershipsActive),
-      sub: t("admin.kpi.membershipsSub"),
-    },
-    {
-      label: t("admin.kpi.files"),
-      value: fmtN(data.prospectsCount),
-      sub: t("admin.kpi.filesMonthSub", { n: fmtN(data.prospectsMonth) }),
-    },
-  ];
-
-  const generated = data.generatedAt
-    ? new Date(data.generatedAt).toLocaleString(undefined, {
-        dateStyle: "medium",
-        timeStyle: "short",
-      })
-    : null;
+  const generated = data?.generatedAt
+    ? new Date(data.generatedAt).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })
+    : "—";
 
   return (
-    <div className="admin-page admin-page--exec">
-      <div className="admin-page-head">
-        <div>
-          <h1 className="admin-h1">{t("admin.overview.title")}</h1>
-          <p className="admin-sub">{t("admin.overview.subUsage")}</p>
-        </div>
-        <div className="admin-exec-health" title={t("admin.overview.healthHint")}>
-          <span className="admin-exec-health-dot" aria-hidden />
-          <span>{t("admin.overview.healthOk")}</span>
-          {generated ? (
-            <span className="admin-exec-health-meta">
-              {t("admin.overview.updatedAt", { when: generated })}
-            </span>
-          ) : null}
-        </div>
-      </div>
+    <div className="admin-page admin-overview-enterprise">
+      <AdminPageHeader
+        eyebrow="Control de plataforma"
+        title={t("admin.overview.title")}
+        subtitle={t("admin.overview.subUsage")}
+        actions={canSeeLogs ? <Link to="/admin/logs" className="btn btn-ghost">Ver actividad</Link> : null}
+      />
 
-      <Section title={t("admin.overview.section.growth")}>
-        <div className="admin-kpis admin-kpis--exec">
-          {growthKpis.map((k) => (
-            <KpiCard key={k.label} {...k} />
-          ))}
-        </div>
-      </Section>
+      <AdminPageState loading={loading} error={error} skeleton="overview">
+        {data ? (
+          <>
+            <section className="admin-overview-hero">
+              <div className="admin-overview-hero-copy">
+                <AdminStatusBadge tone="success"><Activity size={12} aria-hidden /> Plataforma operativa</AdminStatusBadge>
+                <h2>La operación está disponible y recibiendo actividad.</h2>
+                <p>Vista agregada para entender crecimiento, adopción y salud de los datos sin exponer desempeño individual.</p>
+                <span className="admin-overview-updated">Última actualización: {generated}</span>
+              </div>
+              <div className="admin-hero-stats">
+                <div className="admin-hero-stat"><Users size={16} aria-hidden /><div><strong>{fmtN(data.usersCount)}</strong><span>Usuarios</span></div></div>
+                <CompaniesMetric enabled={canSeeCompanies} fmtN={fmtN} />
+                <div className="admin-hero-stat"><Database size={16} aria-hidden /><div><strong>{fmtN(data.prospectsCount)}</strong><span>Expedientes</span></div></div>
+                <div className="admin-hero-stat"><Activity size={16} aria-hidden /><div><strong>{fmtN(data.membershipsActive)}</strong><span>Membresías</span></div></div>
+              </div>
+            </section>
 
-      <Section title={t("admin.overview.section.activity")}>
-        <div className="admin-kpis admin-kpis--exec">
-          {activityKpis.map((k) => (
-            <KpiCard key={k.label} {...k} />
-          ))}
-        </div>
-      </Section>
+            <section className="admin-overview-kpis" aria-label="Indicadores principales">
+              <AdminKpiCard
+                label={t("admin.kpi.usersTotal")}
+                value={fmtN(data.usersCount)}
+                comparison={`${Number(data.growthUsersMoM) > 0 ? "+" : ""}${Number(data.growthUsersMoM) || 0}%`}
+                tone={Number(data.growthUsersMoM) >= 0 ? "success" : "danger"}
+                description={t("admin.kpi.usersTotalSub", { active: fmtN(data.usersActiveAccounts), inactive: fmtN(data.usersInactiveAccounts) })}
+              />
+              <AdminKpiCard label={t("admin.kpi.activeWeek")} value={fmtN(data.usersActiveWeek)} comparison={`${fmtN(data.pctActiveWeek)}%`} tone="info" description={t("admin.kpi.activeTodaySub")} />
+              <AdminKpiCard label={t("admin.kpi.files")} value={fmtN(data.prospectsCount)} comparison={`+${fmtN(data.prospectsMonth)}`} tone="success" description={t("admin.kpi.filesMonthSub", { n: fmtN(data.prospectsMonth) })} />
+              <AdminKpiCard label={t("admin.kpi.toolSaves")} value={fmtN(data.toolSavesTotal)} description={`${t("admin.kpi.avgSession")}: ${formatMinutes(data.avgSessionMinutes, t)}`} />
+            </section>
 
-      <Section title={t("admin.overview.section.sessions")}>
-        <div className="admin-kpis admin-kpis--exec">
-          {sessionKpis.map((k) => (
-            <KpiCard key={k.label} {...k} />
-          ))}
-        </div>
-      </Section>
+            <section className="admin-overview-charts">
+              <AdminChartCard title={t("admin.chart.usersGrowth")} subtitle="Altas mensuales de usuarios">
+                <AdminUsersGrowthChart data={data.usersTrend || []} />
+              </AdminChartCard>
+              <AdminChartCard title={t("admin.chart.toolsMix")} subtitle="Distribución acumulada de guardados">
+                <AdminToolsByToolChart byTool={data.toolsByTool || []} />
+              </AdminChartCard>
+              <AdminChartCard title={t("admin.chart.toolsTrend")} subtitle="Evolución de adopción por herramienta" className="admin-chart-panel--wide">
+                <AdminToolsTrendChart trend={data.toolsTrend || []} />
+              </AdminChartCard>
+            </section>
 
-      <Section title={t("admin.overview.section.adoption")}>
-        <div className="admin-kpis admin-kpis--exec">
-          {adoptionKpis.map((k) => (
-            <KpiCard key={k.label} {...k} />
-          ))}
-        </div>
-      </Section>
+            <section className="admin-overview-lower">
+              <AdminCard title="Actividad reciente" subtitle="Cambios administrativos más recientes" action={canSeeLogs ? <Link to="/admin/logs">Ver todos</Link> : null}>
+                <RecentActivity enabled={canSeeLogs} />
+              </AdminCard>
+              <AdminCard title="Estado del sistema" subtitle="Disponibilidad observada por este panel">
+                <div className="admin-service-list">
+                  {[
+                    [Server, "API", "Operativo", "success"],
+                    [Database, "Base de datos", "Operativo", "success"],
+                    [Radio, "Realtime", "No monitorizado", "neutral"],
+                    [Database, "Storage", "No monitorizado", "neutral"],
+                    [Mail, "Correo", "No monitorizado", "neutral"],
+                  ].map(([Icon, label, status, tone]) => (
+                    <div key={label} className="admin-service-row">
+                      <span><Icon size={15} aria-hidden />{label}</span>
+                      <AdminStatusBadge tone={tone}>{status}</AdminStatusBadge>
+                    </div>
+                  ))}
+                </div>
+              </AdminCard>
+              <AdminCard title="Uso de herramientas" subtitle="Guardados acumulados por producto" className="admin-overview-tools-card">
+                <ToolUsage items={data.toolsByTool || []} fmtN={fmtN} />
+              </AdminCard>
+            </section>
 
-      <div className="admin-exec-charts">
-        <div className="client-table-card admin-chart-card">
-          <div className="admin-card-head">{t("admin.chart.usersGrowth")}</div>
-          <AdminUsersGrowthChart data={data.usersTrend || []} />
-        </div>
-        <div className="client-table-card admin-chart-card">
-          <div className="admin-card-head">{t("admin.chart.toolsMix")}</div>
-          <AdminToolsByToolChart byTool={data.toolsByTool || []} />
-        </div>
-        <div className="client-table-card admin-chart-card admin-chart-card--wide">
-          <div className="admin-card-head">{t("admin.chart.toolsTrend")}</div>
-          <AdminToolsTrendChart trend={data.toolsTrend || []} />
-        </div>
-      </div>
-
-      <p className="admin-exec-footnote">{t("admin.overview.privacyFootnoteUsage")}</p>
+            <p className="admin-exec-footnote">{t("admin.overview.privacyFootnoteUsage")}</p>
+          </>
+        ) : null}
+      </AdminPageState>
     </div>
   );
 }
