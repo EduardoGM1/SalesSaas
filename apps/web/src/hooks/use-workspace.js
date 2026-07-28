@@ -16,6 +16,23 @@ const SALETSE_BRAND = {
   nombre: "Saletse",
 };
 
+let workspaceTransition = { switching: false, target: null };
+const workspaceTransitionListeners = new Set();
+
+function publishWorkspaceTransition(next) {
+  workspaceTransition = next;
+  workspaceTransitionListeners.forEach((listener) => listener(next));
+}
+
+function useWorkspaceTransition() {
+  const [transition, setTransition] = useState(workspaceTransition);
+  useEffect(() => {
+    workspaceTransitionListeners.add(setTransition);
+    return () => workspaceTransitionListeners.delete(setTransition);
+  }, []);
+  return transition;
+}
+
 export function applyWorkspaceBrand(brand) {
   if (typeof document === "undefined") return;
   const root = document.documentElement;
@@ -34,7 +51,7 @@ export function applyWorkspaceBrand(brand) {
 export function useWorkspace() {
   const [session, setSession] = useState(null);
   const [ready, setReady] = useState(false);
-  const [switching, setSwitching] = useState(false);
+  const transition = useWorkspaceTransition();
 
   useEffect(() => {
     if (!isSupabaseConfigured()) {
@@ -56,8 +73,9 @@ export function useWorkspace() {
   const activeId = session?.workspace_activo_id || active?.id || null;
 
   const switchWorkspace = useCallback(async (workspaceId) => {
-    if (!workspaceId || workspaceId === activeId) return;
-    setSwitching(true);
+    if (!workspaceId || workspaceId === activeId || workspaceTransition.switching) return;
+    const target = workspaces.find((workspace) => workspace.id === workspaceId) || null;
+    publishWorkspaceTransition({ switching: true, target });
     try {
       const res = await fetch("/api/v1/auth/workspace", {
         method: "POST",
@@ -90,13 +108,14 @@ export function useWorkspace() {
         await startDashboardDataRealtime(userId);
       }
     } finally {
-      setSwitching(false);
+      publishWorkspaceTransition({ switching: false, target: null });
     }
-  }, [activeId]);
+  }, [activeId, workspaces]);
 
   return {
     ready,
-    switching,
+    switching: transition.switching,
+    switchingTarget: transition.target,
     workspaces,
     active,
     activeId,

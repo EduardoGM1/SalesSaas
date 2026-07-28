@@ -5,7 +5,6 @@ import { useI18n } from "@/hooks/use-i18n.js";
 import { useAppStore } from "@/stores/app-store";
 import { AdminTopbarTabs } from "@/components/layout/admin-topbar-tabs.jsx";
 import { MobileTopAvatar, MobileTopNavActions, DesktopTopNavActions } from "@/components/layout/mobile-top-nav.jsx";
-import { WorkspaceActiveBadge, WorkspaceSwitcher } from "@/components/layout/workspace-rail.jsx";
 import { WorkspaceBrandMark } from "@/components/layout/workspace-brand-mark.jsx";
 import { useWorkspace } from "@/hooks/use-workspace.js";
 
@@ -16,8 +15,7 @@ export function Topbar({ title, subtitle, showMonthNav, admin }) {
   const calMonth = useAppStore((s) => s.calMonth);
   const calPrev = useAppStore((s) => s.calPrev);
   const calNext = useAppStore((s) => s.calNext);
-  const { brand, active, workspaces } = useWorkspace();
-  const showMobileSwitcher = Array.isArray(workspaces) && workspaces.length > 1;
+  const { brand, active } = useWorkspace();
 
   if (admin) {
     const { permissions, isSuperAdmin, pathname } = admin;
@@ -75,10 +73,6 @@ export function Topbar({ title, subtitle, showMonthNav, admin }) {
 
   return (
     <header className="topbar">
-      <div className="topbar-mobile-brand">
-        {showMobileSwitcher ? <WorkspaceSwitcher className="ws-switcher-mobile-brand" /> : null}
-        {saletseLogo}
-      </div>
       <div className="topbar-mobile-main">
         <div className="tb-left">
           <MobileTopAvatar />
@@ -87,10 +81,7 @@ export function Topbar({ title, subtitle, showMonthNav, admin }) {
           </button>
           <div className="tb-page-copy">
             <div className="tb-page-title">{title}</div>
-            <div className="tb-page-sub tb-page-sub--desktop-only">
-              <WorkspaceActiveBadge />
-              {subtitle ? <span className="tb-page-sub-extra">{subtitle}</span> : null}
-            </div>
+            {subtitle ? <div className="tb-page-sub tb-page-sub--desktop-only">{subtitle}</div> : null}
           </div>
         </div>
         <div className="tb-right">

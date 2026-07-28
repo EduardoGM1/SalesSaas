@@ -9,16 +9,26 @@ import { AutoPushCoordinator } from "@/components/notifications/auto-push-coordi
 import { InAppNotificationsCoordinator } from "@/components/notifications/in-app-notifications-coordinator.jsx";
 import { SidebarClient } from "@/components/layout/sidebar-client.jsx";
 import { BottomNav } from "@/components/layout/bottom-nav.jsx";
+import { WorkspaceRail } from "@/components/layout/workspace-rail.jsx";
 import { useWorkspace } from "@/hooks/use-workspace.js";
 import { useI18n } from "@/hooks/use-i18n.js";
+import { LoaderCircle } from "lucide-react";
 
 function WorkspaceSwitchOverlay() {
   const { t } = useI18n();
-  const { switching } = useWorkspace();
+  const { switching, switchingTarget } = useWorkspace();
   if (!switching) return null;
+  const targetName = switchingTarget?.nombre
+    || (switchingTarget?.tipo === "personal" ? t("workspace.personal") : t("workspace.sala"));
   return (
     <div className="ws-switch-overlay" role="status" aria-live="polite">
-      <div className="ws-switch-card">{t("workspace.switching")}</div>
+      <div className="ws-switch-card">
+        <LoaderCircle size={20} className="ws-switch-card-spinner" aria-hidden />
+        <div>
+          <strong>{t("workspace.switching")}</strong>
+          {targetName ? <span>{targetName}</span> : null}
+        </div>
+      </div>
     </div>
   );
 }
@@ -32,6 +42,9 @@ export function DashboardLayout() {
           <OneSignalProvider>
             <div className="app">
               <SidebarClient />
+              <div className="ws-mobile-workspace-dock">
+                <WorkspaceRail mobile />
+              </div>
               <div className="main">
                 <main><Outlet /></main>
               </div>
