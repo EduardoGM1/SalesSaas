@@ -6,6 +6,7 @@ import { useAppStore } from "@/stores/app-store";
 import { AdminTopbarTabs } from "@/components/layout/admin-topbar-tabs.jsx";
 import { MobileTopAvatar, MobileTopNavActions, DesktopTopNavActions } from "@/components/layout/mobile-top-nav.jsx";
 import { WorkspaceActiveBadge, WorkspaceSwitcher } from "@/components/layout/workspace-rail.jsx";
+import { WorkspaceBrandMark } from "@/components/layout/workspace-brand-mark.jsx";
 import { useWorkspace } from "@/hooks/use-workspace.js";
 
 export function Topbar({ title, subtitle, showMonthNav, admin }) {
@@ -59,7 +60,13 @@ export function Topbar({ title, subtitle, showMonthNav, admin }) {
   const saletseLogo = (
     <div className="topbar-brand" title={brandName} aria-label={brandName}>
       {brandLogo && active?.tipo === "sala_de_venta" ? (
-        <img src={brandLogo} alt={brandName} className="topbar-brand-ws-logo" width={132} height={30} />
+        <WorkspaceBrandMark
+          src={brandLogo}
+          name={brandName}
+          alt={brandName}
+          imgClassName="topbar-brand-ws-logo"
+          initialsClassName="topbar-brand-ws-fallback"
+        />
       ) : (
         <Image src="/saletse-logo.png" alt="Saletse" width={132} height={30} priority />
       )}

@@ -13,6 +13,7 @@ import {
   stopDashboardDataRealtime,
 } from "@/lib/dashboard-data-realtime.js";
 import { ChevronDown, LogOut } from "lucide-react";
+import { WorkspaceBrandMark } from "@/components/layout/workspace-brand-mark.jsx";
 
 function initials(name) {
   const s = String(name || "?").trim();
@@ -77,7 +78,12 @@ export function WorkspaceRail() {
             onClick={() => switchWorkspace(ws.id)}
           >
             {ws.logo_url ? (
-              <img src={ws.logo_url} alt="" className="ws-rail-img" />
+              <WorkspaceBrandMark
+                src={ws.logo_url}
+                name={label}
+                imgClassName="ws-rail-img"
+                initialsClassName="ws-rail-initials"
+              />
             ) : (
               <span className="ws-rail-initials">{initials(label)}</span>
             )}
@@ -155,11 +161,12 @@ export function WorkspaceSwitcher({ compact = false, className }) {
         title={label}
       >
         <span className="ws-switcher-avatar" aria-hidden>
-          {active.logo_url ? (
-            <img src={active.logo_url} alt="" />
-          ) : (
-            initials(label)
-          )}
+          <WorkspaceBrandMark
+            src={active.logo_url}
+            name={label}
+            imgClassName="ws-switcher-avatar-img"
+            initialsClassName="ws-switcher-avatar-initials"
+          />
         </span>
         <span className="ws-switcher-copy">
           <span className="ws-switcher-name">{label}</span>
@@ -206,7 +213,12 @@ export function WorkspaceSwitcher({ compact = false, className }) {
                       onClick={() => onPick(ws.id)}
                     >
                       <span className="ws-switcher-avatar" aria-hidden>
-                        {ws.logo_url ? <img src={ws.logo_url} alt="" /> : initials(name)}
+                        <WorkspaceBrandMark
+                          src={ws.logo_url}
+                          name={name}
+                          imgClassName="ws-switcher-avatar-img"
+                          initialsClassName="ws-switcher-avatar-initials"
+                        />
                       </span>
                       <span className="ws-sheet-item-copy">
                         <span className="ws-sheet-item-name">{name}</span>

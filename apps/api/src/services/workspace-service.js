@@ -203,7 +203,13 @@ export async function updateEmpresa(adminProfile, id, body) {
   if (!admin) throw new ServiceError("Service role no configurado.", 500);
   const patch = { updated_at: new Date().toISOString() };
   if (body.nombre != null) patch.nombre = String(body.nombre).trim();
-  if (body.logo_url !== undefined) patch.logo_url = body.logo_url || null;
+  if (body.logo_url !== undefined) {
+    patch.logo_url = await resolvePersistedLogoUrl(admin, {
+      tipo: "empresa",
+      id,
+      logoUrl: body.logo_url,
+    });
+  }
   if (body.colores_marca !== undefined) patch.colores_marca = body.colores_marca || {};
   if (body.plan_paquete !== undefined) patch.plan_paquete = body.plan_paquete;
   if (body.estado != null) patch.estado = body.estado;
@@ -253,7 +259,13 @@ export async function updateSala(adminProfile, id, body) {
   if (!admin) throw new ServiceError("Service role no configurado.", 500);
   const patch = { updated_at: new Date().toISOString() };
   if (body.nombre != null) patch.nombre = String(body.nombre).trim();
-  if (body.logo_url !== undefined) patch.logo_url = body.logo_url || null;
+  if (body.logo_url !== undefined) {
+    patch.logo_url = await resolvePersistedLogoUrl(admin, {
+      tipo: "sala",
+      id,
+      logoUrl: body.logo_url,
+    });
+  }
   if (body.colores_marca !== undefined) patch.colores_marca = body.colores_marca || {};
   if (body.estado != null) patch.estado = body.estado;
   const { data, error } = await admin
@@ -603,6 +615,121 @@ export async function listSalaMembersDetailed(adminProfile, workspaceId) {
   });
 }
 
+const LOGO_MAX_BYTES = 2 * 1024 * 1024;
+const LOGO_MIME = new Set(["image/png", "image/jpeg", "image/webp"]);
+
+function logoExtForMime(mime) {
+  if (mime === "image/png") return "png";
+  if (mime === "image/webp") return "webp";
+  return "jpg";
+}
+
+function normalizeLogoMime(mime) {
+  const m = String(mime || "").toLowerCase().split(";")[0].trim();
+  if (m === "image/jpg") return "image/jpeg";
+  return m;
+}
+
+function isOurBrandingUrl(url) {
+  return /\/storage\/v1\/object\/public\/workspace-branding\//i.test(String(url || ""));
+}
+
+async function uploadLogoBuffer(admin, { tipo, id, buffer, mime }) {
+  const contentType = normalizeLogoMime(mime);
+  if (!LOGO_MIME.has(contentType)) {
+    throw new ServiceError("Formato de logo no soportado. Usa PNG, JPG o WEBP.", 400);
+  }
+  if (!buffer?.length || buffer.length > LOGO_MAX_BYTES) {
+    throw new ServiceError("El logo supera el máximo de 2 MB.", 400);
+  }
+  const ext = logoExtForMime(contentType);
+  const path = `${tipo}/${id}/${Date.now()}.${ext}`;
+  const { error: upErr } = await admin.storage
+    .from("workspace-branding")
+    .upload(path, buffer, { contentType, upsert: true });
+  if (upErr) {
+    const msg = upErr.message || "No se pudo subir el logo.";
+    if (/bucket|not found|does not exist/i.test(msg)) {
+      throw new ServiceError(
+        "Bucket workspace-branding no existe. Aplica la migración 0053 en Supabase.",
+        503,
+      );
+    }
+    throw new ServiceError(msg, 400);
+  }
+  const { data: pub } = admin.storage.from("workspace-branding").getPublicUrl(path);
+  const logoUrl = pub?.publicUrl || null;
+  if (!logoUrl) throw new ServiceError("No se pudo resolver la URL pública del logo.", 500);
+  return logoUrl;
+}
+
+/**
+ * Persiste logo: null limpia; URL propia se deja; URL externa se descarga y se re-hospeda
+ * en Storage (evita hotlink / URLs no directas rotas en el rail).
+ */
+async function resolvePersistedLogoUrl(admin, { tipo, id, logoUrl }) {
+  if (logoUrl == null || logoUrl === "") return null;
+  const url = String(logoUrl).trim();
+  if (!url) return null;
+  if (isOurBrandingUrl(url)) return url;
+
+  if (/^data:image\//i.test(url)) {
+    const match = /^data:(image\/(?:png|jpeg|jpg|webp));base64,(.+)$/i.exec(url);
+    if (!match) throw new ServiceError("Imagen inválida. Usa PNG, JPG o WEBP.", 400);
+    const mime = normalizeLogoMime(match[1]);
+    const buffer = Buffer.from(match[2], "base64");
+    return uploadLogoBuffer(admin, { tipo, id, buffer, mime });
+  }
+
+  if (!/^https?:\/\//i.test(url)) {
+    throw new ServiceError("La URL del logo debe ser http(s) directa a la imagen.", 400);
+  }
+
+  let res;
+  try {
+    res = await fetch(url, {
+      redirect: "follow",
+      headers: {
+        Accept: "image/avif,image/webp,image/apng,image/*,*/*;q=0.8",
+        "User-Agent": "SaletseBranding/1.0 (+https://saletse.app)",
+      },
+      signal: AbortSignal.timeout(20000),
+    });
+  } catch (err) {
+    throw new ServiceError(
+      `No se pudo descargar el logo desde esa URL (${err instanceof Error ? err.message : "error de red"}). Usa una URL directa (.png/.jpg) o súbelo como archivo.`,
+      400,
+    );
+  }
+  if (!res.ok) {
+    throw new ServiceError(
+      `No se pudo descargar el logo (HTTP ${res.status}). Usa una URL directa a la imagen o súbelo como archivo.`,
+      400,
+    );
+  }
+  const mime = normalizeLogoMime(res.headers.get("content-type") || "");
+  if (!LOGO_MIME.has(mime) && mime !== "image/jpeg") {
+    // Algunos CDN no mandan content-type; mirar extensión
+    const byExt = /\.(png)(?:\?|$)/i.test(url)
+      ? "image/png"
+      : /\.(webp)(?:\?|$)/i.test(url)
+        ? "image/webp"
+        : /\.(jpe?g)(?:\?|$)/i.test(url)
+          ? "image/jpeg"
+          : null;
+    if (!byExt) {
+      throw new ServiceError(
+        "La URL no apunta a una imagen PNG/JPG/WEBP. Abre la imagen en una pestaña, copia esa URL, o súbela como archivo.",
+        400,
+      );
+    }
+    const buffer = Buffer.from(await res.arrayBuffer());
+    return uploadLogoBuffer(admin, { tipo, id, buffer, mime: byExt });
+  }
+  const buffer = Buffer.from(await res.arrayBuffer());
+  return uploadLogoBuffer(admin, { tipo, id, buffer, mime });
+}
+
 export async function uploadWorkspaceLogo(adminProfile, { tipo, id, dataUrl }) {
   if (!isSuperAdmin(adminProfile)) throw new ServiceError("Solo Superadmin.", 403);
   const admin = createServiceSupabaseClient();
@@ -610,25 +737,7 @@ export async function uploadWorkspaceLogo(adminProfile, { tipo, id, dataUrl }) {
   if (!id || (tipo !== "empresa" && tipo !== "sala")) {
     throw new ServiceError("tipo y id requeridos.");
   }
-  const raw = String(dataUrl || "").trim();
-  const match = /^data:(image\/(?:png|jpeg|jpg|webp));base64,(.+)$/i.exec(raw);
-  if (!match) throw new ServiceError("Imagen inválida. Usa PNG, JPG o WEBP.", 400);
-  const mime = match[1].toLowerCase() === "image/jpg" ? "image/jpeg" : match[1].toLowerCase();
-  const buffer = Buffer.from(match[2], "base64");
-  if (!buffer.length || buffer.length > 2 * 1024 * 1024) {
-    throw new ServiceError("El logo supera el máximo de 2 MB.", 400);
-  }
-  const ext = mime === "image/png" ? "png" : mime === "image/webp" ? "webp" : "jpg";
-  const path = `${tipo}/${id}/${Date.now()}.${ext}`;
-  const { error: upErr } = await admin.storage
-    .from("workspace-branding")
-    .upload(path, buffer, { contentType: mime, upsert: true });
-  if (upErr) throw new ServiceError(upErr.message || "No se pudo subir el logo.", 400);
-
-  const { data: pub } = admin.storage.from("workspace-branding").getPublicUrl(path);
-  const logoUrl = pub?.publicUrl || null;
-  if (!logoUrl) throw new ServiceError("No se pudo resolver la URL pública del logo.", 500);
-
+  const logoUrl = await resolvePersistedLogoUrl(admin, { tipo, id, logoUrl: dataUrl });
   if (tipo === "sala") {
     const { data, error } = await admin
       .from("workspaces")

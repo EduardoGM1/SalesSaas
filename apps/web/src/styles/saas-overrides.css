@@ -2757,10 +2757,27 @@ button.tool-card {
   border-radius: 7px;
   font-size: 9px;
 }
-.ws-switcher-avatar img {
+.ws-switcher-avatar img,
+.ws-switcher-avatar-img {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  display: block;
+}
+.ws-switcher-avatar-initials {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+.topbar-brand-ws-fallback {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--ws-brand-accent, var(--navy));
 }
 .ws-switcher-copy {
   display: flex;

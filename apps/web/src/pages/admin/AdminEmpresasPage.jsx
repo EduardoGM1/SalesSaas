@@ -31,6 +31,7 @@ export function AdminEmpresasPage() {
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
   const [logoPending, setLogoPending] = useState(false);
+  const [logoPreviewBroken, setLogoPreviewBroken] = useState(false);
 
   const { loading, data: empresas, error: loadErr } = useAdminFetch(
     session?.isSuperAdmin ? "empresas" : "",
@@ -110,13 +111,17 @@ export function AdminEmpresasPage() {
     setError("");
     try {
       const path = brandForm.tipo === "sala" ? `salas/${brandForm.id}` : `empresas/${brandForm.id}`;
-      await adminJson(path, {
+      const updated = await adminJson(path, {
         method: "PATCH",
         body: {
           logo_url: brandForm.logo_url || null,
           colores_marca: { primary: brandForm.primary, accent: brandForm.accent },
         },
       });
+      if (updated?.logo_url != null) {
+        setBrandForm((s) => ({ ...s, logo_url: updated.logo_url || "" }));
+        setLogoPreviewBroken(false);
+      }
       refresh();
       toast.success(t("common.save"));
     } catch (err) {
@@ -142,6 +147,7 @@ export function AdminEmpresasPage() {
       });
       if (updated?.logo_url) {
         setBrandForm((s) => ({ ...s, logo_url: updated.logo_url }));
+        setLogoPreviewBroken(false);
       }
       refresh();
       toast.success(t("admin.empresas.logoUpload"));
@@ -409,9 +415,13 @@ export function AdminEmpresasPage() {
           <input
             className="admin-role-select"
             value={brandForm.logo_url}
-            onChange={(e) => setBrandForm((s) => ({ ...s, logo_url: e.target.value }))}
+            onChange={(e) => {
+              setLogoPreviewBroken(false);
+              setBrandForm((s) => ({ ...s, logo_url: e.target.value }));
+            }}
             placeholder={t("admin.empresas.logoUrl")}
           />
+          <p className="admin-cell-muted" style={{ margin: 0, fontSize: 12 }}>{t("admin.empresas.logoHint")}</p>
           <label className="btn btn-ghost btn-sm" style={{ width: "fit-content", cursor: "pointer" }}>
             {logoPending ? t("admin.empresas.logoUploading") : t("admin.empresas.logoUpload")}
             <input
@@ -426,8 +436,17 @@ export function AdminEmpresasPage() {
               }}
             />
           </label>
-          {brandForm.logo_url && (
-            <img src={brandForm.logo_url} alt="" style={{ maxHeight: 48, width: "auto", objectFit: "contain" }} />
+          {brandForm.logo_url && !logoPreviewBroken && (
+            <img
+              src={brandForm.logo_url}
+              alt=""
+              style={{ maxHeight: 48, width: "auto", objectFit: "contain" }}
+              referrerPolicy="no-referrer"
+              onError={() => setLogoPreviewBroken(true)}
+            />
+          )}
+          {brandForm.logo_url && logoPreviewBroken && (
+            <p className="auth-error" style={{ margin: 0 }}>{t("admin.empresas.logoBroken")}</p>
           )}
           <button type="submit" className="btn btn-primary btn-sm" disabled={pending}>{t("common.save")}</button>
         </form>
