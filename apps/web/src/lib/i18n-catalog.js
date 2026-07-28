@@ -420,7 +420,6 @@ export const ES_EXT = {
   "admin.empresas.pickTarget": "Selecciona destino",
   "admin.empresas.primary": "Color primario",
   "admin.empresas.accent": "Color acento",
-  "admin.empresas.logoUrl": "URL del logo",
   "admin.users.col.plan": "Plan",
   "admin.users.col.membership": "Membresía",
   "admin.users.plan.basico": "Básico",
