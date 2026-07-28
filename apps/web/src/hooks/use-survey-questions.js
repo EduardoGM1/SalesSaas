@@ -30,7 +30,7 @@ export function useSurveyQuestions() {
   const reload = useCallback(async () => {
     setLoading(true);
     try {
-      const { bank: b, overrides: o } = await loadMergedSurveyQuestions(userId, {
+      const { bank: b, overrides: o } = await loadMergedSurveyQuestions({
         includeInactive: true,
       });
       setBank(b);

@@ -35,6 +35,7 @@ Al excederse responde `429` con header `Retry-After`.
 | Metas | `/goals` | `goals-service` |
 | Actividades | `/activities` | `activities-service` |
 | Herramientas (Survey, Proyección, Money Box…) | `/tool-calculations` | `tools-service` |
+| Configuración de Survey | `GET\|PUT /survey/questions-config` | `survey-questions-service` |
 | Red y mensajes | `/network/*`, `/messages/*` | `network-service`, `messages-service` |
 | Notificaciones | `/notifications/*` | `push-notifications-service` |
 | Workspaces | `/workspace/*`, `/auth/workspace` | `workspace-service`, `workspace-ops-service` |
@@ -99,6 +100,7 @@ Autorización por capacidades resueltas en `workflow-service` (permisos de works
 ## Migración incremental (estado)
 
 1. **Migrado a REST + capas**: prospectos, ventas, metas, actividades, herramientas, workspaces, workflow, admin plataforma, admin tenant, red/mensajes/notificaciones.
-2. **Pendiente de migrar** (aún usa el cliente Supabase desde `apps/web/src/lib/`): sincronización offline (`lib/data/sync.ts`), realtime de notificaciones/chat (por naturaleza usa el socket de Supabase), helpers de sesión. Se migrarán módulo por módulo manteniendo compatibilidad.
+2. **Migrado en esta fase**: lectura de configuración de Survey (`GET /survey/questions-config`); eliminado el código muerto heredado de Next.js en `apps/web/src/lib/` (data layer server-side, guards y validadores sin uso).
+3. **Uso legítimo restante del cliente Supabase en el frontend** (confinado a `apps/web/src/lib/`): autenticación/sesión (`session-api`, `session-cross-device`) y canales realtime (chat, notificaciones, presencia), que por naturaleza usan el socket de Supabase protegido por RLS.
 
 Mantener este documento actualizado al añadir o cambiar endpoints.

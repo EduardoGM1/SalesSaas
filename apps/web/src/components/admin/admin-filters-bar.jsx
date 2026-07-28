@@ -2,7 +2,7 @@
 import { Link } from "react-router-dom";
 import { useLocation } from "react-router-dom";
 import { useI18n } from "@/hooks/use-i18n.js";
-import type { SellerInfo } from "@/lib/admin/data";
+import type { SellerInfo } from "@/lib/admin/types";
 import { filtersToSearchParams, type AdminFilters } from "@/lib/admin/filters";
 
 const STATUS_OPTIONS = [

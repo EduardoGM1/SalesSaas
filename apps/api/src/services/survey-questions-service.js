@@ -68,6 +68,32 @@ function normalizeOpcionesOverride(raw, bankKeys) {
   return out;
 }
 
+/** Banco global de preguntas + overrides del usuario autenticado. */
+export async function getSurveyQuestionsConfig(supabase, userId) {
+  if (!userId) throw new ServiceError("No autenticado.", 401);
+  const [bankRes, overridesRes] = await Promise.all([
+    supabase
+      .from("survey_preguntas")
+      .select("*")
+      .eq("es_global", true)
+      .order("seccion", { ascending: true })
+      .order("orden", { ascending: true }),
+    supabase
+      .from("survey_preguntas_usuario")
+      .select("pregunta_id, activa, orden, texto_override, opciones_override")
+      .eq("usuario_id", userId),
+  ]);
+  if (bankRes.error) throw new ServiceError(bankRes.error.message, 500);
+  if (overridesRes.error) throw new ServiceError(overridesRes.error.message, 500);
+  return {
+    bank: (bankRes.data ?? []).map((row) => ({
+      ...row,
+      opciones: Array.isArray(row.opciones) ? row.opciones : [],
+    })),
+    overrides: overridesRes.data ?? [],
+  };
+}
+
 /**
  * Persiste overrides de activación/orden/texto/opciones del Survey para el usuario autenticado.
  */
