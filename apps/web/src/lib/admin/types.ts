@@ -27,6 +27,8 @@ export interface UserAdminFilters {
   q?: string;
   role?: string;
   state?: "active" | "inactive";
+  plan?: "basico" | "pro";
+  page?: number;
 }
 
 export type UsersTableRow = {

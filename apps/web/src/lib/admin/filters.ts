@@ -34,10 +34,14 @@ export function parseUserAdminFilters(
     return typeof v === "string" && v.trim() ? v.trim() : undefined;
   };
   const state = pick("state");
+  const plan = pick("plan");
+  const rawPage = Number(pick("page"));
   return {
     q: pick("q"),
     role: pick("role"),
     state: state === "active" || state === "inactive" ? state : undefined,
+    plan: plan === "basico" || plan === "pro" ? plan : undefined,
+    page: Number.isInteger(rawPage) && rawPage > 1 ? rawPage : undefined,
   };
 }
 
@@ -46,6 +50,8 @@ export function userFiltersToSearchParams(f: UserAdminFilters): string {
   if (f.q) p.set("q", f.q);
   if (f.role) p.set("role", f.role);
   if (f.state) p.set("state", f.state);
+  if (f.plan) p.set("plan", f.plan);
+  if (f.page && f.page > 1) p.set("page", String(f.page));
   const s = p.toString();
   return s ? `?${s}` : "";
 }
@@ -59,6 +65,8 @@ export function userAdminUrl(
   if (f.q) p.set("q", f.q);
   if (f.role) p.set("role", f.role);
   if (f.state) p.set("state", f.state);
+  if (f.plan) p.set("plan", f.plan);
+  if (f.page && f.page > 1) p.set("page", String(f.page));
   if (extra) {
     for (const [k, v] of Object.entries(extra)) {
       if (v) p.set(k, v);

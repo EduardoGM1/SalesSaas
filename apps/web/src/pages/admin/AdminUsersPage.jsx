@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useOutletContext, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useOutletContext, useSearchParams } from "react-router-dom";
 import { AdminOverflowMenu } from "@/components/admin/admin-overflow-menu.jsx";
 import { AdminUsersFilters } from "@/components/admin/admin-users-filters.jsx";
-import { IconSave, IconUserCheck, IconUserX } from "@/components/admin/admin-users-icons.jsx";
+import { AdminDataView, AdminPageHeader, AdminPageState, AdminStatusBadge } from "@/components/admin/admin-ui.jsx";
+import { IconUserCheck, IconUserX } from "@/components/admin/admin-users-icons.jsx";
 import { CreditCard, Layers, Shield } from "lucide-react";
 import { useAdminFetch } from "@/hooks/use-admin-session.js";
 import {
@@ -35,6 +36,32 @@ async function patchAdmin(path, body) {
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error ?? "Error");
+}
+
+function RolePickerModal({ user, roles, onClose, onContinue }) {
+  const { t } = useI18n();
+  const [roleId, setRoleId] = useState(user.role_id || roles[0]?.id || "");
+  return (
+    <>
+      <button type="button" className="modal-backdrop" aria-label={t("common.cancel")} onClick={onClose} />
+      <div className="admin-confirm-panel" role="dialog" aria-modal="true" aria-labelledby="role-picker-title">
+        <div className="admin-confirm-head">
+          <span id="role-picker-title" className="admin-confirm-title">{t("admin.users.confirm.roleTitle")}</span>
+          <span className="admin-confirm-sub">{user.name}</span>
+        </div>
+        <div className="admin-user-modal-field">
+          <label htmlFor="role-picker-select">{t("admin.users.col.role")}</label>
+          <select id="role-picker-select" className="auth-input" value={roleId} onChange={(event) => setRoleId(event.target.value)}>
+            {roles.map((role) => <option key={role.id} value={role.id}>{role.nombre}</option>)}
+          </select>
+        </div>
+        <div className="btn-row">
+          <button type="button" className="btn btn-ghost" onClick={onClose}>{t("common.cancel")}</button>
+          <button type="button" className="btn btn-primary" disabled={!roleId} onClick={() => onContinue(roleId)}>Continuar</button>
+        </div>
+      </div>
+    </>
+  );
 }
 
 function ConfirmModal({ kind, user, newRoleId, newRoleLabel, onClose, onDone }) {
@@ -298,8 +325,15 @@ export function AdminUsersPage() {
   const [searchParams] = useSearchParams();
   const [reloadKey, setReloadKey] = useState(0);
   const filters = useMemo(() => parseUserAdminFilters(Object.fromEntries(searchParams.entries())), [searchParams]);
-  const qs = searchParams.toString();
-  const search = qs ? `?${qs}&_=${reloadKey}` : `?_=${reloadKey}`;
+  const backendSearch = useMemo(() => {
+    const params = new URLSearchParams();
+    if (filters.q) params.set("q", filters.q);
+    if (filters.role) params.set("role", filters.role);
+    if (filters.state) params.set("state", filters.state);
+    params.set("_", String(reloadKey));
+    return `?${params.toString()}`;
+  }, [filters.q, filters.role, filters.state, reloadKey]);
+  const search = backendSearch;
   const { loading, data, error } = useAdminFetch("users", search);
   const viewerIsSuper = Boolean(
     session?.isSuperAdmin || (session?.profile && isSuperAdmin(session.profile)),
@@ -327,15 +361,22 @@ export function AdminUsersPage() {
   const editPermsId = searchParams.get("editPerms");
   const editFeaturesId = searchParams.get("editFeatures");
   const editMembershipId = searchParams.get("editMembership");
+  const editRoleId = searchParams.get("editRole");
   const errorCode = searchParams.get("error");
   const returnTo = `/admin/users${userFiltersToSearchParams(filters)}`;
   const exportHref = `/api/v1/admin/export/users${userFiltersToSearchParams(filters)}`;
 
-  const users = data ?? [];
+  const allUsers = Array.isArray(data) ? data : [];
+  const users = filters.plan ? allUsers.filter((user) => (user.plan || "basico") === filters.plan) : allUsers;
+  const pageSize = 12;
+  const pageCount = Math.max(1, Math.ceil(users.length / pageSize));
+  const currentPage = Math.min(filters.page || 1, pageCount);
+  const pageUsers = users.slice((currentPage - 1) * pageSize, currentPage * pageSize);
   const confirmUser = confirmUserId ? users.find((u) => u.id === confirmUserId) : undefined;
   const permsUser = editPermsId ? users.find((u) => u.id === editPermsId) : undefined;
   const featuresUser = editFeaturesId ? users.find((u) => u.id === editFeaturesId) : undefined;
   const membershipUser = editMembershipId ? users.find((u) => u.id === editMembershipId) : undefined;
+  const rolePickerUser = editRoleId ? users.find((u) => u.id === editRoleId) : undefined;
   const newRoleLabel = assignableRoles.find((r) => r.id === newRoleId)?.nombre;
 
   const planLabel = (p) => t(p === "pro" ? "admin.users.plan.pro" : "admin.users.plan.basico");
@@ -352,161 +393,112 @@ export function AdminUsersPage() {
     setReloadKey((k) => k + 1);
   };
 
-  if (loading) return <div className="admin-page">{t("admin.loading.users")}</div>;
-  if (error) return <div className="admin-page admin-empty">{error}</div>;
-
   const hasActions = caps.canRole || caps.canDeactivate || caps.canActivate || caps.canPermissions;
+  const userActions = (user) => {
+    const isSelf = user.id === session?.userId;
+    const roleReadOnly = !caps.canRole || user.is_super_admin || isSelf;
+    return [
+      caps.canRole && !roleReadOnly && {
+        id: "change-role",
+        label: t("admin.users.confirm.roleTitle"),
+        icon: <Shield size={15} />,
+        disabled: !user.is_active || assignableRoles.length === 0,
+        href: userAdminUrl(filters, { editRole: user.id }),
+      },
+      caps.canRole && (!user.is_super_admin || isSelf) && {
+        id: "change-plan",
+        label: t("admin.users.action.changePlan"),
+        icon: <CreditCard size={15} />,
+        href: userAdminUrl(filters, { editMembership: user.id }),
+      },
+      !isSelf && !user.is_super_admin && caps.canDeactivate && user.is_active && {
+        id: "deactivate",
+        label: t("admin.users.action.deactivate"),
+        icon: <IconUserX size={15} />,
+        href: userAdminUrl(filters, { confirm: "deactivate", userId: user.id }),
+        danger: true,
+      },
+      !isSelf && !user.is_super_admin && caps.canActivate && !user.is_active && {
+        id: "activate",
+        label: t("admin.users.action.activate"),
+        icon: <IconUserCheck size={15} />,
+        href: userAdminUrl(filters, { confirm: "activate", userId: user.id }),
+      },
+      caps.canPermissions && user.role === "admin" && !user.is_super_admin && {
+        id: "permissions",
+        label: t("admin.users.action.permissions"),
+        icon: <Shield size={15} />,
+        href: userAdminUrl(filters, { editPerms: user.id }),
+      },
+      caps.canPermissions && !user.is_super_admin && {
+        id: "features",
+        label: t("admin.users.action.features"),
+        icon: <Layers size={15} />,
+        href: userAdminUrl(filters, { editFeatures: user.id }),
+      },
+    ];
+  };
+  const pageUrl = (page) => userAdminUrl({ ...filters, page: page > 1 ? page : undefined });
 
   return (
-    <div className="admin-page">
-      <div className="admin-page-head">
-        <h1 className="admin-h1">{t("admin.users.title")}</h1>
-        <p className="admin-sub">{t("admin.users.sub", { count: fmtN(users.length) })}</p>
-      </div>
+    <div className="admin-page admin-users-enterprise">
+      <AdminPageHeader
+        eyebrow="Identidad y acceso"
+        title={t("admin.users.title")}
+        subtitle="Administra cuentas, roles, planes y permisos desde una vista central."
+        meta={<><span>{fmtN(users.length)} resultados</span><span>{fmtN(users.filter((user) => user.is_active).length)} activos</span><span>{fmtN(users.filter((user) => user.plan === "pro").length)} PRO</span></>}
+      />
       {errorCode && <div className="auth-error" style={{ marginBottom: 16 }}>{t(ERROR_KEYS[errorCode] ?? "admin.users.error.generic")}</div>}
       <AdminUsersFilters filters={filters} exportHref={exportHref} showExport={canManageUsers} />
-      <div className="client-table-card">
-        {users.length === 0 ? (
-          <div className="admin-empty">{t("admin.users.empty")}</div>
-        ) : (
-          <table className="client-table admin-users-table">
-            <thead>
-              <tr>
-                <th>{t("admin.users.col.name")}</th>
-                <th>{t("admin.users.col.email")}</th>
-                <th>{t("admin.users.col.role")}</th>
-                <th>{t("admin.users.col.plan")}</th>
-                <th>{t("admin.users.col.membership")}</th>
-                <th>{t("admin.users.col.status")}</th>
-                <th>{t("admin.users.col.created")}</th>
-                <th>{t("admin.users.col.lastSeen")}</th>
-                {hasActions && <th className="admin-cell-actions">{t("admin.users.col.actions")}</th>}
-              </tr>
-            </thead>
-            <tbody>
-              {users.map((u) => {
-                const isSelf = u.id === session?.userId;
-                const formId = `user-role-${u.id}`;
-                const roleReadOnly = !caps.canRole || u.is_super_admin || isSelf;
-                return (
-                  <tr key={u.id} className={!u.is_active ? "admin-user-row-inactive" : undefined}>
-                    <td className="admin-cell-name" title={u.name}>
-                      {u.name}
-                      {viewerIsSuper && u.is_super_admin ? (
-                        <span className="admin-super-badge">{t("admin.users.badge.super")}</span>
-                      ) : null}
-                    </td>
-                    <td className="admin-cell-email" title={u.email ?? undefined}>{u.email ?? "—"}</td>
-                    <td className="admin-cell-role">
-                      {roleReadOnly ? (
-                        <span className="admin-role-readonly">{displayRole(u)}</span>
-                      ) : (
-                        <select
-                          form={formId}
-                          name="newRoleId"
-                          defaultValue={u.role_id || ""}
-                          className="admin-role-select"
-                          disabled={!u.is_active || assignableRoles.length === 0}
-                        >
-                          {assignableRoles.map((r) => (
-                            <option key={r.id} value={r.id}>{r.nombre}</option>
-                          ))}
-                        </select>
-                      )}
-                    </td>
-                    <td className="admin-cell-role">
-                      <span className={`admin-status-badge ${u.plan === "pro" ? "admin-status-active" : "admin-status-inactive"}`}>
-                        {planLabel(u.plan)}
-                      </span>
-                    </td>
-                    <td className="admin-cell-muted">{membershipLabel(u.membership_status)}</td>
-                    <td className="admin-cell-status">
-                      <span className={`admin-status-badge ${u.is_active ? "admin-status-active" : "admin-status-inactive"}`}>
-                        {u.is_active ? t("admin.users.status.active") : t("admin.users.status.inactive")}
-                      </span>
-                    </td>
-                    <td className="admin-cell-date">{u.created_at ? longDate(String(u.created_at).slice(0, 10)) : "—"}</td>
-                    <td className="admin-cell-date admin-cell-muted">
-                      {u.last_seen_at
-                        ? longDate(String(u.last_seen_at).slice(0, 10))
-                        : t("admin.users.lastSeen.never")}
-                    </td>
-                    {hasActions && (
-                      <td className="admin-cell-actions">
-                        <div className="admin-table-actions">
-                          {caps.canRole && !roleReadOnly ? (
-                            <form
-                              id={formId}
-                              className="admin-overflow-role-form"
-                              onSubmit={(e) => {
-                                e.preventDefault();
-                                const fd = new FormData(e.currentTarget);
-                                navigate(userAdminUrl(filters, {
-                                  confirm: "role",
-                                  userId: u.id,
-                                  newRoleId: fd.get("newRoleId"),
-                                }));
-                              }}
-                            >
-                              <button type="submit" tabIndex={-1} aria-hidden="true" />
-                            </form>
-                          ) : null}
-                          <AdminOverflowMenu
-                            label={t("admin.users.action.more")}
-                            items={[
-                              caps.canRole && !roleReadOnly && {
-                                id: "save-role",
-                                label: t("admin.users.action.saveRole"),
-                                icon: <IconSave size={15} />,
-                                disabled: !u.is_active,
-                                onSelect: () => {
-                                  const form = document.getElementById(formId);
-                                  if (form instanceof HTMLFormElement) form.requestSubmit();
-                                },
-                              },
-                              caps.canRole && (!u.is_super_admin || isSelf) && {
-                                id: "change-plan",
-                                label: t("admin.users.action.changePlan"),
-                                icon: <CreditCard size={15} />,
-                                href: userAdminUrl(filters, { editMembership: u.id }),
-                              },
-                              !isSelf && !u.is_super_admin && caps.canDeactivate && u.is_active && {
-                                id: "deactivate",
-                                label: t("admin.users.action.deactivate"),
-                                icon: <IconUserX size={15} />,
-                                href: userAdminUrl(filters, { confirm: "deactivate", userId: u.id }),
-                                danger: true,
-                              },
-                              !isSelf && !u.is_super_admin && caps.canActivate && !u.is_active && {
-                                id: "activate",
-                                label: t("admin.users.action.activate"),
-                                icon: <IconUserCheck size={15} />,
-                                href: userAdminUrl(filters, { confirm: "activate", userId: u.id }),
-                              },
-                              caps.canPermissions && u.role === "admin" && !u.is_super_admin && {
-                                id: "permissions",
-                                label: t("admin.users.action.permissions"),
-                                icon: <Shield size={15} />,
-                                href: userAdminUrl(filters, { editPerms: u.id }),
-                              },
-                              caps.canPermissions && !u.is_super_admin && {
-                                id: "features",
-                                label: t("admin.users.action.features"),
-                                icon: <Layers size={15} />,
-                                href: userAdminUrl(filters, { editFeatures: u.id }),
-                              },
-                            ]}
-                          />
-                        </div>
-                      </td>
-                    )}
+      <AdminPageState loading={loading} error={error}>
+        <AdminDataView empty={!users.length} emptyTitle={t("admin.users.empty")} emptyBody="Prueba limpiando o modificando los filtros activos.">
+          <div className="admin-users-data-card">
+            <div className="admin-users-table-wrap">
+              <table className="client-table admin-users-table admin-users-table--enterprise">
+                <thead><tr>
+                  <th>{t("admin.users.col.name")}</th><th>{t("admin.users.col.email")}</th><th>{t("admin.users.col.role")}</th>
+                  <th>{t("admin.users.col.plan")}</th><th>{t("admin.users.col.status")}</th><th>{t("admin.users.col.lastSeen")}</th>
+                  <th>{t("admin.users.col.created")}</th>{hasActions ? <th className="admin-cell-actions">{t("admin.users.col.actions")}</th> : null}
+                </tr></thead>
+                <tbody>{pageUsers.map((user) => (
+                  <tr key={user.id} className={!user.is_active ? "admin-user-row-inactive" : undefined}>
+                    <td className="admin-cell-name">{user.name}{viewerIsSuper && user.is_super_admin ? <span className="admin-super-badge">{t("admin.users.badge.super")}</span> : null}</td>
+                    <td className="admin-cell-email">{user.email || "—"}</td>
+                    <td>{displayRole(user)}</td>
+                    <td><AdminStatusBadge tone={user.plan === "pro" ? "info" : "neutral"}>{planLabel(user.plan)}</AdminStatusBadge></td>
+                    <td><AdminStatusBadge tone={user.is_active ? "success" : "neutral"}>{user.is_active ? t("admin.users.status.active") : t("admin.users.status.inactive")}</AdminStatusBadge></td>
+                    <td className="admin-cell-date admin-cell-muted">{user.last_seen_at ? longDate(String(user.last_seen_at).slice(0, 10)) : t("admin.users.lastSeen.never")}</td>
+                    <td className="admin-cell-date">{user.created_at ? longDate(String(user.created_at).slice(0, 10)) : "—"}</td>
+                    {hasActions ? <td className="admin-cell-actions"><AdminOverflowMenu label={`${t("admin.users.action.more")}: ${user.name}`} items={userActions(user)} /></td> : null}
                   </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        )}
-      </div>
+                ))}</tbody>
+              </table>
+            </div>
+            <div className="admin-user-cards">
+              {pageUsers.map((user) => (
+                <article key={user.id} className={!user.is_active ? "is-inactive" : undefined}>
+                  <div className="admin-user-card-head">
+                    <div className="admin-user-avatar">{(user.name || user.email || "?").slice(0, 2).toUpperCase()}</div>
+                    <div><strong>{user.name}</strong><span>{user.email || "—"}</span></div>
+                    {hasActions ? <AdminOverflowMenu label={`${t("admin.users.action.more")}: ${user.name}`} items={userActions(user)} /> : null}
+                  </div>
+                  <div className="admin-user-card-badges"><AdminStatusBadge tone={user.plan === "pro" ? "info" : "neutral"}>{planLabel(user.plan)}</AdminStatusBadge><AdminStatusBadge tone={user.is_active ? "success" : "neutral"}>{user.is_active ? t("admin.users.status.active") : t("admin.users.status.inactive")}</AdminStatusBadge></div>
+                  <dl><div><dt>{t("admin.users.col.role")}</dt><dd>{displayRole(user)}</dd></div><div><dt>{t("admin.users.col.lastSeen")}</dt><dd>{user.last_seen_at ? longDate(String(user.last_seen_at).slice(0, 10)) : t("admin.users.lastSeen.never")}</dd></div><div><dt>{t("admin.users.col.created")}</dt><dd>{user.created_at ? longDate(String(user.created_at).slice(0, 10)) : "—"}</dd></div><div><dt>{t("admin.users.col.membership")}</dt><dd>{membershipLabel(user.membership_status)}</dd></div></dl>
+                </article>
+              ))}
+            </div>
+            {pageCount > 1 ? <nav className="admin-pagination" aria-label="Paginación"><Link className={`btn btn-ghost${currentPage === 1 ? " disabled" : ""}`} to={pageUrl(currentPage - 1)} aria-disabled={currentPage === 1}>Anterior</Link><span>Página {currentPage} de {pageCount}</span><Link className={`btn btn-ghost${currentPage === pageCount ? " disabled" : ""}`} to={pageUrl(currentPage + 1)} aria-disabled={currentPage === pageCount}>Siguiente</Link></nav> : null}
+          </div>
+        </AdminDataView>
+      </AdminPageState>
+      {rolePickerUser && caps.canRole && !rolePickerUser.is_super_admin && rolePickerUser.id !== session?.userId ? (
+        <RolePickerModal
+          user={rolePickerUser}
+          roles={assignableRoles}
+          onClose={() => navigate(returnTo, { replace: true })}
+          onContinue={(roleId) => navigate(userAdminUrl(filters, { confirm: "role", userId: rolePickerUser.id, newRoleId: roleId }))}
+        />
+      ) : null}
       {confirmUser && ["role", "deactivate", "activate"].includes(confirmKind) && !confirmUser.is_super_admin && (
         <ConfirmModal
           kind={confirmKind}
