@@ -4,6 +4,7 @@ import { AdminFiltersBar } from "@/components/admin/admin-filters-bar.jsx";
 import { AdminViewToggle } from "@/components/admin/admin-view-toggle.jsx";
 import { AdminToolsByToolChart } from "@/components/admin/admin-tools-by-tool-chart.jsx";
 import { AdminToolsTrendChart } from "@/components/admin/admin-tools-trend-chart.jsx";
+import { AdminChartCard, AdminKpiCard, AdminPageHeader, AdminPageState } from "@/components/admin/admin-ui.jsx";
 import { useAdminFetch } from "@/hooks/use-admin-session.js";
 import { useAdminViewPref } from "@/hooks/use-admin-view-pref.js";
 import { parseAdminFilters } from "@/lib/admin/filters";
@@ -35,13 +36,6 @@ export function AdminToolsUsagePage() {
   const byToolMode = canUseTableView ? byToolView : "chart";
   const trendMode = canUseTableView ? trendView : "chart";
 
-  if (toolsState.loading || sellersState.loading) {
-    return <div className="admin-page">{t("admin.loading.tools")}</div>;
-  }
-  if (toolsState.error) {
-    return <div className="admin-page admin-empty">{toolsState.error}</div>;
-  }
-
   const data = toolsState.data ?? { totalSaves: 0, byTool: [], trend: [] };
   const sellers = sellersState.data ?? [];
   const byTool = data.byTool ?? [];
@@ -49,40 +43,26 @@ export function AdminToolsUsagePage() {
   const total = data.totalSaves || 1;
 
   return (
-    <div className="admin-page">
-      <div className="admin-page-head">
-        <h1 className="admin-h1">{t("admin.tools.title")}</h1>
-        <p className="admin-sub">{t("admin.tools.sub")}</p>
-      </div>
+    <div className="admin-page admin-system-page">
+      <AdminPageHeader eyebrow="Adopción" title={t("admin.tools.title")} subtitle={t("admin.tools.sub")} />
       <AdminFiltersBar filters={filters} sellers={sellers} />
-      <div className="admin-kpis">
-        <div className="admin-kpi">
-          <div className="admin-kpi-label">{t("admin.tools.totalSaves")}</div>
-          <div className="admin-kpi-value">{fmtN(data.totalSaves)}</div>
-        </div>
+      <AdminPageState loading={toolsState.loading || sellersState.loading} error={toolsState.error} skeleton="overview">
+        <>
+      <div className="admin-tools-kpis">
+        <AdminKpiCard label={t("admin.tools.totalSaves")} value={fmtN(data.totalSaves)} description="Guardados acumulados en el periodo" />
         {byTool.map((row) => (
-          <div className="admin-kpi" key={row.tool}>
-            <div className="admin-kpi-label">{t(TOOL_LABEL_KEYS[row.tool] || row.tool)}</div>
-            <div className="admin-kpi-value">{fmtN(row.saves)}</div>
-            <div className="admin-kpi-sub">
-              {fmtN(row.uniqueUsers)} {t("admin.tools.users")} · {Math.round((row.saves / total) * 100)}%
-            </div>
-          </div>
+          <AdminKpiCard key={row.tool} label={t(TOOL_LABEL_KEYS[row.tool] || row.tool)} value={fmtN(row.saves)} comparison={`${Math.round((row.saves / total) * 100)}%`} tone="info" description={`${fmtN(row.uniqueUsers)} ${t("admin.tools.users")}`} />
         ))}
       </div>
 
-      <div className="client-table-card admin-tools-section">
-        <div className="admin-card-head">
-          <span>{t("admin.tools.byTool")}</span>
-          {canUseTableView ? (
+      <AdminChartCard title={t("admin.tools.byTool")} className="admin-tools-section" action={canUseTableView ? (
             <AdminViewToggle
               value={byToolView}
               onChange={setByToolView}
               tableLabel={t("admin.view.table")}
               chartLabel={t("admin.view.chart")}
             />
-          ) : null}
-        </div>
+          ) : null}>
         {byTool.length === 0 ? (
           <div className="admin-empty">{t("admin.tools.empty")}</div>
         ) : byToolMode === "chart" ? (
@@ -111,20 +91,16 @@ export function AdminToolsUsagePage() {
             </tbody>
           </table>
         )}
-      </div>
+      </AdminChartCard>
 
-      <div className="client-table-card admin-tools-section" style={{ marginTop: 16 }}>
-        <div className="admin-card-head">
-          <span>{t("admin.tools.trend")}</span>
-          {canUseTableView ? (
+      <AdminChartCard title={t("admin.tools.trend")} className="admin-tools-section" action={canUseTableView ? (
             <AdminViewToggle
               value={trendView}
               onChange={setTrendView}
               tableLabel={t("admin.view.table")}
               chartLabel={t("admin.view.chart")}
             />
-          ) : null}
-        </div>
+          ) : null}>
         {trend.length === 0 ? (
           <div className="admin-empty">{t("admin.tools.empty")}</div>
         ) : trendMode === "chart" ? (
@@ -151,7 +127,9 @@ export function AdminToolsUsagePage() {
             </tbody>
           </table>
         )}
-      </div>
+      </AdminChartCard>
+        </>
+      </AdminPageState>
     </div>
   );
 }

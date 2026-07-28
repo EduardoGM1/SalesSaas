@@ -3,6 +3,7 @@ import { useOutletContext, useSearchParams } from "react-router-dom";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { longDate } from "@/lib/format/dates";
 import { PageBack } from "@/components/layout/page-back";
+import { AdminDataView, AdminPageHeader, AdminPageState } from "@/components/admin/admin-ui.jsx";
 import { hasPermission } from "@/lib/auth/permissions";
 
 const STATUS_OPTIONS = [
@@ -158,17 +159,9 @@ export function AdminSupportPage() {
         </div>
       </div>
 
-      <div className="admin-support-head">
-        <h1 className="admin-support-title">{t("admin.support.title")}</h1>
-        <p className="admin-support-sub">{t("admin.support.sub")}</p>
-      </div>
-
-      {error && <div className="auth-error" style={{ marginBottom: 12 }}>{error}</div>}
-      {loading ? (
-        <div className="admin-embedded-loading">{t("common.loading")}</div>
-      ) : !items.length ? (
-        <div className="client-empty">{t("admin.support.empty")}</div>
-      ) : (
+      <AdminPageHeader eyebrow="Atención operativa" title={t("admin.support.title")} subtitle={t("admin.support.sub")} meta={<span>{items.length} solicitudes visibles</span>} />
+      <AdminPageState loading={loading} error={error}>
+        <AdminDataView empty={!items.length} emptyTitle={t("admin.support.empty")}>
         <div className="admin-support-list">
           {items.map((ticket) => {
             const active = highlightId === ticket.id;
@@ -288,7 +281,8 @@ export function AdminSupportPage() {
             );
           })}
         </div>
-      )}
+        </AdminDataView>
+      </AdminPageState>
     </div>
   );
 }

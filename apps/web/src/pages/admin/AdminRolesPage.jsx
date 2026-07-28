@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useOutletContext } from "react-router-dom";
+import { AdminDataView, AdminPageHeader, AdminPageState, AdminStatusBadge } from "@/components/admin/admin-ui.jsx";
 import { useAdminFetch } from "@/hooks/use-admin-session.js";
 import { hasPermission } from "@/lib/auth/permissions";
 import { permissionsByModule } from "@salesapp/shared/auth/permission-catalog.js";
@@ -145,24 +146,19 @@ export function AdminRolesPage() {
     }
   };
 
-  if (loading) return <div className="admin-page">{t("admin.loading.roles")}</div>;
-  if (error) return <div className="admin-page admin-empty">{error}</div>;
-
   return (
-    <div className="admin-page">
-      <div className="admin-page-head" style={{ display: "flex", justifyContent: "space-between", gap: 16, alignItems: "flex-start" }}>
-        <div>
-          <h1 className="admin-h1">{t("admin.roles.title")}</h1>
-          <p className="admin-sub">{t("admin.roles.sub")}</p>
-        </div>
-        <button type="button" className="btn btn-primary btn-sm" onClick={() => setEditor({ permission_keys: [] })}>
+    <div className="admin-page admin-system-page">
+      <AdminPageHeader
+        eyebrow="Gobierno de acceso"
+        title={t("admin.roles.title")}
+        subtitle={t("admin.roles.sub")}
+        actions={<button type="button" className="btn btn-primary" onClick={() => setEditor({ permission_keys: [] })}>
           {t("admin.roles.create")}
-        </button>
-      </div>
-      <div className="client-table-card">
-        {roles.length === 0 ? (
-          <div className="admin-empty">{t("admin.roles.empty")}</div>
-        ) : (
+        </button>}
+      />
+      <AdminPageState loading={loading} error={error}>
+        <AdminDataView empty={!roles.length} emptyTitle={t("admin.roles.empty")}>
+          <div className="client-table-card admin-system-table">
           <table className="client-table admin-users-table">
             <thead>
               <tr>
@@ -180,8 +176,8 @@ export function AdminRolesPage() {
                   <td className="admin-cell-muted">{role.slug}</td>
                   <td>
                     {role.es_sistema
-                      ? <span className="admin-status-badge admin-status-active">{t("admin.roles.badge.system")}</span>
-                      : <span className="admin-status-badge admin-status-inactive">{t("admin.roles.badge.custom")}</span>}
+                      ? <AdminStatusBadge tone="info">{t("admin.roles.badge.system")}</AdminStatusBadge>
+                      : <AdminStatusBadge tone="neutral">{t("admin.roles.badge.custom")}</AdminStatusBadge>}
                   </td>
                   <td className="admin-cell-num" style={{ textAlign: "right" }}>
                     {Array.isArray(role.permission_keys) ? role.permission_keys.length : 0}
@@ -212,8 +208,9 @@ export function AdminRolesPage() {
               ))}
             </tbody>
           </table>
-        )}
-      </div>
+          </div>
+        </AdminDataView>
+      </AdminPageState>
       {editor && (
         <RoleEditor
           role={editor.id ? editor : null}

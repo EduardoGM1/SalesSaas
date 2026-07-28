@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useOutletContext } from "react-router-dom";
+import { AdminDataView, AdminPageHeader, AdminPageState } from "@/components/admin/admin-ui.jsx";
 import { useAdminFetch } from "@/hooks/use-admin-session.js";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { adminJson } from "@/lib/admin/api.js";
@@ -305,20 +306,12 @@ export function AdminModulesPage() {
     });
   };
 
-  if (loading) return <div className="admin-page">{t("admin.loading.modules")}</div>;
-  if (error) return <div className="admin-page admin-empty">{error}</div>;
-
   return (
-    <div className="admin-page">
-      <div className="admin-page-head">
-        <h1 className="admin-h1">{t("admin.modules.title")}</h1>
-        <p className="admin-sub">{t("admin.modules.sub")}</p>
-      </div>
-
-      <div className="client-table-card">
-        {tree.length === 0 ? (
-          <div className="admin-empty">{t("admin.modules.empty")}</div>
-        ) : (
+    <div className="admin-page admin-system-page">
+      <AdminPageHeader eyebrow="Configuración de producto" title={t("admin.modules.title")} subtitle={t("admin.modules.sub")} />
+      <AdminPageState loading={loading} error={error}>
+        <AdminDataView empty={!tree.length} emptyTitle={t("admin.modules.empty")}>
+          <div className="client-table-card admin-system-table">
           <table className="client-table admin-users-table">
             <thead>
               <tr>
@@ -342,8 +335,9 @@ export function AdminModulesPage() {
               ))}
             </tbody>
           </table>
-        )}
-      </div>
+          </div>
+        </AdminDataView>
+      </AdminPageState>
 
       {editor && (
         <FlagRulesEditor

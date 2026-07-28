@@ -4968,6 +4968,34 @@ body,
   .admin-pagination { margin-top: 10px; padding-inline: 0; border: 0; }
 }
 
+/* Admin system-wide consolidation */
+.admin-system-page { max-width: 1440px; margin: 0 auto; }
+.admin-system-table { overflow-x: auto; border-radius: 16px; }
+.admin-system-table > table { min-width: 760px; }
+.admin-tools-kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
+.admin-system-page .admin-tools-section { margin-top: 16px; }
+.admin-system-page .admin-tools-section:first-of-type { margin-top: 0; }
+.admin-system-page .admin-filters { margin-bottom: 16px; border-radius: 14px; box-shadow: none; }
+.admin-system-page :is(.auth-input, .admin-role-select, select) { min-height: 40px; }
+.admin-system-page :is(button, a, input, select, textarea):focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--blue) 28%, transparent);
+  outline-offset: 2px;
+}
+.admin-system-page .client-table th { padding-block: 12px; color: var(--muted); font-size: 10px; letter-spacing: .035em; text-transform: uppercase; }
+.admin-system-page .client-table td { padding-block: 13px; }
+.admin-system-page .admin-support-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.admin-system-page .admin-support-card { margin: 0; }
+
+@media (max-width: 1024px) {
+  .admin-tools-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .admin-system-page .admin-support-list { grid-template-columns: 1fr; }
+}
+@media (max-width: 600px) {
+  .admin-tools-kpis { grid-template-columns: 1fr; }
+  .admin-system-page .admin-support-card-head { align-items: stretch; flex-direction: column; }
+  .admin-system-page .admin-support-status { width: 100%; }
+}
+
 /* ===== DASHBOARD PAGE ===== */
 .dash-page-nav {
   margin-bottom: 8px;

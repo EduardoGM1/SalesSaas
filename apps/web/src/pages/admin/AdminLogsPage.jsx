@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link, useOutletContext, useSearchParams } from "react-router-dom";
+import { AdminDataView, AdminFilterBar, AdminPageHeader, AdminPageState } from "@/components/admin/admin-ui.jsx";
 import { useAdminFetch } from "@/hooks/use-admin-session.js";
 import { hasPermission } from "@/lib/auth/permissions";
 import { useI18n } from "@/hooks/use-i18n.js";
@@ -72,14 +73,10 @@ export function AdminLogsPage() {
   };
 
   return (
-    <div className="admin-page">
-      <div className="admin-page-head">
-        <h1 className="admin-h1">{t("admin.logs.title")}</h1>
-        <p className="admin-sub">{t("admin.logs.sub")}</p>
-      </div>
-
-      <div className="admin-filters">
-        <form method="GET" action="/admin/logs" className="admin-filters-form">
+    <div className="admin-page admin-system-page">
+      <AdminPageHeader eyebrow="Auditoría" title={t("admin.logs.title")} subtitle={t("admin.logs.sub")} meta={<span>{items.length} eventos visibles</span>} />
+      <form method="GET" action="/admin/logs">
+        <AdminFilterBar actions={<><button type="submit" className="btn btn-primary">{t("admin.filters.apply")}</button>{qs && <Link to="/admin/logs" className="btn btn-ghost">{t("common.clear")}</Link>}<a href={exportHref} className="btn btn-ghost">{t("admin.filters.exportCsv")}</a></>}>
           <div className="admin-filter-field">
             <label htmlFor="logs-from">{t("admin.logs.filter.from")}</label>
             <input id="logs-from" type="date" name="from" defaultValue={filters.from} className="auth-input" />
@@ -105,19 +102,11 @@ export function AdminLogsPage() {
               ))}
             </select>
           </div>
-          <button type="submit" className="btn btn-primary">{t("admin.filters.apply")}</button>
-          {qs && <Link to="/admin/logs" className="btn btn-ghost">{t("common.clear")}</Link>}
-        </form>
-        <a href={exportHref} className="btn btn-ghost admin-export-btn">{t("admin.filters.exportCsv")}</a>
-      </div>
-
-      {loading && <div className="admin-page">{t("admin.loading.logs")}</div>}
-      {error && <div className="admin-page admin-empty">{error}</div>}
-      {!loading && !error && (
-        <div className="client-table-card">
-          {items.length === 0 ? (
-            <div className="admin-empty">{t("admin.logs.empty")}</div>
-          ) : (
+        </AdminFilterBar>
+      </form>
+      <AdminPageState loading={loading} error={error}>
+        <AdminDataView empty={!items.length} emptyTitle={t("admin.logs.empty")}>
+          <div className="client-table-card admin-system-table">
             <table className="client-table admin-users-table">
               <thead>
                 <tr>
@@ -185,9 +174,9 @@ export function AdminLogsPage() {
                 })}
               </tbody>
             </table>
-          )}
-        </div>
-      )}
+          </div>
+        </AdminDataView>
+      </AdminPageState>
     </div>
   );
 }
