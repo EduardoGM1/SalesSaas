@@ -169,6 +169,7 @@ export const ADMIN_NAV_PERMISSIONS: Record<string, string> = {
   "/admin/tools": "ver_metricas",
   "/admin/support": "gestionar_soporte",
   "/admin/roles": "gestionar_roles_permisos",
+  "/admin/empresas": "gestionar_empresas",
   "/admin/logs": "ver_logs",
 };
 
@@ -176,6 +177,7 @@ export const ADMIN_NAV_ORDER = [
   "/admin",
   "/admin/users",
   "/admin/roles",
+  "/admin/empresas",
   "/admin/logs",
   "/admin/goals",
   "/admin/tools",
@@ -218,7 +220,7 @@ export function canAccessAdminPathByPermissions(
   if (pathname.startsWith("/admin/goals")) return adminPermissionSetHas(set, "gestionar_metas");
   if (pathname.startsWith("/admin/roles")) return adminPermissionSetHas(set, "gestionar_roles_permisos");
   if (pathname.startsWith("/admin/modules")) return false; // solo Superadmin
-  if (pathname.startsWith("/admin/empresas")) return false; // solo Superadmin
+  if (pathname.startsWith("/admin/empresas")) return adminPermissionSetHas(set, "gestionar_empresas");
   if (pathname.startsWith("/admin/logs")) return adminPermissionSetHas(set, "ver_logs");
   if (pathname === "/admin") return adminPermissionSetHas(set, "ver_resumen");
   return false;

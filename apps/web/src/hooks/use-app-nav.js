@@ -42,12 +42,24 @@ export function useAppNav() {
       }
       setUserProfile(profile);
       setAvatarUrl(profile.avatar_url ?? null);
-      setIsAdmin(hasAnyAdminAccess({
+      const platformAdmin = hasAnyAdminAccess({
         id: profile.id,
         role: profile.role ?? "user",
         is_super_admin: profile.is_super_admin === true,
         admin_permissions: Array.isArray(profile.admin_permissions) ? profile.admin_permissions : [],
-      }));
+      });
+      setIsAdmin(platformAdmin);
+      if (!platformAdmin) {
+        fetch("/api/v1/admin/me", { credentials: "include" })
+          .then(async (response) => {
+            if (!response.ok) return null;
+            return response.json();
+          })
+          .then((adminSession) => {
+            if (adminSession?.userId === profile.id) setIsAdmin(true);
+          })
+          .catch(() => {});
+      }
       const ws = session?.workspace_activo;
       const tipo = ws?.tipo || "personal";
       setWorkspaceTipo(tipo);

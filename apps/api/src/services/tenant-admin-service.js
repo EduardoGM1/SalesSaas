@@ -30,7 +30,7 @@ export async function getHierarchicalAdminContext(userId) {
   const [{ data: empresas }, { data: salas }] = await Promise.all([
     admin
       .from("empresa_miembros")
-      .select("empresa_id, role_id, es_admin, empresas(nombre)")
+      .select("empresa_id, role_id, es_admin, empresas(nombre, logo_url, colores_marca, plan_paquete)")
       .eq("usuario_id", userId)
       .eq("estado", "activo")
       .eq("es_admin", true),
@@ -52,10 +52,6 @@ export async function getHierarchicalAdminContext(userId) {
       memberships: companyMemberships,
       permissions: [
         "ver_resumen",
-        "gestionar_usuarios",
-        "gestionar_metas",
-        "ver_metricas",
-        "gestionar_roles_permisos",
         "gestionar_empresas",
       ],
     };
@@ -71,7 +67,7 @@ export async function getHierarchicalAdminContext(userId) {
       empresa_ids: [...new Set(managedRooms.map((row) => row.workspaces?.empresa_id).filter(Boolean))],
       workspace_ids: managedRooms.map((row) => row.workspace_id),
       memberships: managedRooms,
-      permissions: ["ver_resumen", "gestionar_usuarios", "ver_metricas"],
+      permissions: ["ver_resumen"],
     };
   }
   return null;
@@ -181,8 +177,16 @@ export async function updateScopedEmpresa(actorId, empresaId, body) {
 export async function createScopedSala(actorId, empresaId, body) {
   const admin = await requireEmpresaAdmin(actorId, empresaId);
   const nombre = String(body?.nombre || "").trim();
-  const gerenteId = body?.gerente_id ?? body?.gerenteId;
-  if (!nombre || !gerenteId) throw new ServiceError("Nombre y gerente son requeridos.", 400);
+  let gerenteId = body?.gerente_id ?? body?.gerenteId;
+  if (!gerenteId && body?.gerente_email) {
+    const { data: profile } = await admin
+      .from("profiles")
+      .select("id")
+      .ilike("email", String(body.gerente_email).trim())
+      .maybeSingle();
+    gerenteId = profile?.id ?? null;
+  }
+  if (!nombre || !gerenteId) throw new ServiceError("Nombre y gerente válido son requeridos.", 400);
 
   const { data: manager } = await admin
     .from("profiles")

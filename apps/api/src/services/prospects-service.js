@@ -9,14 +9,29 @@ import {
 
 export async function listProspects(supabase, userId, { limit, offset, status }) {
   const ctx = await getRequestWorkspaceContext(supabase, userId);
-  await requireWorkspacePermission(supabase, userId, "expedientes:ver_propios", ctx.workspaceId);
+  const { data: assignments } = !ctx.teamScope
+    ? await supabase
+      .from("prospect_workflows")
+      .select("prospect_id")
+      .eq("workspace_id", ctx.workspaceId)
+      .eq("cerrador_id", userId)
+      .neq("estado", "completado")
+    : { data: [] };
+  const assignedIds = (assignments ?? []).map((row) => row.prospect_id);
+  if (!assignedIds.length) {
+    await requireWorkspacePermission(supabase, userId, "expedientes:ver_propios", ctx.workspaceId);
+  }
   let q = supabase
     .from("prospects")
     .select("*", { count: "exact" })
     .order("created_at", { ascending: false })
     .range(offset, offset + limit - 1);
   q = scopeByWorkspace(q, ctx.workspaceId);
-  if (!ctx.teamScope) q = q.eq("user_id", userId);
+  if (!ctx.teamScope) {
+    q = assignedIds.length
+      ? q.or(`user_id.eq.${userId},id.in.(${assignedIds.join(",")})`)
+      : q.eq("user_id", userId);
+  }
   if (status) q = q.eq("status", status);
   const { data, error, count } = await q;
   if (error) throw new ServiceError(error.message, 500);
@@ -34,10 +49,17 @@ export async function createProspect(supabase, userId, body) {
 export async function getProspect(supabase, userId, id) {
   if (!isUuid(id)) throw new ServiceError("ID inválido.");
   const ctx = await getRequestWorkspaceContext(supabase, userId);
-  await requireWorkspacePermission(supabase, userId, "expedientes:ver_propios", ctx.workspaceId);
+  const { data: assignment } = await supabase
+    .from("prospect_workflows")
+    .select("prospect_id")
+    .eq("prospect_id", id)
+    .eq("cerrador_id", userId)
+    .maybeSingle();
+  if (!assignment) {
+    await requireWorkspacePermission(supabase, userId, "expedientes:ver_propios", ctx.workspaceId);
+  }
   let q = supabase.from("prospects").select("*").eq("id", id);
   q = scopeByWorkspace(q, ctx.workspaceId);
-  if (!ctx.teamScope) q = q.eq("user_id", userId);
   const { data, error } = await q.maybeSingle();
   if (error) throw new ServiceError(error.message, 500);
   return assertFound(data, "Expediente no encontrado.");

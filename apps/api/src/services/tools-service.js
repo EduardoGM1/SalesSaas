@@ -8,10 +8,21 @@ import { notifyProspectSectionChanged } from "./push-notifications-service.js";
 
 const SECTION_TOOLS = new Set(["survey", "vacaciones", "worksheet"]);
 
+async function calculationOwnerId(supabase, actorId, prospectId) {
+  if (!isUuid(prospectId)) return actorId;
+  const { data } = await supabase
+    .from("prospects")
+    .select("user_id")
+    .eq("id", prospectId)
+    .maybeSingle();
+  return data?.user_id || actorId;
+}
+
 export async function getToolCalculation(supabase, userId, tool, prospectId) {
   if (!tool) throw new ServiceError("tool requerido.");
   const workspaceId = await requireWorkspaceFlag(supabase, userId, TOOL_FLAG_KEYS[tool] || tool);
-  let q = supabase.from("tool_calculations").select("*").eq("user_id", userId).eq("tool", tool);
+  const ownerId = await calculationOwnerId(supabase, userId, prospectId);
+  let q = supabase.from("tool_calculations").select("*").eq("user_id", ownerId).eq("tool", tool);
   q = scopeByWorkspace(q, workspaceId);
   if (prospectId === "libre" || prospectId === null || prospectId === undefined) {
     q = q.is("prospect_id", null);
@@ -31,7 +42,8 @@ export async function upsertToolCalculation(supabase, userId, body) {
     userId,
     TOOL_FLAG_KEYS[body?.tool] || body?.tool,
   );
-  const row = bodyToToolUpsert(body, userId, workspaceId);
+  const ownerId = await calculationOwnerId(supabase, userId, body?.prospect_id);
+  const row = bodyToToolUpsert(body, ownerId, workspaceId);
   if (!row) throw new ServiceError("tool y data son requeridos.");
   const { data, error } = await supabase.from("tool_calculations").upsert(row, { onConflict: "user_id,prospect_id,tool" }).select().single();
   if (error) throw new ServiceError(error.message, 400);
@@ -78,7 +90,8 @@ async function notifyOwnerToolCollaborators(supabase, { actorId, prospectId, sec
 export async function deleteToolCalculation(supabase, userId, tool, prospectId) {
   if (!tool) throw new ServiceError("tool requerido.");
   const workspaceId = await requireWorkspaceFlag(supabase, userId, TOOL_FLAG_KEYS[tool] || tool);
-  let q = supabase.from("tool_calculations").delete().eq("user_id", userId).eq("tool", tool);
+  const ownerId = await calculationOwnerId(supabase, userId, prospectId);
+  let q = supabase.from("tool_calculations").delete().eq("user_id", ownerId).eq("tool", tool);
   q = scopeByWorkspace(q, workspaceId);
   if (prospectId === "libre") q = q.is("prospect_id", null);
   else if (isUuid(prospectId)) q = q.eq("prospect_id", prospectId);

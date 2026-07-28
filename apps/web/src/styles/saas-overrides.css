@@ -4602,6 +4602,246 @@ body,
   }
 }
 
+/* Tenant administration + commercial workflow */
+.admin-tenant-company-picker,
+.workflow-inbox-head,
+.prospect-workflow-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.admin-tenant-company-picker {
+  margin-bottom: 14px;
+}
+.admin-tenant-company-picker .admin-form-field {
+  width: min(100%, 360px);
+}
+.admin-tenant-kpi {
+  margin-top: 8px;
+  font-size: clamp(26px, 4vw, 38px);
+  font-weight: 800;
+  letter-spacing: -0.04em;
+}
+.admin-tenant-member-list {
+  display: grid;
+  gap: 8px;
+}
+.admin-tenant-member {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+}
+.admin-tenant-member:last-child {
+  border-bottom: 0;
+}
+.admin-tenant-member > div:first-child {
+  display: grid;
+  min-width: 0;
+}
+.admin-tenant-member strong,
+.admin-tenant-member span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.admin-tenant-member span {
+  color: var(--muted);
+  font-size: 12px;
+}
+.admin-tenant-check-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  max-height: 260px;
+  overflow: auto;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+.admin-tenant-check-grid label {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 12px;
+}
+.admin-tenant-tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.prospect-workflow-panel {
+  margin-bottom: 16px;
+  padding: clamp(16px, 3vw, 24px);
+}
+.prospect-workflow-head h2,
+.workflow-inbox-head h1 {
+  margin: 4px 0;
+  font-size: clamp(20px, 3vw, 28px);
+}
+.prospect-workflow-head p,
+.workflow-inbox-head p {
+  margin: 0;
+  color: var(--muted);
+}
+.prospect-workflow-progress {
+  display: grid;
+  grid-template-columns: repeat(10, minmax(72px, 1fr));
+  gap: 6px;
+  margin: 20px 0;
+  overflow-x: auto;
+  padding-bottom: 8px;
+}
+.prospect-workflow-step {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  color: var(--muted);
+  text-align: center;
+}
+.prospect-workflow-step > span {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: var(--surface);
+  font-size: 11px;
+}
+.prospect-workflow-step.done,
+.prospect-workflow-step.active {
+  color: var(--brand, #1e5eff);
+}
+.prospect-workflow-step.done > span,
+.prospect-workflow-step.active > span {
+  border-color: currentColor;
+  background: color-mix(in srgb, currentColor 10%, var(--surface));
+}
+.prospect-workflow-current {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.prospect-workflow-current > div {
+  display: grid;
+  gap: 4px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+.prospect-workflow-current span,
+.prospect-workflow-event span {
+  color: var(--muted);
+  font-size: 12px;
+}
+.prospect-workflow-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 14px 0;
+}
+.prospect-workflow-actions form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.prospect-workflow-timeline {
+  border-top: 1px solid var(--line);
+  padding-top: 14px;
+}
+.prospect-workflow-timeline h3 {
+  margin: 0 0 10px;
+  font-size: 14px;
+}
+.prospect-workflow-event {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 10px;
+  padding: 8px 0;
+}
+.prospect-workflow-event > div {
+  display: grid;
+}
+.workflow-inbox-page {
+  display: grid;
+  gap: 18px;
+}
+.workflow-inbox-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.workflow-inbox-card {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+}
+.workflow-inbox-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+.workflow-inbox-card-head span {
+  color: var(--muted);
+  font-size: 11px;
+}
+.workflow-inbox-card-head h2 {
+  margin: 3px 0 0;
+  font-size: 18px;
+}
+.workflow-inbox-card-meta {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.workflow-inbox-card-meta span {
+  display: grid;
+  gap: 3px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.workflow-inbox-card-meta strong {
+  color: var(--text);
+  font-size: 11px;
+  text-transform: uppercase;
+}
+.workflow-inbox-card .btn {
+  justify-self: start;
+}
+@media (max-width: 760px) {
+  .admin-tenant-company-picker,
+  .workflow-inbox-head,
+  .prospect-workflow-head {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .admin-tenant-company-picker .admin-form-field {
+    width: 100%;
+  }
+  .admin-tenant-check-grid,
+  .workflow-inbox-grid {
+    grid-template-columns: 1fr;
+  }
+  .prospect-workflow-current,
+  .workflow-inbox-card-meta {
+    grid-template-columns: 1fr;
+  }
+  .prospect-workflow-actions,
+  .prospect-workflow-actions form {
+    display: grid;
+    width: 100%;
+  }
+  .prospect-workflow-actions .btn,
+  .prospect-workflow-actions .auth-input {
+    width: 100%;
+  }
+}
+
 /* ===== Admin Enterprise primitives ===== */
 .admin-page-header {
   display: flex; align-items: flex-start; justify-content: space-between;

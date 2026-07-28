@@ -204,6 +204,17 @@ export async function listTenantFlagCatalog(actorId, empresaId) {
   return data ?? [];
 }
 
+export async function listTenantPermissionCatalog(actorId, empresaId) {
+  const admin = await assertEmpresaAdmin(actorId, empresaId);
+  const { data, error } = await admin
+    .from("permisos")
+    .select("id, clave, nombre_visible, modulo, capa")
+    .order("modulo")
+    .order("clave");
+  if (error) throw new ServiceError(error.message, 500);
+  return data ?? [];
+}
+
 export async function createAccessPackage(actorId, empresaId, body) {
   const admin = await assertEmpresaAdmin(actorId, empresaId);
   const nombre = String(body?.nombre || "").trim();

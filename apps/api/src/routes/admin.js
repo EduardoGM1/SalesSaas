@@ -370,6 +370,16 @@ router.get("/tenant/empresas/:empresaId/flags", async (req, res) => {
   );
 });
 
+router.get("/tenant/empresas/:empresaId/permissions", async (req, res) => {
+  const a = await tenantActor(req, res);
+  if (!a) return;
+  await runService(
+    res,
+    () => tenantRbacService.listTenantPermissionCatalog(a.userId, req.params.empresaId),
+    { wrap: "data" },
+  );
+});
+
 router.post("/tenant/empresas/:empresaId/packages", async (req, res) => {
   const a = await tenantActor(req, res);
   if (!a) return;

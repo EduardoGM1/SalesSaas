@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useOutletContext, useSearchParams } from "react-router-dom";
-import { Building2, Image, ListChecks, ScrollText, Settings2, ShieldCheck, UsersRound } from "lucide-react";
+import { Boxes, Building2, Image, ListChecks, ScrollText, Settings2, ShieldCheck, UsersRound } from "lucide-react";
 import {
   AdminCard,
   AdminDataView,
@@ -12,6 +12,7 @@ import {
   AdminTimeline,
 } from "@/components/admin/admin-ui.jsx";
 import { AdminOverflowMenu } from "@/components/admin/admin-overflow-menu.jsx";
+import { TenantCompanyAdministration } from "@/components/admin/tenant-company-administration.jsx";
 import { useAdminFetch } from "@/hooks/use-admin-session.js";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { adminJson } from "@/lib/admin/api.js";
@@ -19,7 +20,7 @@ import { narrateAdminLogSummary } from "@/lib/admin/log-narrative.js";
 import { compressSupportScreenshot } from "@/lib/support-image.js";
 import { toast } from "@/lib/toast";
 
-const SECTIONS = ["summary", "rooms", "members", "branding", "settings", "plans", "logs"];
+const SECTIONS = ["summary", "rooms", "members", "access", "branding", "settings", "plans", "logs"];
 
 function entityColors(entity) {
   const colors = entity?.colores_marca || {};
@@ -187,7 +188,7 @@ export function AdminEmpresasPage() {
     await loadMembers(membersSalaId);
   });
 
-  if (!session?.isSuperAdmin) return <div className="admin-page admin-empty">{t("admin.empresas.forbidden")}</div>;
+  if (!session?.isSuperAdmin) return <TenantCompanyAdministration session={session} />;
 
   const selectSection = (next) => {
     const params = new URLSearchParams(searchParams);
@@ -210,6 +211,7 @@ export function AdminEmpresasPage() {
     { id: "summary", label: "Resumen", icon: Building2, count: list.length },
     { id: "rooms", label: "Salas", icon: ListChecks, count: salasList.length },
     { id: "members", label: "Miembros", icon: UsersRound },
+    { id: "access", label: "Acceso", icon: Boxes },
     { id: "branding", label: "Branding", icon: Image },
     { id: "settings", label: "Configuración", icon: Settings2 },
     { id: "plans", label: "Planes", icon: ShieldCheck },
@@ -347,6 +349,10 @@ export function AdminEmpresasPage() {
               </AdminDataView>
             </AdminPageState>
           </AdminCard>
+        ) : null}
+
+        {section === "access" ? (
+          <TenantCompanyAdministration session={session} companies={list} embedded />
         ) : null}
 
         {section === "branding" ? (

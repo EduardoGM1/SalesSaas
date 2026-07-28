@@ -85,13 +85,50 @@ export function AdminOverviewPage() {
   const { t } = useI18n();
   const { fmtN } = useMoney();
   const session = useOutletContext();
-  const { loading, data, error } = useAdminFetch("overview");
+  const scopedId = session?.scope === "empresa"
+    ? session?.empresaIds?.[0]
+    : session?.workspaceIds?.[0];
+  const overviewPath = session?.scope === "empresa" && scopedId
+    ? `tenant/empresas/${scopedId}/overview`
+    : session?.scope === "workspace" && scopedId
+      ? `tenant/workspaces/${scopedId}/overview`
+      : "overview";
+  const { loading, data, error } = useAdminFetch(overviewPath);
   const canSeeLogs = Boolean(session?.isSuperAdmin || hasPermission(session?.profile, "ver_logs"));
   const canSeeCompanies = Boolean(session?.isSuperAdmin);
 
   const generated = data?.generatedAt
     ? new Date(data.generatedAt).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })
     : "—";
+
+  if (session?.scope && session.scope !== "plataforma") {
+    const scopeLabel = session.scope === "empresa" ? "Empresa" : "Sala de Ventas";
+    return (
+      <div className="admin-page admin-overview-enterprise">
+        <AdminPageHeader
+          eyebrow={`Administración de ${scopeLabel.toLowerCase()}`}
+          title={`Resumen de ${scopeLabel}`}
+          subtitle="Indicadores limitados estrictamente al alcance que administras."
+          actions={session.scope === "empresa" ? <Link to="/admin/empresas" className="btn btn-primary">Administrar empresa</Link> : <Link to="/workflow" className="btn btn-primary">Abrir bandeja</Link>}
+        />
+        <AdminPageState loading={loading} error={error} skeleton="overview">
+          {data ? (
+            <>
+              <section className="admin-overview-kpis" aria-label="Indicadores del alcance">
+                {session.scope === "empresa" ? <AdminKpiCard label="Salas" value={fmtN(data.salas)} /> : null}
+                <AdminKpiCard label="Miembros" value={fmtN(data.miembros)} />
+                <AdminKpiCard label="Expedientes" value={fmtN(data.expedientes)} />
+                <AdminKpiCard label="Ventas" value={fmtN(data.ventas)} />
+              </section>
+              <AdminCard title="Aislamiento activo" subtitle="Esta vista no agrega información de otras empresas o salas.">
+                <AdminStatusBadge tone="success"><Activity size={12} aria-hidden /> Alcance {scopeLabel}</AdminStatusBadge>
+              </AdminCard>
+            </>
+          ) : null}
+        </AdminPageState>
+      </div>
+    );
+  }
 
   return (
     <div className="admin-page admin-overview-enterprise">

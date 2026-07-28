@@ -21,11 +21,14 @@ async function loadAccess(actorId, prospectId) {
   const admin = adminClient();
   const { data: prospect, error } = await admin
     .from("prospects")
-    .select("id, user_id, workspace_id, name, name1, prospect_code, workspaces(empresa_id)")
+    .select("id, user_id, workspace_id, name, name1, prospect_code, workspaces(empresa_id, tipo)")
     .eq("id", prospectId)
     .maybeSingle();
   if (error) throw new ServiceError(error.message, 500);
   if (!prospect) throw new ServiceError("Expediente no encontrado.", 404);
+  if (prospect.workspaces?.tipo !== "sala_de_venta") {
+    throw new ServiceError("El workflow comercial solo aplica a Salas de Ventas.", 409);
+  }
 
   const [{ data: profile }, { data: member }, { data: companyAdmin }] = await Promise.all([
     admin.from("profiles").select("is_super_admin").eq("id", actorId).maybeSingle(),
@@ -130,7 +133,26 @@ export async function getWorkflow(_supabase, actorId, prospectId) {
     workflowPayload(access.admin, prospectId),
     listWorkflowTimeline(_supabase, actorId, prospectId),
   ]);
-  return { state, timeline };
+  const representativeStage = ["representante", "survey", "worksheet"].includes(state.etapa_actual);
+  const closerStage = ["money_box", "tipo_cambio", "venta"].includes(state.etapa_actual);
+  return {
+    state,
+    timeline,
+    capabilities: {
+      can_advance: (
+        (representativeStage && (
+          state.representante_id === actorId
+          || access.isManager
+          || access.permissions.has("workflow:avanzar")
+        ))
+        || (closerStage && (state.cerrador_id === actorId || access.isManager))
+      ),
+      can_send_review: state.etapa_actual === "proyeccion"
+        && (state.representante_id === actorId || access.isManager),
+      can_review: state.etapa_actual === "revision_gerente" && access.isManager,
+      can_assign_closer: state.etapa_actual === "asignacion_cerrador" && access.isManager,
+    },
+  };
 }
 
 export async function listWorkflowTimeline(_supabase, actorId, prospectId) {
