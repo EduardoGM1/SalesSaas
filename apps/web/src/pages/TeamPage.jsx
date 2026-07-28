@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, Navigate } from "react-router-dom";
 import { Users } from "lucide-react";
 import { Topbar } from "@/components/layout/topbar";
+import { SalesModal } from "@/components/ui/sales-modal";
 import { useWorkspace } from "@/hooks/use-workspace.js";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { toast } from "@/lib/toast";
@@ -31,6 +32,7 @@ export function TeamPage() {
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [modalOpen, setModalOpen] = useState(false);
   const [selectedId, setSelectedId] = useState("");
   const [prospects, setProspects] = useState([]);
   const [prospectsLoading, setProspectsLoading] = useState(false);
@@ -58,9 +60,11 @@ export function TeamPage() {
     refresh();
   }, [canManage, refresh]);
 
-  const loadProspects = useCallback(async (memberId) => {
+  const openProspectsModal = useCallback(async (memberId) => {
     setSelectedId(memberId || "");
+    setModalOpen(true);
     setProspectsLoading(true);
+    setProspects([]);
     try {
       const qs = memberId ? `?member_id=${encodeURIComponent(memberId)}` : "";
       const payload = await api(`/workspace/team/prospects${qs}`);
@@ -72,6 +76,14 @@ export function TeamPage() {
       setProspectsLoading(false);
     }
   }, [t]);
+
+  const closeProspectsModal = (open) => {
+    setModalOpen(open);
+    if (!open) {
+      setSelectedId("");
+      setProspects([]);
+    }
+  };
 
   const invite = async (e) => {
     e.preventDefault();
@@ -109,127 +121,153 @@ export function TeamPage() {
 
   return (
     <>
-      <Topbar title={t("team.title")} subtitle={active?.nombre || t("team.subtitle")} />
-      <div className="sales-page">
-        <header className="exp-page-head" style={{ marginBottom: 16 }}>
-          <div className="exp-page-meta">
-            <h1 className="exp-page-title">{t("team.title")}</h1>
-            <p className="exp-page-sub">{t("team.subtitle")}</p>
-          </div>
-        </header>
+      <Topbar title={t("team.title")} subtitle={t("team.subtitle")} />
+      <div className="sales-page team-page">
+        {error && <div className="auth-error team-page-error">{error}</div>}
 
-        {error && <div className="auth-error" style={{ marginBottom: 12 }}>{error}</div>}
-
-        <div className="client-table-card" style={{ marginBottom: 20 }}>
-          <h2 className="section-label">{t("team.inviteTitle")}</h2>
-          <form onSubmit={invite} style={{ display: "flex", flexWrap: "wrap", gap: 8, padding: 16 }}>
+        <section className="team-section">
+          <h2 className="section-label team-section-title">{t("team.inviteTitle")}</h2>
+          <form className="team-invite-form" onSubmit={invite}>
             <input
-              className="admin-role-select"
-              style={{ flex: "1 1 220px" }}
+              className="team-invite-input"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder={t("team.invitePlaceholder")}
               required
+              autoComplete="email"
             />
-            <button type="submit" className="btn btn-primary btn-sm" disabled={invitePending}>
+            <button type="submit" className="btn btn-primary btn-sm team-invite-btn" disabled={invitePending}>
               {invitePending ? t("team.inviting") : t("team.inviteBtn")}
             </button>
           </form>
-          {inviteMsg && <p className="admin-cell-muted" style={{ padding: "0 16px 12px" }}>{inviteMsg}</p>}
-          {inviteErr && <div className="auth-error" style={{ margin: "0 16px 12px" }}>{inviteErr}</div>}
-          <p className="admin-cell-muted" style={{ padding: "0 16px 16px", fontSize: 13 }}>
-            {t("team.inviteHint")}
-          </p>
-        </div>
+          {inviteMsg && <p className="team-feedback team-feedback--ok">{inviteMsg}</p>}
+          {inviteErr && <div className="auth-error team-feedback">{inviteErr}</div>}
+          <p className="team-hint">{t("team.inviteHint")}</p>
+        </section>
 
-        <div className="client-table-card" style={{ marginBottom: 20 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "12px 16px 0" }}>
-            <Users size={16} />
-            <h2 className="section-label" style={{ margin: 0 }}>{t("team.membersTitle")}</h2>
+        <section className="team-section">
+          <div className="team-section-head">
+            <Users size={16} aria-hidden />
+            <h2 className="section-label team-section-title">{t("team.membersTitle")}</h2>
           </div>
+
           {loading ? (
-            <p style={{ padding: 16 }}>{t("common.loading")}</p>
+            <p className="team-loading">{t("common.loading")}</p>
           ) : (
-            <table className="client-table admin-users-table">
-              <thead>
-                <tr>
-                  <th>{t("team.col.name")}</th>
-                  <th>{t("team.col.email")}</th>
-                  <th>{t("team.col.role")}</th>
-                  <th />
-                </tr>
-              </thead>
-              <tbody>
+            <>
+              <div className="team-members-desktop">
+                <table className="client-table admin-users-table team-members-table">
+                  <thead>
+                    <tr>
+                      <th>{t("team.col.name")}</th>
+                      <th>{t("team.col.email")}</th>
+                      <th>{t("team.col.role")}</th>
+                      <th />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {members.map((m) => (
+                      <tr key={m.id}>
+                        <td className="admin-cell-name">{memberLabel(m)}</td>
+                        <td className="admin-cell-muted">{m.email || "—"}</td>
+                        <td>{m.rol_en_workspace === "gerente" ? t("team.role.gerente") : t("team.role.vendedor")}</td>
+                        <td>
+                          <button
+                            type="button"
+                            className="btn btn-ghost btn-sm"
+                            onClick={() => openProspectsModal(m.id)}
+                          >
+                            {t("team.viewProspects")}
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                    {!members.length && (
+                      <tr><td colSpan={4} className="admin-empty">{t("team.emptyMembers")}</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              <ul className="team-members-mobile">
                 {members.map((m) => (
-                  <tr key={m.id}>
-                    <td className="admin-cell-name">{memberLabel(m)}</td>
-                    <td className="admin-cell-muted">{m.email || "—"}</td>
-                    <td>{m.rol_en_workspace === "gerente" ? t("team.role.gerente") : t("team.role.vendedor")}</td>
-                    <td>
-                      <button
-                        type="button"
-                        className="btn btn-ghost btn-sm"
-                        onClick={() => loadProspects(m.id)}
-                      >
-                        {t("team.viewProspects")}
-                      </button>
-                    </td>
-                  </tr>
+                  <li key={m.id} className="team-member-card">
+                    <div className="team-member-card-main">
+                      <div className="team-member-name">{memberLabel(m)}</div>
+                      <div className="team-member-email">{m.email || "—"}</div>
+                      <div className="team-member-role">
+                        {m.rol_en_workspace === "gerente" ? t("team.role.gerente") : t("team.role.vendedor")}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      className="btn btn-ghost btn-sm team-member-action"
+                      onClick={() => openProspectsModal(m.id)}
+                    >
+                      {t("team.viewProspects")}
+                    </button>
+                  </li>
                 ))}
                 {!members.length && (
-                  <tr><td colSpan={4} className="admin-empty">{t("team.emptyMembers")}</td></tr>
+                  <li className="team-empty">{t("team.emptyMembers")}</li>
                 )}
-              </tbody>
-            </table>
+              </ul>
+            </>
           )}
-          <div style={{ padding: 12 }}>
-            <button type="button" className="btn btn-ghost btn-sm" onClick={() => loadProspects("")}>
+
+          <div className="team-section-foot">
+            <button type="button" className="btn btn-ghost btn-sm team-view-all" onClick={() => openProspectsModal("")}>
               {t("team.viewAllProspects")}
             </button>
           </div>
-        </div>
+        </section>
+      </div>
 
-        {(selectedId || prospects.length > 0 || prospectsLoading) && (
-          <div className="client-table-card">
-            <h2 className="section-label">{t("team.prospectsOf", { name: selectedLabel })}</h2>
-            {prospectsLoading ? (
-              <p style={{ padding: 16 }}>{t("common.loading")}</p>
-            ) : (
-              <table className="client-table admin-users-table">
-                <thead>
-                  <tr>
-                    <th>{t("team.col.prospect")}</th>
-                    <th>{t("team.col.code")}</th>
-                    <th>{t("team.col.status")}</th>
-                    <th />
-                  </tr>
-                </thead>
-                <tbody>
-                  {prospects.map((p) => {
-                    const name = p.name1 || p.name || p.name2 || "—";
-                    return (
-                      <tr key={p.id}>
-                        <td className="admin-cell-name">{name}</td>
-                        <td className="admin-cell-muted">{p.prospect_code || "—"}</td>
-                        <td>{p.status || "—"}</td>
-                        <td>
-                          <Link className="admin-row-link" to={`/clients/${p.id}`}>
-                            {t("team.open")}
-                          </Link>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                  {!prospects.length && (
-                    <tr><td colSpan={4} className="admin-empty">{t("team.emptyProspects")}</td></tr>
-                  )}
-                </tbody>
-              </table>
-            )}
+      <SalesModal
+        open={modalOpen}
+        onOpenChange={closeProspectsModal}
+        title={t("team.prospectsOf", { name: selectedLabel })}
+        maxWidth={720}
+      >
+        {prospectsLoading ? (
+          <p className="team-loading">{t("common.loading")}</p>
+        ) : (
+          <div className="team-prospects-modal">
+            <ul className="team-prospects-list">
+              {prospects.map((p) => {
+                const name = p.name1 || p.name || p.name2 || "—";
+                return (
+                  <li key={p.id} className="team-prospect-row">
+                    <div className="team-prospect-copy">
+                      <div className="team-prospect-name">{name}</div>
+                      <div className="team-prospect-meta">
+                        <span>{p.prospect_code || "—"}</span>
+                        <span>{p.status || "—"}</span>
+                      </div>
+                    </div>
+                    <Link
+                      className="btn btn-ghost btn-sm"
+                      to={`/clients/${p.id}`}
+                      onClick={() => closeProspectsModal(false)}
+                    >
+                      {t("team.open")}
+                    </Link>
+                  </li>
+                );
+              })}
+              {!prospects.length && (
+                <li className="team-empty">{t("team.emptyProspects")}</li>
+              )}
+            </ul>
           </div>
         )}
-      </div>
+        <div className="btn-row team-modal-actions">
+          <button type="button" className="btn btn-ghost" onClick={() => closeProspectsModal(false)}>
+            {t("common.cancel")}
+          </button>
+        </div>
+      </SalesModal>
     </>
   );
 }

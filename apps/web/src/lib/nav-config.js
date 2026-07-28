@@ -17,7 +17,15 @@ export const NAV_GROUPS = [
     { href: "/", label: "Agenda", icon: Calendar },
     { href: "/metas", label: "Metas", icon: Target },
     { href: "/clients", label: "Clientes", icon: Users },
-    { href: "/team", label: "Mi equipo", icon: UsersRound, gerenteOnly: true },
+    // En móvil: header (no bottom-nav) para no saturar la barra; sigue en sidebar desktop.
+    {
+      href: "/team",
+      label: "Equipo",
+      icon: UsersRound,
+      gerenteOnly: true,
+      mobileHeader: true,
+      keepInSidebar: true,
+    },
     { href: "/goals", label: "Dashboard", icon: BarChart3 },
     { href: "/tools", label: "Herramientas", icon: Wrench },
     { href: "/sales", label: "Ventas", icon: Receipt, feature: "sales:history" },
@@ -71,11 +79,15 @@ export function itemVisible(item, { cloudEnabled, isAdmin, canFeature, isGerente
 
 export function getSidebarNavGroups(options) {
   return NAV_GROUPS.map((group) =>
-    group.filter((item) => itemVisible(item, options) && !item.mobileHeader),
+    group.filter((item) => {
+      if (!itemVisible(item, options)) return false;
+      if (item.mobileHeader && !item.keepInSidebar) return false;
+      return true;
+    }),
   ).filter((group) => group.length > 0);
 }
 
-/** Ítems de la barra inferior móvil (sin Red/Mensajes). */
+/** Ítems de la barra inferior móvil (sin Red/Mensajes/Equipo en header). */
 export function getMobileBottomNavItems(options) {
   const items = flattenNavGroups().filter(
     (item) => !item.mobileHeader && itemVisible(item, options),
@@ -84,7 +96,7 @@ export function getMobileBottomNavItems(options) {
   return items;
 }
 
-/** Ítems del header móvil (Red + Mensajes). */
+/** Ítems del header móvil (Red + Mensajes + Equipo gerente). */
 export function getMobileHeaderNavItems(options) {
   return flattenNavGroups().filter(
     (item) => item.mobileHeader && itemVisible(item, options),
