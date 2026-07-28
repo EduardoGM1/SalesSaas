@@ -66,9 +66,9 @@ export function DesktopTopNavActions() {
 export function MobileTopAvatar() {
   const { avatarUrl, avatarLabel } = useAppNav();
   const { t } = useI18n();
-  const { ready, active, switching } = useWorkspace();
+  const { ready, active, workspaces, switching } = useWorkspace();
   const [open, setOpen] = useState(false);
-  const canOpen = ready && Boolean(active);
+  const canOpen = ready && Boolean(active) && workspaces.length > 1;
 
   return (
     <>
@@ -78,8 +78,8 @@ export function MobileTopAvatar() {
         aria-label={t("workspace.switchTitle")}
         aria-haspopup="dialog"
         aria-expanded={open}
-        disabled={switching || !canOpen}
-        onClick={() => setOpen(true)}
+        disabled={switching}
+        onClick={() => { if (canOpen) setOpen(true); }}
       >
         <div className="mobile-top-avatar-inner" suppressHydrationWarning>
           {switching ? (
