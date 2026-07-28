@@ -56,11 +56,13 @@ export function AdminTopbarTabs({ permissions, pathname, isSuperAdmin = false })
       {visibleTabs.map((tab) => {
         const { href, labelKey, icon: Icon } = tab;
         const exact = "exact" in tab && tab.exact;
+        const active = isTabActive(pathname, href, exact);
         return (
           <Link
             key={href}
             to={href}
-            className={`topbar-admin-tab${isTabActive(pathname, href, exact) ? " active" : ""}`}
+            className={`topbar-admin-tab${active ? " active" : ""}`}
+            aria-current={active ? "page" : undefined}
           >
             <Icon />
             <span>{t(labelKey)}</span>

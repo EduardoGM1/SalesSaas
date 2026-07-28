@@ -2,18 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import { useAdminFetch } from "@/hooks/use-admin-session.js";
 import { useI18n } from "@/hooks/use-i18n.js";
-
-async function adminJson(path, { method = "GET", body } = {}) {
-  const res = await fetch(`/api/v1/admin/${path}`, {
-    method,
-    credentials: "include",
-    headers: body ? { "Content-Type": "application/json" } : undefined,
-    body: body ? JSON.stringify(body) : undefined,
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error ?? "Error");
-  return data.data ?? data;
-}
+import { adminJson } from "@/lib/admin/api.js";
 
 /** Editor reutilizable: default global + excepciones rol/usuario. */
 function FlagRulesEditor({

@@ -2,20 +2,9 @@ import { useEffect, useMemo, useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import { useAdminFetch } from "@/hooks/use-admin-session.js";
 import { useI18n } from "@/hooks/use-i18n.js";
+import { adminJson } from "@/lib/admin/api.js";
 import { compressSupportScreenshot } from "@/lib/support-image.js";
 import { toast } from "@/lib/toast";
-
-async function adminJson(path, { method = "GET", body } = {}) {
-  const res = await fetch(`/api/v1/admin/${path}`, {
-    method,
-    credentials: "include",
-    headers: body ? { "Content-Type": "application/json" } : undefined,
-    body: body ? JSON.stringify(body) : undefined,
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error ?? "Error");
-  return data.data ?? data;
-}
 
 export function AdminEmpresasPage() {
   const { t } = useI18n();

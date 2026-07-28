@@ -4,18 +4,7 @@ import { useAdminFetch } from "@/hooks/use-admin-session.js";
 import { hasPermission } from "@/lib/auth/permissions";
 import { permissionsByModule } from "@salesapp/shared/auth/permission-catalog.js";
 import { useI18n } from "@/hooks/use-i18n.js";
-
-async function adminJson(path, { method = "GET", body } = {}) {
-  const res = await fetch(`/api/v1/admin/${path}`, {
-    method,
-    credentials: "include",
-    headers: body ? { "Content-Type": "application/json" } : undefined,
-    body: body ? JSON.stringify(body) : undefined,
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error ?? "Error");
-  return data.data ?? data;
-}
+import { adminJson } from "@/lib/admin/api.js";
 
 function RoleEditor({ role, modules, onClose, onSaved }) {
   const { t } = useI18n();
