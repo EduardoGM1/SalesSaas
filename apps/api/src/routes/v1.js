@@ -694,33 +694,13 @@ router.post("/notifications/flush-reminders", async (req, res) => {
  * Procesa jobs de todos los usuarios.
  */
 router.post("/cron/flush-reminders", async (req, res) => {
-  const secret = process.env.CRON_SECRET;
-  const auth = String(req.get("authorization") || "");
-  const bearer = auth.startsWith("Bearer ") ? auth.slice(7).trim() : "";
-  const token = bearer || String(req.query.secret || req.get("x-cron-secret") || "");
-  if (!secret || token !== secret) {
-    return apiError(res, "Unauthorized", 401);
-  }
-  await runService(
-    res,
-    () => pushService.flushDueScheduledPushes({ limit: 80 }),
-    { wrap: "data" },
-  );
+  if (!authorizeCron(req)) return apiError(res, "Unauthorized", 401);
+  await runService(res, () => pushService.flushDueScheduledPushes({ limit: 80 }), { wrap: "data" });
 });
 
 router.get("/cron/flush-reminders", async (req, res) => {
-  const secret = process.env.CRON_SECRET;
-  const auth = String(req.get("authorization") || "");
-  const bearer = auth.startsWith("Bearer ") ? auth.slice(7).trim() : "";
-  const token = bearer || String(req.query.secret || req.get("x-cron-secret") || "");
-  if (!secret || token !== secret) {
-    return apiError(res, "Unauthorized", 401);
-  }
-  await runService(
-    res,
-    () => pushService.flushDueScheduledPushes({ limit: 80 }),
-    { wrap: "data" },
-  );
+  if (!authorizeCron(req)) return apiError(res, "Unauthorized", 401);
+  await runService(res, () => pushService.flushDueScheduledPushes({ limit: 80 }), { wrap: "data" });
 });
 
 function authorizeCron(req) {
