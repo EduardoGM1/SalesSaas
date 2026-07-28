@@ -40,6 +40,10 @@ async function assertEmpresaAdmin(actorId, empresaId) {
   return admin;
 }
 
+export async function requireEmpresaAdmin(actorId, empresaId) {
+  return assertEmpresaAdmin(actorId, empresaId);
+}
+
 async function empresaFromWorkspace(admin, workspaceId) {
   const { data, error } = await admin
     .from("workspaces")

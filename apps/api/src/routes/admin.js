@@ -28,6 +28,7 @@ import * as adminAuditService from "../services/admin-audit-service.js";
 import * as flagsService from "../services/flags-service.js";
 import * as workspaceService from "../services/workspace-service.js";
 import * as tenantRbacService from "../services/tenant-rbac-service.js";
+import * as tenantAdminService from "../services/tenant-admin-service.js";
 
 const router = Router();
 
@@ -67,27 +68,33 @@ async function requireSuperAdminApi(req, res) {
 router.get("/me", async (req, res) => {
   const base = await authenticateApi(req, res);
   if (!base.ok) return apiError(res, base.message, base.status);
+  const tenantContext = await tenantAdminService.getHierarchicalAdminContext(base.userId);
   const { data: profile, error } = await base.supabase
     .from("profiles")
     .select("id, role, is_super_admin, admin_permissions, role_id, user_permissions")
     .eq("id", base.userId)
     .single();
-  if (error || !profile || profile.role !== "admin") {
+  if (error || !profile || (profile.role !== "admin" && !tenantContext)) {
     return apiError(res, "No autorizado.", 403);
   }
   const adminProfile = {
     id: profile.id,
-    role: profile.role,
+    role: tenantContext ? "admin" : profile.role,
     is_super_admin: profile.is_super_admin ?? false,
     admin_permissions: profile.admin_permissions ?? [],
   };
   // Preferir keys del rol (catálogo nuevo); fallback a admin_permissions legacy.
   let permissionKeys = effectivePermissions(adminProfile);
-  try {
-    const ctx = await rolesService.loadUserPermissionContext(base.supabase, base.userId);
-    if (ctx?.permission_keys?.length) permissionKeys = ctx.permission_keys;
-  } catch {
-    // fallback legacy
+  if (tenantContext?.permissions?.length) {
+    permissionKeys = tenantContext.permissions;
+  }
+  if (!tenantContext) {
+    try {
+      const ctx = await rolesService.loadUserPermissionContext(base.supabase, base.userId);
+      if (ctx?.permission_keys?.length) permissionKeys = ctx.permission_keys;
+    } catch {
+      // fallback legacy
+    }
   }
   if (isSuperAdmin(adminProfile)) {
     for (const k of [
@@ -116,6 +123,9 @@ router.get("/me", async (req, res) => {
     permissions: permissionKeys,
     isSuperAdmin: isSuperAdmin(adminProfile),
     userId: base.userId,
+    scope: tenantContext?.scope || "plataforma",
+    empresaIds: tenantContext?.empresa_ids || [],
+    workspaceIds: tenantContext?.workspace_ids || [],
   });
 });
 
@@ -144,6 +154,148 @@ async function tenantActor(req, res) {
   }
   return base;
 }
+
+router.get("/tenant/context", async (req, res) => {
+  const a = await tenantActor(req, res);
+  if (!a) return;
+  await runService(
+    res,
+    () => tenantAdminService.getHierarchicalAdminContext(a.userId),
+    { wrap: "data" },
+  );
+});
+
+router.get("/tenant/empresas/:empresaId/overview", async (req, res) => {
+  const a = await tenantActor(req, res);
+  if (!a) return;
+  await runService(
+    res,
+    () => tenantAdminService.getEmpresaOverview(a.userId, req.params.empresaId),
+    { wrap: "data" },
+  );
+});
+
+router.patch("/tenant/empresas/:empresaId", async (req, res) => {
+  const a = await tenantActor(req, res);
+  if (!a) return;
+  const body = parseJsonBody(req, res);
+  if (!body) return;
+  await runService(
+    res,
+    () => tenantAdminService.updateScopedEmpresa(a.userId, req.params.empresaId, body),
+    { wrap: "data" },
+  );
+});
+
+router.get("/tenant/empresas/:empresaId/admins", async (req, res) => {
+  const a = await tenantActor(req, res);
+  if (!a) return;
+  await runService(
+    res,
+    () => tenantAdminService.listEmpresaAdmins(a.userId, req.params.empresaId),
+    { wrap: "data" },
+  );
+});
+
+router.post("/tenant/empresas/:empresaId/admins", async (req, res) => {
+  const a = await tenantActor(req, res);
+  if (!a) return;
+  const body = parseJsonBody(req, res);
+  if (!body) return;
+  await runService(
+    res,
+    () => tenantAdminService.upsertEmpresaAdmin(a.userId, req.params.empresaId, body),
+    { wrap: "data", successStatus: 201 },
+  );
+});
+
+router.delete("/tenant/empresas/:empresaId/admins/:userId", async (req, res) => {
+  const a = await tenantActor(req, res);
+  if (!a) return;
+  await runService(
+    res,
+    () => tenantAdminService.removeEmpresaAdmin(
+      a.userId,
+      req.params.empresaId,
+      req.params.userId,
+    ),
+    { wrap: "data" },
+  );
+});
+
+router.get("/tenant/empresas/:empresaId/salas", async (req, res) => {
+  const a = await tenantActor(req, res);
+  if (!a) return;
+  await runService(
+    res,
+    () => tenantAdminService.listScopedSalas(a.userId, req.params.empresaId),
+    { wrap: "data" },
+  );
+});
+
+router.post("/tenant/empresas/:empresaId/salas", async (req, res) => {
+  const a = await tenantActor(req, res);
+  if (!a) return;
+  const body = parseJsonBody(req, res);
+  if (!body) return;
+  await runService(
+    res,
+    () => tenantAdminService.createScopedSala(a.userId, req.params.empresaId, body),
+    { wrap: "data", successStatus: 201 },
+  );
+});
+
+router.patch("/tenant/workspaces/:workspaceId/gerente", async (req, res) => {
+  const a = await tenantActor(req, res);
+  if (!a) return;
+  const body = parseJsonBody(req, res);
+  if (!body) return;
+  await runService(
+    res,
+    () => tenantAdminService.setScopedSalaGerente(
+      a.userId,
+      req.params.workspaceId,
+      body.usuario_id ?? body.user_id,
+    ),
+    { wrap: "data" },
+  );
+});
+
+router.post("/tenant/workspaces/:workspaceId/members", async (req, res) => {
+  const a = await tenantActor(req, res);
+  if (!a) return;
+  const body = parseJsonBody(req, res);
+  if (!body) return;
+  await runService(
+    res,
+    () => tenantAdminService.addScopedSalaMember(a.userId, req.params.workspaceId, body),
+    { wrap: "data", successStatus: 201 },
+  );
+});
+
+router.delete("/tenant/workspaces/:workspaceId/members/:userId", async (req, res) => {
+  const a = await tenantActor(req, res);
+  if (!a) return;
+  await runService(
+    res,
+    () => tenantAdminService.removeScopedSalaMember(
+      a.userId,
+      req.params.workspaceId,
+      req.params.userId,
+    ),
+    { wrap: "data" },
+  );
+});
+
+router.get("/tenant/workspaces/:workspaceId/overview", async (req, res) => {
+  const a = await tenantActor(req, res);
+  if (!a) return;
+  await runService(
+    res,
+    () => tenantAdminService.getSalaOverview(a.userId, req.params.workspaceId),
+    { wrap: "data" },
+  );
+});
 
 router.get("/tenant/empresas/:empresaId/roles", async (req, res) => {
   const a = await tenantActor(req, res);
