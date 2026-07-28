@@ -1129,7 +1129,6 @@ export const EN_EXT = {
   "admin.empresas.pickTarget": "Select target",
   "admin.empresas.primary": "Primary color",
   "admin.empresas.accent": "Accent color",
-  "admin.empresas.logoUrl": "Logo URL",
   "admin.users.col.plan": "Plan",
   "admin.users.col.membership": "Membership",
   "admin.users.plan.basico": "Basic",
