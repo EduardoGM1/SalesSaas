@@ -113,6 +113,12 @@ router.get("/workspace/team", async (req, res) => {
   await runService(res, () => workspaceService.listTeamMembers(a.supabase, a.userId), { wrap: "data" });
 });
 
+router.get("/workspace/peers", async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  await runService(res, () => workspaceService.listSalaPeers(a.supabase, a.userId), { wrap: "data" });
+});
+
 router.get("/workspace/team/prospects", async (req, res) => {
   const a = await requireAuth(req, res);
   if (!a) return;

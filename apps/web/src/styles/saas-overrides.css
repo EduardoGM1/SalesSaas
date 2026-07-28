@@ -5064,6 +5064,12 @@ body,
     overflow: visible;
   }
 
+  .topbar-mobile-actions-links {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
   .topbar-mobile-actions .top-settings-btn {
     width: 32px;
     height: 32px;

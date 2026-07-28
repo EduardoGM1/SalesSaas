@@ -406,12 +406,27 @@ async function requireActiveSalaGerente(supabase, userId) {
 
 export async function listTeamMembers(supabase, userId) {
   const active = await requireActiveSalaGerente(supabase, userId);
+  return listSalaMembersInternal(active.id, userId);
+}
+
+/** Miembros de la sala activa (cualquier rol) para chat colaborativo 1:1. */
+export async function listSalaPeers(supabase, userId) {
+  const list = await listUserWorkspaces(supabase, userId);
+  const workspaceId = await resolveActiveWorkspaceId(supabase, userId);
+  const active = list.find((w) => w.id === workspaceId) || null;
+  if (!active || active.tipo !== "sala_de_venta") {
+    throw new ServiceError("Solo disponible en una sala de venta activa.", 403);
+  }
+  return listSalaMembersInternal(active.id, userId);
+}
+
+async function listSalaMembersInternal(workspaceId, excludeUserId = null) {
   const admin = createServiceSupabaseClient();
   if (!admin) throw new ServiceError("Service role no configurado.", 500);
   const { data, error } = await admin
     .from("workspace_miembros")
     .select("usuario_id, rol_en_workspace, fecha_union")
-    .eq("workspace_id", active.id)
+    .eq("workspace_id", workspaceId)
     .order("fecha_union", { ascending: true });
   if (error) throw new ServiceError(error.message, 500);
   const ids = (data || []).map((m) => m.usuario_id);
@@ -419,21 +434,24 @@ export async function listTeamMembers(supabase, userId) {
   if (ids.length) {
     const { data: profiles, error: pErr } = await admin
       .from("profiles")
-      .select("id, email, full_name")
+      .select("id, email, full_name, avatar_url")
       .in("id", ids);
     if (pErr) throw new ServiceError(pErr.message, 500);
     profilesById = new Map((profiles || []).map((p) => [p.id, p]));
   }
-  return (data || []).map((m) => {
-    const p = profilesById.get(m.usuario_id);
-    return {
-      id: m.usuario_id,
-      rol_en_workspace: m.rol_en_workspace,
-      fecha_union: m.fecha_union,
-      email: p?.email ?? null,
-      full_name: p?.full_name ?? null,
-    };
-  });
+  return (data || [])
+    .filter((m) => !excludeUserId || m.usuario_id !== excludeUserId)
+    .map((m) => {
+      const p = profilesById.get(m.usuario_id);
+      return {
+        id: m.usuario_id,
+        rol_en_workspace: m.rol_en_workspace,
+        fecha_union: m.fecha_union,
+        email: p?.email ?? null,
+        full_name: p?.full_name ?? null,
+        avatar_url: p?.avatar_url ?? null,
+      };
+    });
 }
 
 export async function listTeamProspects(supabase, userId, { memberId = null, limit = 50, offset = 0 } = {}) {

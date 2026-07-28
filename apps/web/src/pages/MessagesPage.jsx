@@ -1,11 +1,11 @@
 
-import { useEffect, useRef, useState } from "react";
-import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Navigate, useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { Check, CheckCheck, Send } from "lucide-react";
 import { Topbar } from "@/components/layout/topbar";
 import { PageBack } from "@/components/layout/page-back";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
-import { messagesApi } from "@/lib/network-api.js";
+import { messagesApi, networkApi } from "@/lib/network-api.js";
 import { notifyUnreadMessagesChanged } from "@/lib/messages-unread.js";
 import {
   ContactPresenceStatus,
@@ -13,6 +13,7 @@ import {
   networkDisplayName,
 } from "@/components/network/network-user-avatar.jsx";
 import { useI18n } from "@/hooks/use-i18n.js";
+import { useAppNav } from "@/hooks/use-app-nav.js";
 import { toast } from "@/lib/toast";
 import { selectOnFocus } from "@/lib/focus-select.js";
 import {
@@ -59,8 +60,11 @@ export function MessagesPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const [params] = useSearchParams();
+  const { workspaceTipo } = useAppNav();
   const activePeerId = params.get("with");
+  const teamScope = params.get("scope") === "team";
   const [conversations, setConversations] = useState([]);
+  const [teamPeers, setTeamPeers] = useState([]);
   const [messages, setMessages] = useState([]);
   const [draft, setDraft] = useState("");
   const [loading, setLoading] = useState(true);
@@ -74,6 +78,15 @@ export function MessagesPage() {
   const loadConversations = async () => {
     const data = await messagesApi.conversations();
     setConversations(data);
+  };
+
+  const loadTeamPeers = async () => {
+    if (!teamScope) {
+      setTeamPeers([]);
+      return;
+    }
+    const rows = await networkApi.listWorkspacePeers();
+    setTeamPeers(Array.isArray(rows) ? rows : []);
   };
 
   const loadThread = async (peerId, { silent = false } = {}) => {
@@ -99,11 +112,11 @@ export function MessagesPage() {
   useEffect(() => {
     if (!isSupabaseConfigured()) return;
     setLoading(true);
-    loadConversations()
+    Promise.all([loadConversations(), loadTeamPeers()])
       .then(() => notifyUnreadMessagesChanged())
       .catch((err) => toast.error(err.message))
       .finally(() => setLoading(false));
-  }, []);
+  }, [teamScope]);
 
   useEffect(() => {
     if (!activePeerId || !isSupabaseConfigured()) return;
@@ -132,9 +145,60 @@ export function MessagesPage() {
     }
   }, [messages]);
 
-  const activePeer = conversations.find((c) => c.peer?.id === activePeerId)?.peer
-    ?? messages.find((m) => m.peer?.id === activePeerId)?.peer
-    ?? (activePeerId ? { id: activePeerId } : null);
+  const peerById = useMemo(() => {
+    const map = new Map();
+    for (const p of teamPeers) map.set(p.id, p);
+    for (const c of conversations) {
+      if (c.peer?.id) map.set(c.peer.id, { ...map.get(c.peer.id), ...c.peer });
+    }
+    return map;
+  }, [teamPeers, conversations]);
+
+  const listItems = useMemo(() => {
+    if (!teamScope) return conversations;
+    const peerIds = new Set(teamPeers.map((p) => p.id));
+    const fromConv = conversations.filter((c) => c.peer?.id && peerIds.has(c.peer.id));
+    const seen = new Set(fromConv.map((c) => c.peer.id));
+    const starters = teamPeers
+      .filter((p) => !seen.has(p.id))
+      .map((p) => ({
+        peer: {
+          id: p.id,
+          full_name: p.full_name,
+          email: p.email,
+          avatar_url: p.avatar_url,
+        },
+        unread_count: 0,
+        last_message: null,
+        team_role: p.rol_en_workspace,
+        starter: true,
+      }));
+    return [
+      ...fromConv.map((c) => ({
+        ...c,
+        team_role: peerById.get(c.peer.id)?.rol_en_workspace,
+      })),
+      ...starters,
+    ];
+  }, [teamScope, conversations, teamPeers, peerById]);
+
+  const activePeer = peerById.get(activePeerId)
+    || conversations.find((c) => c.peer?.id === activePeerId)?.peer
+    || messages.find((m) => m.peer?.id === activePeerId)?.peer
+    || (activePeerId ? { id: activePeerId } : null);
+
+  const threadHref = (peerId) => (
+    teamScope
+      ? `/messages?scope=team&with=${encodeURIComponent(peerId)}`
+      : `/messages?with=${encodeURIComponent(peerId)}`
+  );
+
+  if (workspaceTipo === "personal" && teamScope) {
+    return <Navigate to="/messages" replace />;
+  }
+  if (workspaceTipo === "sala_de_venta" && !teamScope && !activePeerId) {
+    return <Navigate to="/messages?scope=team" replace />;
+  }
 
   const handleSend = async () => {
     const text = draft.trim();
@@ -171,7 +235,7 @@ export function MessagesPage() {
 
   const handleBack = () => {
     if (activePeerId && window.matchMedia("(max-width: 900px)").matches) {
-      navigate("/messages");
+      navigate(teamScope ? "/messages?scope=team" : "/messages");
       return;
     }
     if (location.key !== "default") {
@@ -181,31 +245,43 @@ export function MessagesPage() {
     navigate("/");
   };
 
+  const pageTitle = teamScope ? t("messages.teamTitle") : t("messages.title");
+  const pageSubtitle = teamScope ? t("messages.teamSubtitle") : t("messages.subtitle");
+
   return (
     <>
-      <Topbar title={t("messages.title")} subtitle={t("messages.subtitle")} />
+      <Topbar title={pageTitle} subtitle={pageSubtitle} />
       <div className="sales-page messages-page">
         <div className="messages-page-nav">
           <PageBack inline onClick={handleBack} />
         </div>
         <div className={`messages-layout${activePeerId ? " messages-layout--thread-open" : " messages-layout--list-only"}`}>
           <aside className="messages-sidebar">
-            <div className="messages-sidebar-head">{t("messages.conversations")}</div>
+            <div className="messages-sidebar-head">
+              {teamScope ? t("messages.teamMembers") : t("messages.conversations")}
+            </div>
             {loading && <div className="dp-empty">{t("common.loading")}</div>}
-            {!loading && conversations.length === 0 && (
-              <div className="dp-empty">{t("messages.empty")}</div>
+            {!loading && listItems.length === 0 && (
+              <div className="dp-empty">
+                {teamScope ? t("messages.teamEmpty") : t("messages.empty")}
+              </div>
             )}
             <div className="messages-conv-list">
-              {conversations.map((c) => {
+              {listItems.map((c) => {
                 const id = c.peer?.id;
                 if (!id) return null;
                 const active = id === activePeerId;
+                const roleKey = c.team_role === "gerente"
+                  ? "messages.teamRole.gerente"
+                  : c.team_role === "vendedor"
+                    ? "messages.teamRole.vendedor"
+                    : null;
                 return (
                   <button
                     key={id}
                     type="button"
                     className={`messages-conv-item${active ? " active" : ""}`}
-                    onClick={() => navigate(`/messages?with=${id}`)}
+                    onClick={() => navigate(threadHref(id))}
                   >
                     <NetworkUserAvatar user={c.peer} showPresence />
                     <div className="messages-conv-body">
@@ -216,7 +292,9 @@ export function MessagesPage() {
                         )}
                       </div>
                       <div className="messages-conv-preview">
-                        {conversationPreview(c.last_message, t) || c.last_message?.body}
+                        {roleKey
+                          ? t(roleKey)
+                          : (conversationPreview(c.last_message, t) || c.last_message?.body || "—")}
                       </div>
                     </div>
                   </button>

@@ -25,6 +25,7 @@ export const networkApi = {
     body: JSON.stringify({ status }),
   }),
   removeConnection: (id) => apiFetch(`/network/connections/${id}`, { method: "DELETE" }),
+  listWorkspacePeers: () => apiFetch("/workspace/peers"),
 };
 
 export const messagesApi = {

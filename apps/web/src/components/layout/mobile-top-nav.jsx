@@ -6,15 +6,15 @@ import { navLabel } from "@/lib/i18n.js";
 import { isNavItemActive } from "@/lib/nav-config.js";
 import { useAppNav } from "@/hooks/use-app-nav.js";
 
-export function MobileTopNavActions() {
-  const { pathname } = useLocation();
-  const { lang: language, t } = useI18n();
+function HeaderNavLinks({ className }) {
+  const { pathname, search } = useLocation();
+  const { lang: language } = useI18n();
   const { mobileHeaderItems, unreadMessages } = useAppNav();
 
   return (
-    <div className="topbar-mobile-actions">
+    <div className={className}>
       {mobileHeaderItems.map(({ href, label, icon: Icon, badgeKey }) => {
-        const active = isNavItemActive(pathname, href);
+        const active = isNavItemActive(pathname, href, search);
         const visibleLabel = navLabel(label, language);
         const badge = badgeKey === "messages" && unreadMessages > 0 ? unreadMessages : null;
         return (
@@ -32,6 +32,17 @@ export function MobileTopNavActions() {
           </Link>
         );
       })}
+    </div>
+  );
+}
+
+export function MobileTopNavActions() {
+  const { pathname } = useLocation();
+  const { t } = useI18n();
+
+  return (
+    <div className="topbar-mobile-actions">
+      <HeaderNavLinks className="topbar-mobile-actions-links" />
       <Link
         to="/settings"
         className={cn("top-settings-btn", pathname.startsWith("/settings") && "active")}
@@ -45,33 +56,7 @@ export function MobileTopNavActions() {
 }
 
 export function DesktopTopNavActions() {
-  const { pathname } = useLocation();
-  const { lang: language } = useI18n();
-  const { mobileHeaderItems, unreadMessages } = useAppNav();
-
-  return (
-    <div className="topbar-desktop-actions">
-      {mobileHeaderItems.map(({ href, label, icon: Icon, badgeKey }) => {
-        const active = isNavItemActive(pathname, href);
-        const visibleLabel = navLabel(label, language);
-        const badge = badgeKey === "messages" && unreadMessages > 0 ? unreadMessages : null;
-        return (
-          <Link
-            key={href}
-            to={href}
-            className={cn("top-settings-btn", active && "active")}
-            title={visibleLabel}
-            aria-label={visibleLabel}
-          >
-            <Icon size={17} strokeWidth={2} />
-            {badge ? (
-              <span className="topbar-action-badge">{badge > 9 ? "9+" : badge}</span>
-            ) : null}
-          </Link>
-        );
-      })}
-    </div>
-  );
+  return <HeaderNavLinks className="topbar-desktop-actions" />;
 }
 
 export function MobileTopAvatar() {

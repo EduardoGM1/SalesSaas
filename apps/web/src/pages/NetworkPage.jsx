@@ -1,7 +1,7 @@
 
 import { useEffect, useState } from "react";
 import { UserPlus, Check, X, MessageSquareText, UserMinus } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { Navigate, useNavigate } from "react-router-dom";
 import { Topbar } from "@/components/layout/topbar";
 import { PageBack } from "@/components/layout/page-back";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
@@ -10,6 +10,7 @@ import { RemoveContactModal } from "@/components/network/remove-contact-modal.js
 import { NetworkUserAvatar, networkDisplayName } from "@/components/network/network-user-avatar.jsx";
 import { usePresenceContext } from "@/components/providers/presence-provider.jsx";
 import { useI18n } from "@/hooks/use-i18n.js";
+import { useAppNav } from "@/hooks/use-app-nav.js";
 import { toast } from "@/lib/toast";
 import { nudgePushPrompt } from "@/lib/push-prompt.js";
 
@@ -169,6 +170,7 @@ function SearchResultActions({ user, connections, onRefresh, t }) {
 export function NetworkPage() {
   const { t } = useI18n();
   const navigate = useNavigate();
+  const { workspaceTipo } = useAppNav();
   const { seedLastSeen } = usePresenceContext();
   const [query, setQuery] = useState("");
   const [searching, setSearching] = useState(false);
@@ -229,6 +231,10 @@ export function NetworkPage() {
       setRemovePending(false);
     }
   };
+
+  if (workspaceTipo === "sala_de_venta") {
+    return <Navigate to="/messages?scope=team" replace />;
+  }
 
   if (!isSupabaseConfigured()) {
     return (

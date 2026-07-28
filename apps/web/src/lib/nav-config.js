@@ -2,6 +2,7 @@ import {
   BarChart3,
   Calendar,
   MessageSquareText,
+  MessagesSquare,
   Receipt,
   Shield,
   Target,
@@ -17,13 +18,12 @@ export const NAV_GROUPS = [
     { href: "/", label: "Agenda", icon: Calendar },
     { href: "/metas", label: "Metas", icon: Target },
     { href: "/clients", label: "Clientes", icon: Users },
-    // En móvil: header (no bottom-nav) para no saturar la barra; sigue en sidebar desktop.
+    // Solo sidebar: gestión de sala (invitar / ver expedientes). No va al header.
     {
       href: "/team",
       label: "Equipo",
       icon: UsersRound,
       gerenteOnly: true,
-      mobileHeader: true,
       keepInSidebar: true,
     },
     { href: "/goals", label: "Dashboard", icon: BarChart3 },
@@ -31,12 +31,23 @@ export const NAV_GROUPS = [
     { href: "/sales", label: "Ventas", icon: Receipt, feature: "sales:history" },
   ],
   [
+    // Personal → Red | Sala → Chat de equipo (mismo slot del header, iconos distintos).
     {
       href: "/network",
       label: "Red",
       icon: UserPlus,
       cloudOnly: true,
       mobileHeader: true,
+      personalOnly: true,
+    },
+    {
+      href: "/messages?scope=team",
+      label: "Chat equipo",
+      icon: MessagesSquare,
+      cloudOnly: true,
+      mobileHeader: true,
+      salaOnly: true,
+      badgeKey: "messages",
     },
     {
       href: "/messages",
@@ -44,6 +55,7 @@ export const NAV_GROUPS = [
       icon: MessageSquareText,
       cloudOnly: true,
       mobileHeader: true,
+      personalOnly: true,
       badgeKey: "messages",
     },
   ],
@@ -60,19 +72,34 @@ export function flattenNavGroups(groups = NAV_GROUPS) {
   return groups.flat();
 }
 
-export function isNavItemActive(pathname, href) {
+export function isNavItemActive(pathname, href, search = "") {
   if (href === "/") return pathname === "/";
   if (href === "/network") {
     return pathname.startsWith("/network") || pathname.startsWith("/red");
   }
-  return pathname.startsWith(href);
+  if (href === "/messages?scope=team") {
+    return pathname.startsWith("/messages") && String(search).includes("scope=team");
+  }
+  if (href === "/messages") {
+    return pathname.startsWith("/messages") && !String(search).includes("scope=team");
+  }
+  const pathOnly = href.split("?")[0];
+  return pathname.startsWith(pathOnly);
 }
 
-export function itemVisible(item, { cloudEnabled, isAdmin, canFeature, isGerenteSala }) {
+export function itemVisible(item, {
+  cloudEnabled,
+  isAdmin,
+  canFeature,
+  isGerenteSala,
+  workspaceTipo,
+}) {
   if (item.menuHidden) return false;
   if (item.adminOnly && !isAdmin) return false;
   if (item.cloudOnly && !cloudEnabled) return false;
   if (item.gerenteOnly && !isGerenteSala) return false;
+  if (item.personalOnly && workspaceTipo !== "personal") return false;
+  if (item.salaOnly && workspaceTipo !== "sala_de_venta") return false;
   if (item.feature && !canFeature(item.feature)) return false;
   return true;
 }
@@ -87,7 +114,7 @@ export function getSidebarNavGroups(options) {
   ).filter((group) => group.length > 0);
 }
 
-/** Ítems de la barra inferior móvil (sin Red/Mensajes/Equipo en header). */
+/** Ítems de la barra inferior móvil (sin Red/Mensajes en header). */
 export function getMobileBottomNavItems(options) {
   const items = flattenNavGroups().filter(
     (item) => !item.mobileHeader && itemVisible(item, options),
@@ -96,7 +123,7 @@ export function getMobileBottomNavItems(options) {
   return items;
 }
 
-/** Ítems del header móvil (Red + Mensajes + Equipo gerente). */
+/** Header: Red (personal) o Chat equipo (sala) + Mensajes solo en personal. */
 export function getMobileHeaderNavItems(options) {
   return flattenNavGroups().filter(
     (item) => item.mobileHeader && itemVisible(item, options),
