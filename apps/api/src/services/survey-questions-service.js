@@ -1,4 +1,5 @@
 import { ServiceError } from "../lib/service-error.js";
+import { requireWorkspaceFlag } from "../lib/workspace-scope.js";
 
 const SECTIONS = new Set(["motivaciones", "timeshare"]);
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -72,6 +73,7 @@ function normalizeOpcionesOverride(raw, bankKeys) {
  */
 export async function saveSurveyQuestionsConfig(supabase, userId, body) {
   if (!userId) throw new ServiceError("No autenticado.", 401);
+  await requireWorkspaceFlag(supabase, userId, "survey");
 
   const seccion = String(body?.seccion || "").trim();
   if (!SECTIONS.has(seccion)) {

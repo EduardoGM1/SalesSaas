@@ -1,10 +1,10 @@
 import { isUuid } from "@salesapp/shared/data/mappers.js";
 import { bodyToActivityInsert } from "@salesapp/shared/api/validators.js";
 import { ServiceError, assertFound } from "../lib/service-error.js";
-import { getRequestWorkspaceId, scopeByWorkspace } from "../lib/workspace-scope.js";
+import { requireWorkspacePermission, scopeByWorkspace } from "../lib/workspace-scope.js";
 
 export async function listActivities(supabase, userId, { limit, offset, prospect_id }) {
-  const workspaceId = await getRequestWorkspaceId(supabase, userId);
+  const workspaceId = await requireWorkspacePermission(supabase, userId, "expedientes:ver_propios");
   let q = supabase
     .from("activities")
     .select("*", { count: "exact" })
@@ -19,7 +19,7 @@ export async function listActivities(supabase, userId, { limit, offset, prospect
 }
 
 export async function createActivity(supabase, userId, body) {
-  const workspaceId = await getRequestWorkspaceId(supabase, userId);
+  const workspaceId = await requireWorkspacePermission(supabase, userId, "expedientes:editar");
   const row = bodyToActivityInsert(body, userId, workspaceId);
   if (!row) throw new ServiceError("type es requerido.");
   const { data, error } = await supabase.from("activities").insert(row).select().single();
@@ -29,7 +29,7 @@ export async function createActivity(supabase, userId, body) {
 
 export async function getActivity(supabase, userId, id) {
   if (!isUuid(id)) throw new ServiceError("ID inválido.");
-  const workspaceId = await getRequestWorkspaceId(supabase, userId);
+  const workspaceId = await requireWorkspacePermission(supabase, userId, "expedientes:ver_propios");
   let q = supabase.from("activities").select("*").eq("id", id).eq("user_id", userId);
   q = scopeByWorkspace(q, workspaceId);
   const { data, error } = await q.maybeSingle();
@@ -42,7 +42,7 @@ export async function updateActivity(supabase, userId, id, body) {
   const patch = { ...body };
   delete patch.id;
   delete patch.user_id;
-  const workspaceId = await getRequestWorkspaceId(supabase, userId);
+  const workspaceId = await requireWorkspacePermission(supabase, userId, "expedientes:editar");
   let q = supabase.from("activities").update(patch).eq("id", id).eq("user_id", userId);
   q = scopeByWorkspace(q, workspaceId);
   const { data, error } = await q.select().maybeSingle();
@@ -52,7 +52,7 @@ export async function updateActivity(supabase, userId, id, body) {
 
 export async function deleteActivity(supabase, userId, id) {
   if (!isUuid(id)) throw new ServiceError("ID inválido.");
-  const workspaceId = await getRequestWorkspaceId(supabase, userId);
+  const workspaceId = await requireWorkspacePermission(supabase, userId, "expedientes:editar");
   let q = supabase.from("activities").delete({ count: "exact" }).eq("id", id).eq("user_id", userId);
   q = scopeByWorkspace(q, workspaceId);
   const { error, count } = await q;

@@ -2,14 +2,15 @@ import { isUuid } from "@salesapp/shared/data/mappers.js";
 import { bodyToToolUpsert } from "@salesapp/shared/api/validators.js";
 import { ServiceError } from "../lib/service-error.js";
 import { profileDisplayName } from "../lib/profile-display-name.js";
-import { getRequestWorkspaceId, scopeByWorkspace } from "../lib/workspace-scope.js";
+import { requireWorkspaceFlag, scopeByWorkspace } from "../lib/workspace-scope.js";
+import { TOOL_FLAG_KEYS } from "./flags-service.js";
 import { notifyProspectSectionChanged } from "./push-notifications-service.js";
 
 const SECTION_TOOLS = new Set(["survey", "vacaciones", "worksheet"]);
 
 export async function getToolCalculation(supabase, userId, tool, prospectId) {
   if (!tool) throw new ServiceError("tool requerido.");
-  const workspaceId = await getRequestWorkspaceId(supabase, userId);
+  const workspaceId = await requireWorkspaceFlag(supabase, userId, TOOL_FLAG_KEYS[tool] || tool);
   let q = supabase.from("tool_calculations").select("*").eq("user_id", userId).eq("tool", tool);
   q = scopeByWorkspace(q, workspaceId);
   if (prospectId === "libre" || prospectId === null || prospectId === undefined) {
@@ -25,7 +26,11 @@ export async function getToolCalculation(supabase, userId, tool, prospectId) {
 }
 
 export async function upsertToolCalculation(supabase, userId, body) {
-  const workspaceId = await getRequestWorkspaceId(supabase, userId);
+  const workspaceId = await requireWorkspaceFlag(
+    supabase,
+    userId,
+    TOOL_FLAG_KEYS[body?.tool] || body?.tool,
+  );
   const row = bodyToToolUpsert(body, userId, workspaceId);
   if (!row) throw new ServiceError("tool y data son requeridos.");
   const { data, error } = await supabase.from("tool_calculations").upsert(row, { onConflict: "user_id,prospect_id,tool" }).select().single();
@@ -72,7 +77,7 @@ async function notifyOwnerToolCollaborators(supabase, { actorId, prospectId, sec
 
 export async function deleteToolCalculation(supabase, userId, tool, prospectId) {
   if (!tool) throw new ServiceError("tool requerido.");
-  const workspaceId = await getRequestWorkspaceId(supabase, userId);
+  const workspaceId = await requireWorkspaceFlag(supabase, userId, TOOL_FLAG_KEYS[tool] || tool);
   let q = supabase.from("tool_calculations").delete().eq("user_id", userId).eq("tool", tool);
   q = scopeByWorkspace(q, workspaceId);
   if (prospectId === "libre") q = q.is("prospect_id", null);
