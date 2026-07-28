@@ -1,12 +1,5 @@
 import { ServiceError } from "../lib/service-error.js";
-import { createServiceSupabaseClient } from "../lib/supabase-server.js";
-import { requireEmpresaAdmin } from "./tenant-rbac-service.js";
-
-function adminClient() {
-  const client = createServiceSupabaseClient();
-  if (!client) throw new ServiceError("Service role no configurado.", 500);
-  return client;
-}
+import { adminClient, requireEmpresaAdmin } from "../lib/tenant-access.js";
 
 export async function getHierarchicalAdminContext(userId) {
   const admin = adminClient();
@@ -82,6 +75,69 @@ export async function listEmpresaAdmins(actorId, empresaId) {
     .order("fecha_union");
   if (error) throw new ServiceError(error.message, 500);
   return data ?? [];
+}
+
+const SEARCH_MIN_CHARS = 2;
+const SEARCH_MAX_CHARS = 80;
+const SEARCH_RESULT_LIMIT = 10;
+
+/**
+ * Busca usuarios por nombre o correo para asignarlos dentro de la empresa.
+ * Alcance: solo usuarios de esta empresa o sin organización asignada;
+ * nunca expone usuarios que pertenecen a otra empresa.
+ */
+export async function searchAssignableUsers(actorId, empresaId, rawQuery) {
+  const admin = await requireEmpresaAdmin(actorId, empresaId);
+  const query = String(rawQuery || "").trim().replace(/[,%()\\]/g, "");
+  if (query.length < SEARCH_MIN_CHARS) return [];
+  if (query.length > SEARCH_MAX_CHARS) throw new ServiceError("Búsqueda demasiado larga.", 400);
+
+  const { data: matches, error } = await admin
+    .from("profiles")
+    .select("id, full_name, email, avatar_url")
+    .or(`full_name.ilike.%${query}%,email.ilike.%${query}%`)
+    .order("full_name")
+    .limit(30);
+  if (error) throw new ServiceError(error.message, 500);
+  if (!matches?.length) return [];
+
+  const ids = matches.map((profile) => profile.id);
+  const [{ data: salaMemberships }, { data: companyMemberships }] = await Promise.all([
+    admin
+      .from("workspace_miembros")
+      .select("usuario_id, workspaces(empresa_id, tipo)")
+      .in("usuario_id", ids),
+    admin
+      .from("empresa_miembros")
+      .select("usuario_id, empresa_id")
+      .in("usuario_id", ids)
+      .eq("estado", "activo"),
+  ]);
+
+  const empresasByUser = new Map();
+  const track = (userId, empresa) => {
+    if (!empresa) return;
+    if (!empresasByUser.has(userId)) empresasByUser.set(userId, new Set());
+    empresasByUser.get(userId).add(empresa);
+  };
+  for (const row of salaMemberships ?? []) {
+    if (row.workspaces?.tipo === "sala_de_venta") track(row.usuario_id, row.workspaces.empresa_id);
+  }
+  for (const row of companyMemberships ?? []) track(row.usuario_id, row.empresa_id);
+
+  return matches
+    .filter((profile) => {
+      const empresas = empresasByUser.get(profile.id);
+      return !empresas || empresas.has(empresaId);
+    })
+    .slice(0, SEARCH_RESULT_LIMIT)
+    .map((profile) => ({
+      id: profile.id,
+      full_name: profile.full_name || null,
+      email: profile.email || null,
+      avatar_url: profile.avatar_url || null,
+      en_empresa: empresasByUser.get(profile.id)?.has(empresaId) === true,
+    }));
 }
 
 export async function upsertEmpresaAdmin(actorId, empresaId, body) {

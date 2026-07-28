@@ -1,63 +1,13 @@
 import { ServiceError, assertFound } from "../lib/service-error.js";
-import { createServiceSupabaseClient } from "../lib/supabase-server.js";
-
-function adminClient() {
-  const client = createServiceSupabaseClient();
-  if (!client) throw new ServiceError("Service role no configurado.", 500);
-  return client;
-}
-
-function normalizeSlug(value) {
-  return String(value || "")
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 64);
-}
-
-async function assertEmpresaAdmin(actorId, empresaId) {
-  if (!actorId || !empresaId) throw new ServiceError("Empresa requerida.", 400);
-  const admin = adminClient();
-  const { data: profile } = await admin
-    .from("profiles")
-    .select("is_super_admin")
-    .eq("id", actorId)
-    .maybeSingle();
-  if (profile?.is_super_admin === true) return admin;
-
-  const { data: membership } = await admin
-    .from("empresa_miembros")
-    .select("id")
-    .eq("empresa_id", empresaId)
-    .eq("usuario_id", actorId)
-    .eq("es_admin", true)
-    .eq("estado", "activo")
-    .maybeSingle();
-  if (!membership) throw new ServiceError("No puedes administrar esta empresa.", 403);
-  return admin;
-}
-
-export async function requireEmpresaAdmin(actorId, empresaId) {
-  return assertEmpresaAdmin(actorId, empresaId);
-}
-
-async function empresaFromWorkspace(admin, workspaceId) {
-  const { data, error } = await admin
-    .from("workspaces")
-    .select("empresa_id")
-    .eq("id", workspaceId)
-    .eq("tipo", "sala_de_venta")
-    .maybeSingle();
-  if (error) throw new ServiceError(error.message, 500);
-  if (!data?.empresa_id) throw new ServiceError("Sala no encontrada.", 404);
-  return data.empresa_id;
-}
+import {
+  adminClient,
+  empresaFromWorkspace,
+  normalizeSlug,
+  requireEmpresaAdmin,
+} from "../lib/tenant-access.js";
 
 export async function listTenantRoles(actorId, empresaId) {
-  const admin = await assertEmpresaAdmin(actorId, empresaId);
+  const admin = await requireEmpresaAdmin(actorId, empresaId);
   const { data, error } = await admin
     .from("roles")
     .select("id, nombre, slug, scope, empresa_id, paquete_id, es_sistema, paquetes_acceso(id, nombre, slug), rol_permisos(permisos(clave))")
@@ -74,7 +24,7 @@ export async function listTenantRoles(actorId, empresaId) {
 }
 
 export async function createTenantRole(actorId, empresaId, body) {
-  const admin = await assertEmpresaAdmin(actorId, empresaId);
+  const admin = await requireEmpresaAdmin(actorId, empresaId);
   const nombre = String(body?.nombre || "").trim();
   const scope = body?.scope === "empresa" ? "empresa" : "workspace";
   const slug = normalizeSlug(body?.slug || nombre);
@@ -109,7 +59,7 @@ export async function createTenantRole(actorId, empresaId, body) {
 }
 
 export async function updateTenantRole(actorId, empresaId, roleId, body) {
-  const admin = await assertEmpresaAdmin(actorId, empresaId);
+  const admin = await requireEmpresaAdmin(actorId, empresaId);
   const { data: role } = await admin
     .from("roles")
     .select("id, es_sistema")
@@ -152,7 +102,7 @@ export async function updateTenantRole(actorId, empresaId, roleId, body) {
 }
 
 export async function deleteTenantRole(actorId, empresaId, roleId) {
-  const admin = await assertEmpresaAdmin(actorId, empresaId);
+  const admin = await requireEmpresaAdmin(actorId, empresaId);
   const { data: role } = await admin
     .from("roles")
     .select("id, es_sistema")
@@ -184,7 +134,7 @@ async function replaceRolePermissions(admin, roleId, keys) {
 }
 
 export async function listAccessPackages(actorId, empresaId) {
-  const admin = await assertEmpresaAdmin(actorId, empresaId);
+  const admin = await requireEmpresaAdmin(actorId, empresaId);
   const { data, error } = await admin
     .from("paquetes_acceso")
     .select("id, empresa_id, nombre, slug, descripcion, activo, es_sistema, paquete_flags(flag_id, activo, flags(clave, nombre_visible))")
@@ -195,7 +145,7 @@ export async function listAccessPackages(actorId, empresaId) {
 }
 
 export async function listTenantFlagCatalog(actorId, empresaId) {
-  const admin = await assertEmpresaAdmin(actorId, empresaId);
+  const admin = await requireEmpresaAdmin(actorId, empresaId);
   const { data, error } = await admin
     .from("flags")
     .select("id, clave, nombre_visible, flag_padre, default_global")
@@ -205,7 +155,7 @@ export async function listTenantFlagCatalog(actorId, empresaId) {
 }
 
 export async function listTenantPermissionCatalog(actorId, empresaId) {
-  const admin = await assertEmpresaAdmin(actorId, empresaId);
+  const admin = await requireEmpresaAdmin(actorId, empresaId);
   const { data, error } = await admin
     .from("permisos")
     .select("id, clave, nombre_visible, modulo, capa")
@@ -216,7 +166,7 @@ export async function listTenantPermissionCatalog(actorId, empresaId) {
 }
 
 export async function createAccessPackage(actorId, empresaId, body) {
-  const admin = await assertEmpresaAdmin(actorId, empresaId);
+  const admin = await requireEmpresaAdmin(actorId, empresaId);
   const nombre = String(body?.nombre || "").trim();
   const slug = normalizeSlug(body?.slug || nombre);
   if (!nombre || !slug) throw new ServiceError("Nombre requerido.", 400);
@@ -238,7 +188,7 @@ export async function createAccessPackage(actorId, empresaId, body) {
 }
 
 export async function updateAccessPackage(actorId, empresaId, packageId, body) {
-  const admin = await assertEmpresaAdmin(actorId, empresaId);
+  const admin = await requireEmpresaAdmin(actorId, empresaId);
   const { data: pack } = await admin
     .from("paquetes_acceso")
     .select("id, es_sistema")
@@ -281,7 +231,7 @@ async function replacePackageFlags(admin, packageId, keys) {
 }
 
 export async function deleteAccessPackage(actorId, empresaId, packageId) {
-  const admin = await assertEmpresaAdmin(actorId, empresaId);
+  const admin = await requireEmpresaAdmin(actorId, empresaId);
   const { data: pack } = await admin
     .from("paquetes_acceso")
     .select("id, es_sistema")
@@ -299,7 +249,7 @@ export async function deleteAccessPackage(actorId, empresaId, packageId) {
 export async function assignWorkspaceRole(actorId, workspaceId, userId, roleId) {
   const admin = adminClient();
   const empresaId = await empresaFromWorkspace(admin, workspaceId);
-  await assertEmpresaAdmin(actorId, empresaId);
+  await requireEmpresaAdmin(actorId, empresaId);
   const { data: role } = await admin
     .from("roles")
     .select("id, slug")
@@ -323,7 +273,7 @@ export async function assignWorkspaceRole(actorId, workspaceId, userId, roleId) 
 }
 
 export async function assignEmpresaRole(actorId, empresaId, userId, roleId) {
-  const admin = await assertEmpresaAdmin(actorId, empresaId);
+  const admin = await requireEmpresaAdmin(actorId, empresaId);
   const { data: role } = await admin
     .from("roles")
     .select("id")

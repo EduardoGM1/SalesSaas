@@ -3,6 +3,7 @@ import { apiError, json, parseLimitOffset } from "../lib/http.js";
 import { getUsdExchangeRate } from "../lib/exchange-rates.js";
 import adminRouter from "./admin.js";
 import { requireAuth, parseJsonBody, runService } from "./route-utils.js";
+import { rateLimit } from "../middleware/rate-limit.js";
 import * as sessionService from "../services/session-service.js";
 import * as profileService from "../services/profile-service.js";
 import * as syncService from "../services/sync-service.js";
@@ -132,7 +133,7 @@ router.get("/workspace/team/prospects", async (req, res) => {
   );
 });
 
-router.post("/workspace/invite", async (req, res) => {
+router.post("/workspace/invite", rateLimit({ name: "workspace-invite", windowMs: 60_000, max: 20 }), async (req, res) => {
   const a = await requireAuth(req, res);
   if (!a) return;
   const body = parseJsonBody(req, res);
@@ -514,7 +515,7 @@ router.delete("/tool-calculations", async (req, res) => {
   ), { wrap: "ok" });
 });
 
-router.get("/network/users/search", async (req, res) => {
+router.get("/network/users/search", rateLimit({ name: "network-user-search", windowMs: 60_000, max: 30 }), async (req, res) => {
   const a = await requireAuth(req, res);
   if (!a) return;
   await runService(res, () => networkService.searchUsers(a.supabase, a.userId, req.query.q, Number(req.query.limit) || 20), { wrap: "data" });

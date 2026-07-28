@@ -10,6 +10,7 @@ import {
   AdminSubNav,
 } from "@/components/admin/admin-ui.jsx";
 import { AdminOverflowMenu } from "@/components/admin/admin-overflow-menu.jsx";
+import { BuscadorUsuario } from "@/components/admin/buscador-usuario.jsx";
 import { useAdminFetch } from "@/hooks/use-admin-session.js";
 import { adminJson } from "@/lib/admin/api.js";
 import { toast } from "@/lib/toast";
@@ -61,11 +62,11 @@ export function TenantCompanyAdministration({ session, companies = EMPTY_COMPANI
     flags: [],
     permissions: [],
   });
-  const [roomForm, setRoomForm] = useState({ nombre: "", gerente_email: "" });
-  const [adminForm, setAdminForm] = useState({ email: "", role_id: "" });
+  const [roomForm, setRoomForm] = useState({ nombre: "", gerente: null });
+  const [adminForm, setAdminForm] = useState({ usuario: null, role_id: "" });
   const [roleForm, setRoleForm] = useState({ nombre: "", scope: "workspace", paquete_id: "", permission_keys: [] });
   const [packageForm, setPackageForm] = useState({ nombre: "", descripcion: "", flag_keys: [] });
-  const [memberForm, setMemberForm] = useState({ workspace_id: "", email: "", role_id: "" });
+  const [memberForm, setMemberForm] = useState({ workspace_id: "", usuario: null, role_id: "" });
   const [brandForm, setBrandForm] = useState({ logo_url: "", primary: "#1e5eff", accent: "#0f2044", plan_paquete: "" });
   const [pending, setPending] = useState(false);
 
@@ -174,29 +175,49 @@ export function TenantCompanyAdministration({ session, companies = EMPTY_COMPANI
             <AdminCard title="Crear Sala de Ventas" subtitle="El gerente debe ser un usuario registrado.">
               <form className="admin-inline-form" onSubmit={(event) => {
                 event.preventDefault();
+                if (!roomForm.gerente?.id) {
+                  toast.error("Selecciona al gerente desde la lista de sugerencias.");
+                  return;
+                }
                 void mutate(async () => {
-                  await adminJson(`tenant/empresas/${companyId}/salas`, { method: "POST", body: roomForm });
-                  setRoomForm({ nombre: "", gerente_email: "" });
+                  await adminJson(`tenant/empresas/${companyId}/salas`, { method: "POST", body: { nombre: roomForm.nombre, gerente_id: roomForm.gerente.id } });
+                  setRoomForm({ nombre: "", gerente: null });
                 }, "Sala creada");
               }}>
                 <input className="auth-input" placeholder="Nombre de la sala" value={roomForm.nombre} onChange={(event) => setRoomForm((current) => ({ ...current, nombre: event.target.value }))} required />
-                <input className="auth-input" type="email" placeholder="Correo del gerente" value={roomForm.gerente_email} onChange={(event) => setRoomForm((current) => ({ ...current, gerente_email: event.target.value }))} required />
+                <BuscadorUsuario
+                  empresaId={companyId}
+                  value={roomForm.gerente}
+                  onChange={(user) => setRoomForm((current) => ({ ...current, gerente: user }))}
+                  placeholder="Nombre o correo del gerente"
+                  disabled={pending}
+                />
                 <button className="btn btn-primary" disabled={pending}>Crear sala</button>
               </form>
             </AdminCard>
             <AdminCard title="Añadir miembro" subtitle="Asigna un puesto configurable dentro de una sala.">
               <form className="admin-room-form" onSubmit={(event) => {
                 event.preventDefault();
+                if (!memberForm.usuario?.id) {
+                  toast.error("Selecciona al miembro desde la lista de sugerencias.");
+                  return;
+                }
                 void mutate(async () => {
-                  await adminJson(`tenant/workspaces/${memberForm.workspace_id}/members`, { method: "POST", body: memberForm });
-                  setMemberForm({ workspace_id: "", email: "", role_id: "" });
+                  await adminJson(`tenant/workspaces/${memberForm.workspace_id}/members`, { method: "POST", body: { usuario_id: memberForm.usuario.id, role_id: memberForm.role_id } });
+                  setMemberForm({ workspace_id: "", usuario: null, role_id: "" });
                 }, "Miembro añadido");
               }}>
                 <select className="auth-input" value={memberForm.workspace_id} onChange={(event) => setMemberForm((current) => ({ ...current, workspace_id: event.target.value }))} required>
                   <option value="">Selecciona sala</option>
                   {state.rooms.map((room) => <option key={room.id} value={room.id}>{room.nombre}</option>)}
                 </select>
-                <input className="auth-input" type="email" placeholder="Correo del miembro" value={memberForm.email} onChange={(event) => setMemberForm((current) => ({ ...current, email: event.target.value }))} required />
+                <BuscadorUsuario
+                  empresaId={companyId}
+                  value={memberForm.usuario}
+                  onChange={(user) => setMemberForm((current) => ({ ...current, usuario: user }))}
+                  placeholder="Nombre o correo del miembro"
+                  disabled={pending}
+                />
                 <select className="auth-input" value={memberForm.role_id} onChange={(event) => setMemberForm((current) => ({ ...current, role_id: event.target.value }))}>
                   <option value="">Puesto base</option>
                   {workspaceRoles.filter((role) => role.slug !== "gerente").map((role) => <option key={role.id} value={role.id}>{role.nombre}</option>)}
@@ -251,12 +272,22 @@ export function TenantCompanyAdministration({ session, companies = EMPTY_COMPANI
           <AdminCard title="Administradores de Empresa" subtitle="Nunca podrán administrar otra empresa.">
             <form className="admin-room-form" onSubmit={(event) => {
               event.preventDefault();
+              if (!adminForm.usuario?.id) {
+                toast.error("Selecciona al administrador desde la lista de sugerencias.");
+                return;
+              }
               void mutate(async () => {
-                await adminJson(`tenant/empresas/${companyId}/admins`, { method: "POST", body: adminForm });
-                setAdminForm({ email: "", role_id: "" });
+                await adminJson(`tenant/empresas/${companyId}/admins`, { method: "POST", body: { usuario_id: adminForm.usuario.id, role_id: adminForm.role_id } });
+                setAdminForm({ usuario: null, role_id: "" });
               }, "Administrador añadido");
             }}>
-              <input className="auth-input" type="email" placeholder="Correo del administrador" value={adminForm.email} onChange={(event) => setAdminForm((current) => ({ ...current, email: event.target.value }))} required />
+              <BuscadorUsuario
+                empresaId={companyId}
+                value={adminForm.usuario}
+                onChange={(user) => setAdminForm((current) => ({ ...current, usuario: user }))}
+                placeholder="Nombre o correo del administrador"
+                disabled={pending}
+              />
               <select className="auth-input" value={adminForm.role_id} onChange={(event) => setAdminForm((current) => ({ ...current, role_id: event.target.value }))}>
                 <option value="">Sin rol adicional</option>
                 {companyRoles.map((role) => <option key={role.id} value={role.id}>{role.nombre}</option>)}

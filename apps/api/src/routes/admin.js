@@ -20,6 +20,7 @@ import {
   getToolsUsage,
 } from "../lib/admin/data.js";
 import { parseJsonBody, runService } from "./route-utils.js";
+import { rateLimit } from "../middleware/rate-limit.js";
 import * as adminUsersService from "../services/admin-users-service.js";
 import * as supportService from "../services/support-service.js";
 import * as membershipService from "../services/membership-service.js";
@@ -186,6 +187,21 @@ router.patch("/tenant/empresas/:empresaId", async (req, res) => {
     { wrap: "data" },
   );
 });
+
+// GET /tenant/empresas/:empresaId/users/search?q= — usuarios asignables (misma empresa o sin organización).
+router.get(
+  "/tenant/empresas/:empresaId/users/search",
+  rateLimit({ name: "tenant-user-search", windowMs: 60_000, max: 30 }),
+  async (req, res) => {
+    const a = await tenantActor(req, res);
+    if (!a) return;
+    await runService(
+      res,
+      () => tenantAdminService.searchAssignableUsers(a.userId, req.params.empresaId, req.query.q),
+      { wrap: "data" },
+    );
+  },
+);
 
 router.get("/tenant/empresas/:empresaId/admins", async (req, res) => {
   const a = await tenantActor(req, res);
