@@ -27,6 +27,7 @@ import * as rolesService from "../services/roles-service.js";
 import * as adminAuditService from "../services/admin-audit-service.js";
 import * as flagsService from "../services/flags-service.js";
 import * as workspaceService from "../services/workspace-service.js";
+import * as tenantRbacService from "../services/tenant-rbac-service.js";
 
 const router = Router();
 
@@ -131,6 +132,165 @@ router.get("/roles", async (req, res) => {
   await runService(
     res,
     () => rolesService.listRoles(a.supabase, a.profile, { full: canFull }),
+    { wrap: "data" },
+  );
+});
+
+async function tenantActor(req, res) {
+  const base = await authenticateApi(req, res);
+  if (!base.ok) {
+    apiError(res, base.message, base.status);
+    return null;
+  }
+  return base;
+}
+
+router.get("/tenant/empresas/:empresaId/roles", async (req, res) => {
+  const a = await tenantActor(req, res);
+  if (!a) return;
+  await runService(
+    res,
+    () => tenantRbacService.listTenantRoles(a.userId, req.params.empresaId),
+    { wrap: "data" },
+  );
+});
+
+router.post("/tenant/empresas/:empresaId/roles", async (req, res) => {
+  const a = await tenantActor(req, res);
+  if (!a) return;
+  const body = parseJsonBody(req, res);
+  if (!body) return;
+  await runService(
+    res,
+    () => tenantRbacService.createTenantRole(a.userId, req.params.empresaId, body),
+    { wrap: "data", successStatus: 201 },
+  );
+});
+
+router.patch("/tenant/empresas/:empresaId/roles/:roleId", async (req, res) => {
+  const a = await tenantActor(req, res);
+  if (!a) return;
+  const body = parseJsonBody(req, res);
+  if (!body) return;
+  await runService(
+    res,
+    () => tenantRbacService.updateTenantRole(
+      a.userId,
+      req.params.empresaId,
+      req.params.roleId,
+      body,
+    ),
+    { wrap: "data" },
+  );
+});
+
+router.delete("/tenant/empresas/:empresaId/roles/:roleId", async (req, res) => {
+  const a = await tenantActor(req, res);
+  if (!a) return;
+  await runService(
+    res,
+    () => tenantRbacService.deleteTenantRole(
+      a.userId,
+      req.params.empresaId,
+      req.params.roleId,
+    ),
+    { wrap: "data" },
+  );
+});
+
+router.get("/tenant/empresas/:empresaId/packages", async (req, res) => {
+  const a = await tenantActor(req, res);
+  if (!a) return;
+  await runService(
+    res,
+    () => tenantRbacService.listAccessPackages(a.userId, req.params.empresaId),
+    { wrap: "data" },
+  );
+});
+
+router.get("/tenant/empresas/:empresaId/flags", async (req, res) => {
+  const a = await tenantActor(req, res);
+  if (!a) return;
+  await runService(
+    res,
+    () => tenantRbacService.listTenantFlagCatalog(a.userId, req.params.empresaId),
+    { wrap: "data" },
+  );
+});
+
+router.post("/tenant/empresas/:empresaId/packages", async (req, res) => {
+  const a = await tenantActor(req, res);
+  if (!a) return;
+  const body = parseJsonBody(req, res);
+  if (!body) return;
+  await runService(
+    res,
+    () => tenantRbacService.createAccessPackage(a.userId, req.params.empresaId, body),
+    { wrap: "data", successStatus: 201 },
+  );
+});
+
+router.patch("/tenant/empresas/:empresaId/packages/:packageId", async (req, res) => {
+  const a = await tenantActor(req, res);
+  if (!a) return;
+  const body = parseJsonBody(req, res);
+  if (!body) return;
+  await runService(
+    res,
+    () => tenantRbacService.updateAccessPackage(
+      a.userId,
+      req.params.empresaId,
+      req.params.packageId,
+      body,
+    ),
+    { wrap: "data" },
+  );
+});
+
+router.delete("/tenant/empresas/:empresaId/packages/:packageId", async (req, res) => {
+  const a = await tenantActor(req, res);
+  if (!a) return;
+  await runService(
+    res,
+    () => tenantRbacService.deleteAccessPackage(
+      a.userId,
+      req.params.empresaId,
+      req.params.packageId,
+    ),
+    { wrap: "data" },
+  );
+});
+
+router.patch("/tenant/workspaces/:workspaceId/members/:userId/role", async (req, res) => {
+  const a = await tenantActor(req, res);
+  if (!a) return;
+  const body = parseJsonBody(req, res);
+  if (!body) return;
+  await runService(
+    res,
+    () => tenantRbacService.assignWorkspaceRole(
+      a.userId,
+      req.params.workspaceId,
+      req.params.userId,
+      body.role_id ?? body.roleId,
+    ),
+    { wrap: "data" },
+  );
+});
+
+router.patch("/tenant/empresas/:empresaId/members/:userId/role", async (req, res) => {
+  const a = await tenantActor(req, res);
+  if (!a) return;
+  const body = parseJsonBody(req, res);
+  if (!body) return;
+  await runService(
+    res,
+    () => tenantRbacService.assignEmpresaRole(
+      a.userId,
+      req.params.empresaId,
+      req.params.userId,
+      body.role_id ?? body.roleId,
+    ),
     { wrap: "data" },
   );
 });
