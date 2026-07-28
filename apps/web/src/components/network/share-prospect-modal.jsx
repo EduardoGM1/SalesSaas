@@ -98,11 +98,16 @@ export function ShareProspectModal({ open, onOpenChange, prospectId, prospectNam
     if (!prospectId) return;
     setLoading(true);
     try {
-      const [conn, existing] = await Promise.all([
-        networkApi.listConnections("accepted"),
+      const [shareContacts, existing] = await Promise.all([
+        sharingApi.listShareContacts(prospectId).catch(() => null),
         sharingApi.listForProspect(prospectId),
       ]);
-      setContacts(conn.map((c) => c.peer).filter(Boolean));
+      if (Array.isArray(shareContacts)) {
+        setContacts(shareContacts);
+      } else {
+        const conn = await networkApi.listConnections("accepted");
+        setContacts(conn.map((c) => c.peer).filter(Boolean).map((p) => ({ ...p, selectable: true, same_workspace: true })));
+      }
       setShares(existing);
     } catch (err) {
       toast.error(err.message);
@@ -158,6 +163,11 @@ export function ShareProspectModal({ open, onOpenChange, prospectId, prospectNam
 
   const handleShare = async () => {
     if (!selectedId) return;
+    const contact = contacts.find((c) => c.id === selectedId);
+    if (contact && contact.selectable === false) {
+      toast.error(t("network.shareSameWsOnly"));
+      return;
+    }
     try {
       await sharingApi.create(prospectId, selectedId, permission);
       toast.success(t("network.shareSuccess"));
@@ -320,6 +330,9 @@ export function ShareProspectModal({ open, onOpenChange, prospectId, prospectNam
             <div className="ethic-box">{t("network.shareNeedContacts")}</div>
           ) : (
             <>
+              <p className="admin-cell-muted" style={{ fontSize: 13, marginBottom: 8 }}>
+                {t("network.shareSameWsOnly")}
+              </p>
               <div className="prospect-grid" style={{ marginBottom: 12 }}>
                 <div className="prospect-field full">
                   <label>{t("network.shareWith")}</label>
@@ -328,7 +341,10 @@ export function ShareProspectModal({ open, onOpenChange, prospectId, prospectNam
                     {contacts
                       .filter((c) => !shares.some((s) => s.shared_with_id === c.id))
                       .map((c) => (
-                        <option key={c.id} value={c.id}>{displayName(c)}</option>
+                        <option key={c.id} value={c.id} disabled={c.selectable === false}>
+                          {displayName(c)}
+                          {c.selectable === false ? ` — ${t("network.shareContactBlocked")}` : ""}
+                        </option>
                       ))}
                   </select>
                 </div>

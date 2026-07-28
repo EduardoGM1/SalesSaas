@@ -24,6 +24,7 @@ export function useAppNav() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState(null);
   const [userProfile, setUserProfile] = useState(null);
+  const [isGerenteSala, setIsGerenteSala] = useState(false);
   const [unreadMessages, setUnreadMessages] = useState(() => getUnreadMessagesCount());
 
   useEffect(() => {
@@ -34,6 +35,7 @@ export function useAppNav() {
         setIsAdmin(false);
         setAvatarUrl(null);
         setUserProfile(null);
+        setIsGerenteSala(false);
         return;
       }
       setUserProfile(profile);
@@ -44,6 +46,10 @@ export function useAppNav() {
         is_super_admin: profile.is_super_admin === true,
         admin_permissions: Array.isArray(profile.admin_permissions) ? profile.admin_permissions : [],
       }));
+      const ws = session?.workspace_activo;
+      setIsGerenteSala(
+        ws?.tipo === "sala_de_venta" && ws?.rol_en_workspace === "gerente",
+      );
     });
   }, []);
 
@@ -76,8 +82,9 @@ export function useAppNav() {
   const navOptions = useMemo(() => ({
     cloudEnabled,
     isAdmin,
+    isGerenteSala,
     canFeature: (feature) => hasUserFeature(userProfile, feature),
-  }), [cloudEnabled, isAdmin, userProfile]);
+  }), [cloudEnabled, isAdmin, isGerenteSala, userProfile]);
 
   const sidebarGroups = useMemo(
     () => getSidebarNavGroups(navOptions),

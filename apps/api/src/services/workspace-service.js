@@ -282,12 +282,79 @@ export async function listSalas(adminProfile, empresaId = null) {
   return data ?? [];
 }
 
-export async function addSalaMember(adminProfile, workspaceId, { usuario_id, rol_en_workspace = "vendedor" }) {
+async function assertSoleGerenteSafe(admin, workspaceId, usuarioId) {
+  const { data: row } = await admin
+    .from("workspace_miembros")
+    .select("rol_en_workspace")
+    .eq("workspace_id", workspaceId)
+    .eq("usuario_id", usuarioId)
+    .maybeSingle();
+  if (row?.rol_en_workspace !== "gerente") return;
+  const { count, error } = await admin
+    .from("workspace_miembros")
+    .select("usuario_id", { count: "exact", head: true })
+    .eq("workspace_id", workspaceId)
+    .eq("rol_en_workspace", "gerente");
+  if (error) throw new ServiceError(error.message, 500);
+  if ((count ?? 0) <= 1) {
+    throw new ServiceError("Asigna otro gerente primero antes de quitar o abandonar al único gerente.", 403);
+  }
+}
+
+/** Swap atómico: demote gerentes actuales → vendedor, promote nuevo. */
+export async function setSalaGerente(adminProfile, workspaceId, newGerenteId) {
   if (!isSuperAdmin(adminProfile)) throw new ServiceError("Solo Superadmin.", 403);
   const admin = createServiceSupabaseClient();
   if (!admin) throw new ServiceError("Service role no configurado.", 500);
+  if (!newGerenteId) throw new ServiceError("usuario_id requerido.");
+
+  const { data: ws } = await admin
+    .from("workspaces")
+    .select("id, tipo")
+    .eq("id", workspaceId)
+    .maybeSingle();
+  if (!ws || ws.tipo !== "sala_de_venta") throw new ServiceError("Sala no encontrada.", 404);
+
+  const { data: existing } = await admin
+    .from("workspace_miembros")
+    .select("usuario_id, rol_en_workspace")
+    .eq("workspace_id", workspaceId);
+  const members = existing || [];
+  const already = members.find((m) => m.usuario_id === newGerenteId);
+  if (already?.rol_en_workspace === "gerente") return already;
+
+  const currentGerentes = members.filter((m) => m.rol_en_workspace === "gerente");
+  for (const g of currentGerentes) {
+    const { error: demoteErr } = await admin
+      .from("workspace_miembros")
+      .update({ rol_en_workspace: "vendedor" })
+      .eq("workspace_id", workspaceId)
+      .eq("usuario_id", g.usuario_id);
+    if (demoteErr) throw new ServiceError(demoteErr.message, 400);
+  }
+
+  const { data, error } = await admin
+    .from("workspace_miembros")
+    .upsert({
+      usuario_id: newGerenteId,
+      workspace_id: workspaceId,
+      rol_en_workspace: "gerente",
+    }, { onConflict: "usuario_id,workspace_id" })
+    .select()
+    .single();
+  if (error) throw new ServiceError(error.message, 400);
+  return data;
+}
+
+export async function addSalaMember(adminProfile, workspaceId, { usuario_id, rol_en_workspace = "vendedor" }) {
+  if (!isSuperAdmin(adminProfile)) throw new ServiceError("Solo Superadmin.", 403);
   if (!usuario_id) throw new ServiceError("usuario_id requerido.");
   const rol = rol_en_workspace === "gerente" ? "gerente" : "vendedor";
+  if (rol === "gerente") {
+    return setSalaGerente(adminProfile, workspaceId, usuario_id);
+  }
+  const admin = createServiceSupabaseClient();
+  if (!admin) throw new ServiceError("Service role no configurado.", 500);
   const { data, error } = await admin
     .from("workspace_miembros")
     .upsert({
@@ -305,13 +372,13 @@ export async function removeSalaMember(adminProfile, workspaceId, usuarioId) {
   if (!isSuperAdmin(adminProfile)) throw new ServiceError("Solo Superadmin.", 403);
   const admin = createServiceSupabaseClient();
   if (!admin) throw new ServiceError("Service role no configurado.", 500);
+  await assertSoleGerenteSafe(admin, workspaceId, usuarioId);
   const { error } = await admin
     .from("workspace_miembros")
     .delete()
     .eq("workspace_id", workspaceId)
     .eq("usuario_id", usuarioId);
   if (error) throw new ServiceError(error.message, 400);
-  // Si era workspace activo, caer a personal
   const { data: profile } = await admin
     .from("profiles")
     .select("workspace_activo_id")
@@ -322,4 +389,245 @@ export async function removeSalaMember(adminProfile, workspaceId, usuarioId) {
     await admin.from("profiles").update({ workspace_activo_id: personal }).eq("id", usuarioId);
   }
   return { ok: true };
+}
+
+async function requireActiveSalaGerente(supabase, userId) {
+  const list = await listUserWorkspaces(supabase, userId);
+  const workspaceId = await resolveActiveWorkspaceId(supabase, userId);
+  const active = list.find((w) => w.id === workspaceId) || null;
+  if (!active || active.tipo !== "sala_de_venta") {
+    throw new ServiceError("Solo disponible en una sala de venta activa.", 403);
+  }
+  if (active.rol_en_workspace !== "gerente") {
+    throw new ServiceError("Solo el gerente puede gestionar el equipo.", 403);
+  }
+  return active;
+}
+
+export async function listTeamMembers(supabase, userId) {
+  const active = await requireActiveSalaGerente(supabase, userId);
+  const admin = createServiceSupabaseClient();
+  if (!admin) throw new ServiceError("Service role no configurado.", 500);
+  const { data, error } = await admin
+    .from("workspace_miembros")
+    .select("usuario_id, rol_en_workspace, fecha_union")
+    .eq("workspace_id", active.id)
+    .order("fecha_union", { ascending: true });
+  if (error) throw new ServiceError(error.message, 500);
+  const ids = (data || []).map((m) => m.usuario_id);
+  let profilesById = new Map();
+  if (ids.length) {
+    const { data: profiles, error: pErr } = await admin
+      .from("profiles")
+      .select("id, email, full_name")
+      .in("id", ids);
+    if (pErr) throw new ServiceError(pErr.message, 500);
+    profilesById = new Map((profiles || []).map((p) => [p.id, p]));
+  }
+  return (data || []).map((m) => {
+    const p = profilesById.get(m.usuario_id);
+    return {
+      id: m.usuario_id,
+      rol_en_workspace: m.rol_en_workspace,
+      fecha_union: m.fecha_union,
+      email: p?.email ?? null,
+      full_name: p?.full_name ?? null,
+    };
+  });
+}
+
+export async function listTeamProspects(supabase, userId, { memberId = null, limit = 50, offset = 0 } = {}) {
+  const active = await requireActiveSalaGerente(supabase, userId);
+  let q = supabase
+    .from("prospects")
+    .select("id, user_id, prospect_code, name, name1, name2, status, tipo_tour, tour_date, created_at, email, phone, city, country", { count: "exact" })
+    .eq("workspace_id", active.id)
+    .order("created_at", { ascending: false })
+    .range(offset, offset + limit - 1);
+  if (memberId) q = q.eq("user_id", memberId);
+  const { data, error, count } = await q;
+  if (error) throw new ServiceError(error.message, 500);
+  return { data: data ?? [], total: count ?? 0, limit, offset, workspace_id: active.id };
+}
+
+export async function inviteToActiveSala(supabase, userId, { email } = {}) {
+  const active = await requireActiveSalaGerente(supabase, userId);
+  const normalized = String(email || "").trim().toLowerCase();
+  if (!normalized || !normalized.includes("@")) {
+    throw new ServiceError("Email inválido.");
+  }
+  const admin = createServiceSupabaseClient();
+  if (!admin) throw new ServiceError("Service role no configurado.", 500);
+
+  const { data: profile, error: pErr } = await admin
+    .from("profiles")
+    .select("id, email, full_name")
+    .ilike("email", normalized)
+    .maybeSingle();
+  if (pErr) throw new ServiceError(pErr.message, 500);
+  if (!profile) {
+    throw new ServiceError("Ese email no tiene cuenta. Debe crear una cuenta en Saletse primero.", 404);
+  }
+  if (profile.id === userId) {
+    throw new ServiceError("No puedes invitarte a ti mismo.");
+  }
+
+  const { data: otherSalas, error: oErr } = await admin
+    .from("workspace_miembros")
+    .select("workspace_id, workspaces!inner(id, tipo, nombre)")
+    .eq("usuario_id", profile.id)
+    .neq("workspace_id", active.id);
+  if (oErr) throw new ServiceError(oErr.message, 500);
+  const otherSala = (otherSalas || []).find((m) => m.workspaces?.tipo === "sala_de_venta");
+  if (otherSala) {
+    throw new ServiceError(
+      `Ese usuario ya pertenece a otra sala (${otherSala.workspaces?.nombre || "sala"}). Debe salir primero.`,
+      403,
+    );
+  }
+
+  const { data: existing } = await admin
+    .from("workspace_miembros")
+    .select("usuario_id, rol_en_workspace")
+    .eq("workspace_id", active.id)
+    .eq("usuario_id", profile.id)
+    .maybeSingle();
+  if (existing) {
+    return {
+      ok: true,
+      already_member: true,
+      member: {
+        id: profile.id,
+        email: profile.email,
+        full_name: profile.full_name,
+        rol_en_workspace: existing.rol_en_workspace,
+      },
+    };
+  }
+
+  const { data: member, error: mErr } = await admin
+    .from("workspace_miembros")
+    .insert({
+      usuario_id: profile.id,
+      workspace_id: active.id,
+      rol_en_workspace: "vendedor",
+    })
+    .select()
+    .single();
+  if (mErr) throw new ServiceError(mErr.message, 400);
+
+  return {
+    ok: true,
+    already_member: false,
+    member: {
+      id: profile.id,
+      email: profile.email,
+      full_name: profile.full_name,
+      rol_en_workspace: member.rol_en_workspace,
+    },
+    workspace: { id: active.id, nombre: active.nombre },
+    inviter: { id: userId },
+  };
+}
+
+export async function leaveActiveSala(supabase, userId) {
+  const list = await listUserWorkspaces(supabase, userId);
+  const workspaceId = await resolveActiveWorkspaceId(supabase, userId);
+  const active = list.find((w) => w.id === workspaceId) || null;
+  if (!active || active.tipo !== "sala_de_venta") {
+    throw new ServiceError("Solo puedes abandonar una sala de venta (no el espacio personal).", 403);
+  }
+  const admin = createServiceSupabaseClient();
+  if (!admin) throw new ServiceError("Service role no configurado.", 500);
+  await assertSoleGerenteSafe(admin, active.id, userId);
+
+  const { error } = await admin
+    .from("workspace_miembros")
+    .delete()
+    .eq("workspace_id", active.id)
+    .eq("usuario_id", userId);
+  if (error) throw new ServiceError(error.message, 400);
+
+  const personal = await ensurePersonalWorkspace(admin, userId);
+  await admin.from("profiles").update({ workspace_activo_id: personal }).eq("id", userId);
+  return { ok: true, workspace_activo_id: personal };
+}
+
+export async function listSalaMembersDetailed(adminProfile, workspaceId) {
+  if (!isSuperAdmin(adminProfile)) throw new ServiceError("Solo Superadmin.", 403);
+  const admin = createServiceSupabaseClient();
+  if (!admin) throw new ServiceError("Service role no configurado.", 500);
+  const { data, error } = await admin
+    .from("workspace_miembros")
+    .select("usuario_id, rol_en_workspace, fecha_union")
+    .eq("workspace_id", workspaceId)
+    .order("fecha_union", { ascending: true });
+  if (error) throw new ServiceError(error.message, 500);
+  const ids = (data || []).map((m) => m.usuario_id);
+  let profilesById = new Map();
+  if (ids.length) {
+    const { data: profiles, error: pErr } = await admin
+      .from("profiles")
+      .select("id, email, full_name")
+      .in("id", ids);
+    if (pErr) throw new ServiceError(pErr.message, 500);
+    profilesById = new Map((profiles || []).map((p) => [p.id, p]));
+  }
+  return (data || []).map((m) => {
+    const p = profilesById.get(m.usuario_id);
+    return {
+      id: m.usuario_id,
+      rol_en_workspace: m.rol_en_workspace,
+      fecha_union: m.fecha_union,
+      email: p?.email ?? null,
+      full_name: p?.full_name ?? null,
+    };
+  });
+}
+
+export async function uploadWorkspaceLogo(adminProfile, { tipo, id, dataUrl }) {
+  if (!isSuperAdmin(adminProfile)) throw new ServiceError("Solo Superadmin.", 403);
+  const admin = createServiceSupabaseClient();
+  if (!admin) throw new ServiceError("Service role no configurado.", 500);
+  if (!id || (tipo !== "empresa" && tipo !== "sala")) {
+    throw new ServiceError("tipo y id requeridos.");
+  }
+  const raw = String(dataUrl || "").trim();
+  const match = /^data:(image\/(?:png|jpeg|jpg|webp));base64,(.+)$/i.exec(raw);
+  if (!match) throw new ServiceError("Imagen inválida. Usa PNG, JPG o WEBP.", 400);
+  const mime = match[1].toLowerCase() === "image/jpg" ? "image/jpeg" : match[1].toLowerCase();
+  const buffer = Buffer.from(match[2], "base64");
+  if (!buffer.length || buffer.length > 2 * 1024 * 1024) {
+    throw new ServiceError("El logo supera el máximo de 2 MB.", 400);
+  }
+  const ext = mime === "image/png" ? "png" : mime === "image/webp" ? "webp" : "jpg";
+  const path = `${tipo}/${id}/${Date.now()}.${ext}`;
+  const { error: upErr } = await admin.storage
+    .from("workspace-branding")
+    .upload(path, buffer, { contentType: mime, upsert: true });
+  if (upErr) throw new ServiceError(upErr.message || "No se pudo subir el logo.", 400);
+
+  const { data: pub } = admin.storage.from("workspace-branding").getPublicUrl(path);
+  const logoUrl = pub?.publicUrl || null;
+  if (!logoUrl) throw new ServiceError("No se pudo resolver la URL pública del logo.", 500);
+
+  if (tipo === "sala") {
+    const { data, error } = await admin
+      .from("workspaces")
+      .update({ logo_url: logoUrl, updated_at: new Date().toISOString() })
+      .eq("id", id)
+      .eq("tipo", "sala_de_venta")
+      .select()
+      .maybeSingle();
+    if (error) throw new ServiceError(error.message, 400);
+    return assertFound(data, "Sala no encontrada.");
+  }
+  const { data, error } = await admin
+    .from("empresas")
+    .update({ logo_url: logoUrl, updated_at: new Date().toISOString() })
+    .eq("id", id)
+    .select()
+    .maybeSingle();
+  if (error) throw new ServiceError(error.message, 400);
+  return assertFound(data, "Empresa no encontrada.");
 }

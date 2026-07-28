@@ -144,9 +144,10 @@ function dbToRows(db, userId, workspaceId = null) {
   }
   for (const client of Object.values(db.clients)) {
     if (!isUuid(client.id)) continue;
+    const ownerId = isUuid(client.ownerUserId) ? client.ownerUserId : userId;
     prospects.push({
       id: client.id,
-      user_id: userId,
+      user_id: ownerId,
       prospect_code: client.prospectCode || generateProspectCode(client.id),
       name: client.name ?? null,
       name1: client.name1 ?? null,
@@ -173,7 +174,7 @@ function dbToRows(db, userId, workspaceId = null) {
       if (!isUuid(sale.saleId)) continue;
       sales.push({
         id: sale.saleId,
-        user_id: userId,
+        user_id: isUuid(sale.ownerUserId) ? sale.ownerUserId : ownerId,
         prospect_id: client.id,
         sale_date: toDateOrNull(sale.date) ?? (/* @__PURE__ */ new Date()).toISOString().slice(0, 10),
         vol: num(sale.vol),
@@ -191,7 +192,7 @@ function dbToRows(db, userId, workspaceId = null) {
       if (!isUuid(act.id)) continue;
       activities.push({
         id: act.id,
-        user_id: userId,
+        user_id: isUuid(act.ownerUserId) ? act.ownerUserId : ownerId,
         prospect_id: client.id,
         sale_id: act.saleId && validSaleIds.has(act.saleId) ? act.saleId : null,
         type: act.type || "nota",
@@ -207,7 +208,7 @@ function dbToRows(db, userId, workspaceId = null) {
     }
     for (const tool of TOOLS) {
       const data = nonEmptyData(client.data?.[tool]);
-      if (data) tool_calculations.push({ user_id: userId, prospect_id: client.id, tool, data });
+      if (data) tool_calculations.push({ user_id: ownerId, prospect_id: client.id, tool, data });
     }
   }
   for (const sale of Object.values(db.sales ?? {})) {
@@ -296,6 +297,7 @@ function rowsToDb(rows) {
     const client = {
       id: p.id,
       prospectId: p.id,
+      ownerUserId: p.user_id ?? void 0,
       prospectCode: p.prospect_code,
       name: p.name ?? void 0,
       name1: p.name1 ?? void 0,

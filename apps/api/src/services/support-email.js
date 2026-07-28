@@ -85,3 +85,51 @@ export async function sendSupportTicketEmail({
     return { ok: false, reason: "send_failed", error: err };
   }
 }
+
+/**
+ * Aviso al vendedor invitado a una sala (Resend). Nunca lanza.
+ */
+export async function sendSalaInviteEmail({
+  toEmail,
+  inviteeName,
+  salaNombre,
+  inviterName,
+}) {
+  const apiKey = process.env.RESEND_API_KEY;
+  const from = process.env.RESEND_FROM_EMAIL || "Saletse <onboarding@resend.dev>";
+  if (!apiKey || !toEmail) {
+    console.warn("[workspace:invite] RESEND_API_KEY o email faltante; se omite email.");
+    return { ok: false, reason: "not_configured" };
+  }
+  const origin = primaryWebOrigin() || "https://app.saletse.local";
+  const html = [
+    `<p>Hola ${escapeHtml(inviteeName || "")},</p>`,
+    `<p><strong>${escapeHtml(inviterName || "Un gerente")}</strong> te agregó a la sala <strong>${escapeHtml(salaNombre || "Sala")}</strong> en Saletse.</p>`,
+    `<p>Inicia sesión para ver el workspace: <a href="${escapeHtml(origin)}">${escapeHtml(origin)}</a></p>`,
+  ].join("\n");
+  try {
+    const resend = new Resend(apiKey);
+    const { data, error } = await resend.emails.send({
+      from,
+      to: [toEmail],
+      subject: `Te agregaron a ${salaNombre || "una sala"} en Saletse`,
+      html,
+    });
+    if (error) {
+      await reportServerIssue("email_failed", {
+        message: error.message || "Resend error",
+        kind: "sala_invite",
+        error,
+      });
+      return { ok: false, reason: "send_failed", error };
+    }
+    return { ok: true, id: data?.id ?? null };
+  } catch (err) {
+    await reportServerIssue("email_failed", {
+      message: err instanceof Error ? err.message : String(err),
+      kind: "sala_invite",
+      error: err,
+    });
+    return { ok: false, reason: "send_failed", error: err };
+  }
+}

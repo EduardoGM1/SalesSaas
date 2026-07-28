@@ -123,6 +123,11 @@ export function SyncProvider({ children }) {
 
     registerSyncRefresh(refreshInbound);
 
+    const onWorkspaceChanged = () => {
+      void refreshInbound({ force: true, reason: "workspace:changed" });
+    };
+    window.addEventListener("workspace:changed", onWorkspaceChanged);
+
     const initForUser = async (userId) => {
       if (initedForRef.current === userId) return;
       initedForRef.current = userId;
@@ -293,6 +298,7 @@ export function SyncProvider({ children }) {
 
     return () => {
       unregisterSyncRefresh(refreshInbound);
+      window.removeEventListener("workspace:changed", onWorkspaceChanged);
       void stopDashboardDataRealtime();
       if (typeof stopFlushLoopRef.current === "function") {
         stopFlushLoopRef.current();

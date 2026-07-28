@@ -9,6 +9,19 @@ import { AutoPushCoordinator } from "@/components/notifications/auto-push-coordi
 import { InAppNotificationsCoordinator } from "@/components/notifications/in-app-notifications-coordinator.jsx";
 import { SidebarClient } from "@/components/layout/sidebar-client.jsx";
 import { BottomNav } from "@/components/layout/bottom-nav.jsx";
+import { useWorkspace } from "@/hooks/use-workspace.js";
+import { useI18n } from "@/hooks/use-i18n.js";
+
+function WorkspaceSwitchOverlay() {
+  const { t } = useI18n();
+  const { switching } = useWorkspace();
+  if (!switching) return null;
+  return (
+    <div className="ws-switch-overlay" role="status" aria-live="polite">
+      <div className="ws-switch-card">{t("workspace.switching")}</div>
+    </div>
+  );
+}
 
 export function DashboardLayout() {
   return (
@@ -23,6 +36,7 @@ export function DashboardLayout() {
                 <main><Outlet /></main>
               </div>
               <BottomNav />
+              <WorkspaceSwitchOverlay />
             </div>
             <PushPermissionPrompt />
             <AutoPushCoordinator />

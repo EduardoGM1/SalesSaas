@@ -1,7 +1,9 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import { useAdminFetch } from "@/hooks/use-admin-session.js";
 import { useI18n } from "@/hooks/use-i18n.js";
+import { compressSupportScreenshot } from "@/lib/support-image.js";
+import { toast } from "@/lib/toast";
 
 async function adminJson(path, { method = "GET", body } = {}) {
   const res = await fetch(`/api/v1/admin/${path}`, {
@@ -22,8 +24,13 @@ export function AdminEmpresasPage() {
   const [empresaNombre, setEmpresaNombre] = useState("");
   const [salaForm, setSalaForm] = useState({ empresa_id: "", nombre: "", gerente_id: "" });
   const [brandForm, setBrandForm] = useState({ id: "", tipo: "empresa", primary: "#1e5eff", accent: "#0f2044", logo_url: "" });
+  const [membersSalaId, setMembersSalaId] = useState("");
+  const [addMemberId, setAddMemberId] = useState("");
+  const [members, setMembers] = useState([]);
+  const [membersLoading, setMembersLoading] = useState(false);
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
+  const [logoPending, setLogoPending] = useState(false);
 
   const { loading, data: empresas, error: loadErr } = useAdminFetch(
     session?.isSuperAdmin ? "empresas" : "",
@@ -37,13 +44,35 @@ export function AdminEmpresasPage() {
     return [];
   }, [usersData]);
 
-  if (!session?.isSuperAdmin) {
-    return <div className="admin-page admin-empty">{t("admin.empresas.forbidden")}</div>;
-  }
-
   const refresh = () => setReloadKey((k) => k + 1);
   const list = Array.isArray(empresas) ? empresas : [];
   const salasList = Array.isArray(salas) ? salas : [];
+
+  const loadMembers = async (salaId) => {
+    if (!salaId) {
+      setMembers([]);
+      return;
+    }
+    setMembersLoading(true);
+    try {
+      const rows = await adminJson(`salas/${salaId}/members`);
+      setMembers(Array.isArray(rows) ? rows : []);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t("admin.empresas.error"));
+      setMembers([]);
+    } finally {
+      setMembersLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (membersSalaId) loadMembers(membersSalaId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [membersSalaId, reloadKey]);
+
+  if (!session?.isSuperAdmin) {
+    return <div className="admin-page admin-empty">{t("admin.empresas.forbidden")}</div>;
+  }
 
   const createEmpresa = async (e) => {
     e.preventDefault();
@@ -88,6 +117,86 @@ export function AdminEmpresasPage() {
           colores_marca: { primary: brandForm.primary, accent: brandForm.accent },
         },
       });
+      refresh();
+      toast.success(t("common.save"));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t("admin.empresas.error"));
+    } finally {
+      setPending(false);
+    }
+  };
+
+  const uploadLogo = async (file) => {
+    if (!file || !brandForm.id) return;
+    setLogoPending(true);
+    setError("");
+    try {
+      const compressed = await compressSupportScreenshot(file);
+      const updated = await adminJson("branding/logo", {
+        method: "POST",
+        body: {
+          tipo: brandForm.tipo,
+          id: brandForm.id,
+          data_url: compressed.dataUrl,
+        },
+      });
+      if (updated?.logo_url) {
+        setBrandForm((s) => ({ ...s, logo_url: updated.logo_url }));
+      }
+      refresh();
+      toast.success(t("admin.empresas.logoUpload"));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t("admin.empresas.error"));
+    } finally {
+      setLogoPending(false);
+    }
+  };
+
+  const addMember = async (e) => {
+    e.preventDefault();
+    if (!membersSalaId || !addMemberId) return;
+    setPending(true);
+    setError("");
+    try {
+      await adminJson(`salas/${membersSalaId}/members`, {
+        method: "POST",
+        body: { usuario_id: addMemberId, rol_en_workspace: "vendedor" },
+      });
+      setAddMemberId("");
+      await loadMembers(membersSalaId);
+      refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t("admin.empresas.error"));
+    } finally {
+      setPending(false);
+    }
+  };
+
+  const makeGerente = async (usuarioId) => {
+    if (!membersSalaId) return;
+    setPending(true);
+    setError("");
+    try {
+      await adminJson(`salas/${membersSalaId}/gerente`, {
+        method: "POST",
+        body: { usuario_id: usuarioId },
+      });
+      await loadMembers(membersSalaId);
+      refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t("admin.empresas.error"));
+    } finally {
+      setPending(false);
+    }
+  };
+
+  const removeMember = async (usuarioId) => {
+    if (!membersSalaId) return;
+    setPending(true);
+    setError("");
+    try {
+      await adminJson(`salas/${membersSalaId}/members/${usuarioId}`, { method: "DELETE" });
+      await loadMembers(membersSalaId);
       refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : t("admin.empresas.error"));
@@ -198,6 +307,75 @@ export function AdminEmpresasPage() {
         </table>
       </div>
 
+      <div className="client-table-card" style={{ marginBottom: 20 }}>
+        <h2 className="section-label">{t("admin.empresas.membersTitle")}</h2>
+        <div style={{ display: "grid", gap: 8, padding: 16 }}>
+          <select
+            className="admin-role-select"
+            value={membersSalaId}
+            onChange={(e) => setMembersSalaId(e.target.value)}
+          >
+            <option value="">{t("admin.empresas.pickSalaMembers")}</option>
+            {salasList.map((s) => <option key={s.id} value={s.id}>{s.nombre}</option>)}
+          </select>
+          {membersSalaId && (
+            <form onSubmit={addMember} style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <select
+                className="admin-role-select"
+                style={{ flex: 1 }}
+                value={addMemberId}
+                onChange={(e) => setAddMemberId(e.target.value)}
+                required
+              >
+                <option value="">{t("admin.empresas.addMember")}</option>
+                {users
+                  .filter((u) => !members.some((m) => m.id === u.id))
+                  .map((u) => (
+                    <option key={u.id} value={u.id}>{u.name || u.email || u.id}</option>
+                  ))}
+              </select>
+              <button type="submit" className="btn btn-primary btn-sm" disabled={pending}>{t("admin.empresas.addMember")}</button>
+            </form>
+          )}
+        </div>
+        {membersLoading ? (
+          <p style={{ padding: 16 }}>{t("common.loading")}</p>
+        ) : membersSalaId ? (
+          <table className="client-table admin-users-table">
+            <thead>
+              <tr>
+                <th>{t("team.col.name")}</th>
+                <th>{t("team.col.email")}</th>
+                <th>{t("team.col.role")}</th>
+                <th />
+              </tr>
+            </thead>
+            <tbody>
+              {members.map((m) => (
+                <tr key={m.id}>
+                  <td className="admin-cell-name">{m.full_name || m.email || m.id}</td>
+                  <td className="admin-cell-muted">{m.email || "—"}</td>
+                  <td>{m.rol_en_workspace === "gerente" ? t("team.role.gerente") : t("team.role.vendedor")}</td>
+                  <td style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                    {m.rol_en_workspace !== "gerente" && (
+                      <button type="button" className="btn btn-ghost btn-sm" disabled={pending} onClick={() => makeGerente(m.id)}>
+                        {t("admin.empresas.makeGerente")}
+                      </button>
+                    )}
+                    <button type="button" className="btn btn-danger btn-sm" disabled={pending} onClick={() => removeMember(m.id)}>
+                      {t("admin.empresas.removeMember")}
+                    </button>
+                  </td>
+                </tr>
+              ))}
+              {!members.length && (
+                <tr><td colSpan={4} className="admin-empty">{t("team.emptyMembers")}</td></tr>
+              )}
+            </tbody>
+          </table>
+        ) : null}
+      </div>
+
       <div className="client-table-card">
         <h2 className="section-label">{t("admin.empresas.brandTitle")}</h2>
         <form onSubmit={saveBrand} style={{ display: "grid", gap: 8, padding: 16 }}>
@@ -234,6 +412,23 @@ export function AdminEmpresasPage() {
             onChange={(e) => setBrandForm((s) => ({ ...s, logo_url: e.target.value }))}
             placeholder={t("admin.empresas.logoUrl")}
           />
+          <label className="btn btn-ghost btn-sm" style={{ width: "fit-content", cursor: "pointer" }}>
+            {logoPending ? t("admin.empresas.logoUploading") : t("admin.empresas.logoUpload")}
+            <input
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              hidden
+              disabled={logoPending || !brandForm.id}
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                e.target.value = "";
+                if (file) void uploadLogo(file);
+              }}
+            />
+          </label>
+          {brandForm.logo_url && (
+            <img src={brandForm.logo_url} alt="" style={{ maxHeight: 48, width: "auto", objectFit: "contain" }} />
+          )}
           <button type="submit" className="btn btn-primary btn-sm" disabled={pending}>{t("common.save")}</button>
         </form>
       </div>

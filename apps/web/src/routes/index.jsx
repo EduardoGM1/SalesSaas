@@ -22,6 +22,7 @@ import { NetworkPage } from "@/pages/NetworkPage.jsx";
 import { ContactPage } from "@/pages/ContactPage.jsx";
 import { MessagesPage } from "@/pages/MessagesPage.jsx";
 import { ToolsHubPage } from "@/pages/ToolsHubPage.jsx";
+import { TeamPage } from "@/pages/TeamPage.jsx";
 import { AdminSection } from "@/layouts/AdminSection.jsx";
 import { ToolPermissionGate } from "@/components/auth/ToolPermissionGate.jsx";
 import {
@@ -114,6 +115,7 @@ export function AppRoutes() {
         <Route path="sales" element={<SalesHistoryPage />} />
         <Route path="clients" element={<ClientsPage />} />
         <Route path="clients/:id" element={<ClientDetailRoute />} />
+        <Route path="team" element={<TeamPage />} />
         <Route path="clients/:id/survey" element={<ClientToolRoute tool="survey" />} />
         <Route path="clients/:id/vacaciones" element={<ClientToolRoute tool="vacaciones" />} />
         <Route path="clients/:id/worksheet" element={<ClientToolRoute tool="worksheet" />} />

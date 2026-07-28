@@ -2686,7 +2686,7 @@ button.tool-card {
 }
 .ws-rail-btn--active {
   border-color: #fff;
-  box-shadow: 0 0 0 2px rgba(30, 94, 255, 0.45);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--ws-brand-primary, #1e5eff) 55%, transparent);
 }
 .ws-rail-img {
   width: 100%;
@@ -2708,6 +2708,18 @@ button.tool-card {
   background: #22c55e;
   border: 1px solid #0f2044;
 }
+.ws-active-badge-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: min(360px, 55vw);
+  flex-wrap: wrap;
+}
+.ws-leave-btn {
+  font-size: 11px;
+  padding: 2px 8px;
+  white-space: nowrap;
+}
 .ws-active-badge {
   display: inline-flex;
   align-items: center;
@@ -2719,6 +2731,30 @@ button.tool-card {
   font-weight: 600;
   color: var(--ws-brand-accent, var(--navy, #0f2044));
   margin-right: 8px;
+}
+.ws-switch-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--navy, #0f2044) 28%, transparent);
+  backdrop-filter: blur(2px);
+  pointer-events: all;
+}
+.ws-switch-card {
+  background: #fff;
+  color: var(--navy, #0f2044);
+  border-radius: 12px;
+  padding: 14px 18px;
+  font-size: 14px;
+  font-weight: 600;
+  box-shadow: 0 12px 40px rgba(15, 32, 68, 0.18);
+}
+.app .btn-primary {
+  background: var(--ws-brand-primary, var(--blue, #2563eb));
+  border-color: var(--ws-brand-primary, var(--blue, #2563eb));
 }
 .tb-page-sub-extra {
   opacity: 0.75;

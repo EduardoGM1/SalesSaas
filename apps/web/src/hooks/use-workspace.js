@@ -1,6 +1,13 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { fetchSession, watchSession, notifyAuthChanged } from "@/lib/session-api.js";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
+import { emptyDatabase } from "@/lib/storage/types";
+import { useDbStore } from "@/stores/db-store";
+import { requestSyncRefresh } from "@/lib/sync-refresh.js";
+import {
+  startDashboardDataRealtime,
+  stopDashboardDataRealtime,
+} from "@/lib/dashboard-data-realtime.js";
 
 const SALETSE_BRAND = {
   primary: "#1e5eff",
@@ -13,8 +20,14 @@ export function applyWorkspaceBrand(brand) {
   if (typeof document === "undefined") return;
   const root = document.documentElement;
   const b = brand || SALETSE_BRAND;
-  root.style.setProperty("--ws-brand-primary", b.primary || SALETSE_BRAND.primary);
-  root.style.setProperty("--ws-brand-accent", b.accent || SALETSE_BRAND.accent);
+  const primary = b.primary || SALETSE_BRAND.primary;
+  const accent = b.accent || SALETSE_BRAND.accent;
+  root.style.setProperty("--ws-brand-primary", primary);
+  root.style.setProperty("--ws-brand-accent", accent);
+  root.style.setProperty("--blue", primary);
+  root.style.setProperty("--blue-lt", primary);
+  root.style.setProperty("--navy", accent);
+  root.style.setProperty("--navy2", accent);
   root.dataset.workspaceBrand = b.nombre || "Saletse";
 }
 
@@ -56,12 +69,25 @@ export function useWorkspace() {
         const body = await res.json().catch(() => ({}));
         throw new Error(body.error || "No se pudo cambiar de workspace.");
       }
+
+      const nextSession = await fetchSession();
+      applyWorkspaceBrand(nextSession?.workspace_activo?.brand);
+
+      // Evitar mezclar datos del workspace anterior
+      const prevSettings = useDbStore.getState().db?.settings || {};
+      useDbStore.getState().replaceDb({
+        ...emptyDatabase(),
+        settings: prevSettings,
+      });
+
       notifyAuthChanged();
-      await fetchSession();
-      // Forzar recarga de stores scoped
       window.dispatchEvent(new Event("workspace:changed"));
-      if (typeof window !== "undefined") {
-        window.location.reload();
+
+      const userId = nextSession?.user?.id || nextSession?.profile?.id;
+      await stopDashboardDataRealtime();
+      await requestSyncRefresh({ force: true, reason: "workspace-switch" });
+      if (userId) {
+        await startDashboardDataRealtime(userId);
       }
     } finally {
       setSwitching(false);

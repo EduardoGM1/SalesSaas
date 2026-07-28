@@ -7,6 +7,7 @@ import {
   Target,
   UserPlus,
   Users,
+  UsersRound,
   Wrench,
 } from "lucide-react";
 
@@ -16,6 +17,7 @@ export const NAV_GROUPS = [
     { href: "/", label: "Agenda", icon: Calendar },
     { href: "/metas", label: "Metas", icon: Target },
     { href: "/clients", label: "Clientes", icon: Users },
+    { href: "/team", label: "Mi equipo", icon: UsersRound, gerenteOnly: true },
     { href: "/goals", label: "Dashboard", icon: BarChart3 },
     { href: "/tools", label: "Herramientas", icon: Wrench },
     { href: "/sales", label: "Ventas", icon: Receipt, feature: "sales:history" },
@@ -58,10 +60,11 @@ export function isNavItemActive(pathname, href) {
   return pathname.startsWith(href);
 }
 
-export function itemVisible(item, { cloudEnabled, isAdmin, canFeature }) {
+export function itemVisible(item, { cloudEnabled, isAdmin, canFeature, isGerenteSala }) {
   if (item.menuHidden) return false;
   if (item.adminOnly && !isAdmin) return false;
   if (item.cloudOnly && !cloudEnabled) return false;
+  if (item.gerenteOnly && !isGerenteSala) return false;
   if (item.feature && !canFeature(item.feature)) return false;
   return true;
 }

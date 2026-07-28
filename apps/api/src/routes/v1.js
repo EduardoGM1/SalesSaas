@@ -20,6 +20,8 @@ import * as messagesService from "../services/messages-service.js";
 import * as sharingService from "../services/sharing-service.js";
 import * as pushService from "../services/push-notifications-service.js";
 import * as supportService from "../services/support-service.js";
+import * as workspaceService from "../services/workspace-service.js";
+import * as workspaceOps from "../services/workspace-ops-service.js";
 import { ServiceError } from "../lib/service-error.js";
 
 const router = Router();
@@ -103,6 +105,38 @@ router.post("/auth/workspace", async (req, res) => {
   if (!body) return;
   const workspaceId = body.workspace_id ?? body.workspaceId;
   await runService(res, () => sessionService.switchWorkspace(a.supabase, a.userId, workspaceId));
+});
+
+router.get("/workspace/team", async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  await runService(res, () => workspaceService.listTeamMembers(a.supabase, a.userId), { wrap: "data" });
+});
+
+router.get("/workspace/team/prospects", async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  const memberId = typeof req.query.member_id === "string" ? req.query.member_id : null;
+  const { limit, offset } = parseLimitOffset(req.query);
+  await runService(
+    res,
+    () => workspaceService.listTeamProspects(a.supabase, a.userId, { memberId, limit, offset }),
+    { wrap: "data" },
+  );
+});
+
+router.post("/workspace/invite", async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  const body = parseJsonBody(req, res);
+  if (!body) return;
+  await runService(res, () => workspaceOps.inviteAndNotify(a.supabase, a.userId, body), { wrap: "data", successStatus: 201 });
+});
+
+router.post("/workspace/leave", async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  await runService(res, () => workspaceService.leaveActiveSala(a.supabase, a.userId), { wrap: "data" });
 });
 
 router.get("/auth/realtime-session", async (req, res) => {
@@ -665,6 +699,26 @@ router.post("/shares/:id/add-to-workspace", async (req, res) => {
   const a = await requireAuth(req, res);
   if (!a) return;
   await runService(res, () => sharingService.addShareToWorkspace(a.supabase, a.userId, req.params.id), { wrap: "data" });
+});
+
+router.get("/prospects/:id/transfer-targets", async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  await runService(
+    res,
+    () => workspaceOps.listTransferTargets(a.supabase, a.userId, req.params.id),
+    { wrap: "data" },
+  );
+});
+
+router.get("/prospects/:id/share-contacts", async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  await runService(
+    res,
+    () => workspaceOps.listShareableContactsForProspect(a.supabase, a.userId, req.params.id),
+    { wrap: "data" },
+  );
 });
 
 router.post("/prospects/:id/duplicate", async (req, res) => {

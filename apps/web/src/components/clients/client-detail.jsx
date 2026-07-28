@@ -6,6 +6,7 @@ import { SalesModal } from "@/components/ui/sales-modal";
 import { ClientRecordModal } from "@/components/clients/client-record-modal.jsx";
 import { CollapsibleSection } from "@/components/ui/collapsible-section.jsx";
 import { ShareProspectModal } from "@/components/network/share-prospect-modal.jsx";
+import { MoveProspectModal } from "@/components/clients/move-prospect-modal.jsx";
 import { PremiumFeatureCard } from "@/components/premium/premium-feature-card.jsx";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { sharingApi } from "@/lib/network-api.js";
@@ -65,6 +66,7 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
   };
 
   const [shareOpen, setShareOpen] = useState(false);
+  const [moveMode, setMoveMode] = useState(null);
   const [recordModal, setRecordModal] = useState(null);
   const [noteOpen, setNoteOpen] = useState(false);
   const [form, setForm] = useState({});
@@ -354,7 +356,11 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
             <div className="exp-page-actions">
               <button type="button" className="btn btn-primary btn-sm" onClick={() => openSaleModal()}>{t("exp.registerSale")}</button>
               {isSupabaseConfigured() && (
-                <button type="button" className="btn btn-ghost btn-sm" onClick={() => setShareOpen(true)}>{t("network.shareAction")}</button>
+                <>
+                  <button type="button" className="btn btn-ghost btn-sm" onClick={() => setShareOpen(true)}>{t("network.shareAction")}</button>
+                  <button type="button" className="btn btn-ghost btn-sm" onClick={() => setMoveMode("duplicate")}>{t("exp.duplicate")}</button>
+                  <button type="button" className="btn btn-ghost btn-sm" onClick={() => setMoveMode("transfer")}>{t("exp.transfer")}</button>
+                </>
               )}
               <button type="button" className="btn btn-danger btn-sm" onClick={async () => {
                 if (await removeClient(id, clientDisplayName(c))) navigate("/clients");
@@ -572,6 +578,15 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
           prospectId={id}
           prospectName={clientDisplayName(c)}
           prospect={c}
+        />
+      )}
+
+      {isOwner && moveMode && (
+        <MoveProspectModal
+          open={!!moveMode}
+          onOpenChange={(next) => { if (!next) setMoveMode(null); }}
+          prospectId={id}
+          mode={moveMode}
         />
       )}
 

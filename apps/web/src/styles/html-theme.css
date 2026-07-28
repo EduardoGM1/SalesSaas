@@ -5,6 +5,7 @@ body{font-family:var(--font-sans,'Inter',sans-serif);background:var(--bg);color:
 :root{
   --navy:#0f2044;--navy2:#162a54;--navy3:#1e3565;
   --blue:#2563eb;--blue-lt:#3b82f6;--blue-xlt:#93c5fd;--blue-glow:rgba(37,99,235,0.18);
+  --ws-brand-primary:var(--blue);--ws-brand-accent:var(--navy);
   --white:#ffffff;--bg:#f0f4f8;--bg2:#e8eef6;--surface:#ffffff;--surface2:#f8fafc;
   --border:#dde3ed;--border2:#c8d2e4;
   --text:#1a2540;--text2:#374766;--muted:#6b7ea8;--muted2:#a0aec0;

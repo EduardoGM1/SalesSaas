@@ -429,6 +429,12 @@ router.patch("/salas/:id", async (req, res) => {
   await runService(res, () => workspaceService.updateSala(a.profile, req.params.id, body), { wrap: "data" });
 });
 
+router.get("/salas/:id/members", async (req, res) => {
+  const a = await requireSuperAdminApi(req, res);
+  if (!a) return;
+  await runService(res, () => workspaceService.listSalaMembersDetailed(a.profile, req.params.id), { wrap: "data" });
+});
+
 router.post("/salas/:id/members", async (req, res) => {
   const a = await requireSuperAdminApi(req, res);
   if (!a) return;
@@ -437,10 +443,35 @@ router.post("/salas/:id/members", async (req, res) => {
   await runService(res, () => workspaceService.addSalaMember(a.profile, req.params.id, body), { wrap: "data", successStatus: 201 });
 });
 
+router.post("/salas/:id/gerente", async (req, res) => {
+  const a = await requireSuperAdminApi(req, res);
+  if (!a) return;
+  const body = parseJsonBody(req, res);
+  if (!body) return;
+  const usuarioId = body.usuario_id || body.user_id;
+  await runService(res, () => workspaceService.setSalaGerente(a.profile, req.params.id, usuarioId), { wrap: "data" });
+});
+
 router.delete("/salas/:id/members/:userId", async (req, res) => {
   const a = await requireSuperAdminApi(req, res);
   if (!a) return;
   await runService(res, () => workspaceService.removeSalaMember(a.profile, req.params.id, req.params.userId), { wrap: "data" });
+});
+
+router.post("/branding/logo", async (req, res) => {
+  const a = await requireSuperAdminApi(req, res);
+  if (!a) return;
+  const body = parseJsonBody(req, res);
+  if (!body) return;
+  await runService(
+    res,
+    () => workspaceService.uploadWorkspaceLogo(a.profile, {
+      tipo: body.tipo,
+      id: body.id,
+      dataUrl: body.data_url || body.dataUrl,
+    }),
+    { wrap: "data" },
+  );
 });
 
 router.get("/support/requests", async (req, res) => {
