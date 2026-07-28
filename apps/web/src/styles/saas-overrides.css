@@ -2931,7 +2931,6 @@ button.tool-card {
 .ws-switch-card span { display: block; }
 .ws-switch-card strong { font-size: 13px; }
 .ws-switch-card span { margin-top: 2px; color: var(--muted); font-size: 11px; }
-.ws-mobile-workspace-dock { display: none; }
 .app .btn-primary {
   background: var(--ws-brand-primary, var(--blue, #2563eb));
   border-color: var(--ws-brand-primary, var(--blue, #2563eb));
@@ -5548,69 +5547,6 @@ body,
     align-items: stretch;
   }
 
-  .ws-mobile-workspace-dock {
-    position: fixed;
-    z-index: 230;
-    left: max(10px, var(--safe-left));
-    bottom: calc(72px + var(--safe-bottom));
-    display: block;
-    max-width: min(210px, calc(100vw - 20px));
-  }
-
-  .ws-mobile-workspace-dock .ws-rail {
-    padding: 0;
-    border: 0;
-  }
-
-  .ws-rail--mobile .ws-rail-trigger {
-    width: min(196px, calc(100vw - 20px));
-    height: 46px;
-    gap: 9px;
-    padding: 5px 9px 5px 5px;
-    border-color: var(--border);
-    background: color-mix(in srgb, var(--surface) 94%, var(--ws-brand-primary) 6%);
-    color: var(--text);
-    box-shadow: 0 8px 24px rgba(15, 32, 68, .16);
-  }
-
-  .ws-rail--mobile .ws-rail-trigger-avatar {
-    width: 34px;
-    height: 34px;
-  }
-
-  .ws-rail--mobile .ws-rail-trigger-copy {
-    display: flex;
-    flex: 1;
-    flex-direction: column;
-    min-width: 0;
-    text-align: left;
-  }
-
-  .ws-rail--mobile .ws-rail-trigger-copy strong,
-  .ws-rail--mobile .ws-rail-trigger-copy span {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .ws-rail--mobile .ws-rail-trigger-copy strong {
-    color: var(--text);
-    font-size: 12px;
-    line-height: 1.25;
-  }
-
-  .ws-rail--mobile .ws-rail-trigger-copy span {
-    margin-top: 2px;
-    color: var(--muted);
-    font-size: 9px;
-  }
-
-  .ws-rail--mobile .ws-rail-trigger-chevron {
-    display: block;
-    flex: 0 0 auto;
-    color: var(--muted);
-  }
-
   .topbar-mobile-main {
     padding: 8px 10px 8px 12px;
     gap: 8px;
@@ -5653,8 +5589,33 @@ body,
   }
 
   .mobile-top-avatar {
+    position: relative;
     display: flex;
     flex-shrink: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+  }
+
+  .mobile-top-avatar:disabled {
+    cursor: default;
+    opacity: 0.75;
+  }
+
+  .mobile-top-avatar-caret {
+    position: absolute;
+    right: -4px;
+    bottom: -4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    border: 1.5px solid var(--surface, #fff);
+    background: var(--surface-2, #eef2f9);
+    color: var(--muted, #64748b);
   }
 
   /* Hide the desktop-positioned logo on mobile to avoid duplicate visuals */

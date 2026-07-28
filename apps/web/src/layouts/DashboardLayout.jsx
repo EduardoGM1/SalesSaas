@@ -9,7 +9,6 @@ import { AutoPushCoordinator } from "@/components/notifications/auto-push-coordi
 import { InAppNotificationsCoordinator } from "@/components/notifications/in-app-notifications-coordinator.jsx";
 import { SidebarClient } from "@/components/layout/sidebar-client.jsx";
 import { BottomNav } from "@/components/layout/bottom-nav.jsx";
-import { WorkspaceRail } from "@/components/layout/workspace-rail.jsx";
 import { useWorkspace } from "@/hooks/use-workspace.js";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { LoaderCircle } from "lucide-react";
@@ -42,9 +41,6 @@ export function DashboardLayout() {
           <OneSignalProvider>
             <div className="app">
               <SidebarClient />
-              <div className="ws-mobile-workspace-dock">
-                <WorkspaceRail mobile />
-              </div>
               <div className="main">
                 <main><Outlet /></main>
               </div>

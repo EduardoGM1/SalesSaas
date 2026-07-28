@@ -51,15 +51,13 @@ async function performLeaveSala(t) {
 }
 
 /**
- * Único selector de workspace. En desktop vive en el rail lateral; en móvil,
- * la misma implementación se presenta como dock lateral compacto.
+ * Hoja modal para cambiar de workspace o abandonar la sala activa.
+ * Reutilizada por el rail de desktop y por el avatar del header móvil.
  */
-export function WorkspaceRail({ mobile = false, className }) {
+export function WorkspaceSheet({ open, onClose }) {
   const { t } = useI18n();
   const { ready, workspaces, active, activeId, switchWorkspace, switching } = useWorkspace();
-  const [open, setOpen] = useState(false);
   const [leaving, setLeaving] = useState(false);
-  const triggerRef = useRef(null);
   const firstOptionRef = useRef(null);
   const titleId = useId();
   const options = useMemo(
@@ -73,9 +71,7 @@ export function WorkspaceRail({ mobile = false, className }) {
     document.body.style.overflow = "hidden";
     const timer = window.setTimeout(() => firstOptionRef.current?.focus(), 0);
     const onKeyDown = (event) => {
-      if (event.key !== "Escape") return;
-      setOpen(false);
-      triggerRef.current?.focus();
+      if (event.key === "Escape") onClose();
     };
     window.addEventListener("keydown", onKeyDown);
     return () => {
@@ -83,22 +79,16 @@ export function WorkspaceRail({ mobile = false, className }) {
       window.removeEventListener("keydown", onKeyDown);
       document.body.style.overflow = previousOverflow;
     };
-  }, [open]);
+  }, [open, onClose]);
 
-  if (!ready || !active) return null;
+  if (!open || !ready || !active) return null;
 
   const activeName = workspaceLabel(active, t);
   const activeType = workspaceType(active, t);
-  const canOpen = options.length > 0 || active.tipo === "sala_de_venta";
-
-  const closeMenu = () => {
-    setOpen(false);
-    window.setTimeout(() => triggerRef.current?.focus(), 0);
-  };
 
   const onPick = async (workspace) => {
     if (switching || workspace.id === activeId) return;
-    setOpen(false);
+    onClose();
     try {
       await switchWorkspace(workspace.id);
       toast.success(t("workspace.switchComplete", { name: workspaceLabel(workspace, t) }));
@@ -113,7 +103,7 @@ export function WorkspaceRail({ mobile = false, className }) {
     setLeaving(true);
     try {
       await performLeaveSala(t);
-      setOpen(false);
+      onClose();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : t("workspace.leave"));
     } finally {
@@ -122,7 +112,101 @@ export function WorkspaceRail({ mobile = false, className }) {
   };
 
   return (
-    <div className={cn("ws-rail", mobile && "ws-rail--mobile", className)}>
+    <div className="ws-sheet-root" role="presentation">
+      <button type="button" className="ws-sheet-backdrop" aria-label={t("common.cancel")} onClick={onClose} />
+      <section className="ws-sheet" role="dialog" aria-modal="true" aria-labelledby={titleId}>
+        <div className="ws-sheet-handle" aria-hidden />
+        <header className="ws-sheet-active">
+          <span className="ws-switcher-avatar" aria-hidden>
+            <WorkspaceBrandMark
+              src={active.logo_url}
+              name={activeName}
+              imgClassName="ws-switcher-avatar-img"
+              initialsClassName="ws-switcher-avatar-initials"
+            />
+          </span>
+          <div>
+            <span className="ws-sheet-kicker">{t("workspace.active")}</span>
+            <h2 id={titleId} className="ws-sheet-title">{activeName}</h2>
+            <p className="ws-sheet-sub">{activeType}{active.empresa_nombre ? ` · ${active.empresa_nombre}` : ""}</p>
+          </div>
+        </header>
+
+        {options.length ? (
+          <div className="ws-sheet-options">
+            <span className="ws-sheet-options-label">{t("workspace.available")}</span>
+            <ul className="ws-sheet-list">
+              {options.map((workspace, index) => {
+                const name = workspaceLabel(workspace, t);
+                return (
+                  <li key={workspace.id}>
+                    <button
+                      ref={index === 0 ? firstOptionRef : undefined}
+                      type="button"
+                      className="ws-sheet-item"
+                      disabled={switching}
+                      onClick={() => void onPick(workspace)}
+                    >
+                      <span className="ws-switcher-avatar" aria-hidden>
+                        <WorkspaceBrandMark
+                          src={workspace.logo_url}
+                          name={name}
+                          imgClassName="ws-switcher-avatar-img"
+                          initialsClassName="ws-switcher-avatar-initials"
+                        />
+                      </span>
+                      <span className="ws-sheet-item-copy">
+                        <span className="ws-sheet-item-name">{name}</span>
+                        <span className="ws-sheet-item-meta">
+                          {workspaceType(workspace, t)}
+                          {workspace.empresa_nombre ? ` · ${workspace.empresa_nombre}` : ""}
+                        </span>
+                      </span>
+                      <ChevronDown size={14} className="ws-sheet-item-arrow" aria-hidden />
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        ) : null}
+
+        {active.tipo === "sala_de_venta" ? (
+          <button type="button" className="ws-sheet-leave" disabled={leaving || switching} onClick={() => void onLeave()}>
+            <LogOut size={16} aria-hidden />
+            {leaving ? t("workspace.leavePending") : t("workspace.leave")}
+          </button>
+        ) : null}
+        <button type="button" className="btn btn-ghost ws-sheet-close" onClick={onClose}>{t("common.cancel")}</button>
+      </section>
+    </div>
+  );
+}
+
+/** Selector de workspace del sidebar (desktop). */
+export function WorkspaceRail({ className }) {
+  const { t } = useI18n();
+  const { ready, workspaces, active, activeId, switching } = useWorkspace();
+  const [open, setOpen] = useState(false);
+  const triggerRef = useRef(null);
+  const options = useMemo(
+    () => workspaces.filter((workspace) => workspace.id !== activeId),
+    [activeId, workspaces],
+  );
+
+  if (!ready || !active) return null;
+
+  const activeName = workspaceLabel(active, t);
+  const activeType = workspaceType(active, t);
+  const canOpen = options.length > 0 || active.tipo === "sala_de_venta";
+
+  const closeMenu = () => {
+    setOpen(false);
+    window.setTimeout(() => triggerRef.current?.focus(), 0);
+  };
+
+  return (
+    <div className={cn("ws-rail", className)}>
       <button
         ref={triggerRef}
         type="button"
@@ -153,76 +237,7 @@ export function WorkspaceRail({ mobile = false, className }) {
         {canOpen ? <ChevronDown size={13} className="ws-rail-trigger-chevron" aria-hidden /> : null}
       </button>
 
-      {open ? (
-        <div className="ws-sheet-root" role="presentation">
-          <button type="button" className="ws-sheet-backdrop" aria-label={t("common.cancel")} onClick={closeMenu} />
-          <section className="ws-sheet" role="dialog" aria-modal="true" aria-labelledby={titleId}>
-            <div className="ws-sheet-handle" aria-hidden />
-            <header className="ws-sheet-active">
-              <span className="ws-switcher-avatar" aria-hidden>
-                <WorkspaceBrandMark
-                  src={active.logo_url}
-                  name={activeName}
-                  imgClassName="ws-switcher-avatar-img"
-                  initialsClassName="ws-switcher-avatar-initials"
-                />
-              </span>
-              <div>
-                <span className="ws-sheet-kicker">{t("workspace.active")}</span>
-                <h2 id={titleId} className="ws-sheet-title">{activeName}</h2>
-                <p className="ws-sheet-sub">{activeType}{active.empresa_nombre ? ` · ${active.empresa_nombre}` : ""}</p>
-              </div>
-            </header>
-
-            {options.length ? (
-              <div className="ws-sheet-options">
-                <span className="ws-sheet-options-label">{t("workspace.available")}</span>
-                <ul className="ws-sheet-list">
-                  {options.map((workspace, index) => {
-                    const name = workspaceLabel(workspace, t);
-                    return (
-                      <li key={workspace.id}>
-                        <button
-                          ref={index === 0 ? firstOptionRef : undefined}
-                          type="button"
-                          className="ws-sheet-item"
-                          disabled={switching}
-                          onClick={() => void onPick(workspace)}
-                        >
-                          <span className="ws-switcher-avatar" aria-hidden>
-                            <WorkspaceBrandMark
-                              src={workspace.logo_url}
-                              name={name}
-                              imgClassName="ws-switcher-avatar-img"
-                              initialsClassName="ws-switcher-avatar-initials"
-                            />
-                          </span>
-                          <span className="ws-sheet-item-copy">
-                            <span className="ws-sheet-item-name">{name}</span>
-                            <span className="ws-sheet-item-meta">
-                              {workspaceType(workspace, t)}
-                              {workspace.empresa_nombre ? ` · ${workspace.empresa_nombre}` : ""}
-                            </span>
-                          </span>
-                          <ChevronDown size={14} className="ws-sheet-item-arrow" aria-hidden />
-                        </button>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </div>
-            ) : null}
-
-            {active.tipo === "sala_de_venta" ? (
-              <button type="button" className="ws-sheet-leave" disabled={leaving || switching} onClick={() => void onLeave()}>
-                <LogOut size={16} aria-hidden />
-                {leaving ? t("workspace.leavePending") : t("workspace.leave")}
-              </button>
-            ) : null}
-            <button type="button" className="btn btn-ghost ws-sheet-close" onClick={closeMenu}>{t("common.cancel")}</button>
-          </section>
-        </div>
-      ) : null}
+      <WorkspaceSheet open={open} onClose={closeMenu} />
     </div>
   );
 }
