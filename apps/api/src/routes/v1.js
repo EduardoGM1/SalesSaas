@@ -22,6 +22,7 @@ import * as pushService from "../services/push-notifications-service.js";
 import * as supportService from "../services/support-service.js";
 import * as workspaceService from "../services/workspace-service.js";
 import * as workspaceOps from "../services/workspace-ops-service.js";
+import * as workflowService from "../services/workflow-service.js";
 import { ServiceError } from "../lib/service-error.js";
 
 const router = Router();
@@ -246,6 +247,89 @@ router.delete("/prospects/:id", async (req, res) => {
   const a = await requireAuth(req, res);
   if (!a) return;
   await runService(res, () => prospectsService.deleteProspect(a.supabase, a.userId, req.params.id), { wrap: "ok" });
+});
+
+router.get("/workflow/inbox", async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  await runService(
+    res,
+    () => workflowService.listWorkflowInbox(a.supabase, a.userId),
+    { wrap: "data" },
+  );
+});
+
+router.get("/prospects/:id/workflow", async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  await runService(
+    res,
+    () => workflowService.getWorkflow(a.supabase, a.userId, req.params.id),
+    { wrap: "data" },
+  );
+});
+
+router.get("/prospects/:id/workflow/timeline", async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  await runService(
+    res,
+    () => workflowService.listWorkflowTimeline(a.supabase, a.userId, req.params.id),
+    { wrap: "data" },
+  );
+});
+
+router.post("/prospects/:id/workflow/advance", async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  const body = parseJsonBody(req, res);
+  if (!body) return;
+  await runService(
+    res,
+    () => workflowService.advanceWorkflow(a.supabase, a.userId, req.params.id, body),
+    { wrap: "data" },
+  );
+});
+
+router.post("/prospects/:id/workflow/send-review", async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  const body = parseJsonBody(req, res);
+  if (!body) return;
+  await runService(
+    res,
+    () => workflowService.sendToManager(a.supabase, a.userId, req.params.id, body),
+    { wrap: "data" },
+  );
+});
+
+router.post("/prospects/:id/workflow/review", async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  const body = parseJsonBody(req, res);
+  if (!body) return;
+  await runService(
+    res,
+    () => workflowService.reviewWorkflow(a.supabase, a.userId, req.params.id, body),
+    { wrap: "data" },
+  );
+});
+
+router.post("/prospects/:id/workflow/assign-closer", async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  const body = parseJsonBody(req, res);
+  if (!body) return;
+  await runService(
+    res,
+    () => workflowService.assignCloser(
+      a.supabase,
+      a.userId,
+      req.params.id,
+      body.cerrador_id ?? body.closer_id,
+    ),
+    { wrap: "data" },
+  );
 });
 
 router.get("/sales", async (req, res) => {
