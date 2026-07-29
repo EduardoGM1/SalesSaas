@@ -9,7 +9,7 @@ import { fileURLToPath } from "url";
 
 const __dir = dirname(fileURLToPath(import.meta.url));
 const PROJECT = "sales-app";
-const WEB_ORIGIN = "https://sales-app-nine-gamma.vercel.app";
+const WEB_ORIGIN = "https://saletse.vercel.app";
 
 const KEYS = [
   "SUPABASE_URL",

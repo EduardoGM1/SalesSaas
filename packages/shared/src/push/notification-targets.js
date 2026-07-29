@@ -7,6 +7,8 @@ export const PushType = {
   PROSPECT_SECTION_CHANGED: "prospect_section_changed",
   /** Cerrador asignado o reasignado al expediente. */
   CLOSER_ASSIGNED: "closer_assigned",
+  /** Expediente transferido de personal a sala de ventas. */
+  PROSPECT_TRANSFERRED: "prospect_transferred",
   FOLLOW_UP_REMINDER: "follow_up_reminder",
   SALES_TO_PROCESS: "sales_to_process",
   SCHEDULED_NOTE: "scheduled_note",
@@ -107,6 +109,7 @@ export function resolvePushPathFromPayload(payload = {}) {
     case PushType.PROSPECT_SECTION_CHANGED:
     case PushType.SHARED_PROSPECT:
     case PushType.CLOSER_ASSIGNED:
+    case PushType.PROSPECT_TRANSFERRED:
       return typeof payload.path === "string" ? payload.path : null;
     default:
       return null;

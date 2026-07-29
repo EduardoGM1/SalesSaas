@@ -3,7 +3,7 @@ import { isUuid } from "@salesapp/shared/data/mappers.js";
 import { bodyToProspectPatch } from "@salesapp/shared/api/validators.js";
 import { ServiceError, assertFound } from "../lib/service-error.js";
 import { createServiceSupabaseClient } from "../lib/supabase-server.js";
-import { notifyProspectShared, notifyProspectSectionChanged } from "./push-notifications-service.js";
+import { notifyProspectShared, notifyProspectSectionChanged, notifyProspectTransferred } from "./push-notifications-service.js";
 import { MESSAGE_TYPES, sendStructuredMessage } from "./messages-service.js";
 
 import { profileDisplayName } from "../lib/profile-display-name.js";
@@ -721,6 +721,21 @@ async function transferPersonalToSala(userId, prospectId, targetWorkspaceId) {
   });
   if (error) throw new ServiceError(error.message, 400);
   await admin.rpc("sync_prospect_chat_members", { p_prospect_id: prospectId }).catch(() => {});
+
+  const [{ data: workflow }, { data: sala }, { data: actor }] = await Promise.all([
+    admin.from("prospect_workflows").select("gerente_id").eq("prospect_id", prospectId).maybeSingle(),
+    admin.from("workspaces").select("nombre").eq("id", targetWorkspaceId).maybeSingle(),
+    admin.from("profiles").select("full_name, email").eq("id", userId).maybeSingle(),
+  ]);
+  await notifyProspectTransferred({
+    actorId: userId,
+    actorName: profileDisplayName(actor),
+    prospectId,
+    prospectName: prospectDisplayName(data),
+    gerenteId: workflow?.gerente_id,
+    salaNombre: sala?.nombre,
+  }).catch(() => {});
+
   return data;
 }
 

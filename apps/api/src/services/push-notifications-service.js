@@ -410,6 +410,39 @@ export async function notifyCloserAssigned({
   }
 }
 
+/** Notifica al gerente de la sala cuando un vendedor transfiere un expediente personal. */
+export async function notifyProspectTransferred({
+  actorId,
+  actorName,
+  prospectId,
+  prospectName,
+  gerenteId,
+  salaNombre,
+}) {
+  const serviceSb = createServiceSupabaseClient();
+  if (!serviceSb || !isPushConfigured()) return;
+  if (!prospectId || !gerenteId) return;
+
+  const origin = primaryWebOrigin();
+  const path = clientProspectPath(prospectId);
+  const name = prospectName || "Expediente";
+  const sala = salaNombre || "la sala";
+
+  if (gerenteId !== actorId) {
+    const prefs = await loadNotificationPrefs(serviceSb, gerenteId);
+    if (prefs.shared_prospects) {
+      await sendToUser(serviceSb, gerenteId, {
+        title: "Expediente transferido",
+        body: `${actorName || "Un vendedor"} transfirió ${name} a ${sala}`,
+        url: pushUrl(origin, path),
+        path,
+        type: PushType.PROSPECT_TRANSFERRED,
+        tag: `prospect-transferred-${gerenteId}-${prospectId}`,
+      });
+    }
+  }
+}
+
 export async function notifyConnectionAccepted(requesterId, { peerId, peerName }) {
   const serviceSb = createServiceSupabaseClient();
   if (!serviceSb || !isPushConfigured()) return;

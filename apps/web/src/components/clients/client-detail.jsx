@@ -83,14 +83,17 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
   const [shareMeta, setShareMeta] = useState({ shareId: null, addedAt: null, canPin: false });
   const [pinBusy, setPinBusy] = useState(false);
   const [remoteLoading, setRemoteLoading] = useState(sharedRemote);
+  const [salaCapabilities, setSalaCapabilities] = useState(null);
 
   const c = sharedRemote ? remoteClient : localC;
   const perm = sharedRemote ? sharePerm : "owner";
-  const canEdit = canEditShared(perm);
-  const canComment = canCommentShared(perm);
-  const isOwner = perm === "owner";
-  const canTransfer = isOwner && isPersonalWorkspace && isSupabaseConfigured();
-  const canDeleteExpediente = isOwner && (isPersonalWorkspace || isGerenteSala);
+  const isRecordOwner = sharedRemote ? perm === "owner" : isPersonalWorkspace;
+  const canEdit = sharedRemote
+    ? canEditShared(sharePerm)
+    : (isPersonalWorkspace || salaCapabilities?.can_edit === true);
+  const canComment = sharedRemote ? canCommentShared(sharePerm) : canEdit;
+  const canTransfer = isRecordOwner && isPersonalWorkspace && isSupabaseConfigured();
+  const canDeleteExpediente = (isRecordOwner && isPersonalWorkspace) || (isGerenteSala && !sharedRemote);
   const showAddToWorkspace = sharedRemote
     && canAddToWorkspace(perm)
     && shareMeta.canPin
@@ -307,7 +310,7 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
     }
     el.scrollIntoView({ behavior: "smooth", block: "start" });
   };
-  const saleCard = isOwner
+  const saleCard = canEdit
     ? { label: t("exp.card.sale"), desc: t("exp.card.saleDesc"), icon: DollarSign, tone: "green", onClick: () => openSaleModal() }
     : sharedRemote
       ? { label: t("exp.card.sale"), desc: t("exp.card.saleDesc"), icon: DollarSign, tone: "green", onClick: () => scrollToSection("#client-sales-card") }
@@ -360,10 +363,12 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
             )}
             <ExpedientePresenceBar peers={collab.peers} />
           </div>
-          {isOwner && (
+          {(canEdit || isRecordOwner) && (
             <div className="exp-page-actions">
-              <button type="button" className="btn btn-primary btn-sm" onClick={() => openSaleModal()}>{t("exp.registerSale")}</button>
-              {isSupabaseConfigured() && (
+              {canEdit ? (
+                <button type="button" className="btn btn-primary btn-sm" onClick={() => openSaleModal()}>{t("exp.registerSale")}</button>
+              ) : null}
+              {isRecordOwner && isSupabaseConfigured() && (
                 <>
                   <button type="button" className="btn btn-ghost btn-sm" onClick={() => setShareOpen(true)}>{t("network.shareAction")}</button>
                   <button type="button" className="btn btn-ghost btn-sm" onClick={() => setMoveMode("duplicate")}>{t("exp.duplicate")}</button>
@@ -400,6 +405,7 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
         <ProspectParticipantsPanel
           prospectId={id}
           enabled={!sharedRemote && isSupabaseConfigured()}
+          onCapabilities={setSalaCapabilities}
         />
 
         <ProspectFilesPanel
@@ -545,7 +551,7 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
                     <div className="activity-date">
                       {longDate(sale.date, lang)}
                       <br />
-                      {isOwner && (
+                      {canEdit && (
                         <button type="button" className="dg-link" onClick={() => openSaleModal(sale)}>{t("exp.sales.open")}</button>
                       )}
                     </div>
@@ -594,7 +600,7 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
         onCancel={closeRecordModal}
       />
 
-      {isOwner && (
+      {isRecordOwner && (
         <ShareProspectModal
           open={shareOpen}
           onOpenChange={setShareOpen}
@@ -604,7 +610,7 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
         />
       )}
 
-      {isOwner && moveMode && (
+      {isRecordOwner && moveMode && (
         <MoveProspectModal
           open={!!moveMode}
           onOpenChange={(next) => { if (!next) setMoveMode(null); }}

@@ -21,7 +21,7 @@ export const NAV_GROUPS = [
     // Solo sidebar: gestión de sala (invitar / ver expedientes). No va al header.
     {
       href: "/team",
-      label: "Equipo",
+      label: "Mi equipo",
       icon: UsersRound,
       gerenteOnly: true,
       keepInSidebar: true,

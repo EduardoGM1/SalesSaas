@@ -5,6 +5,7 @@
 import { ServiceError } from "../lib/service-error.js";
 import { createServiceSupabaseClient } from "../lib/supabase-server.js";
 import { getRequestWorkspaceId } from "../lib/workspace-scope.js";
+import { canEditProspectRecord } from "../lib/prospect-edit-access.js";
 import { notifyCloserAssigned } from "./push-notifications-service.js";
 
 function adminClient() {
@@ -150,6 +151,12 @@ export async function getParticipants(_supabase, actorId, prospectId) {
       empresa_nombre: access.prospect.workspaces?.empresas?.nombre ?? null,
     },
     capabilities: {
+      can_edit: canEditProspectRecord({
+        actorId,
+        prospect: access.prospect,
+        workflow: state,
+        permissions: access.permissions,
+      }),
       can_assign_closer: access.isManager && !state.cerrador_id && state.estado !== "cancelado",
       can_reassign_closer: access.isManager && Boolean(state.cerrador_id) && state.estado !== "cancelado",
     },

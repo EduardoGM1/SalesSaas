@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { BadgeCheck, Clock3, MessageSquare, Store, UserRound, UserRoundCheck } from "lucide-react";
+import { BadgeCheck, Clock3, MessageSquare, UserRound, UserRoundCheck } from "lucide-react";
 import { AdminStatusBadge } from "@/components/admin/admin-ui.jsx";
 import { BuscadorUsuario } from "@/components/admin/buscador-usuario.jsx";
 import { participantsApi } from "@/lib/participants-api.js";
@@ -23,7 +23,7 @@ function personName(profile, fallback) {
  * Participantes del expediente (sin pipeline).
  * Sala, Gerente, Vendedor y Cerrador colaboran sobre el mismo registro.
  */
-export function ProspectParticipantsPanel({ prospectId, enabled = true }) {
+export function ProspectParticipantsPanel({ prospectId, enabled = true, onCapabilities }) {
   const navigate = useNavigate();
   const [payload, setPayload] = useState(null);
   const [selectedCloser, setSelectedCloser] = useState(null);
@@ -36,6 +36,7 @@ export function ProspectParticipantsPanel({ prospectId, enabled = true }) {
     try {
       const data = await participantsApi.get(prospectId);
       setPayload(data);
+      onCapabilities?.(data?.capabilities ?? null);
       setHidden(false);
       setError("");
       if (data?.capabilities?.can_assign_closer || data?.capabilities?.can_reassign_closer) {
@@ -57,7 +58,7 @@ export function ProspectParticipantsPanel({ prospectId, enabled = true }) {
       ) setHidden(true);
       else setError(loadError instanceof Error ? loadError.message : "No fue posible cargar participantes.");
     }
-  }, [enabled, prospectId]);
+  }, [enabled, prospectId, onCapabilities]);
 
   useEffect(() => {
     void load();
@@ -87,13 +88,6 @@ export function ProspectParticipantsPanel({ prospectId, enabled = true }) {
   const participantes = state
     ? [
       {
-        key: "sala",
-        icon: <Store size={15} aria-hidden />,
-        label: "Sala",
-        value: context.sala_nombre || "—",
-        detail: context.empresa_nombre || null,
-      },
-      {
         key: "gerente",
         icon: <BadgeCheck size={15} aria-hidden />,
         label: "Gerente",
@@ -120,7 +114,10 @@ export function ProspectParticipantsPanel({ prospectId, enabled = true }) {
         <div>
           <span className="section-label">Colaboración</span>
           <h2 id="participants-title">Participantes</h2>
-          <p>Las 3 partes trabajan sobre el mismo expediente, sin traspasos.</p>
+          <p>
+            Las 3 partes trabajan sobre el mismo expediente, sin traspasos.
+            {context.sala_nombre ? ` Sala: ${context.sala_nombre}${context.empresa_nombre ? ` · ${context.empresa_nombre}` : ""}.` : null}
+          </p>
         </div>
         {state ? (
           <AdminStatusBadge tone={state.estado === "completado" ? "success" : "neutral"}>

@@ -6,6 +6,7 @@ import {
   requireWorkspacePermission,
   scopeByWorkspace,
 } from "../lib/workspace-scope.js";
+import { canEditProspectRecord } from "../lib/prospect-edit-access.js";
 
 export async function listProspects(supabase, userId, { limit, offset, status }) {
   const ctx = await getRequestWorkspaceContext(supabase, userId);
@@ -99,10 +100,32 @@ export async function updateProspect(supabase, userId, id, body) {
   if (!isUuid(id)) throw new ServiceError("ID inválido.");
   const patch = bodyToProspectPatch(body);
   if (!Object.keys(patch).length) throw new ServiceError("Sin campos para actualizar.");
-  const workspaceId = await requireWorkspacePermission(supabase, userId, "expedientes:editar");
-  let q = supabase.from("prospects").update(patch).eq("id", id).eq("user_id", userId);
-  q = scopeByWorkspace(q, workspaceId);
-  const { data, error } = await q.select().maybeSingle();
+  const ctx = await getRequestWorkspaceContext(supabase, userId);
+  let q = supabase.from("prospects").select("id, user_id, workspace_id").eq("id", id);
+  q = scopeByWorkspace(q, ctx.workspaceId);
+  const { data: prospect, error: loadErr } = await q.maybeSingle();
+  if (loadErr) throw new ServiceError(loadErr.message, 500);
+  if (!prospect) throw new ServiceError("Expediente no encontrado.", 404);
+
+  const { data: permissionKeys } = await supabase.rpc("effective_workspace_permissions", {
+    p_usuario_id: userId,
+    p_workspace_id: ctx.workspaceId,
+  });
+  const permissions = new Set(Array.isArray(permissionKeys) ? permissionKeys : []);
+
+  const { data: workflow } = await supabase
+    .from("prospect_workflows")
+    .select("representante_id, cerrador_id")
+    .eq("prospect_id", id)
+    .maybeSingle();
+
+  if (!canEditProspectRecord({ actorId: userId, prospect, workflow, permissions })) {
+    throw new ServiceError("No tienes permiso para editar este expediente.", 403);
+  }
+
+  let updateQ = supabase.from("prospects").update(patch).eq("id", id);
+  updateQ = scopeByWorkspace(updateQ, ctx.workspaceId);
+  const { data, error } = await updateQ.select().maybeSingle();
   if (error) throw new ServiceError(error.message, 400);
   return assertFound(data, "Expediente no encontrado.");
 }
