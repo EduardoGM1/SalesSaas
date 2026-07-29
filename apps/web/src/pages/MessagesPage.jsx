@@ -1,11 +1,11 @@
-
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Navigate, useNavigate, useSearchParams, useLocation } from "react-router-dom";
-import { Check, CheckCheck, Send } from "lucide-react";
+import { Check, CheckCheck, FolderOpen, Send } from "lucide-react";
 import { Topbar } from "@/components/layout/topbar";
 import { PageBack } from "@/components/layout/page-back";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { messagesApi, networkApi } from "@/lib/network-api.js";
+import { chatApi } from "@/lib/chat-api.js";
 import { notifyUnreadMessagesChanged } from "@/lib/messages-unread.js";
 import {
   ContactPresenceStatus,
@@ -14,6 +14,7 @@ import {
 } from "@/components/network/network-user-avatar.jsx";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { useAppNav } from "@/hooks/use-app-nav.js";
+import { useWorkspace } from "@/hooks/use-workspace.js";
 import { toast } from "@/lib/toast";
 import { selectOnFocus } from "@/lib/focus-select.js";
 import {
@@ -34,19 +35,14 @@ function formatTime(iso, lang) {
 
 function MessageReadStatus({ message, lang, t }) {
   if (!message.mine) return null;
-
   if (message.read_at) {
     return (
-      <span
-        className="messages-read-status seen"
-        title={formatTime(message.read_at, lang)}
-      >
+      <span className="messages-read-status seen" title={formatTime(message.read_at, lang)}>
         <CheckCheck size={13} aria-hidden="true" />
         {t("messages.seen")}
       </span>
     );
   }
-
   return (
     <span className="messages-read-status">
       <Check size={13} aria-hidden="true" />
@@ -61,19 +57,24 @@ export function MessagesPage() {
   const location = useLocation();
   const [params] = useSearchParams();
   const { workspaceTipo } = useAppNav();
+  const { active } = useWorkspace();
   const activePeerId = params.get("with");
+  const conversationId = params.get("conversation");
   const teamScope = params.get("scope") === "team";
   const [conversations, setConversations] = useState([]);
   const [teamPeers, setTeamPeers] = useState([]);
+  const [expedienteChats, setExpedienteChats] = useState([]);
+  const [groupMeta, setGroupMeta] = useState(null);
   const [messages, setMessages] = useState([]);
   const [draft, setDraft] = useState("");
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const threadRef = useRef(null);
-  /** Evita que un poll/load lento sobrescriba un hilo más reciente (carrera sidebar vs chat). */
   const threadReqIdRef = useRef(0);
   const activePeerIdRef = useRef(activePeerId);
+  const conversationIdRef = useRef(conversationId);
   activePeerIdRef.current = activePeerId;
+  conversationIdRef.current = conversationId;
 
   const loadConversations = async () => {
     const data = await messagesApi.conversations();
@@ -89,6 +90,19 @@ export function MessagesPage() {
     setTeamPeers(Array.isArray(rows) ? rows : []);
   };
 
+  const loadExpedienteChats = async () => {
+    if (!teamScope) {
+      setExpedienteChats([]);
+      return;
+    }
+    try {
+      const rows = await chatApi.list();
+      setExpedienteChats(Array.isArray(rows) ? rows : []);
+    } catch {
+      setExpedienteChats([]);
+    }
+  };
+
   const loadThread = async (peerId, { silent = false } = {}) => {
     if (!peerId) {
       setMessages([]);
@@ -96,7 +110,6 @@ export function MessagesPage() {
     }
     const reqId = ++threadReqIdRef.current;
     const data = await messagesApi.thread(peerId);
-    // Respuesta obsoleta: otro loadThread más nuevo ya corre o el peer cambió.
     if (reqId !== threadReqIdRef.current || activePeerIdRef.current !== peerId) return;
     setMessages(data);
     await messagesApi.markRead(peerId).catch(() => {});
@@ -109,35 +122,62 @@ export function MessagesPage() {
     }
   };
 
+  const loadGroupThread = async (convId, { silent = false } = {}) => {
+    if (!convId) {
+      setMessages([]);
+      setGroupMeta(null);
+      return;
+    }
+    const reqId = ++threadReqIdRef.current;
+    try {
+      const [meta, payload] = await Promise.all([
+        chatApi.get(convId),
+        chatApi.messages(convId),
+      ]);
+      if (reqId !== threadReqIdRef.current || conversationIdRef.current !== convId) return;
+      setGroupMeta(meta);
+      setMessages(Array.isArray(payload?.messages) ? payload.messages : []);
+      await loadExpedienteChats().catch(() => {});
+    } catch (err) {
+      if (!silent) throw err;
+    }
+  };
+
   useEffect(() => {
     if (!isSupabaseConfigured()) return;
     setLoading(true);
-    Promise.all([loadConversations(), loadTeamPeers()])
+    Promise.all([loadConversations(), loadTeamPeers(), loadExpedienteChats()])
       .then(() => notifyUnreadMessagesChanged())
       .catch((err) => toast.error(err.message))
       .finally(() => setLoading(false));
   }, [teamScope]);
 
   useEffect(() => {
-    if (!activePeerId || !isSupabaseConfigured()) return;
+    if (!isSupabaseConfigured()) return undefined;
+    if (conversationId) {
+      loadGroupThread(conversationId).catch((err) => toast.error(err.message));
+      const timer = window.setInterval(() => {
+        loadGroupThread(conversationId, { silent: true }).catch(() => {});
+      }, 8000);
+      return () => {
+        window.clearInterval(timer);
+        threadReqIdRef.current += 1;
+      };
+    }
+    if (!activePeerId) {
+      setMessages([]);
+      setGroupMeta(null);
+      return undefined;
+    }
     loadThread(activePeerId).catch((err) => toast.error(err.message));
     const timer = window.setInterval(() => {
       loadThread(activePeerId, { silent: true }).catch(() => {});
     }, 8000);
-    const onVisible = () => {
-      if (document.visibilityState === "visible") {
-        loadThread(activePeerId, { silent: true }).catch(() => {});
-      }
-    };
-    document.addEventListener("visibilitychange", onVisible);
-    window.addEventListener("focus", onVisible);
     return () => {
       window.clearInterval(timer);
-      document.removeEventListener("visibilitychange", onVisible);
-      window.removeEventListener("focus", onVisible);
-      threadReqIdRef.current += 1; // invalida in-flight al salir del peer
+      threadReqIdRef.current += 1;
     };
-  }, [activePeerId]);
+  }, [activePeerId, conversationId]);
 
   useEffect(() => {
     if (threadRef.current) {
@@ -192,26 +232,64 @@ export function MessagesPage() {
       ? `/messages?scope=team&with=${encodeURIComponent(peerId)}`
       : `/messages?with=${encodeURIComponent(peerId)}`
   );
+  const groupHref = (id) => `/messages?scope=team&conversation=${encodeURIComponent(id)}`;
 
   if (workspaceTipo === "personal" && teamScope) {
     return <Navigate to="/messages" replace />;
   }
-  if (workspaceTipo === "sala_de_venta" && !teamScope && !activePeerId) {
+  if (workspaceTipo === "sala_de_venta" && !teamScope && !activePeerId && !conversationId) {
     return <Navigate to="/messages?scope=team" replace />;
   }
 
   const handleSend = async () => {
     const text = draft.trim();
-    if (!text || !activePeerId || sending) return;
+    if (!text || sending) return;
+    if (conversationId) {
+      setSending(true);
+      try {
+        const sent = await chatApi.send(conversationId, { body: text, message_type: "text" });
+        setDraft("");
+        if (sent?.id && conversationIdRef.current === conversationId) {
+          setMessages((prev) => (prev.some((m) => m.id === sent.id) ? prev : [...prev, sent]));
+        }
+        await loadGroupThread(conversationId, { silent: true });
+      } catch (err) {
+        toast.error(err.message);
+      } finally {
+        setSending(false);
+      }
+      return;
+    }
+    if (!activePeerId) return;
     setSending(true);
     try {
       const sent = await messagesApi.send(activePeerId, text);
       setDraft("");
-      // Append inmediato: no esperar al poll/refetch (evita que el sidebar se adelante al hilo).
       if (sent?.id && activePeerIdRef.current === activePeerId) {
         setMessages((prev) => (prev.some((m) => m.id === sent.id) ? prev : [...prev, sent]));
       }
       await loadThread(activePeerId, { silent: true });
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const shareExpedienteCard = async () => {
+    if (!conversationId || !groupMeta?.prospect_id || sending) return;
+    setSending(true);
+    try {
+      await chatApi.send(conversationId, {
+        body: groupMeta.titulo || "Expediente",
+        message_type: "prospect_card",
+        metadata: {
+          prospect_id: groupMeta.prospect_id,
+          prospect_name: groupMeta.titulo,
+        },
+      });
+      await loadGroupThread(conversationId, { silent: true });
+      toast.success("Expediente compartido en el chat");
     } catch (err) {
       toast.error(err.message);
     } finally {
@@ -234,7 +312,7 @@ export function MessagesPage() {
   }
 
   const handleBack = () => {
-    if (activePeerId && window.matchMedia("(max-width: 900px)").matches) {
+    if ((activePeerId || conversationId) && window.matchMedia("(max-width: 900px)").matches) {
       navigate(teamScope ? "/messages?scope=team" : "/messages");
       return;
     }
@@ -246,7 +324,12 @@ export function MessagesPage() {
   };
 
   const pageTitle = teamScope ? t("messages.teamTitle") : t("messages.title");
-  const pageSubtitle = teamScope ? t("messages.teamSubtitle") : t("messages.subtitle");
+  const pageSubtitle = teamScope
+    ? (active?.nombre
+      ? `${active.nombre} · Habla con tu equipo y en los chats de cada expediente.`
+      : t("messages.teamSubtitle"))
+    : t("messages.subtitle");
+  const threadOpen = Boolean(activePeerId || conversationId);
 
   return (
     <>
@@ -255,12 +338,47 @@ export function MessagesPage() {
         <div className="messages-page-nav">
           <PageBack inline onClick={handleBack} />
         </div>
-        <div className={`messages-layout${activePeerId ? " messages-layout--thread-open" : " messages-layout--list-only"}`}>
+        <div className={`messages-layout${threadOpen ? " messages-layout--thread-open" : " messages-layout--list-only"}`}>
           <aside className="messages-sidebar">
-            <div className="messages-sidebar-head">
-              {teamScope ? t("messages.teamMembers") : t("messages.conversations")}
-            </div>
-            {loading && <div className="dp-empty">{t("common.loading")}</div>}
+            {teamScope ? (
+              <>
+                <div className="messages-sidebar-head">
+                  {active?.nombre ? `Expedientes · ${active.nombre}` : "Expedientes"}
+                </div>
+                {loading && <div className="dp-empty">{t("common.loading")}</div>}
+                {!loading && !expedienteChats.length && (
+                  <div className="dp-empty">Aún no hay chats de expediente en esta sala.</div>
+                )}
+                <div className="messages-conv-list">
+                  {expedienteChats.map((c) => (
+                    <button
+                      key={c.id}
+                      type="button"
+                      className={`messages-conv-item${c.id === conversationId ? " active" : ""}`}
+                      onClick={() => navigate(groupHref(c.id))}
+                    >
+                      <span className="messages-group-avatar" aria-hidden>
+                        <FolderOpen size={16} />
+                      </span>
+                      <div className="messages-conv-body">
+                        <div className="messages-conv-top">
+                          <span className="messages-conv-name">{c.titulo}</span>
+                        </div>
+                        <div className="messages-conv-preview">
+                          {c.last_message?.body || c.prospect_code || "Chat del expediente"}
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+                <div className="messages-sidebar-head" style={{ marginTop: 12 }}>
+                  {t("messages.teamMembers")}
+                </div>
+              </>
+            ) : (
+              <div className="messages-sidebar-head">{t("messages.conversations")}</div>
+            )}
+            {loading && !teamScope && <div className="dp-empty">{t("common.loading")}</div>}
             {!loading && listItems.length === 0 && (
               <div className="dp-empty">
                 {teamScope ? t("messages.teamEmpty") : t("messages.empty")}
@@ -270,7 +388,7 @@ export function MessagesPage() {
               {listItems.map((c) => {
                 const id = c.peer?.id;
                 if (!id) return null;
-                const active = id === activePeerId;
+                const activeItem = id === activePeerId && !conversationId;
                 const roleKey = c.team_role === "gerente"
                   ? "messages.teamRole.gerente"
                   : c.team_role === "vendedor"
@@ -280,7 +398,7 @@ export function MessagesPage() {
                   <button
                     key={id}
                     type="button"
-                    className={`messages-conv-item${active ? " active" : ""}`}
+                    className={`messages-conv-item${activeItem ? " active" : ""}`}
                     onClick={() => navigate(threadHref(id))}
                   >
                     <NetworkUserAvatar user={c.peer} showPresence />
@@ -304,8 +422,64 @@ export function MessagesPage() {
           </aside>
 
           <section className="messages-thread">
-            {!activePeerId ? (
+            {!threadOpen ? (
               <div className="messages-thread-empty">{t("messages.selectConversation")}</div>
+            ) : conversationId ? (
+              <>
+                <div className="messages-thread-head messages-thread-head--with-peer">
+                  <span className="messages-group-avatar" aria-hidden><FolderOpen size={18} /></span>
+                  <div className="messages-thread-head-main">
+                    <div className="messages-thread-title">{groupMeta?.titulo || "Expediente"}</div>
+                    <div className="messages-thread-presence">
+                      {(groupMeta?.members || []).map((m) => m.full_name || m.rol).filter(Boolean).join(" · ")
+                        || "Chat grupal del expediente"}
+                    </div>
+                  </div>
+                  {groupMeta?.prospect_id ? (
+                    <button type="button" className="btn btn-ghost btn-sm" onClick={() => void shareExpedienteCard()}>
+                      Compartir expediente
+                    </button>
+                  ) : null}
+                </div>
+                <div className="messages-thread-body" ref={threadRef}>
+                  {messages.map((m) => {
+                    const structured = m.message_type && m.message_type !== "text" && m.message_type !== "system";
+                    return (
+                      <div key={m.id} className={`messages-bubble${m.mine ? " mine" : ""}${structured ? " messages-bubble--card" : ""}`}>
+                        {!m.mine && m.sender?.full_name ? (
+                          <div className="messages-bubble-sender">{m.sender.full_name}</div>
+                        ) : null}
+                        {structured ? (
+                          <ProspectShareMessageCard message={m} t={t} onResolved={() => loadGroupThread(conversationId)} />
+                        ) : (
+                          <div className="messages-bubble-text">{m.body}</div>
+                        )}
+                        <div className="messages-bubble-meta">
+                          <span className="messages-bubble-time">{formatTime(m.created_at, lang)}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="messages-compose">
+                  <textarea
+                    rows={2}
+                    placeholder={t("messages.placeholder")}
+                    value={draft}
+                    onFocus={selectOnFocus}
+                    onChange={(e) => setDraft(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault();
+                        handleSend();
+                      }
+                    }}
+                  />
+                  <button type="button" className="btn btn-primary" disabled={!draft.trim() || sending} onClick={handleSend}>
+                    <Send size={16} /> {t("messages.send")}
+                  </button>
+                </div>
+              </>
             ) : (
               <>
                 <div className="messages-thread-head messages-thread-head--with-peer">
@@ -334,9 +508,7 @@ export function MessagesPage() {
                           <div className="messages-bubble-text">{m.body}</div>
                         )}
                         <div className="messages-bubble-meta">
-                          <span className="messages-bubble-time">
-                            {formatTime(m.created_at, lang)}
-                          </span>
+                          <span className="messages-bubble-time">{formatTime(m.created_at, lang)}</span>
                           <MessageReadStatus message={m} lang={lang} t={t} />
                         </div>
                       </div>
@@ -357,12 +529,7 @@ export function MessagesPage() {
                       }
                     }}
                   />
-                  <button
-                    type="button"
-                    className="btn btn-primary"
-                    disabled={!draft.trim() || sending}
-                    onClick={handleSend}
-                  >
+                  <button type="button" className="btn btn-primary" disabled={!draft.trim() || sending} onClick={handleSend}>
                     <Send size={16} /> {t("messages.send")}
                   </button>
                 </div>

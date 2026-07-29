@@ -76,19 +76,35 @@ GET /api/v1/admin/tenant/empresas/:empresaId/users/search?q=edu
 → 400 (q > 80 caracteres) · 403 (no es admin de esa empresa) · 429 (rate limit)
 ```
 
-## Workflow comercial
+## Participantes del expediente (sin pipeline)
 
-Autorización por capacidades resueltas en `workflow-service` (permisos de workspace + asignaciones). Los RPC de transición solo aceptan `service_role`: el cliente nunca puede transicionar directo contra la base.
+No hay etapas ni traspasos. Vendedor, Gerente y Cerrador colaboran sobre el mismo
+registro (`prospect_workflows` = participantes; `etapa_actual` está deprecada).
 
 | Método y ruta | Propósito |
 |---|---|
-| `GET /workflow/inbox` | Expedientes que requieren acción del actor según su rol. |
-| `GET /prospects/:id/workflow` | Estado actual + capacidades del actor. |
-| `GET /prospects/:id/workflow/timeline` | Historial append-only de eventos. |
-| `POST /prospects/:id/workflow/advance` | Avanza a la siguiente etapa. |
-| `POST /prospects/:id/workflow/send-review` | Envía al gerente. |
-| `POST /prospects/:id/workflow/review` | Gerente aprueba o regresa. |
-| `POST /prospects/:id/workflow/assign-closer` | Asigna o reasigna cerrador (gerente). |
+| `GET /prospects/active` | Expedientes activos de la sala según rol (sin filtrar por etapa). |
+| `GET /workflow/inbox` | Alias de compatibilidad → mismos datos que `/prospects/active`. |
+| `GET /prospects/:id/participants` | Participantes + historial de eventos + capacidades. |
+| `GET /prospects/:id/workflow` | Alias de compatibilidad → participants. |
+| `POST /prospects/:id/participants/assign-closer` | Asigna/reasigna Cerrador (sin cambiar etapa). |
+| `POST /prospects/:id/workflow/assign-closer` | Alias de compatibilidad. |
+| `POST …/advance\|send-review\|review` | **410 Gone** — pipeline eliminado. |
+
+## Chat grupal por expediente
+
+Conversaciones multiparte en la sala (vendedor + gerente + cerrador). UI en
+`/messages?scope=team` con el nombre de la sala.
+
+| Método y ruta | Propósito |
+|---|---|
+| `GET /chat/conversations` | Chats de expediente del workspace activo. |
+| `GET /chat/conversations/:id` | Detalle + miembros. |
+| `GET /chat/conversations/:id/messages` | Mensajes del hilo. |
+| `POST /chat/conversations/:id/messages` | Envía texto o `prospect_card`. |
+| `POST /prospects/:id/chat` | Crea/sincroniza chat y devuelve `{ id }`. |
+
+Miembros se sincronizan al crear/transferir el expediente y al asignar/reasignar Cerrador.
 
 ## Archivos del expediente
 

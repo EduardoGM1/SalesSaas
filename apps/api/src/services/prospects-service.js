@@ -15,7 +15,7 @@ export async function listProspects(supabase, userId, { limit, offset, status })
       .select("prospect_id")
       .eq("workspace_id", ctx.workspaceId)
       .eq("cerrador_id", userId)
-      .neq("estado", "completado")
+      .neq("estado", "cancelado")
     : { data: [] };
   const assignedIds = (assignments ?? []).map((row) => row.prospect_id);
   if (!assignedIds.length) {
@@ -43,6 +43,36 @@ export async function createProspect(supabase, userId, body) {
   const row = bodyToProspectInsert(body, userId, workspaceId);
   const { data, error } = await supabase.from("prospects").insert(row).select().single();
   if (error) throw new ServiceError(error.message, 400);
+
+  // En sala: registrar participantes y chat (Gerente + Vendedor) de inmediato.
+  const { data: ws } = await supabase
+    .from("workspaces")
+    .select("tipo")
+    .eq("id", workspaceId)
+    .maybeSingle();
+  if (ws?.tipo === "sala_de_venta") {
+    const { createServiceSupabaseClient } = await import("../lib/supabase-server.js");
+    const admin = createServiceSupabaseClient();
+    if (admin) {
+      const { data: gerente } = await admin
+        .from("workspace_miembros")
+        .select("usuario_id")
+        .eq("workspace_id", workspaceId)
+        .eq("rol_en_workspace", "gerente")
+        .limit(1)
+        .maybeSingle();
+      await admin.from("prospect_workflows").upsert({
+        prospect_id: data.id,
+        workspace_id: workspaceId,
+        representante_id: userId,
+        gerente_id: gerente?.usuario_id || null,
+        created_by: userId,
+        etapa_actual: "abierto",
+        estado: "en_progreso",
+      }, { onConflict: "prospect_id" });
+      await admin.rpc("sync_prospect_chat_members", { p_prospect_id: data.id }).catch(() => {});
+    }
+  }
   return data;
 }
 

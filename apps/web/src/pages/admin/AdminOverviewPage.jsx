@@ -109,7 +109,7 @@ export function AdminOverviewPage() {
           eyebrow={`Administración de ${scopeLabel.toLowerCase()}`}
           title={`Resumen de ${scopeLabel}`}
           subtitle="Indicadores limitados estrictamente al alcance que administras."
-          actions={session.scope === "empresa" ? <Link to="/admin/empresas" className="btn btn-primary">Administrar empresa</Link> : <Link to="/workflow" className="btn btn-primary">Abrir bandeja</Link>}
+          actions={session.scope === "empresa" ? <Link to="/admin/empresas" className="btn btn-primary">Administrar empresa</Link> : <Link to="/expedientes" className="btn btn-primary">Mis expedientes</Link>}
         />
         <AdminPageState loading={loading} error={error} skeleton="overview">
           {data ? (

@@ -24,6 +24,8 @@ import * as supportService from "../services/support-service.js";
 import * as workspaceService from "../services/workspace-service.js";
 import * as workspaceOps from "../services/workspace-ops-service.js";
 import * as workflowService from "../services/workflow-service.js";
+import * as prospectParticipantsService from "../services/prospect-participants-service.js";
+import * as chatService from "../services/chat-service.js";
 import * as prospectFilesService from "../services/prospect-files-service.js";
 import { ServiceError } from "../lib/service-error.js";
 
@@ -223,6 +225,16 @@ router.get("/prospects", async (req, res) => {
   await runService(res, () => prospectsService.listProspects(a.supabase, a.userId, { ...paging, status: req.query.status }));
 });
 
+router.get("/prospects/active", async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  await runService(
+    res,
+    () => prospectParticipantsService.listActiveProspects(a.supabase, a.userId),
+    { wrap: "data" },
+  );
+});
+
 router.post("/prospects", async (req, res) => {
   const a = await requireAuth(req, res);
   if (!a) return;
@@ -256,7 +268,17 @@ router.get("/workflow/inbox", async (req, res) => {
   if (!a) return;
   await runService(
     res,
-    () => workflowService.listWorkflowInbox(a.supabase, a.userId),
+    () => prospectParticipantsService.listActiveProspects(a.supabase, a.userId),
+    { wrap: "data" },
+  );
+});
+
+router.get("/prospects/:id/participants", async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  await runService(
+    res,
+    () => prospectParticipantsService.getParticipants(a.supabase, a.userId, req.params.id),
     { wrap: "data" },
   );
 });
@@ -266,7 +288,7 @@ router.get("/prospects/:id/workflow", async (req, res) => {
   if (!a) return;
   await runService(
     res,
-    () => workflowService.getWorkflow(a.supabase, a.userId, req.params.id),
+    () => prospectParticipantsService.getParticipants(a.supabase, a.userId, req.params.id),
     { wrap: "data" },
   );
 });
@@ -276,7 +298,7 @@ router.get("/prospects/:id/workflow/timeline", async (req, res) => {
   if (!a) return;
   await runService(
     res,
-    () => workflowService.listWorkflowTimeline(a.supabase, a.userId, req.params.id),
+    () => prospectParticipantsService.listEventTimeline(a.supabase, a.userId, req.params.id),
     { wrap: "data" },
   );
 });
@@ -284,37 +306,19 @@ router.get("/prospects/:id/workflow/timeline", async (req, res) => {
 router.post("/prospects/:id/workflow/advance", async (req, res) => {
   const a = await requireAuth(req, res);
   if (!a) return;
-  const body = parseJsonBody(req, res);
-  if (!body) return;
-  await runService(
-    res,
-    () => workflowService.advanceWorkflow(a.supabase, a.userId, req.params.id, body),
-    { wrap: "data" },
-  );
+  await runService(res, () => workflowService.advanceWorkflow(), { wrap: "data" });
 });
 
 router.post("/prospects/:id/workflow/send-review", async (req, res) => {
   const a = await requireAuth(req, res);
   if (!a) return;
-  const body = parseJsonBody(req, res);
-  if (!body) return;
-  await runService(
-    res,
-    () => workflowService.sendToManager(a.supabase, a.userId, req.params.id, body),
-    { wrap: "data" },
-  );
+  await runService(res, () => workflowService.sendToManager(), { wrap: "data" });
 });
 
 router.post("/prospects/:id/workflow/review", async (req, res) => {
   const a = await requireAuth(req, res);
   if (!a) return;
-  const body = parseJsonBody(req, res);
-  if (!body) return;
-  await runService(
-    res,
-    () => workflowService.reviewWorkflow(a.supabase, a.userId, req.params.id, body),
-    { wrap: "data" },
-  );
+  await runService(res, () => workflowService.reviewWorkflow(), { wrap: "data" });
 });
 
 router.post("/prospects/:id/workflow/assign-closer", async (req, res) => {
@@ -324,13 +328,84 @@ router.post("/prospects/:id/workflow/assign-closer", async (req, res) => {
   if (!body) return;
   await runService(
     res,
-    () => workflowService.assignCloser(
+    () => prospectParticipantsService.assignCloser(
       a.supabase,
       a.userId,
       req.params.id,
       body.cerrador_id ?? body.closer_id,
     ),
     { wrap: "data" },
+  );
+});
+
+router.post("/prospects/:id/participants/assign-closer", async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  const body = parseJsonBody(req, res);
+  if (!body) return;
+  await runService(
+    res,
+    () => prospectParticipantsService.assignCloser(
+      a.supabase,
+      a.userId,
+      req.params.id,
+      body.cerrador_id ?? body.closer_id,
+    ),
+    { wrap: "data" },
+  );
+});
+
+router.post("/prospects/:id/chat", async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  await runService(
+    res,
+    () => chatService.ensureProspectConversation(a.supabase, a.userId, req.params.id),
+    { wrap: "data", successStatus: 201 },
+  );
+});
+
+router.get("/chat/conversations", async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  await runService(
+    res,
+    () => chatService.listExpedienteConversations(a.supabase, a.userId),
+    { wrap: "data" },
+  );
+});
+
+router.get("/chat/conversations/:id", async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  await runService(
+    res,
+    () => chatService.getConversation(a.supabase, a.userId, req.params.id),
+    { wrap: "data" },
+  );
+});
+
+router.get("/chat/conversations/:id/messages", async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  await runService(
+    res,
+    () => chatService.listConversationMessages(a.supabase, a.userId, req.params.id, {
+      limit: req.query.limit,
+    }),
+    { wrap: "data" },
+  );
+});
+
+router.post("/chat/conversations/:id/messages", async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  const body = parseJsonBody(req, res);
+  if (!body) return;
+  await runService(
+    res,
+    () => chatService.sendConversationMessage(a.supabase, a.userId, req.params.id, body),
+    { wrap: "data", successStatus: 201 },
   );
 });
 

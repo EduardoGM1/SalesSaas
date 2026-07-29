@@ -13,7 +13,7 @@ import { sharingApi } from "@/lib/network-api.js";
 import { prospectRowToClient, canEditShared, canCommentShared, canAddToWorkspace } from "@/lib/shared-prospect";
 import { useExpedienteRealtime } from "@/hooks/use-expediente-realtime.js";
 import { ExpedientePresenceBar } from "@/components/clients/expediente-presence-bar.jsx";
-import { ProspectWorkflowPanel } from "@/components/clients/prospect-workflow-panel.jsx";
+import { ProspectParticipantsPanel } from "@/components/clients/prospect-workflow-panel.jsx";
 import { useWorkspace } from "@/hooks/use-workspace.js";
 import { ProspectFilesPanel } from "@/components/clients/prospect-files-panel.jsx";
 import { Topbar } from "@/components/layout/topbar";
@@ -397,7 +397,7 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
           {t("exp.ethics.main")}
         </div>
 
-        <ProspectWorkflowPanel
+        <ProspectParticipantsPanel
           prospectId={id}
           enabled={!sharedRemote && isSupabaseConfigured()}
         />

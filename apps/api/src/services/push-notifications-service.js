@@ -13,6 +13,7 @@ import {
   salesPath,
   sharedProspectPath,
   sharedProspectSectionPath,
+  clientProspectPath,
 } from "@salesapp/shared/push/notification-targets.js";
 import { collectReminders } from "../lib/reminders.js";
 
@@ -314,7 +315,7 @@ async function claimNotificationCooldown(serviceSb, key, windowMs = SECTION_CHAN
 }
 
 /**
- * Push a colaboradores (owner + shares) cuando alguien guarda un apartado.
+ * Push a colaboradores (owner + shares + participantes sala) cuando alguien guarda un apartado.
  * Agrupa por recipient+prospect+section en ventana de 30s.
  */
 export async function notifyProspectSectionChanged({
@@ -332,7 +333,7 @@ export async function notifyProspectSectionChanged({
   const sectionKey = SECTION_LABELS[section] ? section : "detail";
   const sectionLabel = SECTION_LABELS[sectionKey];
   const origin = primaryWebOrigin();
-  const path = sharedProspectSectionPath(ownerId, prospectId, sectionKey);
+  const path = clientProspectPath(prospectId, sectionKey);
   const uniqueRecipients = [...new Set((recipientIds || []).filter((id) => id && id !== actorId))];
 
   await Promise.all(uniqueRecipients.map(async (recipientId) => {
@@ -352,6 +353,56 @@ export async function notifyProspectSectionChanged({
       tag,
     });
   }));
+}
+
+/**
+ * Notifica al Cerrador (y al Vendedor) cuando se asigna/reasigna cerrador.
+ * Evento de asignación, no de etapa.
+ */
+export async function notifyCloserAssigned({
+  closerId,
+  vendedorId,
+  actorId,
+  actorName,
+  prospectId,
+  prospectName,
+  reassigned = false,
+}) {
+  const serviceSb = createServiceSupabaseClient();
+  if (!serviceSb || !isPushConfigured()) return;
+  if (!closerId || !prospectId) return;
+
+  const origin = primaryWebOrigin();
+  const path = clientProspectPath(prospectId);
+  const name = prospectName || "Expediente";
+
+  if (closerId !== actorId) {
+    const prefs = await loadNotificationPrefs(serviceSb, closerId);
+    if (prefs.shared_prospects) {
+      await sendToUser(serviceSb, closerId, {
+        title: reassigned ? "Expediente reasignado" : "Expediente asignado",
+        body: `${actorName || "El gerente"} te asignó como Cerrador de ${name}`,
+        url: pushUrl(origin, path),
+        path,
+        type: PushType.CLOSER_ASSIGNED,
+        tag: `closer-assigned-${closerId}-${prospectId}`,
+      });
+    }
+  }
+
+  if (vendedorId && vendedorId !== actorId && vendedorId !== closerId) {
+    const prefs = await loadNotificationPrefs(serviceSb, vendedorId);
+    if (prefs.shared_prospects) {
+      await sendToUser(serviceSb, vendedorId, {
+        title: "Cerrador asignado",
+        body: `${actorName || "El gerente"} asignó un Cerrador a ${name}`,
+        url: pushUrl(origin, path),
+        path,
+        type: PushType.CLOSER_ASSIGNED,
+        tag: `closer-assigned-vendor-${vendedorId}-${prospectId}`,
+      });
+    }
+  }
 }
 
 export async function notifyConnectionAccepted(requesterId, { peerId, peerName }) {

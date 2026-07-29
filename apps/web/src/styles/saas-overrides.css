@@ -9020,3 +9020,21 @@ body,
   font-size: 0.74rem;
   color: var(--saas-text-muted, #64748b);
 }
+
+.messages-group-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: rgba(30, 94, 255, 0.12);
+  color: var(--saas-primary, #1e5eff);
+  flex: 0 0 auto;
+}
+.messages-bubble-sender {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--saas-text-muted, #64748b);
+  margin-bottom: 2px;
+}

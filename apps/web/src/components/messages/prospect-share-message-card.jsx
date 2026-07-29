@@ -38,9 +38,11 @@ export function ProspectShareMessageCard({ message, t, onResolved }) {
   const requested = meta.requested_permission || "edit";
   const decision = meta.decision;
 
-  const href = ownerId && prospectId
-    ? `/red/contacto/${ownerId}/expediente/${prospectId}`
-    : null;
+  const href = type === "prospect_card" && prospectId
+    ? `/clients/${prospectId}`
+    : ownerId && prospectId
+      ? `/red/contacto/${ownerId}/expediente/${prospectId}`
+      : null;
 
   const canDecide = type === "permission_request"
     && !message.mine
@@ -86,7 +88,10 @@ export function ProspectShareMessageCard({ message, t, onResolved }) {
 
   let title = t("messages.share.accessTitle");
   let Icon = FolderOpen;
-  if (type === "permission_request") {
+  if (type === "prospect_card") {
+    title = "Expediente";
+    Icon = FolderOpen;
+  } else if (type === "permission_request") {
     title = t("messages.share.requestTitle");
     Icon = KeyRound;
   } else if (type === "permission_response") {
@@ -107,7 +112,9 @@ export function ProspectShareMessageCard({ message, t, onResolved }) {
         <div className="msg-share-card-code">{meta.prospect_code}</div>
       )}
       <div className="msg-share-card-perm">
-        {type === "permission_request" ? (
+        {type === "prospect_card" ? (
+          "Referencia del expediente en este chat"
+        ) : type === "permission_request" ? (
           <>
             {permLabel(t, permission)} → <strong>{permLabel(t, requested)}</strong>
           </>

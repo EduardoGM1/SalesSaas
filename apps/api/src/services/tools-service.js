@@ -1,6 +1,7 @@
 import { isUuid } from "@salesapp/shared/data/mappers.js";
 import { bodyToToolUpsert } from "@salesapp/shared/api/validators.js";
 import { ServiceError } from "../lib/service-error.js";
+import { createServiceSupabaseClient } from "../lib/supabase-server.js";
 import { profileDisplayName } from "../lib/profile-display-name.js";
 import { requireWorkspaceFlag, scopeByWorkspace } from "../lib/workspace-scope.js";
 import { TOOL_FLAG_KEYS } from "./flags-service.js";
@@ -60,17 +61,33 @@ export async function upsertToolCalculation(supabase, userId, body) {
 }
 
 async function notifyOwnerToolCollaborators(supabase, { actorId, prospectId, section }) {
-  const { data: shares } = await supabase
-    .from("prospect_shares")
-    .select("shared_with_id, owner_id")
-    .eq("prospect_id", prospectId);
-  const rows = shares ?? [];
-  if (!rows.length) return;
+  const admin = createServiceSupabaseClient() || supabase;
+  const [{ data: shares }, { data: participants }, { data: prospect }] = await Promise.all([
+    admin.from("prospect_shares").select("shared_with_id, owner_id").eq("prospect_id", prospectId),
+    admin
+      .from("prospect_workflows")
+      .select("representante_id, cerrador_id")
+      .eq("prospect_id", prospectId)
+      .maybeSingle(),
+    admin.from("prospects").select("user_id").eq("id", prospectId).maybeSingle(),
+  ]);
 
-  const ownerId = rows[0]?.owner_id || actorId;
-  const recipientIds = [ownerId, ...rows.map((r) => r.shared_with_id)].filter(Boolean);
+  const ownerId = prospect?.user_id
+    || shares?.[0]?.owner_id
+    || participants?.representante_id
+    || actorId;
 
-  const { data: profile } = await supabase
+  // Participantes del expediente (vendedor ↔ cerrador). Sin gerente por defecto.
+  const recipientIds = [
+    ownerId,
+    participants?.representante_id,
+    participants?.cerrador_id,
+    ...(shares || []).map((r) => r.shared_with_id),
+  ].filter(Boolean);
+
+  if (!recipientIds.some((id) => id !== actorId)) return;
+
+  const { data: profile } = await admin
     .from("profiles")
     .select("full_name, email, settings")
     .eq("id", actorId)

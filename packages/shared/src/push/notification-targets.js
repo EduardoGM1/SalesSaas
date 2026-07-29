@@ -5,6 +5,8 @@ export const PushType = {
   CONNECTION_ACCEPTED: "connection_accepted",
   SHARED_PROSPECT: "shared_prospect",
   PROSPECT_SECTION_CHANGED: "prospect_section_changed",
+  /** Cerrador asignado o reasignado al expediente. */
+  CLOSER_ASSIGNED: "closer_assigned",
   FOLLOW_UP_REMINDER: "follow_up_reminder",
   SALES_TO_PROCESS: "sales_to_process",
   SCHEDULED_NOTE: "scheduled_note",
@@ -41,6 +43,15 @@ export function sharedProspectPath(ownerId, prospectId) {
 export function sharedProspectSectionPath(ownerId, prospectId, section) {
   const base = sharedProspectPath(ownerId, prospectId);
   if (section && section !== "detail" && ["survey", "vacaciones", "worksheet"].includes(section)) {
+    return `${base}/${section}`;
+  }
+  return base;
+}
+
+/** Deep link al expediente propio en la sala (mismo registro, no copia). */
+export function clientProspectPath(prospectId, section) {
+  const base = `/clients/${encodeURIComponent(String(prospectId))}`;
+  if (section && section !== "detail" && ["survey", "vacaciones", "worksheet", "money-box"].includes(section)) {
     return `${base}/${section}`;
   }
   return base;
@@ -90,6 +101,7 @@ export function resolvePushPathFromPayload(payload = {}) {
       return typeof payload.path === "string" ? payload.path : "/settings";
     case PushType.PROSPECT_SECTION_CHANGED:
     case PushType.SHARED_PROSPECT:
+    case PushType.CLOSER_ASSIGNED:
       return typeof payload.path === "string" ? payload.path : null;
     default:
       return null;

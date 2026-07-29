@@ -720,6 +720,7 @@ async function transferPersonalToSala(userId, prospectId, targetWorkspaceId) {
     p_target_workspace_id: targetWorkspaceId,
   });
   if (error) throw new ServiceError(error.message, 400);
+  await admin.rpc("sync_prospect_chat_members", { p_prospect_id: prospectId }).catch(() => {});
   return data;
 }
 
