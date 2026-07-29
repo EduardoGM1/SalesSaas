@@ -8778,3 +8778,178 @@ body,
   font-size: 0.8rem;
   color: var(--saas-text-muted, #64748b);
 }
+
+/* ── Asistente de transferencia Personal → Sala ─────────────── */
+.transfer-wizard {
+  display: grid;
+  gap: 14px;
+}
+.transfer-wizard-steps {
+  display: flex;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.transfer-wizard-steps li {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--saas-text-muted, #64748b);
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: var(--saas-surface-2, #f1f5f9);
+}
+.transfer-wizard-steps li span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: rgba(100, 116, 139, 0.18);
+  font-size: 0.68rem;
+  flex: 0 0 auto;
+}
+.transfer-wizard-steps li.active {
+  color: var(--saas-primary, #1e5eff);
+  background: rgba(30, 94, 255, 0.1);
+}
+.transfer-wizard-steps li.active span {
+  background: var(--saas-primary, #1e5eff);
+  color: #fff;
+}
+.transfer-wizard-steps li.done {
+  color: var(--saas-success, #16a34a);
+}
+.transfer-wizard-steps li.done span {
+  background: rgba(22, 163, 74, 0.14);
+  color: var(--saas-success, #16a34a);
+}
+.transfer-wizard-options {
+  display: grid;
+  gap: 8px;
+}
+.transfer-wizard-options > p {
+  margin: 0;
+  font-size: 0.82rem;
+}
+.transfer-wizard-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--saas-border, #e2e8f0);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.transfer-wizard-option:hover {
+  border-color: var(--saas-primary, #1e5eff);
+}
+.transfer-wizard-option.selected {
+  border-color: var(--saas-primary, #1e5eff);
+  background: rgba(30, 94, 255, 0.06);
+}
+.transfer-wizard-option input {
+  flex: 0 0 auto;
+}
+.transfer-wizard-option svg {
+  flex: 0 0 auto;
+  color: var(--saas-text-muted, #64748b);
+}
+.transfer-wizard-option span {
+  display: grid;
+  min-width: 0;
+}
+.transfer-wizard-option strong {
+  font-size: 0.86rem;
+}
+.transfer-wizard-option small {
+  font-size: 0.74rem;
+  color: var(--saas-text-muted, #64748b);
+}
+.transfer-wizard-summary {
+  border: 1px solid var(--saas-border, #e2e8f0);
+  border-radius: 10px;
+  padding: 12px 14px;
+  font-size: 0.85rem;
+  display: grid;
+  gap: 8px;
+}
+.transfer-wizard-summary p {
+  margin: 0;
+}
+.transfer-wizard-summary ul {
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 4px;
+  font-size: 0.8rem;
+  color: var(--saas-text-muted, #64748b);
+}
+
+/* ── Participantes del expediente ───────────────────────────── */
+.prospect-workflow-participants {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+.prospect-workflow-participants h3 {
+  margin: 0;
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--saas-text-muted, #64748b);
+}
+.prospect-workflow-participants-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 8px;
+}
+.prospect-workflow-participant {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--saas-border, #e2e8f0);
+  border-radius: 10px;
+  min-width: 0;
+}
+.prospect-workflow-participant svg {
+  flex: 0 0 auto;
+  margin-top: 2px;
+  color: var(--saas-primary, #1e5eff);
+}
+.prospect-workflow-participant > div {
+  display: grid;
+  min-width: 0;
+}
+.prospect-workflow-participant span {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--saas-text-muted, #64748b);
+}
+.prospect-workflow-participant strong {
+  font-size: 0.85rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.prospect-workflow-participant small {
+  font-size: 0.72rem;
+  color: var(--saas-text-muted, #64748b);
+}
+.prospect-workflow-assign {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.prospect-workflow-assign .auth-input {
+  flex: 1 1 200px;
+}

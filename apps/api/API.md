@@ -90,6 +90,28 @@ Autorización por capacidades resueltas en `workflow-service` (permisos de works
 | `POST /prospects/:id/workflow/review` | Gerente aprueba o regresa. |
 | `POST /prospects/:id/workflow/assign-closer` | Asigna cerrador. |
 
+## Transferencia de expedientes
+
+El expediente es la única fuente de verdad: la transferencia mueve el mismo registro
+(mismo `id`), con sus herramientas, ventas, actividades y agenda; nunca se crean copias.
+
+| Método y ruta | Propósito |
+|---|---|
+| `GET /prospects/:id/transfer-targets?mode=transfer\|duplicate` | Destinos válidos con razón de bloqueo. |
+| `POST /prospects/:id/transfer` | Transfiere el expediente. `{ target_workspace_id }`. |
+| `POST /prospects/:id/duplicate` | Copia el expediente (solo dentro de la misma frontera). |
+
+Reglas de movimiento:
+
+- **Personal → Sala de Ventas**: permitido solo al dueño, definitivo. Se ejecuta vía RPC
+  `transfer_prospect_to_sala` (`service_role`, migración 0057): mueve hijos, inicializa el
+  workflow de la sala y registra el evento `transferido` en el historial inmutable.
+- **Sala → Personal**: prohibido (403).
+- **Empresa A → Empresa B**: prohibido (`workspace_boundary_ok`).
+- **Sala → Sala (misma empresa)**: permitido (comportamiento previo).
+- Eliminar expedientes dentro de una sala queda reservado al gerente (o admin de empresa
+  vía RLS); el historial de auditoría nunca se pierde por un borrado del vendedor.
+
 ## Arquitectura por capas
 
 - **Rutas/controladores** (`src/routes/`): validan sesión, parsean input y delegan; no acceden a Supabase directamente.

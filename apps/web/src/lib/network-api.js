@@ -86,7 +86,8 @@ export const sharingApi = {
     method: "PATCH",
     body: JSON.stringify(body),
   }),
-  listTransferTargets: (prospectId) => apiFetch(`/prospects/${prospectId}/transfer-targets`),
+  listTransferTargets: (prospectId, mode = "transfer") =>
+    apiFetch(`/prospects/${prospectId}/transfer-targets?mode=${mode}`),
   listShareContacts: (prospectId) => apiFetch(`/prospects/${prospectId}/share-contacts`),
   duplicate: (prospectId, body = {}) => apiFetch(`/prospects/${prospectId}/duplicate`, {
     method: "POST",

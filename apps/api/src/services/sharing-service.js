@@ -707,7 +707,33 @@ export async function duplicateProspect(supabase, userId, prospectId, { target_w
   return created;
 }
 
-/** Transfiere propiedad de workspace del expediente (nunca personal↔sala). */
+/**
+ * Transferencia definitiva Personal → Sala: mismo expediente (mismo id),
+ * recursos hijos incluidos y evento en el historial. Vía RPC service-role.
+ */
+async function transferPersonalToSala(userId, prospectId, targetWorkspaceId) {
+  const admin = createServiceSupabaseClient();
+  if (!admin) throw new ServiceError("Service role no configurado.", 500);
+  const { data, error } = await admin.rpc("transfer_prospect_to_sala", {
+    p_prospect_id: prospectId,
+    p_actor_id: userId,
+    p_target_workspace_id: targetWorkspaceId,
+  });
+  if (error) throw new ServiceError(error.message, 400);
+  return data;
+}
+
+async function workspaceTipo(supabase, workspaceId) {
+  if (!workspaceId) return null;
+  const { data } = await supabase
+    .from("workspaces")
+    .select("tipo")
+    .eq("id", workspaceId)
+    .maybeSingle();
+  return data?.tipo ?? null;
+}
+
+/** Transfiere el expediente de workspace (personal→sala definitivo; sala→sala misma empresa). */
 export async function transferProspectOwnership(supabase, userId, prospectId, {
   target_workspace_id: targetWorkspaceId,
   new_owner_id: newOwnerId,
@@ -726,6 +752,18 @@ export async function transferProspectOwnership(supabase, userId, prospectId, {
 
   const dstWs = targetWorkspaceId || (await getRequestWorkspaceId(supabase, userId));
   if (!dstWs) throw new ServiceError("workspace destino requerido.");
+
+  const [srcTipo, dstTipo] = await Promise.all([
+    workspaceTipo(supabase, src.workspace_id),
+    workspaceTipo(supabase, dstWs),
+  ]);
+  if (srcTipo === "personal" && dstTipo === "sala_de_venta") {
+    return transferPersonalToSala(userId, prospectId, dstWs);
+  }
+  if (srcTipo === "sala_de_venta" && dstTipo === "personal") {
+    throw new ServiceError("Un expediente de la empresa no puede regresar a un espacio personal.", 403);
+  }
+
   await assertWorkspaceBoundary(supabase, src.workspace_id, dstWs);
 
   const ownerId = newOwnerId && isUuid(newOwnerId) ? newOwnerId : userId;

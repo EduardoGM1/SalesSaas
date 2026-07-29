@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ArrowRight, CheckCircle2, Clock3, RotateCcw, Send, UserRoundCheck } from "lucide-react";
+import { ArrowRight, BadgeCheck, CheckCircle2, Clock3, RotateCcw, Send, Store, UserRound, UserRoundCheck } from "lucide-react";
 import { AdminStatusBadge } from "@/components/admin/admin-ui.jsx";
 import { workflowApi } from "@/lib/workflow-api.js";
 import { toast } from "@/lib/toast";
@@ -18,6 +18,19 @@ const STAGES = [
 ];
 
 const LABELS = Object.fromEntries(STAGES);
+
+const EVENT_LABELS = {
+  workflow_iniciado: "Expediente iniciado",
+  transferido: "Transferido a la sala",
+  cerrador_asignado: "Cerrador asignado",
+  enviado_a_revision: "Enviado a revisión",
+  revision_aprobada: "Revisión aprobada",
+  devuelto: "Devuelto por el gerente",
+};
+
+function personName(profile, fallback) {
+  return profile?.full_name || profile?.email || fallback;
+}
 
 function responsibleName(state) {
   if (["money_box", "tipo_cambio", "venta", "completado"].includes(state?.etapa_actual)) {
@@ -87,6 +100,40 @@ export function ProspectWorkflowPanel({ prospectId, enabled = true }) {
   if (!enabled || hidden || (!payload && !error)) return null;
   const state = payload?.state;
   const capabilities = payload?.capabilities || {};
+  const context = payload?.context || {};
+
+  const participantes = state
+    ? [
+      {
+        key: "sala",
+        icon: <Store size={15} aria-hidden />,
+        label: "Sala",
+        value: context.sala_nombre || "—",
+        detail: context.empresa_nombre || null,
+      },
+      {
+        key: "gerente",
+        icon: <BadgeCheck size={15} aria-hidden />,
+        label: "Gerente",
+        value: personName(state.gerente, "Sin gerente"),
+        detail: null,
+      },
+      {
+        key: "vendedor",
+        icon: <UserRound size={15} aria-hidden />,
+        label: "Vendedor",
+        value: personName(state.representante, "Sin vendedor"),
+        detail: null,
+      },
+      {
+        key: "cerrador",
+        icon: <UserRoundCheck size={15} aria-hidden />,
+        label: "Cerrador",
+        value: personName(state.cerrador, "Sin asignar"),
+        detail: null,
+      },
+    ]
+    : [];
 
   return (
     <section className="card prospect-workflow-panel" aria-labelledby="workflow-title">
@@ -109,6 +156,37 @@ export function ProspectWorkflowPanel({ prospectId, enabled = true }) {
                 <small>{label}</small>
               </div>
             ))}
+          </div>
+
+          <div className="prospect-workflow-participants" aria-label="Participantes del expediente">
+            <h3>Participantes</h3>
+            <div className="prospect-workflow-participants-grid">
+              {participantes.map((item) => (
+                <div key={item.key} className="prospect-workflow-participant">
+                  {item.icon}
+                  <div>
+                    <span>{item.label}</span>
+                    <strong>{item.value}</strong>
+                    {item.detail ? <small>{item.detail}</small> : null}
+                  </div>
+                </div>
+              ))}
+            </div>
+            {capabilities.can_assign_closer ? (
+              <form
+                className="prospect-workflow-assign"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  void run(() => workflowApi.assignCloser(prospectId, closerId), "Cerrador asignado");
+                }}
+              >
+                <select className="auth-input" value={closerId} onChange={(event) => setCloserId(event.target.value)} required>
+                  <option value="">Selecciona Cerrador</option>
+                  {peers.map((peer) => <option key={peer.id} value={peer.id}>{peer.full_name || peer.email}</option>)}
+                </select>
+                <button className="btn btn-primary" disabled={pending}><UserRoundCheck size={16} /> Asignar Cerrador</button>
+              </form>
+            ) : null}
           </div>
 
           <div className="prospect-workflow-current">
@@ -141,18 +219,6 @@ export function ProspectWorkflowPanel({ prospectId, enabled = true }) {
                 <button type="button" className="btn btn-ghost" disabled={pending} onClick={() => void run(() => workflowApi.review(prospectId, "devolver"), "Expediente devuelto")}><RotateCcw size={16} /> Devolver</button>
               </>
             ) : null}
-            {capabilities.can_assign_closer ? (
-              <form onSubmit={(event) => {
-                event.preventDefault();
-                void run(() => workflowApi.assignCloser(prospectId, closerId), "Cerrador asignado");
-              }}>
-                <select className="auth-input" value={closerId} onChange={(event) => setCloserId(event.target.value)} required>
-                  <option value="">Selecciona Cerrador</option>
-                  {peers.map((peer) => <option key={peer.id} value={peer.id}>{peer.full_name || peer.email}</option>)}
-                </select>
-                <button className="btn btn-primary" disabled={pending}><UserRoundCheck size={16} /> Asignar</button>
-              </form>
-            ) : null}
           </div>
 
           <div className="prospect-workflow-timeline">
@@ -160,7 +226,17 @@ export function ProspectWorkflowPanel({ prospectId, enabled = true }) {
             {(payload.timeline || []).slice(-8).reverse().map((event) => (
               <div key={event.id} className="prospect-workflow-event">
                 <Clock3 size={14} />
-                <div><strong>{LABELS[event.etapa_destino] || event.event_type?.replaceAll("_", " ")}</strong><span>{event.actor?.full_name || event.actor?.email || "Sistema"} · {new Date(event.created_at).toLocaleString()}</span></div>
+                <div>
+                  <strong>
+                    {EVENT_LABELS[event.event_type]
+                      || LABELS[event.etapa_destino]
+                      || event.event_type?.replaceAll("_", " ")}
+                    {event.event_type === "transferido" && event.metadata?.destino_sala
+                      ? ` ${event.metadata.destino_sala}`
+                      : ""}
+                  </strong>
+                  <span>{event.actor?.full_name || event.actor?.email || "Sistema"} · {new Date(event.created_at).toLocaleString()}</span>
+                </div>
               </div>
             ))}
           </div>

@@ -78,8 +78,12 @@ export async function listShareableContactsForProspect(supabase, userId, prospec
   });
 }
 
-/** Destinos válidos para duplicar/transferir (misma frontera). */
-export async function listTransferTargets(supabase, userId, prospectId) {
+/**
+ * Destinos válidos para duplicar/transferir. La transferencia Personal → Sala
+ * es la única vía permitida hacia una empresa (definitiva, dueño y miembro);
+ * el regreso Empresa → Personal y el salto entre empresas siguen prohibidos.
+ */
+export async function listTransferTargets(supabase, userId, prospectId, mode = "transfer") {
   const { data: prospect, error } = await supabase
     .from("prospects")
     .select("id, workspace_id, user_id")
@@ -93,12 +97,26 @@ export async function listTransferTargets(supabase, userId, prospectId) {
   }
 
   const workspaces = await workspaceService.listUserWorkspaces(supabase, userId);
+  const current = workspaces.find((w) => w.id === prospect.workspace_id) || null;
+  const isOwner = prospect.user_id === userId;
+
   const out = [];
   for (const w of workspaces) {
     let allowed = false;
     let reason = null;
     if (w.id === prospect.workspace_id) {
       allowed = true;
+    } else if (current?.tipo === "personal" && w.tipo === "sala_de_venta") {
+      if (mode !== "transfer") {
+        allowed = false;
+        reason = workspaceService.CROSS_BOUNDARY_MSG;
+      } else {
+        allowed = isOwner;
+        if (!isOwner) reason = "Solo el dueño puede transferir a una sala.";
+      }
+    } else if (current?.tipo === "sala_de_venta" && w.tipo === "personal") {
+      allowed = false;
+      reason = "Un expediente de la empresa no puede regresar a un espacio personal.";
     } else {
       try {
         await workspaceService.assertWorkspaceBoundary(supabase, prospect.workspace_id, w.id);
@@ -112,6 +130,7 @@ export async function listTransferTargets(supabase, userId, prospectId) {
       id: w.id,
       tipo: w.tipo,
       nombre: w.nombre,
+      empresa_id: w.empresa_id ?? null,
       empresa_nombre: w.empresa_nombre,
       allowed,
       reason,

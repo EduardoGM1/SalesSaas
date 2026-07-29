@@ -80,6 +80,26 @@ export async function updateProspect(supabase, userId, id, body) {
 export async function deleteProspect(supabase, userId, id) {
   if (!isUuid(id)) throw new ServiceError("ID inválido.");
   const workspaceId = await requireWorkspacePermission(supabase, userId, "expedientes:eliminar");
+
+  // Un expediente transferido a una sala conserva su auditoría: en salas
+  // solo puede eliminar quien tiene alcance de equipo (gerente).
+  const { data: ws } = await supabase
+    .from("workspaces")
+    .select("tipo")
+    .eq("id", workspaceId)
+    .maybeSingle();
+  if (ws?.tipo === "sala_de_venta") {
+    const { data: membership } = await supabase
+      .from("workspace_miembros")
+      .select("rol_en_workspace")
+      .eq("workspace_id", workspaceId)
+      .eq("usuario_id", userId)
+      .maybeSingle();
+    if (membership?.rol_en_workspace !== "gerente") {
+      throw new ServiceError("Los expedientes de la sala no se pueden eliminar. Contacta a tu gerente.", 403);
+    }
+  }
+
   let q = supabase.from("prospects").delete({ count: "exact" }).eq("id", id).eq("user_id", userId);
   q = scopeByWorkspace(q, workspaceId);
   const { error, count } = await q;

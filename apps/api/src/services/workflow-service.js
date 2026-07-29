@@ -21,7 +21,7 @@ async function loadAccess(actorId, prospectId) {
   const admin = adminClient();
   const { data: prospect, error } = await admin
     .from("prospects")
-    .select("id, user_id, workspace_id, name, name1, prospect_code, workspaces(empresa_id, tipo)")
+    .select("id, user_id, workspace_id, name, name1, prospect_code, workspaces(empresa_id, tipo, nombre, empresas(nombre))")
     .eq("id", prospectId)
     .maybeSingle();
   if (error) throw new ServiceError(error.message, 500);
@@ -138,6 +138,10 @@ export async function getWorkflow(_supabase, actorId, prospectId) {
   return {
     state,
     timeline,
+    context: {
+      sala_nombre: access.prospect.workspaces?.nombre ?? null,
+      empresa_nombre: access.prospect.workspaces?.empresas?.nombre ?? null,
+    },
     capabilities: {
       can_advance: (
         (representativeStage && (

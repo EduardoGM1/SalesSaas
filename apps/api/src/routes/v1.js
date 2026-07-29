@@ -787,7 +787,12 @@ router.get("/prospects/:id/transfer-targets", async (req, res) => {
   if (!a) return;
   await runService(
     res,
-    () => workspaceOps.listTransferTargets(a.supabase, a.userId, req.params.id),
+    () => workspaceOps.listTransferTargets(
+      a.supabase,
+      a.userId,
+      req.params.id,
+      req.query.mode === "duplicate" ? "duplicate" : "transfer",
+    ),
     { wrap: "data" },
   );
 });
