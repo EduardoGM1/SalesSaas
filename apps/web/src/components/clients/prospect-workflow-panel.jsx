@@ -23,9 +23,12 @@ const EVENT_LABELS = {
   workflow_iniciado: "Expediente iniciado",
   transferido: "Transferido a la sala",
   cerrador_asignado: "Cerrador asignado",
+  cerrador_reasignado: "Cerrador reasignado",
   enviado_a_revision: "Enviado a revisión",
   revision_aprobada: "Revisión aprobada",
   devuelto: "Devuelto por el gerente",
+  archivo_subido: "Archivo subido",
+  archivo_eliminado: "Archivo eliminado",
 };
 
 function personName(profile, fallback) {
@@ -58,10 +61,11 @@ export function ProspectWorkflowPanel({ prospectId, enabled = true }) {
       setPayload(data);
       setHidden(false);
       setError("");
-      if (data?.capabilities?.can_assign_closer) {
+      if (data?.capabilities?.can_assign_closer || data?.capabilities?.can_reassign_closer) {
         const response = await fetch("/api/v1/workspace/peers", { credentials: "include" });
         const body = await response.json().catch(() => ({}));
         if (response.ok) setPeers(Array.isArray(body.data) ? body.data : []);
+        if (data?.state?.cerrador_id) setCloserId(data.state.cerrador_id);
       }
     } catch (loadError) {
       if (
@@ -172,19 +176,27 @@ export function ProspectWorkflowPanel({ prospectId, enabled = true }) {
                 </div>
               ))}
             </div>
-            {capabilities.can_assign_closer ? (
+            {capabilities.can_assign_closer || capabilities.can_reassign_closer ? (
               <form
                 className="prospect-workflow-assign"
                 onSubmit={(event) => {
                   event.preventDefault();
-                  void run(() => workflowApi.assignCloser(prospectId, closerId), "Cerrador asignado");
+                  void run(
+                    () => workflowApi.assignCloser(prospectId, closerId),
+                    capabilities.can_reassign_closer ? "Cerrador reasignado" : "Cerrador asignado",
+                  );
                 }}
               >
                 <select className="auth-input" value={closerId} onChange={(event) => setCloserId(event.target.value)} required>
-                  <option value="">Selecciona Cerrador</option>
+                  <option value="">
+                    {capabilities.can_reassign_closer ? "Cambiar Cerrador" : "Selecciona Cerrador"}
+                  </option>
                   {peers.map((peer) => <option key={peer.id} value={peer.id}>{peer.full_name || peer.email}</option>)}
                 </select>
-                <button className="btn btn-primary" disabled={pending}><UserRoundCheck size={16} /> Asignar Cerrador</button>
+                <button className="btn btn-primary" disabled={pending}>
+                  <UserRoundCheck size={16} />
+                  {capabilities.can_reassign_closer ? "Reasignar Cerrador" : "Asignar Cerrador"}
+                </button>
               </form>
             ) : null}
           </div>

@@ -24,6 +24,7 @@ import * as supportService from "../services/support-service.js";
 import * as workspaceService from "../services/workspace-service.js";
 import * as workspaceOps from "../services/workspace-ops-service.js";
 import * as workflowService from "../services/workflow-service.js";
+import * as prospectFilesService from "../services/prospect-files-service.js";
 import { ServiceError } from "../lib/service-error.js";
 
 const router = Router();
@@ -328,6 +329,47 @@ router.post("/prospects/:id/workflow/assign-closer", async (req, res) => {
       a.userId,
       req.params.id,
       body.cerrador_id ?? body.closer_id,
+    ),
+    { wrap: "data" },
+  );
+});
+
+router.get("/prospects/:id/files", async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  await runService(
+    res,
+    () => prospectFilesService.listProspectFiles(a.supabase, a.userId, req.params.id),
+    { wrap: "data" },
+  );
+});
+
+router.post(
+  "/prospects/:id/files",
+  rateLimit({ name: "prospect-files-upload", windowMs: 60_000, max: 20 }),
+  async (req, res) => {
+    const a = await requireAuth(req, res);
+    if (!a) return;
+    const body = parseJsonBody(req, res);
+    if (!body) return;
+    await runService(
+      res,
+      () => prospectFilesService.uploadProspectFile(a.supabase, a.userId, req.params.id, body),
+      { wrap: "data", successStatus: 201 },
+    );
+  },
+);
+
+router.delete("/prospects/:id/files/:fileId", async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  await runService(
+    res,
+    () => prospectFilesService.deleteProspectFile(
+      a.supabase,
+      a.userId,
+      req.params.id,
+      req.params.fileId,
     ),
     { wrap: "data" },
   );

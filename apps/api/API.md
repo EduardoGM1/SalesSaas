@@ -88,7 +88,20 @@ Autorización por capacidades resueltas en `workflow-service` (permisos de works
 | `POST /prospects/:id/workflow/advance` | Avanza a la siguiente etapa. |
 | `POST /prospects/:id/workflow/send-review` | Envía al gerente. |
 | `POST /prospects/:id/workflow/review` | Gerente aprueba o regresa. |
-| `POST /prospects/:id/workflow/assign-closer` | Asigna cerrador. |
+| `POST /prospects/:id/workflow/assign-closer` | Asigna o reasigna cerrador (gerente). |
+
+## Archivos del expediente
+
+Adjuntos viven en el mismo expediente (`prospect_archivos` + bucket privado `prospect-files`).
+La API usa service-role para Storage y URLs firmadas (30 min).
+
+| Método y ruta | Propósito |
+|---|---|
+| `GET /prospects/:id/files` | Lista adjuntos con URL firmada. |
+| `POST /prospects/:id/files` | Sube archivo (`nombre`, `data_url` base64). Máx. 10 MB, 20 req/min. |
+| `DELETE /prospects/:id/files/:fileId` | Elimina (autor o gerente). |
+
+Formatos: PDF, PNG/JPG/WEBP, Word, Excel, texto. Máximo 30 archivos por expediente.
 
 ## Transferencia de expedientes
 

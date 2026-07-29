@@ -14,6 +14,8 @@ import { prospectRowToClient, canEditShared, canCommentShared, canAddToWorkspace
 import { useExpedienteRealtime } from "@/hooks/use-expediente-realtime.js";
 import { ExpedientePresenceBar } from "@/components/clients/expediente-presence-bar.jsx";
 import { ProspectWorkflowPanel } from "@/components/clients/prospect-workflow-panel.jsx";
+import { useWorkspace } from "@/hooks/use-workspace.js";
+import { ProspectFilesPanel } from "@/components/clients/prospect-files-panel.jsx";
 import { Topbar } from "@/components/layout/topbar";
 import { PageBack } from "@/components/layout/page-back";
 import { clientDisplayName, ensureProspectIdentity } from "@/lib/clients";
@@ -60,6 +62,11 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
   const { t, lang } = useI18n();
   const { can } = useUserPermissions();
   const { isEnabled, hasCatalog } = useFlags();
+  const { active } = useWorkspace();
+  const isPersonalWorkspace = !active || active.tipo === "personal";
+  const isGerenteSala = active?.tipo === "sala_de_venta" && active?.rol_en_workspace === "gerente";
+  const canTransfer = isOwner && isPersonalWorkspace && isSupabaseConfigured();
+  const canDeleteExpediente = isOwner && (isPersonalWorkspace || isGerenteSala);
   const toolAllowed = (toolKey) => {
     const flagKey = TOOL_FLAG_KEYS[toolKey];
     if (hasCatalog && flagKey) return isEnabled(flagKey) === true;
@@ -360,12 +367,16 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
                 <>
                   <button type="button" className="btn btn-ghost btn-sm" onClick={() => setShareOpen(true)}>{t("network.shareAction")}</button>
                   <button type="button" className="btn btn-ghost btn-sm" onClick={() => setMoveMode("duplicate")}>{t("exp.duplicate")}</button>
-                  <button type="button" className="btn btn-ghost btn-sm" onClick={() => setMoveMode("transfer")}>{t("exp.transfer")}</button>
+                  {canTransfer ? (
+                    <button type="button" className="btn btn-ghost btn-sm" onClick={() => setMoveMode("transfer")}>{t("exp.transfer")}</button>
+                  ) : null}
                 </>
               )}
-              <button type="button" className="btn btn-danger btn-sm" onClick={async () => {
-                if (await removeClient(id, clientDisplayName(c))) navigate("/clients");
-              }}>{t("exp.delete")}</button>
+              {canDeleteExpediente ? (
+                <button type="button" className="btn btn-danger btn-sm" onClick={async () => {
+                  if (await removeClient(id, clientDisplayName(c))) navigate("/clients");
+                }}>{t("exp.delete")}</button>
+              ) : null}
             </div>
           )}
           {showAddToWorkspace && (
@@ -389,6 +400,12 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
         <ProspectWorkflowPanel
           prospectId={id}
           enabled={!sharedRemote && isSupabaseConfigured()}
+        />
+
+        <ProspectFilesPanel
+          prospectId={id}
+          enabled={!sharedRemote && isSupabaseConfigured()}
+          canUpload={canEdit || canComment}
         />
 
         <div className="exp-layout">

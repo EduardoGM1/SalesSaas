@@ -17,7 +17,7 @@ export function createApp() {
     origin: origins.length ? origins : true,
     credentials: true,
   }));
-  app.use(express.json({ limit: "10mb" }));
+  app.use(express.json({ limit: "15mb" }));
   app.use(cookieParser());
 
   app.get("/health", (_req, res) => {

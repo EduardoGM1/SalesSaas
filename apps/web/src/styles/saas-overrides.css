@@ -8953,3 +8953,70 @@ body,
 .prospect-workflow-assign .auth-input {
   flex: 1 1 200px;
 }
+
+/* ── Archivos del expediente ───────────────────────────────── */
+.prospect-files-panel {
+  margin-bottom: 16px;
+}
+.prospect-files-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+.prospect-files-head h2 {
+  margin: 4px 0 2px;
+  font-size: 1.05rem;
+}
+.prospect-files-head p {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--saas-text-muted, #64748b);
+}
+.prospect-files-empty {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px;
+  border: 1px dashed var(--saas-border, #e2e8f0);
+  border-radius: 10px;
+  color: var(--saas-text-muted, #64748b);
+  font-size: 0.85rem;
+}
+.prospect-files-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+.prospect-files-list li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--saas-border, #e2e8f0);
+  border-radius: 10px;
+}
+.prospect-files-list li > svg {
+  flex: 0 0 auto;
+  color: var(--saas-primary, #1e5eff);
+}
+.prospect-files-meta {
+  display: grid;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.prospect-files-meta a,
+.prospect-files-meta strong {
+  font-size: 0.88rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.prospect-files-meta span {
+  font-size: 0.74rem;
+  color: var(--saas-text-muted, #64748b);
+}

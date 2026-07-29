@@ -155,6 +155,10 @@ export async function getWorkflow(_supabase, actorId, prospectId) {
         && (state.representante_id === actorId || access.isManager),
       can_review: state.etapa_actual === "revision_gerente" && access.isManager,
       can_assign_closer: state.etapa_actual === "asignacion_cerrador" && access.isManager,
+      can_reassign_closer: access.isManager
+        && Boolean(state.cerrador_id)
+        && ["money_box", "tipo_cambio", "venta"].includes(state.etapa_actual)
+        && !["completado", "cancelado"].includes(state.estado),
     },
   };
 }
@@ -299,7 +303,11 @@ export async function assignCloser(_supabase, actorId, prospectId, closerId) {
   const access = await loadAccess(actorId, prospectId);
   const workflow = await ensureWorkflow(access, actorId);
   if (!access.isManager) throw new ServiceError("Solo un gerente puede asignar Cerrador.", 403);
-  if (workflow.etapa_actual !== "asignacion_cerrador") {
+  const canFirst = workflow.etapa_actual === "asignacion_cerrador";
+  const canReassign = Boolean(workflow.cerrador_id)
+    && ["money_box", "tipo_cambio", "venta"].includes(workflow.etapa_actual)
+    && !["completado", "cancelado"].includes(workflow.estado);
+  if (!canFirst && !canReassign) {
     throw new ServiceError("El expediente no está listo para asignación.", 409);
   }
   const { data: member } = await access.admin
