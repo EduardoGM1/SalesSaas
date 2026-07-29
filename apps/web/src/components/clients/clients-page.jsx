@@ -6,12 +6,14 @@ import { ShareProspectModal } from "@/components/network/share-prospect-modal.js
 import { NewClientModal } from "@/components/clients/new-client-modal.jsx";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { sharingApi } from "@/lib/network-api.js";
+import { participantsApi } from "@/lib/participants-api.js";
 import { Topbar } from "@/components/layout/topbar";
 import { PageBack } from "@/components/layout/page-back";
 import { clientDisplayName } from "@/lib/clients";
 import { isQuantifiableSaleClient } from "@/lib/calculations/tour-summary";
 import { shortDate } from "@/lib/format/dates";
 import { useI18n } from "@/hooks/use-i18n.js";
+import { useWorkspace } from "@/hooks/use-workspace.js";
 import { selectOnFocus } from "@/lib/focus-select.js";
 import { useAppStore } from "@/stores/app-store";
 import { useClientActions } from "@/hooks/use-client-actions.js";
@@ -32,7 +34,6 @@ function pinnedToRow(share) {
     name1: name,
     tourDate: share.tour_date || null,
     createdYmd: share.tour_date || null,
-    // Calificación/tipo_tour viene del recurso vivo (API → prospects), no del pin.
     tipo_tour: share.tipo_tour ?? null,
     tour_cuantificable: share.tour_cuantificable != null ? !!share.tour_cuantificable : true,
     pinned: true,
@@ -42,7 +43,16 @@ function pinnedToRow(share) {
   };
 }
 
-function matchesQuery(row, q) {
+function formatTeamActivity(meta, t, lang) {
+  if (!meta?.lastActivityAt) return "—";
+  const when = new Date(meta.lastActivityAt).toLocaleString(lang === "en" ? "en-US" : "es-MX");
+  if (meta.lastActivityBy) {
+    return t("clients.updatedBy", { name: meta.lastActivityBy, when });
+  }
+  return when;
+}
+
+function matchesQuery(row, q, showTeamCols) {
   if (!q) return true;
   const hay = [
     row.name,
@@ -53,6 +63,9 @@ function matchesQuery(row, q) {
     row.city,
     row.country,
     row.status,
+    showTeamCols && row.team?.vendedor,
+    showTeamCols && row.team?.cerrador,
+    showTeamCols && row.team?.lastActivityBy,
   ].filter(Boolean).join(" ").toLowerCase();
   return hay.includes(q);
 }
@@ -61,17 +74,27 @@ function clientListYmd(c) {
   return c.tourDate || c.createdYmd || "";
 }
 
+function enrichWithTeam(row, teamMetaById) {
+  const team = teamMetaById[row.id];
+  return team ? { ...row, team } : row;
+}
+
 export function ClientsPage() {
   const { t, lang, months } = useI18n();
   const navigate = useNavigate();
   const location = useLocation();
+  const { active } = useWorkspace();
   const hydrated = useAppStore((s) => s.hydrated);
   const { searchClients, removeClient } = useClientActions();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [shareClient, setShareClient] = useState(null);
   const [pinned, setPinned] = useState([]);
+  const [teamMetaById, setTeamMetaById] = useState({});
   const canShare = isSupabaseConfigured();
+  const isSalaWorkspace = active?.tipo === "sala_de_venta";
+  const showTeamCols = isSalaWorkspace && canShare;
+  const tableColSpan = showTeamCols ? 7 : 4;
   const currentYear = new Date().getFullYear();
 
   const refreshPinned = useCallback(() => {
@@ -85,20 +108,45 @@ export function ClientsPage() {
       });
   }, [canShare]);
 
-  // Refetch al entrar/volver a /clients (p. ej. tras editar un pin en detalle).
+  const refreshTeamMeta = useCallback(() => {
+    if (!showTeamCols) {
+      setTeamMetaById({});
+      return Promise.resolve();
+    }
+    return participantsApi.active()
+      .then((items) => {
+        const map = {};
+        for (const row of Array.isArray(items) ? items : []) {
+          if (!row?.prospect_id) continue;
+          map[row.prospect_id] = {
+            vendedor: row.representante?.full_name || "—",
+            cerrador: row.cerrador?.full_name || t("clients.unassignedCloser"),
+            lastActivityBy: row.last_activity_by || null,
+            lastActivityAt: row.last_activity_at || row.updated_at || null,
+          };
+        }
+        setTeamMetaById(map);
+      })
+      .catch(() => setTeamMetaById({}));
+  }, [showTeamCols, t]);
+
   useEffect(() => {
     if (!canShare || !hydrated) return;
     refreshPinned();
-  }, [canShare, hydrated, location.key, refreshPinned]);
+    refreshTeamMeta();
+  }, [canShare, hydrated, location.key, refreshPinned, refreshTeamMeta]);
 
   useEffect(() => {
     if (!canShare || !hydrated) return;
     const onVisible = () => {
-      if (document.visibilityState === "visible") refreshPinned();
+      if (document.visibilityState === "visible") {
+        refreshPinned();
+        refreshTeamMeta();
+      }
     };
     document.addEventListener("visibilitychange", onVisible);
     return () => document.removeEventListener("visibilitychange", onVisible);
-  }, [canShare, hydrated, refreshPinned]);
+  }, [canShare, hydrated, refreshPinned, refreshTeamMeta]);
 
   const ownedAll = searchClients("");
   const ownedIds = useMemo(() => new Set(ownedAll.map((c) => c.id)), [ownedAll]);
@@ -108,12 +156,20 @@ export function ClientsPage() {
   );
 
   const q = query.trim().toLowerCase();
-  const ownedSorted = searchClients(query);
-  const pinnedSorted = useMemo(
-    () => pinnedOnly.filter((p) => matchesQuery(p, q)),
-    [pinnedOnly, q],
+  const ownedSorted = useMemo(
+    () => ownedAll.filter((c) => matchesQuery(enrichWithTeam(c, teamMetaById), q, showTeamCols)),
+    [ownedAll, q, teamMetaById, showTeamCols],
   );
-  const allRows = useMemo(() => [...ownedSorted, ...pinnedSorted], [ownedSorted, pinnedSorted]);
+  const pinnedSorted = useMemo(
+    () => pinnedOnly
+      .map((p) => enrichWithTeam(p, teamMetaById))
+      .filter((p) => matchesQuery(p, q, showTeamCols)),
+    [pinnedOnly, q, teamMetaById, showTeamCols],
+  );
+  const allRows = useMemo(
+    () => [...ownedSorted, ...pinnedSorted].map((row) => enrichWithTeam(row, teamMetaById)),
+    [ownedSorted, pinnedSorted, teamMetaById],
+  );
   const totalCount = ownedAll.length + pinnedOnly.length;
   const hasSearch = query.trim().length > 0;
 
@@ -161,13 +217,20 @@ export function ClientsPage() {
         ) : !allRows.length ? (
           <div className="client-search-empty">{t("clients.noResults", { query })}</div>
         ) : (
-          <div className="client-table-card">
+          <div className={`client-table-card${showTeamCols ? " client-table-card--team" : ""}`}>
             <table className="client-table">
               <thead>
                 <tr>
                   <th>{t("clients.colName")}</th>
                   <th>{t("clients.colDate")}</th>
                   <th className="client-th-calif">{t("clients.colTourType")}</th>
+                  {showTeamCols ? (
+                    <>
+                      <th className="client-th-team">{t("clients.colVendor")}</th>
+                      <th className="client-th-team">{t("clients.colCloser")}</th>
+                      <th className="client-th-team client-th-updated">{t("clients.colUpdated")}</th>
+                    </>
+                  ) : null}
                   <th style={{ textAlign: "center" }}>{t("clients.colActions")}</th>
                 </tr>
               </thead>
@@ -186,24 +249,24 @@ export function ClientsPage() {
                       if (prevYear == null ? year !== currentYear : year !== prevYear) {
                         nodes.push(
                           <tr key={`sep-y-${ym}`} className="client-period-sep client-period-sep--year" aria-hidden="true">
-                            <td colSpan={4}>{year}</td>
+                            <td colSpan={tableColSpan}>{year}</td>
                           </tr>,
                         );
                       }
                       nodes.push(
                         <tr key={`sep-m-${ym}`} className="client-period-sep" aria-hidden="true">
-                          <td colSpan={4}>{monthLabel}</td>
+                          <td colSpan={tableColSpan}>{monthLabel}</td>
                         </tr>,
                       );
                       prevYm = ym;
                       prevYear = year;
                     }
                     const href = c.pinned ? c.href : `/clients/${c.id}`;
-                    // Misma fuente de verdad que el recuadro Ventas del Dashboard (global, no por mes).
                     const hasRecognizedSale = !c.pinned && isQuantifiableSaleClient(c);
                     const nameClass = hasRecognizedSale
                       ? "client-name-text client-name-text--sale"
                       : "client-name-text";
+                    const teamActivity = c.team ? formatTeamActivity(c.team, t, lang) : null;
                     nodes.push(
                       <tr
                         key={c.pinned ? `pin-${c.shareId || c.id}` : c.id}
@@ -231,10 +294,23 @@ export function ClientsPage() {
                               )}
                             </span>
                             <span className="client-code">{c.prospectCode}</span>
+                            {showTeamCols && c.team ? (
+                              <span className="client-team-meta client-team-meta--mobile">
+                                {c.team.vendedor} · {c.team.cerrador}
+                                {teamActivity && teamActivity !== "—" ? ` · ${teamActivity}` : ""}
+                              </span>
+                            ) : null}
                           </div>
                         </td>
                         <td>{c.tourDate ? shortDate(c.tourDate, lang) : c.createdYmd ? shortDate(c.createdYmd, lang) : "—"}</td>
                         <td className="client-td-calif">{formatQualification(c.tipo_tour)}</td>
+                        {showTeamCols ? (
+                          <>
+                            <td className="client-td-team">{c.team?.vendedor || "—"}</td>
+                            <td className="client-td-team">{c.team?.cerrador || t("clients.unassignedCloser")}</td>
+                            <td className="client-td-team client-td-updated">{teamActivity || "—"}</td>
+                          </>
+                        ) : null}
                         <td>
                           <div className="client-actions" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
                             <Link to={href} className="icon-btn client-action-view" title={t("clients.viewFile")}><Eye size={14} /></Link>
@@ -269,7 +345,7 @@ export function ClientsPage() {
       {canShare && (
         <ShareProspectModal
           open={!!shareClient}
-          onOpenChange={(open) => { if (!open) setShareClient(null); }}
+          onOpenChange={(openModal) => { if (!openModal) setShareClient(null); }}
           prospectId={shareClient?.id}
           prospectName={shareClient ? clientDisplayName(shareClient) : ""}
           prospect={shareClient}

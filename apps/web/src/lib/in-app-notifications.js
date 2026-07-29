@@ -273,7 +273,7 @@ function buildFallbackData(tipo, { title, body, path, avatarUrl, type }) {
       return {
         cuerpo: b || t || "Hay una actualización en los participantes del expediente",
         expedienteId: parseProspectIdFromClientsPath(path) || "expediente",
-        rutaDestino: path || "/expedientes",
+        rutaDestino: path || "/clients",
         reasignado: /reasign/i.test(t || b || ""),
       };
     case "solicitud_contacto":

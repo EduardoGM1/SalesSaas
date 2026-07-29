@@ -3,7 +3,6 @@ import {
   Calendar,
   MessageSquareText,
   MessagesSquare,
-  ListChecks,
   Receipt,
   Shield,
   Target,
@@ -29,7 +28,6 @@ export const NAV_GROUPS = [
     },
     { href: "/goals", label: "Dashboard", icon: BarChart3 },
     { href: "/tools", label: "Herramientas", icon: Wrench },
-    { href: "/expedientes", label: "Expedientes", icon: ListChecks, salaOnly: true },
     { href: "/sales", label: "Ventas", icon: Receipt, feature: "sales:history" },
   ],
   [
