@@ -32,6 +32,11 @@ export function messagePath(senderId) {
   return `/messages?with=${encodeURIComponent(String(senderId))}`;
 }
 
+/** Deep link al chat grupal de un expediente en Chat de equipo. */
+export function teamConversationPath(conversationId) {
+  return `/messages?scope=team&conversation=${encodeURIComponent(String(conversationId))}`;
+}
+
 export function contactPath(contactId) {
   return `/red/contacto/${encodeURIComponent(String(contactId))}`;
 }

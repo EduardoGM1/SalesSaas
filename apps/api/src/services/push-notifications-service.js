@@ -8,6 +8,7 @@ import {
   calendarPath,
   contactPath,
   messagePath,
+  teamConversationPath,
   networkPath,
   pushUrl,
   salesPath,
@@ -232,7 +233,7 @@ export async function getPushDiagnosticsForUser(supabase, userId) {
   };
 }
 
-export async function notifyNewMessage(recipientId, { senderId, senderName, body }) {
+export async function notifyNewMessage(recipientId, { senderId, senderName, body, conversationId = null }) {
   const serviceSb = createServiceSupabaseClient();
   if (!serviceSb || !isPushConfigured()) return;
 
@@ -242,7 +243,9 @@ export async function notifyNewMessage(recipientId, { senderId, senderName, body
   const preview = String(body ?? "").trim();
   const short = preview.length > 120 ? `${preview.slice(0, 120)}…` : preview;
   const origin = primaryWebOrigin();
-  const path = messagePath(senderId);
+  const path = conversationId
+    ? teamConversationPath(conversationId)
+    : messagePath(senderId);
 
   await sendToUser(serviceSb, recipientId, {
     title: senderName || "Nuevo mensaje",
@@ -250,7 +253,9 @@ export async function notifyNewMessage(recipientId, { senderId, senderName, body
     url: pushUrl(origin, path),
     path,
     type: PushType.MESSAGE,
-    tag: `message-${senderId}`,
+    tag: conversationId
+      ? `group-message-${conversationId}`
+      : `message-${senderId}`,
   });
 }
 

@@ -8,6 +8,7 @@ export type NotificacionTipo =
   | "solicitud_contacto"
   | "solicitud_aceptada"
   | "expediente_compartido"
+  | "cerrador_asignado"
   | "followup_pendiente"
   | "venta_pendiente"
   | "nota_programada"
@@ -47,9 +48,13 @@ export function armarNotificacion(
         titulo: "Nuevo mensaje",
         cuerpo: `${data.nombreRemitente}: ${truncar(String(data.mensaje ?? ""))}`,
         avatarUrl: data.avatarRemitente ? String(data.avatarRemitente) : undefined,
-        // spec: /mensajes/:chatId → SPA: /messages?with=
-        rutaDestino: `/messages?with=${encodeURIComponent(String(data.chatId ?? ""))}`,
-        entidadId: String(data.chatId ?? ""),
+        // 1:1 → /messages?with= · grupal expediente → /messages?scope=team&conversation=
+        rutaDestino: data.rutaDestino
+          ? String(data.rutaDestino)
+          : data.conversationId
+            ? `/messages?scope=team&conversation=${encodeURIComponent(String(data.conversationId))}`
+            : `/messages?with=${encodeURIComponent(String(data.chatId ?? ""))}`,
+        entidadId: String(data.conversationId ?? data.chatId ?? ""),
       };
 
     case "solicitud_contacto":
@@ -82,6 +87,17 @@ export function armarNotificacion(
         cuerpo: `${data.nombreQuienComparte} te compartió el expediente "${data.nombreCliente}" con acceso de ${data.nivelAcceso}`,
         avatarUrl: data.avatarQuienComparte ? String(data.avatarQuienComparte) : undefined,
         // Preferir ruta compartida si viene; si no, expediente propio.
+        rutaDestino: data.rutaDestino
+          ? String(data.rutaDestino)
+          : `/clients/${encodeURIComponent(String(data.expedienteId ?? ""))}`,
+        entidadId: String(data.expedienteId ?? ""),
+      };
+
+    case "cerrador_asignado":
+      return {
+        tipo,
+        titulo: data.reasignado ? "Expediente reasignado" : "Cerrador asignado",
+        cuerpo: String(data.cuerpo || "Hay una actualización en los participantes del expediente"),
         rutaDestino: data.rutaDestino
           ? String(data.rutaDestino)
           : `/clients/${encodeURIComponent(String(data.expedienteId ?? ""))}`,

@@ -21,6 +21,10 @@ import {
   ProspectShareMessageCard,
   conversationPreview,
 } from "@/components/messages/prospect-share-message-card.jsx";
+import {
+  startGroupChatRealtime,
+  stopGroupChatRealtime,
+} from "@/lib/group-chat-realtime.js";
 
 function formatTime(iso, lang) {
   if (!iso) return "";
@@ -156,14 +160,20 @@ export function MessagesPage() {
     if (!isSupabaseConfigured()) return undefined;
     if (conversationId) {
       loadGroupThread(conversationId).catch((err) => toast.error(err.message));
+      void startGroupChatRealtime(conversationId, () => {
+        loadGroupThread(conversationId, { silent: true }).catch(() => {});
+      });
+      // Respaldo por si Realtime no está disponible en el entorno.
       const timer = window.setInterval(() => {
         loadGroupThread(conversationId, { silent: true }).catch(() => {});
-      }, 8000);
+      }, 30_000);
       return () => {
         window.clearInterval(timer);
+        void stopGroupChatRealtime();
         threadReqIdRef.current += 1;
       };
     }
+    void stopGroupChatRealtime();
     if (!activePeerId) {
       setMessages([]);
       setGroupMeta(null);

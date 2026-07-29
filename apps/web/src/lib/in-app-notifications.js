@@ -20,6 +20,7 @@ const TIPO_TO_PREF = {
   solicitud_contacto: "connection_requests",
   solicitud_aceptada: "connection_accepted",
   expediente_compartido: "shared_prospects",
+  cerrador_asignado: "shared_prospects",
   followup_pendiente: "follow_up_reminders",
   venta_pendiente: "sales_to_process",
   nota_programada: "scheduled_notes",
@@ -31,6 +32,7 @@ const PUSH_TO_TIPO = {
   [PushType.CONNECTION_ACCEPTED]: "solicitud_aceptada",
   [PushType.SHARED_PROSPECT]: "expediente_compartido",
   [PushType.PROSPECT_SECTION_CHANGED]: "expediente_compartido",
+  [PushType.CLOSER_ASSIGNED]: "cerrador_asignado",
   [PushType.FOLLOW_UP_REMINDER]: "followup_pendiente",
   [PushType.SALES_TO_PROCESS]: "venta_pendiente",
   [PushType.SCHEDULED_NOTE]: "nota_programada",
@@ -48,6 +50,7 @@ const TIPO_TO_ICON = {
   solicitud_contacto: "connection_request",
   solicitud_aceptada: "connection_accepted",
   expediente_compartido: "shared_prospect",
+  cerrador_asignado: "shared_prospect",
   followup_pendiente: "follow_up_reminder",
   venta_pendiente: "sales_to_process",
   nota_programada: "scheduled_note",
@@ -225,12 +228,36 @@ function parsePeerFromMessagesPath(path) {
   }
 }
 
+function parseConversationFromMessagesPath(path) {
+  if (!path || typeof path !== "string") return null;
+  try {
+    const u = new URL(path, "https://app.local");
+    return u.searchParams.get("conversation");
+  } catch {
+    const m = path.match(/[?&]conversation=([^&]+)/);
+    return m ? decodeURIComponent(m[1]) : null;
+  }
+}
+
+function parseProspectIdFromClientsPath(path) {
+  if (!path || typeof path !== "string") return null;
+  try {
+    const u = new URL(path, "https://app.local");
+    const m = u.pathname.match(/^\/clients\/([^/]+)/);
+    return m ? decodeURIComponent(m[1]) : null;
+  } catch {
+    const m = String(path).match(/\/clients\/([^/?#]+)/);
+    return m ? decodeURIComponent(m[1]) : null;
+  }
+}
+
 function buildFallbackData(tipo, { title, body, path, avatarUrl, type }) {
   const t = String(title || "").trim();
   const b = String(body || "").trim();
 
   switch (tipo) {
     case "mensaje_nuevo": {
+      const conversationId = parseConversationFromMessagesPath(path);
       const chatId = parsePeerFromMessagesPath(path) || "unknown";
       // Push nativo: title = nombre, body = mensaje
       return {
@@ -238,8 +265,17 @@ function buildFallbackData(tipo, { title, body, path, avatarUrl, type }) {
         mensaje: b || "",
         avatarRemitente: avatarUrl || undefined,
         chatId,
+        conversationId: conversationId || undefined,
+        rutaDestino: path || undefined,
       };
     }
+    case "cerrador_asignado":
+      return {
+        cuerpo: b || t || "Hay una actualización en los participantes del expediente",
+        expedienteId: parseProspectIdFromClientsPath(path) || "expediente",
+        rutaDestino: path || "/expedientes",
+        reasignado: /reasign/i.test(t || b || ""),
+      };
     case "solicitud_contacto":
       return {
         nombreSolicitante: extractNameFromBody(b, t) || "Alguien",

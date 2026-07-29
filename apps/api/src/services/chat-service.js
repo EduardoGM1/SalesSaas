@@ -206,6 +206,7 @@ export async function sendConversationMessage(_supabase, userId, conversationId,
       senderId: userId,
       senderName,
       body: preview,
+      conversationId,
     }).catch(() => {})),
   );
 

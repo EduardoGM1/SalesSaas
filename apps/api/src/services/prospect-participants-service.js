@@ -264,16 +264,42 @@ export async function listActiveProspects(supabase, actorId) {
 
   const { data, error } = await query;
   if (error) throw new ServiceError(error.message, 500);
-  return (data ?? []).map((row) => ({
-    prospect_id: row.prospect_id,
-    estado: row.estado,
-    updated_at: row.updated_at,
-    prospects: row.prospects,
-    representante: row.representante,
-    cerrador: row.cerrador,
-    representante_id: row.representante_id,
-    cerrador_id: row.cerrador_id,
-  }));
+
+  const rows = data ?? [];
+  const prospectIds = rows.map((row) => row.prospect_id).filter(Boolean);
+  /** @type {Map<string, { full_name?: string | null, created_at?: string }>} */
+  const lastActivityByProspect = new Map();
+  if (prospectIds.length) {
+    const { data: events } = await admin
+      .from("prospect_workflow_events")
+      .select("prospect_id, created_at, actor:profiles(full_name)")
+      .in("prospect_id", prospectIds)
+      .order("created_at", { ascending: false })
+      .limit(Math.min(prospectIds.length * 8, 400));
+    for (const event of events || []) {
+      if (!event?.prospect_id || lastActivityByProspect.has(event.prospect_id)) continue;
+      lastActivityByProspect.set(event.prospect_id, {
+        full_name: event.actor?.full_name || null,
+        created_at: event.created_at,
+      });
+    }
+  }
+
+  return rows.map((row) => {
+    const last = lastActivityByProspect.get(row.prospect_id);
+    return {
+      prospect_id: row.prospect_id,
+      estado: row.estado,
+      updated_at: row.updated_at,
+      last_activity_at: last?.created_at || row.updated_at || null,
+      last_activity_by: last?.full_name || null,
+      prospects: row.prospects,
+      representante: row.representante,
+      cerrador: row.cerrador,
+      representante_id: row.representante_id,
+      cerrador_id: row.cerrador_id,
+    };
+  });
 }
 
 // Compat aliases usados por rutas antiguas durante la migración.

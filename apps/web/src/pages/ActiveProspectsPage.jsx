@@ -77,7 +77,12 @@ export function ActiveProspectsPage() {
                       <span><strong>Cerrador</strong>{row.cerrador?.full_name || "Sin asignar"}</span>
                       <span>
                         <strong>Actualizado</strong>
-                        {row.updated_at ? new Date(row.updated_at).toLocaleString() : "—"}
+                        {row.last_activity_by
+                          ? `por ${row.last_activity_by} · `
+                          : ""}
+                        {(row.last_activity_at || row.updated_at)
+                          ? new Date(row.last_activity_at || row.updated_at).toLocaleString()
+                          : "—"}
                       </span>
                     </div>
                     <Link className="btn btn-primary" to={`/clients/${row.prospect_id}`}>

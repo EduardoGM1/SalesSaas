@@ -141,6 +141,33 @@ export async function startInAppNotificationsRealtime(userId) {
         {
           event: "INSERT",
           schema: "public",
+          table: "chat_messages",
+        },
+        (payload) => {
+          void (async () => {
+            const row = payload.new || {};
+            if (!row.conversation_id || row.sender_id === userId) return;
+            if (row.message_type === "system") return;
+            const profile = await loadProfile(supabase, row.sender_id);
+            const preview = row.message_type === "prospect_card"
+              ? "📁 Expediente"
+              : String(row.body || "").trim();
+            presentarNotificacion("mensaje_nuevo", {
+              nombreRemitente: profile.full_name || "Contacto",
+              mensaje: preview || "Tienes un mensaje nuevo",
+              avatarRemitente: profile.avatar_url || undefined,
+              conversationId: row.conversation_id,
+              chatId: row.sender_id,
+            });
+            notifyUnreadMessagesChanged();
+          })();
+        },
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
           table: "user_connections",
           filter: `addressee_id=eq.${userId}`,
         },
