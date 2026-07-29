@@ -157,6 +157,7 @@ export function ProspectShareMessageCard({ message, t, onResolved }) {
 
 export function conversationPreview(message, t) {
   const type = message?.message_type || "text";
+  if (type === "prospect_card") return `📁 ${message?.metadata?.prospect_name || "Expediente"}`;
   if (type === "access_granted") return t("messages.share.previewAccess");
   if (type === "permission_request") return t("messages.share.previewRequest");
   if (type === "permission_response") {
