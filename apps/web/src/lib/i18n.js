@@ -3,6 +3,13 @@ import { ES_PHASE2, EN_PHASE2 } from "./i18n-phase2-catalog.js";
 import { ES_PHASE3, EN_PHASE3 } from "./i18n-phase3-catalog.js";
 import { ES_SURVEY_DISC, EN_SURVEY_DISC } from "./i18n-survey-discovery-catalog.js";
 import { useDbStore } from "@/stores/db-store";
+import {
+  getMonths,
+  getWeekdays,
+  getWeekdaysShort,
+} from "@/lib/locale-calendar.js";
+
+export { getMonths, getWeekdays, getWeekdaysShort };
 
 const ES = {
   "nav.agenda": "Agenda",
@@ -738,23 +745,6 @@ const EN = {
   ...EN_SURVEY_DISC,
 };
 
-const MONTHS_ES = [
-  "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
-  "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
-];
-const MONTHS_EN = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December",
-];
-const WEEKDAYS_ES = [
-  "Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado",
-];
-const WEEKDAYS_EN = [
-  "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday",
-];
-const WEEKDAYS_SHORT_ES = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
-const WEEKDAYS_SHORT_EN = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-
 const STATUS_KEYS = {
   "": "status.empty",
   venta: "status.sale",
@@ -778,18 +768,6 @@ export function t(key, lang = "es", vars) {
 
 export function getLang(settings) {
   return settings?.language === "en" ? "en" : "es";
-}
-
-export function getMonths(lang = "es") {
-  return lang === "en" ? MONTHS_EN : MONTHS_ES;
-}
-
-export function getWeekdays(lang = "es") {
-  return lang === "en" ? WEEKDAYS_EN : WEEKDAYS_ES;
-}
-
-export function getWeekdaysShort(lang = "es") {
-  return lang === "en" ? WEEKDAYS_SHORT_EN : WEEKDAYS_SHORT_ES;
 }
 
 export function statusLabelKey(status) {

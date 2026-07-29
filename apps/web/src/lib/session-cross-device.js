@@ -2,7 +2,7 @@ import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { createClient, primeRealtimeAuth } from "@/lib/supabase/client";
 import { fetchRealtimeSession } from "@/lib/presence-api.js";
 import { ensureRealtimeReady, removeChannelSafe } from "@/lib/presence/realtime.js";
-import { clearLocalSession, notifyAuthChanged } from "@/lib/session-api.js";
+// No import estático de session-api: evita ciclo session-api ↔ session-cross-device (TDZ en bundle).
 
 /** Canal simétrico móvil ↔ desktop: `user-session:{userId}` */
 export const SESSION_SYNC_EVENT = "SIGNED_OUT";
@@ -99,11 +99,12 @@ async function handleRemoteSignedOut(source = "broadcast") {
   tlog("remote:start", { source });
   try {
     await detachSessionSync();
+    const { clearLocalSession, notifyAuthChanged } = await import("@/lib/session-api.js");
     await clearLocalSession({ notify: false });
+    notifyAuthChanged();
   } finally {
     handlingRemote = false;
   }
-  notifyAuthChanged();
   tlog("remote:done", Date.now() - t0, { source });
 }
 

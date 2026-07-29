@@ -1,4 +1,4 @@
-import { getMonths } from "@/lib/i18n.js";
+import { getMonths } from "@/lib/locale-calendar.js";
 
 export function ymdToday(): string {
   const d = new Date();
