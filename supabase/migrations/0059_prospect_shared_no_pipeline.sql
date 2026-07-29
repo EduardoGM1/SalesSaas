@@ -220,11 +220,12 @@ begin
         updated_at = now()
   returning id into v_conv_id;
 
-  v_desired := array_remove(array[
-    v_wf.representante_id,
-    v_wf.gerente_id,
-    v_wf.cerrador_id
-  ], null);
+  -- Una fila por usuario (misma persona puede ser gerente + vendedor).
+  v_desired := array(
+    select distinct u
+    from unnest(array[v_wf.representante_id, v_wf.gerente_id, v_wf.cerrador_id]) as u
+    where u is not null
+  );
 
   -- Reactivar / insertar deseados
   insert into public.chat_members (conversation_id, usuario_id, rol, joined_at, left_at)
@@ -252,7 +253,7 @@ begin
   set left_at = now()
   where conversation_id = v_conv_id
     and left_at is null
-    and usuario_id <> all (v_desired);
+    and not (usuario_id = any (v_desired));
 
   update public.chat_conversations set updated_at = now() where id = v_conv_id;
   return v_conv_id;
