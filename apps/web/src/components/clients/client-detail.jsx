@@ -65,8 +65,6 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
   const { active } = useWorkspace();
   const isPersonalWorkspace = !active || active.tipo === "personal";
   const isGerenteSala = active?.tipo === "sala_de_venta" && active?.rol_en_workspace === "gerente";
-  const canTransfer = isOwner && isPersonalWorkspace && isSupabaseConfigured();
-  const canDeleteExpediente = isOwner && (isPersonalWorkspace || isGerenteSala);
   const toolAllowed = (toolKey) => {
     const flagKey = TOOL_FLAG_KEYS[toolKey];
     if (hasCatalog && flagKey) return isEnabled(flagKey) === true;
@@ -91,6 +89,8 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
   const canEdit = canEditShared(perm);
   const canComment = canCommentShared(perm);
   const isOwner = perm === "owner";
+  const canTransfer = isOwner && isPersonalWorkspace && isSupabaseConfigured();
+  const canDeleteExpediente = isOwner && (isPersonalWorkspace || isGerenteSala);
   const showAddToWorkspace = sharedRemote
     && canAddToWorkspace(perm)
     && shareMeta.canPin
