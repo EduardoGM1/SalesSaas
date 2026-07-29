@@ -162,6 +162,8 @@ export interface UserSettings {
   currency?: "USD" | "MXN" | "CAD" | "EUR";
   exchangeRate?: number;
   exchangeMode?: "manual" | "auto";
+  /** 1 USD = X MXN para captura cuando la moneda visual es USD */
+  usdToMxnRate?: number;
   userName?: string;
   userInitials?: string;
   worksheetConfig?: Record<string, string>;

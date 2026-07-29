@@ -419,7 +419,17 @@ export function SettingsPage() {
                     </select>
                   </div>
                   <div className="settings-row">
-                    <div><div className="settings-label">Tipo de cambio manual</div><div className="settings-help">Valor de 1 USD en la moneda visual seleccionada.</div></div>
+                    <div><div className="settings-label">Tipo de cambio USD/MXN (captura)</div><div className="settings-help">Usado al capturar montos en pesos cuando tu moneda operativa es USD. Ej.: 1 USD = 18 MXN.</div></div>
+                    <input
+                      type="number"
+                      min={0}
+                      step={0.0001}
+                      value={settings.usdToMxnRate ?? settings.exchangeRate ?? 18}
+                      onChange={(e) => setSetting("usdToMxnRate", Number(e.target.value) || 18)}
+                      style={{ width: 160, textAlign: "right" }}
+                    />
+                  </div>
+                  <div className="settings-row">
                     <input
                       type="number"
                       min={0}

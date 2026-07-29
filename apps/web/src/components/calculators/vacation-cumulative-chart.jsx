@@ -15,9 +15,11 @@ import { useMoney } from "@/hooks/use-money.js";
  * Gráfica acumulada de Proyección de Vacaciones (solo acumulado).
  * Sin toggles Anual/Acumulado ni descarga — Recharts (misma lib que Admin).
  */
-export function VacationCumulativeChart({ series = [] }) {
+export function VacationCumulativeChart({ series = [], fmtResult, fmtResultN }) {
   const { t } = useI18n();
-  const { fmt, fmtN } = useMoney();
+  const fallback = useMoney();
+  const fmtValue = fmtResult || fallback.fmt;
+  const fmtAxis = fmtResultN || fallback.fmtN;
 
   if (!series.length || series.every((p) => p.yearIndex === 0)) {
     return (
@@ -41,14 +43,14 @@ export function VacationCumulativeChart({ series = [] }) {
           />
           <YAxis
             tick={{ fontSize: 11, fill: "var(--muted)" }}
-            tickFormatter={(v) => fmtN(v)}
+            tickFormatter={(v) => fmtAxis(v)}
             width={56}
             tickLine={false}
             axisLine={{ stroke: "var(--border)" }}
           />
           <Tooltip
             formatter={(value, name) => [
-              fmt(Number(value) || 0),
+              fmtValue(Number(value) || 0),
               name === "withInflation"
                 ? t("tools.vacation.chartWithInflation")
                 : t("tools.vacation.chartWithoutInflation"),

@@ -12,6 +12,7 @@ import {
   AdminTimeline,
 } from "@/components/admin/admin-ui.jsx";
 import { AdminOverflowMenu } from "@/components/admin/admin-overflow-menu.jsx";
+import { BuscadorUsuario } from "@/components/admin/buscador-usuario.jsx";
 import { TenantCompanyAdministration } from "@/components/admin/tenant-company-administration.jsx";
 import { useAdminFetch } from "@/hooks/use-admin-session.js";
 import { useI18n } from "@/hooks/use-i18n.js";
@@ -43,10 +44,10 @@ export function AdminEmpresasPage() {
   const section = SECTIONS.includes(sectionParam) ? sectionParam : "summary";
   const [reloadKey, setReloadKey] = useState(0);
   const [empresaNombre, setEmpresaNombre] = useState("");
-  const [salaForm, setSalaForm] = useState({ empresa_id: "", nombre: "", gerente_id: "" });
+  const [salaForm, setSalaForm] = useState({ empresa_id: "", nombre: "", gerente: null });
   const [brandForm, setBrandForm] = useState({ id: "", tipo: "empresa", primary: "#1e5eff", accent: "#0f2044", logo_url: "" });
   const [membersSalaId, setMembersSalaId] = useState("");
-  const [addMemberId, setAddMemberId] = useState("");
+  const [addMemberUser, setAddMemberUser] = useState(null);
   const [members, setMembers] = useState([]);
   const [membersLoading, setMembersLoading] = useState(false);
   const [error, setError] = useState("");
@@ -64,6 +65,8 @@ export function AdminEmpresasPage() {
   }, [usersData]);
   const list = Array.isArray(empresas) ? empresas : [];
   const salasList = Array.isArray(salas) ? salas : [];
+  const membersSala = salasList.find((room) => room.id === membersSalaId) || null;
+  const membersEmpresaId = membersSala?.empresa_id || "";
   const refresh = () => setReloadKey((key) => key + 1);
 
   const loadMembers = async (salaId) => {
@@ -108,9 +111,16 @@ export function AdminEmpresasPage() {
 
   const createSala = (event) => {
     event.preventDefault();
+    if (!salaForm.gerente?.id) {
+      toast.error("Selecciona al gerente desde la lista de sugerencias.");
+      return;
+    }
     void runMutation(async () => {
-      await adminJson("salas", { method: "POST", body: salaForm });
-      setSalaForm({ empresa_id: "", nombre: "", gerente_id: "" });
+      await adminJson("salas", {
+        method: "POST",
+        body: { empresa_id: salaForm.empresa_id, nombre: salaForm.nombre, gerente_id: salaForm.gerente.id },
+      });
+      setSalaForm({ empresa_id: "", nombre: "", gerente: null });
     });
   };
 
@@ -167,13 +177,16 @@ export function AdminEmpresasPage() {
 
   const addMember = (event) => {
     event.preventDefault();
-    if (!membersSalaId || !addMemberId) return;
+    if (!membersSalaId || !addMemberUser?.id) {
+      toast.error("Selecciona al miembro desde la lista de sugerencias.");
+      return;
+    }
     void runMutation(async () => {
       await adminJson(`salas/${membersSalaId}/members`, {
         method: "POST",
-        body: { usuario_id: addMemberId, rol_en_workspace: "vendedor" },
+        body: { usuario_id: addMemberUser.id, rol_en_workspace: "vendedor" },
       });
-      setAddMemberId("");
+      setAddMemberUser(null);
       await loadMembers(membersSalaId);
     });
   };
@@ -280,10 +293,13 @@ export function AdminEmpresasPage() {
                   {list.map((company) => <option key={company.id} value={company.id}>{company.nombre}</option>)}
                 </select>
                 <input className="auth-input" value={salaForm.nombre} onChange={(event) => setSalaForm((current) => ({ ...current, nombre: event.target.value }))} placeholder={t("admin.empresas.salaName")} required />
-                <select className="auth-input" value={salaForm.gerente_id} onChange={(event) => setSalaForm((current) => ({ ...current, gerente_id: event.target.value }))} required>
-                  <option value="">{t("admin.empresas.pickGerente")}</option>
-                  {users.map((user) => <option key={user.id} value={user.id}>{user.name || user.email || user.id}</option>)}
-                </select>
+                <BuscadorUsuario
+                  empresaId={salaForm.empresa_id || null}
+                  value={salaForm.gerente}
+                  onChange={(user) => setSalaForm((current) => ({ ...current, gerente: user }))}
+                  placeholder={t("admin.empresas.pickGerente")}
+                  disabled={pending || !salaForm.empresa_id}
+                />
                 <button type="submit" className="btn btn-primary" disabled={pending}>{t("common.save")}</button>
               </form>
             </AdminCard>
@@ -320,10 +336,13 @@ export function AdminEmpresasPage() {
               </select>
               {membersSalaId ? (
                 <form onSubmit={addMember}>
-                  <select className="auth-input" value={addMemberId} onChange={(event) => setAddMemberId(event.target.value)} required>
-                    <option value="">{t("admin.empresas.addMember")}</option>
-                    {users.filter((user) => !members.some((member) => member.id === user.id)).map((user) => <option key={user.id} value={user.id}>{user.name || user.email || user.id}</option>)}
-                  </select>
+                  <BuscadorUsuario
+                    empresaId={membersEmpresaId || null}
+                    value={addMemberUser}
+                    onChange={setAddMemberUser}
+                    placeholder={t("admin.empresas.addMember")}
+                    disabled={pending || !membersEmpresaId}
+                  />
                   <button type="submit" className="btn btn-primary" disabled={pending}>{t("admin.empresas.addMember")}</button>
                 </form>
               ) : null}

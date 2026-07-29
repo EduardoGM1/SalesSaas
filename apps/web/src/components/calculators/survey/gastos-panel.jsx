@@ -1,12 +1,12 @@
 import { CollabField } from "@/components/clients/collab-field.jsx";
+import { SelectorMonedaCaptura } from "@/components/currency/selector-moneda-captura.jsx";
+import { CampoMonedaCaptura } from "@/components/currency/campo-moneda-captura.jsx";
 import { selectOnFocus } from "@/lib/focus-select.js";
-import { formatDecimalInput } from "@/lib/format/numeric-input.js";
-import { formatMoneyValue } from "@/lib/format/money";
 
 const HIST = ["sh1", "sh2", "sh3"];
 const FUT = ["sf1", "sf2", "sf3"];
 
-/** Contenido existente de Gastos de viaje — sin cambios de campos respecto a producción. */
+/** Contenido de Gastos de viaje con moneda de captura y resultados en moneda operativa. */
 export function GastosPanel({
   t,
   data,
@@ -16,14 +16,21 @@ export function GastosPanel({
   futureType,
   setFutureType,
   result,
-  fmt,
+  fmtResult,
   fmtD,
+  captureCurrency,
+  onCaptureCurrencyChange,
+  onMoneyBlur,
   collab,
   fid,
   dirtyKeysRef,
   readOnly,
   isFileMode,
 }) {
+  const moneyBlur = (key) => (event) => {
+    onMoneyBlur?.(key, event.target.value);
+  };
+
   return (
     <div className="disc-panel disc-gastos-panel">
       <div className="disc-section-head">
@@ -34,6 +41,13 @@ export function GastosPanel({
           </p>
         </div>
       </div>
+
+      <SelectorMonedaCaptura
+        value={captureCurrency}
+        onChange={onCaptureCurrencyChange}
+        disabled={readOnly}
+        className="tool-moneda-selector"
+      />
 
       <div className="card" style={{ marginBottom: 16 }}>
         <div className="card-heading">{t("tools.survey.currentTrip")}</div>
@@ -57,14 +71,17 @@ export function GastosPanel({
             </div>
             <div className="frow tool-frow">
               <div className="flabel">{t("tools.survey.totalPaid")}</div>
-              <div className="mfield">
-                <span className="mpfx">$</span>
-                <CollabField collab={collab} fieldId={fid("total")} dirtyKeysRef={dirtyKeysRef} disabled={readOnly}>
-                  {(lp) => (
-                    <input type="text" inputMode="decimal" id="sv-total" value={data.total} className={lp.className} onFocus={(e) => { lp.onFocus?.(e); selectOnFocus(e); }} onBlur={(e) => { lp.onBlur?.(e); update("total", formatMoneyValue(e.target.value)); }} disabled={lp.disabled} readOnly={lp.readOnly} onChange={(e) => update("total", formatDecimalInput(e.target.value))} />
-                  )}
-                </CollabField>
-              </div>
+              <CampoMonedaCaptura
+                currency={captureCurrency}
+                value={data.total}
+                onChange={(value) => update("total", value)}
+                onBlurCapture={moneyBlur("total")}
+                collab={collab}
+                fieldId={fid("total")}
+                dirtyKeysRef={dirtyKeysRef}
+                readOnly={readOnly}
+                inputId="sv-total"
+              />
             </div>
             <div id="sv-split" style={{ display: sType === "paquete" ? "block" : "none" }}>
               <div className="frow tool-frow">
@@ -79,19 +96,19 @@ export function GastosPanel({
                 </div>
               </div>
               <div className="g2 survey-result-pair" style={{ marginTop: 10 }}>
-                <div className="vbox blue"><div className="vbox-val">{fmt(result.split.hval)}</div><div className="vbox-label">{t("tools.survey.splitHotel", { pct: result.split.hpct })}</div></div>
-                <div className="vbox blue"><div className="vbox-val">{fmt(result.split.vval)}</div><div className="vbox-label">{t("tools.survey.splitFlight", { pct: 100 - result.split.hpct })}</div></div>
+                <div className="vbox blue"><div className="vbox-val">{fmtResult(result.split.hval)}</div><div className="vbox-label">{t("tools.survey.splitHotel", { pct: result.split.hpct })}</div></div>
+                <div className="vbox blue"><div className="vbox-val">{fmtResult(result.split.vval)}</div><div className="vbox-label">{t("tools.survey.splitFlight", { pct: 100 - result.split.hpct })}</div></div>
               </div>
             </div>
           </div>
           <div className="g2 survey-result-pair">
             <div className="vbox blue">
-              <div className="vbox-val">{fmt(result.trip.dp)}</div>
+              <div className="vbox-val">{fmtResult(result.trip.dp)}</div>
               <div className="vbox-label">{t("tools.survey.suggestedDown")}</div>
               <div className="vbox-sub">{t("tools.survey.paidHint")}</div>
             </div>
             <div className="vbox green">
-              <div className="vbox-val">{fmt(result.trip.mi)}</div>
+              <div className="vbox-val">{fmtResult(result.trip.mi)}</div>
               <div className="vbox-label">{t("tools.survey.idealMonthly")}</div>
               <div className="vbox-sub">{t("tools.survey.paidDiv12")}</div>
             </div>
@@ -131,32 +148,35 @@ export function GastosPanel({
                       </CollabField>
                     </td>
                     <td className="mc">
-                      <div className="mfield"><span className="mpfx">$</span>
-                        <CollabField collab={collab} fieldId={fid(`${p}a`)} dirtyKeysRef={dirtyKeysRef} disabled={readOnly}>
-                          {(lp) => (
-                            <input type="text" inputMode="decimal" value={data[`${p}a`]} className={lp.className} onFocus={(e) => { lp.onFocus?.(e); selectOnFocus(e); }} onBlur={(e) => { lp.onBlur?.(e); update(`${p}a`, formatMoneyValue(e.target.value)); }} disabled={lp.disabled} readOnly={lp.readOnly} onChange={(e) => update(`${p}a`, formatDecimalInput(e.target.value))} />
-                          )}
-                        </CollabField>
-                      </div>
+                      <CampoMonedaCaptura
+                        currency={captureCurrency}
+                        value={data[`${p}a`]}
+                        onChange={(value) => update(`${p}a`, value)}
+                        onBlurCapture={moneyBlur(`${p}a`)}
+                        collab={collab}
+                        fieldId={fid(`${p}a`)}
+                        dirtyKeysRef={dirtyKeysRef}
+                        readOnly={readOnly}
+                      />
                     </td>
                   </tr>
                 ))}
                 <tr className="trow">
                   <td colSpan={2} style={{ color: "var(--muted2)", fontSize: 10 }}>{t("tools.survey.totals")}</td>
                   <td>{result.hist.nights}</td>
-                  <td>{fmt(result.hist.spend)}</td>
+                  <td>{fmtResult(result.hist.spend)}</td>
                 </tr>
               </tbody>
             </table>
           </div>
           <div className="g2 survey-result-pair" style={{ marginTop: 14 }}>
             <div className="vbox blue">
-              <div className="vbox-val">{fmt(result.hist.dp)}</div>
+              <div className="vbox-val">{fmtResult(result.hist.dp)}</div>
               <div className="vbox-label">{t("tools.survey.suggestedDown")}</div>
               <div className="vbox-sub">{t("tools.survey.histAvgSub")}</div>
             </div>
             <div className="vbox green">
-              <div className="vbox-val">{fmt(result.hist.mi)}</div>
+              <div className="vbox-val">{fmtResult(result.hist.mi)}</div>
               <div className="vbox-label">{t("tools.survey.idealMonthly")}</div>
               <div className="vbox-sub">{t("tools.survey.histMiSub")}</div>
             </div>
@@ -206,27 +226,31 @@ export function GastosPanel({
                       </CollabField>
                     </td>
                     <td className="mc">
-                      <div className="mfield"><span className="mpfx">$</span>
-                        <CollabField collab={collab} fieldId={fid(`${p}a`)} dirtyKeysRef={dirtyKeysRef} disabled={readOnly}>
-                          {(lp) => (
-                            <input type="text" inputMode="decimal" placeholder="0" value={data[`${p}a`]} className={lp.className} onFocus={(e) => { lp.onFocus?.(e); selectOnFocus(e); }} onBlur={(e) => { lp.onBlur?.(e); update(`${p}a`, formatMoneyValue(e.target.value)); }} disabled={lp.disabled} readOnly={lp.readOnly} onChange={(e) => update(`${p}a`, e.target.value)} />
-                          )}
-                        </CollabField>
-                      </div>
+                      <CampoMonedaCaptura
+                        currency={captureCurrency}
+                        value={data[`${p}a`]}
+                        onChange={(value) => update(`${p}a`, value)}
+                        onBlurCapture={moneyBlur(`${p}a`)}
+                        collab={collab}
+                        fieldId={fid(`${p}a`)}
+                        dirtyKeysRef={dirtyKeysRef}
+                        readOnly={readOnly}
+                        placeholder="0"
+                      />
                     </td>
                   </tr>
                 ))}
                 <tr className="trow">
                   <td colSpan={2} style={{ color: "var(--muted2)", fontSize: 10 }}>{t("tools.survey.totals")}</td>
                   <td>{result.future.nights}</td>
-                  <td>{fmt(result.future.spend)}</td>
+                  <td>{fmtResult(result.future.spend)}</td>
                 </tr>
               </tbody>
             </table>
           </div>
           <div style={{ marginTop: 14 }}>
             <div className="vbox yellow">
-              <div className="vbox-val">{fmt(result.future.spend)}</div>
+              <div className="vbox-val">{fmtResult(result.future.spend)}</div>
               <div className="vbox-label">{t("tools.survey.futureTotal")}</div>
             </div>
           </div>
@@ -253,29 +277,29 @@ export function GastosPanel({
                   <td>{t("tools.survey.pattern.current")}</td>
                   <td className="td-r td-blue">{result.current.vac}</td>
                   <td className="td-r td-blue">{fmtD(result.current.night)}</td>
-                  <td className="td-r td-blue">{fmt(result.current.dp)}</td>
-                  <td className="td-r td-green">{fmt(result.current.mi)}</td>
+                  <td className="td-r td-blue">{fmtResult(result.current.dp)}</td>
+                  <td className="td-r td-green">{fmtResult(result.current.mi)}</td>
                 </tr>
                 <tr>
                   <td>{t("tools.survey.pattern.hist")}</td>
                   <td className="td-r td-blue">{fmtD(result.hist.vac)}</td>
                   <td className="td-r td-blue">{fmtD(result.hist.night)}</td>
-                  <td className="td-r td-blue">{fmt(result.hist.dp)}</td>
-                  <td className="td-r td-green">{fmt(result.hist.mi)}</td>
+                  <td className="td-r td-blue">{fmtResult(result.hist.dp)}</td>
+                  <td className="td-r td-green">{fmtResult(result.hist.mi)}</td>
                 </tr>
                 <tr>
                   <td>{t("tools.survey.pattern.future")}</td>
                   <td className="td-r td-blue">{fmtD(result.future.vac)}</td>
                   <td className="td-r td-blue">{fmtD(result.future.night)}</td>
-                  <td className="td-r td-blue">{fmt(result.future.dp)}</td>
-                  <td className="td-r td-green">{fmt(result.future.mi)}</td>
+                  <td className="td-r td-blue">{fmtResult(result.future.dp)}</td>
+                  <td className="td-r td-green">{fmtResult(result.future.mi)}</td>
                 </tr>
                 <tr style={{ borderTop: "2px solid var(--border)", fontWeight: 700 }}>
                   <td>{t("tools.survey.pattern.blend")}</td>
                   <td className="td-r td-blue">{fmtD(result.pattern.vac)}</td>
                   <td className="td-r td-blue">{fmtD(result.pattern.night)}</td>
-                  <td className="td-r td-blue">{fmt(result.pattern.dp)}</td>
-                  <td className="td-r td-green">{fmt(result.pattern.mi)}</td>
+                  <td className="td-r td-blue">{fmtResult(result.pattern.dp)}</td>
+                  <td className="td-r td-green">{fmtResult(result.pattern.mi)}</td>
                 </tr>
               </tbody>
             </table>

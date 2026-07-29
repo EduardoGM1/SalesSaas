@@ -9,14 +9,16 @@ import { PageBack } from "@/components/layout/page-back.jsx";
 import { SharedToolBanner } from "@/components/calculators/shared-tool-banner.jsx";
 import { WS_CONFIG_IDS, WS_DEFAULTS } from "@/lib/constants";
 import { computeWorksheet, ensureWSConfig } from "@/lib/calculations/worksheet";
+import { buildOperationalFields, WORKSHEET_MONEY_FIELDS } from "@/lib/currency/moneda-service";
 import { selectOnFocus } from "@/lib/focus-select.js";
-import { formatMoneyValue } from "@/lib/format/money";
 import { formatDecimalInput } from "@/lib/format/numeric-input.js";
 import { useI18n } from "@/hooks/use-i18n.js";
-import { useMoney } from "@/hooks/use-money.js";
+import { useMonedaToolBucket } from "@/hooks/use-moneda-tool.js";
 import { useToolSession } from "@/hooks/use-tool-session.js";
 import { useFlushLibreToolOnLeave } from "@/hooks/use-flush-libre-tool-on-leave.js";
 import { CollabField, collabFieldId } from "@/components/clients/collab-field.jsx";
+import { SelectorMonedaCaptura } from "@/components/currency/selector-moneda-captura.jsx";
+import { CampoMonedaCaptura } from "@/components/currency/campo-moneda-captura.jsx";
 import { applyRemoteFormState, fieldKeyFromCollabId, markFieldsDirty, clearDirtyFields } from "@/lib/collab-form-merge.js";
 import { useDbStore } from "@/stores/db-store";
 import { shallow } from "zustand/shallow";
@@ -33,8 +35,16 @@ export function WorksheetPage({ clientId, shared }: WorksheetPageProps) {
   const session = useToolSession({ clientId, shared, section: "worksheet" });
   const { ready, readOnly, backHref, getBucket, saveBucket, isFileMode, isShared, peers, lockedBy, toolsRevision, collab } = session;
   const fid = (key) => collabFieldId("worksheet", key);
-  const { fmt } = useMoney();
-  const moneySettings = useDbStore((s) => s.db.settings, shallow);
+  const {
+    captureCurrency,
+    setCaptureCurrency,
+    currencyMeta,
+    moneda,
+    appendMonedaPayload,
+    resetMoneda,
+    recordMoneyCapture,
+  } = useMonedaToolBucket({ getBucket, toolKey: "worksheet", ready, toolsRevision });
+  const { fmtResult } = moneda;
   const worksheetConfig = useDbStore((s) => s.db.settings?.worksheetConfig, shallow);
   const [fields, setFields] = useState({ ...EMPTY_FIELDS });
   const [configOpen, setConfigOpen] = useState(false);
@@ -49,7 +59,7 @@ export function WorksheetPage({ clientId, shared }: WorksheetPageProps) {
   useFlushLibreToolOnLeave({
     enabled: ready && !isFileMode,
     tool: "worksheet",
-    getSnapshot: () => ({ ...fields, ...config }),
+    getSnapshot: () => appendMonedaPayload({ ...fields, ...config }),
     hasChanges: () => dirtyKeysRef.current.size > 0,
   });
 
@@ -78,13 +88,19 @@ export function WorksheetPage({ clientId, shared }: WorksheetPageProps) {
   const handleClear = async () => {
     if (readOnly) return;
     setFields({ ...EMPTY_FIELDS });
+    resetMoneda();
     clearDirtyFields(dirtyKeysRef);
-    if (ready) await saveBucket("worksheet", { ...EMPTY_FIELDS, ...config });
+    if (ready) await saveBucket("worksheet", appendMonedaPayload({ ...EMPTY_FIELDS, ...config }));
   };
 
+  const operationalFields = useMemo(
+    () => buildOperationalFields(fields, currencyMeta, captureCurrency, moneda.ctx, WORKSHEET_MONEY_FIELDS),
+    [fields, currencyMeta, captureCurrency, moneda.ctx],
+  );
+
   const result = useMemo(
-    () => computeWorksheet(fields, config),
-    [fields, config, moneySettings?.currency, moneySettings?.exchangeRate, moneySettings?.language],
+    () => computeWorksheet(operationalFields, config),
+    [operationalFields, config],
   );
 
   const setField = (key, value) => {
@@ -94,7 +110,7 @@ export function WorksheetPage({ clientId, shared }: WorksheetPageProps) {
 
   const saveAll = async () => {
     if (readOnly) return;
-    await saveBucket("worksheet", { ...fields, ...config });
+    await saveBucket("worksheet", appendMonedaPayload({ ...fields, ...config }));
     clearDirtyFields(dirtyKeysRef);
     setSaved(true);
     setTimeout(() => setSaved(false), 1600);
@@ -102,21 +118,35 @@ export function WorksheetPage({ clientId, shared }: WorksheetPageProps) {
 
   const handleSave = async () => {
     if (readOnly) return;
-    await saveBucket("worksheet", { ...fields, ...config });
+    await saveBucket("worksheet", appendMonedaPayload({ ...fields, ...config }));
     clearDirtyFields(dirtyKeysRef);
     if (!isFileMode) { setSaveToolOpen(true); return; }
     setSaved(true);
     setTimeout(() => setSaved(false), 1600);
   };
 
+  const handleMoneyBlur = (key) => {
+    const formatted = moneda.formatCapture(fields[key]);
+    setField(key, formatted);
+    recordMoneyCapture(key, formatted);
+  };
+
+  const handleCaptureCurrencyChange = (next) => {
+    markFieldsDirty(dirtyKeysRef, "__captureCurrency");
+    setCaptureCurrency(next);
+  };
+
   const moneyField = (key: keyof typeof fields) => (
-    <div className="mfield"><span className="mpfx">$</span>
-      <CollabField collab={collab} fieldId={fid(key)} dirtyKeysRef={dirtyKeysRef} disabled={readOnly}>
-        {(lp) => (
-          <input type="text" inputMode="decimal" value={fields[key]} className={lp.className} onFocus={(e) => { lp.onFocus?.(e); selectOnFocus(e); }} onBlur={(e) => { lp.onBlur?.(e); setField(key, formatMoneyValue(e.target.value)); }} disabled={lp.disabled} readOnly={lp.readOnly} onChange={(e) => setField(key, formatDecimalInput(e.target.value))} />
-        )}
-      </CollabField>
-    </div>
+    <CampoMonedaCaptura
+      currency={captureCurrency}
+      value={fields[key]}
+      onChange={(value) => setField(key, value)}
+      onBlurCapture={() => handleMoneyBlur(key)}
+      collab={collab}
+      fieldId={fid(key)}
+      dirtyKeysRef={dirtyKeysRef}
+      readOnly={readOnly}
+    />
   );
 
   return (
@@ -133,6 +163,12 @@ export function WorksheetPage({ clientId, shared }: WorksheetPageProps) {
         <SharedToolBanner show={ready && isShared && readOnly} peers={peers} />
 
         <fieldset className="shared-tool-fieldset" disabled={readOnly}>
+        <SelectorMonedaCaptura
+          value={captureCurrency}
+          onChange={handleCaptureCurrencyChange}
+          disabled={readOnly}
+          className="tool-moneda-selector"
+        />
         <div className="g2">
           <div className="card tool-calc-card">
             <div className="card-heading">{t("tools.worksheet.saleData")}</div>
@@ -162,9 +198,9 @@ export function WorksheetPage({ clientId, shared }: WorksheetPageProps) {
               </div>
             </div>
             <div className="g2 survey-result-pair" style={{ marginTop: 14 }}>
-              <div className="vbox blue"><div className="vbox-val">{fmt(result.eng)}</div><div className="vbox-label">{t("tools.worksheet.down")}</div></div>
-              <div className="vbox green"><div className="vbox-val">{fmt(result.engCc)}</div><div className="vbox-label">{t("tools.worksheet.downContract")}</div></div>
-              <div className="vbox yellow span2"><div className="vbox-val">{fmt(result.bal)}</div><div className="vbox-label">{t("tools.worksheet.toFinance")}</div><div className="vbox-sub">{t("tools.worksheet.balanceFormula")}</div></div>
+              <div className="vbox blue"><div className="vbox-val">{fmtResult(result.eng)}</div><div className="vbox-label">{t("tools.worksheet.down")}</div></div>
+              <div className="vbox green"><div className="vbox-val">{fmtResult(result.engCc)}</div><div className="vbox-label">{t("tools.worksheet.downContract")}</div></div>
+              <div className="vbox yellow span2"><div className="vbox-val">{fmtResult(result.bal)}</div><div className="vbox-label">{t("tools.worksheet.toFinance")}</div><div className="vbox-sub">{t("tools.worksheet.balanceFormula")}</div></div>
             </div>
           </div>
 
@@ -191,7 +227,7 @@ export function WorksheetPage({ clientId, shared }: WorksheetPageProps) {
                     <div className="opt-tag">{t("tools.worksheet.optionN", { n: i + 1 })}</div>
                     <div className="opt-info">{t("tools.worksheet.optionLine", { months: config[`wo${i + 1}m`], rate: config[`wo${i + 1}r`] })}</div>
                   </div>
-                  <div className="opt-result">{fmt(opt.monthly)}{t("tools.worksheet.perMonth")}</div>
+                  <div className="opt-result">{fmtResult(opt.monthly)}{t("tools.worksheet.perMonth")}</div>
                 </div>
               </div>
             ))}

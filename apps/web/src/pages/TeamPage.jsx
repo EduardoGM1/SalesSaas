@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, Navigate } from "react-router-dom";
 import { Users } from "lucide-react";
+import { BuscadorUsuario } from "@/components/admin/buscador-usuario.jsx";
 import { Topbar } from "@/components/layout/topbar";
 import { SalesModal } from "@/components/ui/sales-modal";
 import { useWorkspace } from "@/hooks/use-workspace.js";
@@ -32,13 +33,13 @@ export function TeamPage() {
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [modalOpen, setModalOpen] = useState(false);
+  const [prospectsModalOpen, setProspectsModalOpen] = useState(false);
+  const [inviteModalOpen, setInviteModalOpen] = useState(false);
   const [selectedId, setSelectedId] = useState("");
   const [prospects, setProspects] = useState([]);
   const [prospectsLoading, setProspectsLoading] = useState(false);
-  const [email, setEmail] = useState("");
+  const [inviteUser, setInviteUser] = useState(null);
   const [invitePending, setInvitePending] = useState(false);
-  const [inviteMsg, setInviteMsg] = useState("");
   const [inviteErr, setInviteErr] = useState("");
 
   const refresh = useCallback(async () => {
@@ -62,7 +63,7 @@ export function TeamPage() {
 
   const openProspectsModal = useCallback(async (memberId) => {
     setSelectedId(memberId || "");
-    setModalOpen(true);
+    setProspectsModalOpen(true);
     setProspectsLoading(true);
     setProspects([]);
     try {
@@ -78,28 +79,45 @@ export function TeamPage() {
   }, [t]);
 
   const closeProspectsModal = (open) => {
-    setModalOpen(open);
+    setProspectsModalOpen(open);
     if (!open) {
       setSelectedId("");
       setProspects([]);
     }
   };
 
-  const invite = async (e) => {
-    e.preventDefault();
+  const openInviteModal = () => {
+    setInviteUser(null);
+    setInviteErr("");
+    setInviteModalOpen(true);
+  };
+
+  const closeInviteModal = (open) => {
+    setInviteModalOpen(open);
+    if (!open) {
+      setInviteUser(null);
+      setInviteErr("");
+    }
+  };
+
+  const invite = async (event) => {
+    event.preventDefault();
+    if (!inviteUser?.id) {
+      setInviteErr(t("team.invitePickUser"));
+      return;
+    }
     setInvitePending(true);
     setInviteErr("");
-    setInviteMsg("");
     try {
       const result = await api("/workspace/invite", {
         method: "POST",
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ usuario_id: inviteUser.id, email: inviteUser.email }),
       });
       if (result?.already_member) {
-        setInviteMsg(t("team.inviteAlready"));
+        toast.info(t("team.inviteAlready"));
       } else {
-        setInviteMsg(t("team.inviteOk"));
-        setEmail("");
+        toast.success(t("team.inviteOk"));
+        closeInviteModal(false);
         await refresh();
       }
     } catch (err) {
@@ -126,30 +144,14 @@ export function TeamPage() {
         {error && <div className="auth-error team-page-error">{error}</div>}
 
         <section className="team-section">
-          <h2 className="section-label team-section-title">{t("team.inviteTitle")}</h2>
-          <form className="team-invite-form" onSubmit={invite}>
-            <input
-              className="team-invite-input"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder={t("team.invitePlaceholder")}
-              required
-              autoComplete="email"
-            />
-            <button type="submit" className="btn btn-primary btn-sm team-invite-btn" disabled={invitePending}>
-              {invitePending ? t("team.inviting") : t("team.inviteBtn")}
+          <div className="team-section-head team-section-head--split">
+            <div className="team-section-head-main">
+              <Users size={16} aria-hidden />
+              <h2 className="section-label team-section-title">{t("team.membersTitle")}</h2>
+            </div>
+            <button type="button" className="btn btn-primary btn-sm team-add-vendor" onClick={openInviteModal}>
+              {t("team.addVendor")}
             </button>
-          </form>
-          {inviteMsg && <p className="team-feedback team-feedback--ok">{inviteMsg}</p>}
-          {inviteErr && <div className="auth-error team-feedback">{inviteErr}</div>}
-          <p className="team-hint">{t("team.inviteHint")}</p>
-        </section>
-
-        <section className="team-section">
-          <div className="team-section-head">
-            <Users size={16} aria-hidden />
-            <h2 className="section-label team-section-title">{t("team.membersTitle")}</h2>
           </div>
 
           {loading ? (
@@ -225,7 +227,35 @@ export function TeamPage() {
       </div>
 
       <SalesModal
-        open={modalOpen}
+        open={inviteModalOpen}
+        onOpenChange={closeInviteModal}
+        title={t("team.inviteTitle")}
+        maxWidth={520}
+      >
+        <form onSubmit={invite}>
+          <BuscadorUsuario
+            searchPath="workspace/invite/search"
+            value={inviteUser}
+            onChange={setInviteUser}
+            placeholder={t("team.inviteSearchPlaceholder")}
+            disabled={invitePending}
+            inputId="team-invite-user"
+          />
+          <p className="team-hint team-hint--modal">{t("team.inviteHint")}</p>
+          {inviteErr ? <div className="auth-error team-feedback">{inviteErr}</div> : null}
+          <div className="btn-row team-modal-actions">
+            <button type="button" className="btn btn-ghost" onClick={() => closeInviteModal(false)} disabled={invitePending}>
+              {t("common.cancel")}
+            </button>
+            <button type="submit" className="btn btn-primary" disabled={invitePending || !inviteUser?.id}>
+              {invitePending ? t("team.inviting") : t("team.inviteBtn")}
+            </button>
+          </div>
+        </form>
+      </SalesModal>
+
+      <SalesModal
+        open={prospectsModalOpen}
         onOpenChange={closeProspectsModal}
         title={t("team.prospectsOf", { name: selectedLabel })}
         maxWidth={720}

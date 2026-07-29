@@ -6,17 +6,16 @@ import { SaveToolModal } from "@/components/calculators/save-tool-modal";
 import { SharedToolBanner } from "@/components/calculators/shared-tool-banner.jsx";
 import { VacationCumulativeChart } from "@/components/calculators/vacation-cumulative-chart.jsx";
 import { buildVacacionesCumulativeSeries, computeVacaciones } from "@/lib/calculations/vacaciones";
+import { buildOperationalFields, VACACIONES_MONEY_FIELDS } from "@/lib/currency/moneda-service";
 import { selectOnFocus } from "@/lib/focus-select.js";
-import { formatDecimalInput } from "@/lib/format/numeric-input.js";
-import { formatMoneyValue } from "@/lib/format/money";
 import { useI18n } from "@/hooks/use-i18n.js";
-import { useMoney } from "@/hooks/use-money.js";
+import { useMonedaToolBucket } from "@/hooks/use-moneda-tool.js";
 import { useToolSession } from "@/hooks/use-tool-session.js";
 import { useFlushLibreToolOnLeave } from "@/hooks/use-flush-libre-tool-on-leave.js";
 import { CollabField, collabFieldId } from "@/components/clients/collab-field.jsx";
+import { SelectorMonedaCaptura } from "@/components/currency/selector-moneda-captura.jsx";
+import { CampoMonedaCaptura } from "@/components/currency/campo-moneda-captura.jsx";
 import { applyRemoteFormState, fieldKeyFromCollabId, markFieldsDirty, clearDirtyFields } from "@/lib/collab-form-merge.js";
-import { useDbStore } from "@/stores/db-store";
-import { shallow } from "zustand/shallow";
 
 const DEFAULT_FIELDS = { vv: "", vc: "", va: "", vi: "8" };
 
@@ -30,8 +29,17 @@ export function VacacionesPage({ clientId, shared }: VacacionesPageProps) {
   const session = useToolSession({ clientId, shared, section: "vacaciones" });
   const { ready, readOnly, backHref, getBucket, saveBucket, isFileMode, isShared, peers, lockedBy, toolsRevision, collab } = session;
   const fid = (key) => collabFieldId("vacaciones", key);
-  const { fmt, fmtN } = useMoney();
-  const moneySettings = useDbStore((s) => s.db.settings, shallow);
+  const {
+    captureCurrency,
+    setCaptureCurrency,
+    currencyMeta,
+    currencyMetaSerialized,
+    moneda,
+    appendMonedaPayload,
+    resetMoneda,
+    recordMoneyCapture,
+  } = useMonedaToolBucket({ getBucket, toolKey: "vacaciones", ready, toolsRevision });
+  const { fmtResult, fmtResultN } = moneda;
   const [fields, setFields] = useState({ ...DEFAULT_FIELDS });
   const [saved, setSaved] = useState(false);
   const [saveToolOpen, setSaveToolOpen] = useState(false);
@@ -43,7 +51,7 @@ export function VacacionesPage({ clientId, shared }: VacacionesPageProps) {
   useFlushLibreToolOnLeave({
     enabled: ready && !isFileMode,
     tool: "vacaciones",
-    getSnapshot: () => ({ ...fields }),
+    getSnapshot: () => appendMonedaPayload({ ...fields }),
     hasChanges: () => dirtyKeysRef.current.size > 0,
   });
 
@@ -68,8 +76,9 @@ export function VacacionesPage({ clientId, shared }: VacacionesPageProps) {
   const handleClear = async () => {
     if (readOnly) return;
     setFields({ ...DEFAULT_FIELDS });
+    resetMoneda();
     clearDirtyFields(dirtyKeysRef);
-    if (ready) await saveBucket("vacaciones", { ...DEFAULT_FIELDS });
+    if (ready) await saveBucket("vacaciones", appendMonedaPayload({ ...DEFAULT_FIELDS }));
   };
 
   const setField = (key, value) => {
@@ -79,15 +88,20 @@ export function VacacionesPage({ clientId, shared }: VacacionesPageProps) {
 
   const onEditStart = (key) => markFieldsDirty(dirtyKeysRef, key);
 
+  const operationalFields = useMemo(
+    () => buildOperationalFields(fields, currencyMeta, captureCurrency, moneda.ctx, VACACIONES_MONEY_FIELDS),
+    [fields, currencyMeta, captureCurrency, moneda.ctx],
+  );
+
   const r = useMemo(
-    () => computeVacaciones(fields),
-    [fields, moneySettings?.currency, moneySettings?.exchangeRate, moneySettings?.language],
+    () => computeVacaciones(operationalFields),
+    [operationalFields],
   );
 
   const currentYear = new Date().getFullYear();
   const chartSeries = useMemo(
-    () => buildVacacionesCumulativeSeries(fields, currentYear),
-    [fields, currentYear, moneySettings?.currency, moneySettings?.exchangeRate, moneySettings?.language],
+    () => buildVacacionesCumulativeSeries(operationalFields, currentYear),
+    [operationalFields, currentYear],
   );
   const hasProjectionYears = String(fields.va).trim() !== "" && r.anios > 0;
   const futureYear = currentYear + r.anios;
@@ -95,11 +109,22 @@ export function VacacionesPage({ clientId, shared }: VacacionesPageProps) {
 
   const handleSave = async () => {
     if (readOnly) return;
-    await saveBucket("vacaciones", fields);
+    await saveBucket("vacaciones", appendMonedaPayload(fields));
     clearDirtyFields(dirtyKeysRef);
     if (!isFileMode) { setSaveToolOpen(true); return; }
     setSaved(true);
     setTimeout(() => setSaved(false), 1600);
+  };
+
+  const handleMoneyBlur = () => {
+    const formatted = moneda.formatCapture(fields.vc);
+    setField("vc", formatted);
+    recordMoneyCapture("vc", formatted);
+  };
+
+  const handleCaptureCurrencyChange = (next) => {
+    markFieldsDirty(dirtyKeysRef, "__captureCurrency");
+    setCaptureCurrency(next);
   };
 
   return (
@@ -116,6 +141,12 @@ export function VacacionesPage({ clientId, shared }: VacacionesPageProps) {
         <SharedToolBanner show={ready && isShared && readOnly} peers={peers} />
 
         <fieldset className="shared-tool-fieldset" disabled={readOnly}>
+        <SelectorMonedaCaptura
+          value={captureCurrency}
+          onChange={handleCaptureCurrencyChange}
+          disabled={readOnly}
+          className="tool-moneda-selector"
+        />
         <div className="g2 vacation-calc-layout">
           <div className="card tool-calc-card">
             <div className="card-heading">{t("tools.vacation.inputTitle")}</div>
@@ -130,14 +161,16 @@ export function VacacionesPage({ clientId, shared }: VacacionesPageProps) {
               </div>
               <div className="frow tool-frow">
                 <div className="flabel">{t("tools.vacation.costPerTrip")}</div>
-                <div className="mfield">
-                  <span className="mpfx">$</span>
-                  <CollabField collab={collab} fieldId={fid("vc")} dirtyKeysRef={dirtyKeysRef} disabled={readOnly}>
-                    {(lp) => (
-                      <input type="text" inputMode="decimal" value={fields.vc} className={lp.className} onFocus={(e) => { onEditStart("vc"); lp.onFocus?.(e); selectOnFocus(e); }} onBlur={(e) => { lp.onBlur?.(e); setField("vc", formatMoneyValue(e.target.value)); }} disabled={lp.disabled} readOnly={lp.readOnly} onChange={(e) => setField("vc", formatDecimalInput(e.target.value))} />
-                    )}
-                  </CollabField>
-                </div>
+                <CampoMonedaCaptura
+                  currency={captureCurrency}
+                  value={fields.vc}
+                  onChange={(value) => setField("vc", value)}
+                  onBlurCapture={handleMoneyBlur}
+                  collab={collab}
+                  fieldId={fid("vc")}
+                  dirtyKeysRef={dirtyKeysRef}
+                  readOnly={readOnly}
+                />
               </div>
               <div className="frow tool-frow">
                 <div className="flabel">{t("tools.vacation.yearsProject")}</div>
@@ -166,40 +199,40 @@ export function VacacionesPage({ clientId, shared }: VacacionesPageProps) {
                 <div className="vacation-year-row">
                   <div className="vacation-year-card vacation-year-card--current">
                     <div className="vacation-year-card-year">{currentYear}</div>
-                    <div className="vbox-val vacation-amount-val">{fmt(r.ga)}</div>
-                    <div className="vacation-year-card-detail">{t("tools.vacation.tripsLine", { cost: fmtN(r.costo), trips: r.viajes })}</div>
+                    <div className="vbox-val vacation-amount-val">{fmtResult(r.ga)}</div>
+                    <div className="vacation-year-card-detail">{t("tools.vacation.tripsLine", { cost: fmtResultN(r.costo), trips: r.viajes })}</div>
                   </div>
                   <div className="vacation-year-arrow" aria-hidden="true" title={t("tools.vacation.inflationAccum")}>→</div>
                   <div className="vacation-year-card vacation-year-card--future">
                     {hasProjectionYears && (
                       <div className="vacation-year-card-year">{futureYear}</div>
                     )}
-                    <div className="vbox-val vacation-amount-val">{fmt(r.cf)}</div>
+                    <div className="vbox-val vacation-amount-val">{fmtResult(r.cf)}</div>
                     <div className="vacation-year-card-detail">{t("tools.vacation.inflationAccum")}</div>
                   </div>
                 </div>
 
                 <div className="vacation-total-card">
-                  <div className="vbox-val vacation-amount-val">{fmt(r.tc)}</div>
+                  <div className="vbox-val vacation-amount-val">{fmtResult(r.tc)}</div>
                   <div className="vacation-total-label">{t("tools.vacation.totalInflation")}</div>
                   <div className="vacation-total-sub">{t("tools.vacation.totalInflationSub", { years: r.anios })}</div>
                 </div>
 
                 <div className="vacation-split-row">
                   <div className="vacation-panel vacation-panel--base">
-                    <div className="vbox-val vacation-amount-val">{fmt(r.ts)}</div>
+                    <div className="vbox-val vacation-amount-val">{fmtResult(r.ts)}</div>
                     <div className="vacation-panel-label">{t("tools.vacation.withoutInflation")}</div>
-                    <div className="vacation-panel-detail">{t("tools.vacation.noInflationLine", { cost: fmtN(r.ga), years: r.anios })}</div>
+                    <div className="vacation-panel-detail">{t("tools.vacation.noInflationLine", { cost: fmtResultN(r.ga), years: r.anios })}</div>
                   </div>
                   <div className="vacation-panel vacation-panel--impact">
-                    <div className="vbox-val vacation-amount-val">{fmt(inflationImpact)}</div>
+                    <div className="vbox-val vacation-amount-val">{fmtResult(inflationImpact)}</div>
                     <div className="vacation-panel-label">{t("tools.vacation.inflationImpact")}</div>
                     <div className="vacation-panel-detail">{t("tools.vacation.inflationExtra")}</div>
                   </div>
                 </div>
               </div>
 
-              <VacationCumulativeChart series={chartSeries} />
+              <VacationCumulativeChart series={chartSeries} fmtResult={fmtResult} fmtResultN={fmtResultN} />
             </div>
           </div>
         </div>

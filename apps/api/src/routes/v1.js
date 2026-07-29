@@ -124,6 +124,18 @@ router.get("/workspace/peers", async (req, res) => {
   await runService(res, () => workspaceService.listSalaPeers(a.supabase, a.userId), { wrap: "data" });
 });
 
+router.get("/workspace/invite/search", rateLimit({ name: "workspace-invite-search", windowMs: 60_000, max: 40 }), async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  await runService(res, () => workspaceService.searchInviteCandidates(a.supabase, a.userId, req.query.q), { wrap: "data" });
+});
+
+router.get("/workspace/closers/search", rateLimit({ name: "workspace-closer-search", windowMs: 60_000, max: 40 }), async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  await runService(res, () => workspaceService.searchCloserCandidates(a.supabase, a.userId, req.query.q), { wrap: "data" });
+});
+
 router.get("/workspace/team/prospects", async (req, res) => {
   const a = await requireAuth(req, res);
   if (!a) return;

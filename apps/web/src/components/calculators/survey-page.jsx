@@ -4,12 +4,14 @@ import { PageBack } from "@/components/layout/page-back.jsx";
 import { SaveToolModal } from "@/components/calculators/save-tool-modal";
 import { ensureProspectIdentity } from "@/lib/clients";
 import { computeSurvey } from "@/lib/calculations/survey";
+import { buildOperationalFields, SURVEY_MONEY_FIELDS } from "@/lib/currency/moneda-service";
 import { SharedToolBanner } from "@/components/calculators/shared-tool-banner.jsx";
 import { COUNTRY_CITY, COUNTRY_FLAGS } from "@/lib/constants";
 import { selectOnFocus } from "@/lib/focus-select.js";
 import { formatSingleNameInput, isValidSingleName, SINGLE_NAME_MAX_LENGTH } from "@/lib/format/single-name-input.js";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { useMoney } from "@/hooks/use-money.js";
+import { useMonedaToolBucket } from "@/hooks/use-moneda-tool.js";
 import { useToolSession } from "@/hooks/use-tool-session.js";
 import { useFlushLibreToolOnLeave } from "@/hooks/use-flush-libre-tool-on-leave.js";
 import { CollabField, collabFieldId } from "@/components/clients/collab-field.jsx";
@@ -66,7 +68,18 @@ export function SurveyPage({ clientId, shared }: SurveyPageProps) {
   const saveClient = useDbStore((s) => s.saveClient);
   const getClient = useDbStore((s) => s.getClient);
   const moneySettings = useDbStore((s) => s.db.settings, shallow);
-  const { fmt, fmtD } = useMoney();
+  const { fmtD } = useMoney();
+  const {
+    captureCurrency,
+    setCaptureCurrency,
+    currencyMeta,
+    currencyMetaSerialized,
+    moneda,
+    appendMonedaPayload,
+    resetMoneda,
+    recordMoneyCapture,
+  } = useMonedaToolBucket({ getBucket, toolKey: "survey", ready, toolsRevision });
+  const { fmtResult } = moneda;
 
   const [data, setData] = useState<Record<string, string>>({ ...EMPTY_DATA });
   const [sType, setSType] = useState("hotel");
@@ -140,10 +153,16 @@ export function SurveyPage({ clientId, shared }: SurveyPageProps) {
   const countries = Object.keys(COUNTRY_CITY);
   const cities = data.svp_country ? (COUNTRY_CITY[data.svp_country] || ["Otro"]) : [];
 
-  const result = useMemo(
-    () => computeSurvey(data, sType),
-    [data, sType, moneySettings?.currency, moneySettings?.exchangeRate, moneySettings?.language],
-  );
+  const result = useMemo(() => {
+    const operational = buildOperationalFields(
+      data,
+      currencyMeta,
+      captureCurrency,
+      moneda.ctx,
+      SURVEY_MONEY_FIELDS,
+    );
+    return computeSurvey(operational, sType);
+  }, [data, sType, currencyMeta, captureCurrency, moneda.ctx, moneySettings?.currency, moneySettings?.exchangeRate, moneySettings?.usdToMxnRate]);
 
   const discovery = useMemo(() => parseDiscovery(data.disc_json), [data.disc_json]);
   const answered = countAnswered(discovery, progressIds);
@@ -223,7 +242,7 @@ export function SurveyPage({ clientId, shared }: SurveyPageProps) {
   };
 
   const persistBucket = async (payload, { silent } = {}) => {
-    await saveBucket("survey", payload);
+    await saveBucket("survey", appendMonedaPayload(payload));
     if (!silent) {
       setSaved(true);
       setTimeout(() => setSaved(false), 1600);
@@ -287,11 +306,11 @@ export function SurveyPage({ clientId, shared }: SurveyPageProps) {
     if (!hydratedRef.current && dirtyKeysRef.current.size === 0) return;
     const timer = setTimeout(() => {
       void (async () => {
-        await saveBucket("survey", { ...data, stype: sType, futureType });
+        await saveBucket("survey", appendMonedaPayload({ ...data, stype: sType, futureType }));
       })();
     }, 700);
     return () => clearTimeout(timer);
-  }, [data, sType, futureType, ready, readOnly, saveBucket]);
+  }, [data, sType, futureType, captureCurrency, currencyMetaSerialized, ready, readOnly, saveBucket, appendMonedaPayload]);
 
   const handleClear = async () => {
     if (readOnly) return;
@@ -299,10 +318,22 @@ export function SurveyPage({ clientId, shared }: SurveyPageProps) {
     setData(cleared);
     setSType("hotel");
     setFutureType("real");
+    resetMoneda();
     clearDirtyFields(dirtyKeysRef);
     if (ready) {
-      await saveBucket("survey", { ...cleared, stype: "hotel", futureType: "real" });
+      await saveBucket("survey", appendMonedaPayload({ ...cleared, stype: "hotel", futureType: "real" }));
     }
+  };
+
+  const handleMoneyBlur = (key, rawValue) => {
+    const formatted = moneda.formatCapture(rawValue);
+    update(key, formatted);
+    recordMoneyCapture(key, formatted);
+  };
+
+  const handleCaptureCurrencyChange = (next) => {
+    markFieldsDirty(dirtyKeysRef, "__captureCurrency");
+    setCaptureCurrency(next);
   };
 
   const openConfig = (sectionId) => {
@@ -496,8 +527,11 @@ export function SurveyPage({ clientId, shared }: SurveyPageProps) {
                 futureType={futureType}
                 setFutureType={markFutureType}
                 result={result}
-                fmt={fmt}
+                fmtResult={fmtResult}
                 fmtD={fmtD}
+                captureCurrency={captureCurrency}
+                onCaptureCurrencyChange={handleCaptureCurrencyChange}
+                onMoneyBlur={handleMoneyBlur}
                 collab={collab}
                 fid={fid}
                 dirtyKeysRef={dirtyKeysRef}
@@ -506,7 +540,7 @@ export function SurveyPage({ clientId, shared }: SurveyPageProps) {
               />
             )}
             {tab === "resumen" && visibleTabs.some((item) => item.id === "resumen") && (
-              <ResumenPanel discovery={discovery} result={result} fmt={fmt} grouped={grouped} />
+              <ResumenPanel discovery={discovery} result={result} fmtResult={fmtResult} grouped={grouped} />
             )}
           </div>
         </fieldset>

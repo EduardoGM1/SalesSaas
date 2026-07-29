@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { BadgeCheck, Clock3, MessageSquare, Store, UserRound, UserRoundCheck } from "lucide-react";
 import { AdminStatusBadge } from "@/components/admin/admin-ui.jsx";
+import { BuscadorUsuario } from "@/components/admin/buscador-usuario.jsx";
 import { participantsApi } from "@/lib/participants-api.js";
 import { toast } from "@/lib/toast";
 
@@ -25,8 +26,7 @@ function personName(profile, fallback) {
 export function ProspectParticipantsPanel({ prospectId, enabled = true }) {
   const navigate = useNavigate();
   const [payload, setPayload] = useState(null);
-  const [peers, setPeers] = useState([]);
-  const [closerId, setCloserId] = useState("");
+  const [selectedCloser, setSelectedCloser] = useState(null);
   const [pending, setPending] = useState(false);
   const [hidden, setHidden] = useState(false);
   const [error, setError] = useState("");
@@ -39,10 +39,16 @@ export function ProspectParticipantsPanel({ prospectId, enabled = true }) {
       setHidden(false);
       setError("");
       if (data?.capabilities?.can_assign_closer || data?.capabilities?.can_reassign_closer) {
-        const response = await fetch("/api/v1/workspace/peers", { credentials: "include" });
-        const body = await response.json().catch(() => ({}));
-        if (response.ok) setPeers(Array.isArray(body.data) ? body.data : []);
-        if (data?.state?.cerrador_id) setCloserId(data.state.cerrador_id);
+        if (data?.state?.cerrador) {
+          setSelectedCloser({
+            id: data.state.cerrador_id,
+            full_name: data.state.cerrador.full_name || null,
+            email: data.state.cerrador.email || null,
+            avatar_url: data.state.cerrador.avatar_url || null,
+          });
+        } else {
+          setSelectedCloser(null);
+        }
       }
     } catch (loadError) {
       if (
@@ -144,21 +150,22 @@ export function ProspectParticipantsPanel({ prospectId, enabled = true }) {
                 className="prospect-workflow-assign"
                 onSubmit={(event) => {
                   event.preventDefault();
+                  if (!selectedCloser?.id) return;
                   void run(
-                    () => participantsApi.assignCloser(prospectId, closerId),
+                    () => participantsApi.assignCloser(prospectId, selectedCloser.id),
                     capabilities.can_reassign_closer ? "Cerrador reasignado" : "Cerrador asignado",
                   );
                 }}
               >
-                <select className="auth-input" value={closerId} onChange={(event) => setCloserId(event.target.value)} required>
-                  <option value="">
-                    {capabilities.can_reassign_closer ? "Cambiar Cerrador" : "Selecciona Cerrador"}
-                  </option>
-                  {peers.map((peer) => (
-                    <option key={peer.id} value={peer.id}>{peer.full_name || peer.email}</option>
-                  ))}
-                </select>
-                <button className="btn btn-primary" disabled={pending}>
+                <BuscadorUsuario
+                  searchPath="workspace/closers/search"
+                  value={selectedCloser}
+                  onChange={setSelectedCloser}
+                  placeholder={capabilities.can_reassign_closer ? "Buscar Cerrador por nombre o correo" : "Selecciona Cerrador por nombre o correo"}
+                  disabled={pending}
+                  inputId={`closer-search-${prospectId}`}
+                />
+                <button className="btn btn-primary" disabled={pending || !selectedCloser?.id}>
                   <UserRoundCheck size={16} />
                   {capabilities.can_reassign_closer ? "Reasignar Cerrador" : "Asignar Cerrador"}
                 </button>

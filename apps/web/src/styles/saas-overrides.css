@@ -2961,6 +2961,22 @@ button.tool-card {
   margin-bottom: 12px;
   color: var(--muted);
 }
+.team-section-head--split {
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+.team-section-head-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.team-add-vendor {
+  flex: 0 0 auto;
+}
+.team-hint--modal {
+  margin: 12px 0 0;
+}
 .team-section-title {
   margin: 0 0 12px;
 }
@@ -8682,11 +8698,6 @@ body,
   padding-left: 34px;
 }
 .buscador-usuario-hint {
-  position: absolute;
-  top: calc(100% + 4px);
-  left: 0;
-  right: 0;
-  z-index: 40;
   padding: 8px 12px;
   border-radius: 10px;
   border: 1px solid var(--saas-border, #e2e8f0);
@@ -8696,20 +8707,19 @@ body,
   box-shadow: 0 12px 28px rgba(15, 23, 42, 0.12);
 }
 .buscador-usuario-list {
-  position: absolute;
-  top: calc(100% + 4px);
-  left: 0;
-  right: 0;
-  z-index: 40;
   margin: 0;
   padding: 4px;
   list-style: none;
-  max-height: 260px;
   overflow-y: auto;
   border-radius: 10px;
   border: 1px solid var(--saas-border, #e2e8f0);
   background: var(--saas-surface, #fff);
   box-shadow: 0 12px 28px rgba(15, 23, 42, 0.12);
+}
+.buscador-usuario-portal {
+  position: fixed;
+  z-index: 1200;
+  box-sizing: border-box;
 }
 .buscador-usuario-list li > button {
   display: flex;
@@ -8777,6 +8787,63 @@ body,
   padding: 12px;
   font-size: 0.8rem;
   color: var(--saas-text-muted, #64748b);
+}
+
+/* Moneda de captura (USD/MXN) en herramientas */
+.selector-moneda-captura {
+  display: flex;
+  gap: 0;
+  margin: 0 0 16px;
+  border: 1px solid var(--border2, #e2e8f0);
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--bg2, #f8fafc);
+  max-width: 520px;
+}
+.selector-moneda-captura-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, box-shadow 0.15s;
+}
+.selector-moneda-captura-btn + .selector-moneda-captura-btn {
+  border-left: 1px solid var(--border2, #e2e8f0);
+}
+.selector-moneda-captura-btn.on {
+  background: var(--white);
+  color: var(--text);
+  box-shadow: inset 0 -2px 0 var(--blue, #2563eb);
+}
+.selector-moneda-captura-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.selector-moneda-captura-flag {
+  font-size: 16px;
+  line-height: 1;
+}
+.selector-moneda-captura-text {
+  white-space: nowrap;
+}
+.tool-moneda-selector {
+  margin-bottom: 16px;
+}
+.mfield--currency .mpfx--code {
+  min-width: 38px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--muted);
 }
 
 /* ── Asistente de transferencia Personal → Sala ─────────────── */

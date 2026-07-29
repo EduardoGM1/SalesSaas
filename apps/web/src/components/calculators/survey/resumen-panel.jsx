@@ -24,7 +24,7 @@ function qJoin(q, answers, t) {
   });
 }
 
-export function ResumenPanel({ discovery, result, fmt, grouped }) {
+export function ResumenPanel({ discovery, result, fmtResult, grouped }) {
   const { t } = useI18n();
   const answers = discovery.answers || {};
   const before = grouped?.motivacionesBefore || [];
@@ -65,10 +65,10 @@ export function ResumenPanel({ discovery, result, fmt, grouped }) {
   ].filter(Boolean);
 
   const gastosLines = [
-    line(t("tools.survey.suggestedDown"), result?.trip?.dp != null ? fmt(result.trip.dp) : ""),
-    line(t("tools.survey.idealMonthly"), result?.trip?.mi != null ? fmt(result.trip.mi) : ""),
-    line(t("tools.survey.histTitle"), result?.hist?.dp != null ? fmt(result.hist.dp) : ""),
-    line(t("tools.survey.futureTitle"), result?.future?.spend != null ? fmt(result.future.spend) : ""),
+    line(t("tools.survey.suggestedDown"), result?.trip?.dp != null ? fmtResult(result.trip.dp) : ""),
+    line(t("tools.survey.idealMonthly"), result?.trip?.mi != null ? fmtResult(result.trip.mi) : ""),
+    line(t("tools.survey.histTitle"), result?.hist?.dp != null ? fmtResult(result.hist.dp) : ""),
+    line(t("tools.survey.futureTitle"), result?.future?.spend != null ? fmtResult(result.future.spend) : ""),
   ].filter(Boolean);
 
   const firstMotiv = before[0] || after[0];
@@ -79,7 +79,7 @@ export function ResumenPanel({ discovery, result, fmt, grouped }) {
     firstFreno && qJoin(firstFreno, answers, t)
       && `${qTitle(firstFreno, t)}: ${qJoin(firstFreno, answers, t)}`,
     discovery.hasTs && `${t("survey.disc.q.hasTs.title")}: ${t(optionTitleKey("hasTs", discovery.hasTs))}`,
-    result?.pattern?.mi != null && `${t("tools.survey.idealMonthly")}: ${fmt(result.pattern.mi)}`,
+    result?.pattern?.mi != null && `${t("tools.survey.idealMonthly")}: ${fmtResult(result.pattern.mi)}`,
   ].filter(Boolean);
 
   return (

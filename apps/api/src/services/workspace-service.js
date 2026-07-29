@@ -480,23 +480,36 @@ export async function listTeamProspects(supabase, userId, { memberId = null, lim
   return { data: data ?? [], total: count ?? 0, limit, offset, workspace_id: active.id };
 }
 
-export async function inviteToActiveSala(supabase, userId, { email } = {}) {
+export async function inviteToActiveSala(supabase, userId, { email, usuario_id } = {}) {
   const active = await requireActiveSalaGerente(supabase, userId);
-  const normalized = String(email || "").trim().toLowerCase();
-  if (!normalized || !normalized.includes("@")) {
-    throw new ServiceError("Email inválido.");
-  }
   const admin = createServiceSupabaseClient();
   if (!admin) throw new ServiceError("Service role no configurado.", 500);
 
-  const { data: profile, error: pErr } = await admin
-    .from("profiles")
-    .select("id, email, full_name")
-    .ilike("email", normalized)
-    .maybeSingle();
-  if (pErr) throw new ServiceError(pErr.message, 500);
+  let profile = null;
+  if (usuario_id) {
+    const { data, error: idErr } = await admin
+      .from("profiles")
+      .select("id, email, full_name")
+      .eq("id", usuario_id)
+      .maybeSingle();
+    if (idErr) throw new ServiceError(idErr.message, 500);
+    profile = data;
+  } else {
+    const normalized = String(email || "").trim().toLowerCase();
+    if (!normalized || !normalized.includes("@")) {
+      throw new ServiceError("Email inválido.");
+    }
+    const { data, error: pErr } = await admin
+      .from("profiles")
+      .select("id, email, full_name")
+      .ilike("email", normalized)
+      .maybeSingle();
+    if (pErr) throw new ServiceError(pErr.message, 500);
+    profile = data;
+  }
+
   if (!profile) {
-    throw new ServiceError("Ese email no tiene cuenta. Debe crear una cuenta en Saletse primero.", 404);
+    throw new ServiceError("Ese usuario no tiene cuenta. Debe crear una cuenta en Saletse primero.", 404);
   }
   if (profile.id === userId) {
     throw new ServiceError("No puedes invitarte a ti mismo.");
@@ -558,6 +571,116 @@ export async function inviteToActiveSala(supabase, userId, { email } = {}) {
     workspace: { id: active.id, nombre: active.nombre },
     inviter: { id: userId },
   };
+}
+
+const INVITE_SEARCH_MIN = 2;
+const INVITE_SEARCH_MAX = 80;
+const INVITE_SEARCH_LIMIT = 10;
+
+function normalizeUserSearchQuery(rawQuery) {
+  return String(rawQuery || "").trim().replace(/[,%()\\]/g, "");
+}
+
+/** Candidatos para invitar a la sala activa (gerente). Misma regla de elegibilidad que invite. */
+export async function searchInviteCandidates(supabase, userId, rawQuery) {
+  const active = await requireActiveSalaGerente(supabase, userId);
+  const query = normalizeUserSearchQuery(rawQuery);
+  if (query.length < INVITE_SEARCH_MIN) return [];
+  if (query.length > INVITE_SEARCH_MAX) throw new ServiceError("Búsqueda demasiado larga.", 400);
+
+  const admin = createServiceSupabaseClient();
+  if (!admin) throw new ServiceError("Service role no configurado.", 500);
+
+  const { data: matches, error } = await admin
+    .from("profiles")
+    .select("id, full_name, email, avatar_url")
+    .or(`full_name.ilike.%${query}%,email.ilike.%${query}%`)
+    .order("full_name")
+    .limit(30);
+  if (error) throw new ServiceError(error.message, 500);
+  if (!matches?.length) return [];
+
+  const ids = matches.map((row) => row.id).filter((id) => id && id !== userId);
+  if (!ids.length) return [];
+
+  const { data: memberships, error: mErr } = await admin
+    .from("workspace_miembros")
+    .select("usuario_id, workspace_id, rol_en_workspace, workspaces!inner(id, tipo, nombre)")
+    .in("usuario_id", ids);
+  if (mErr) throw new ServiceError(mErr.message, 500);
+
+  const salaByUser = new Map();
+  for (const row of memberships || []) {
+    if (row.workspaces?.tipo !== "sala_de_venta") continue;
+    if (!salaByUser.has(row.usuario_id)) salaByUser.set(row.usuario_id, row);
+  }
+
+  return matches
+    .filter((profile) => profile.id && profile.id !== userId)
+    .filter((profile) => {
+      const membership = salaByUser.get(profile.id);
+      if (!membership) return true;
+      return membership.workspace_id === active.id;
+    })
+    .slice(0, INVITE_SEARCH_LIMIT)
+    .map((profile) => {
+      const membership = salaByUser.get(profile.id);
+      return {
+        id: profile.id,
+        full_name: profile.full_name || null,
+        email: profile.email || null,
+        avatar_url: profile.avatar_url || null,
+        en_sala: membership?.workspace_id === active.id,
+        bloqueado: membership && membership.workspace_id !== active.id
+          ? membership.workspaces?.nombre || "otra sala"
+          : null,
+      };
+    })
+    .filter((profile) => !profile.bloqueado);
+}
+
+/** Cerradores elegibles en la sala activa (gerente al asignar). */
+export async function searchCloserCandidates(supabase, userId, rawQuery) {
+  const active = await requireActiveSalaGerente(supabase, userId);
+  const query = normalizeUserSearchQuery(rawQuery);
+  if (query.length < INVITE_SEARCH_MIN) return [];
+
+  const admin = createServiceSupabaseClient();
+  if (!admin) throw new ServiceError("Service role no configurado.", 500);
+
+  const { data: members, error: mErr } = await admin
+    .from("workspace_miembros")
+    .select("usuario_id, role_id, roles(slug), profiles:profiles!workspace_miembros_usuario_id_fkey(id, full_name, email, avatar_url)")
+    .eq("workspace_id", active.id)
+    .neq("usuario_id", userId);
+  if (mErr) throw new ServiceError(mErr.message, 500);
+
+  const eligible = [];
+  for (const row of members || []) {
+    const profile = row.profiles;
+    if (!profile?.id) continue;
+    const { data: permissionKeys } = await admin.rpc("effective_workspace_permissions", {
+      p_usuario_id: profile.id,
+      p_workspace_id: active.id,
+    });
+    const permissions = new Set(Array.isArray(permissionKeys) ? permissionKeys : []);
+    const isCloser = row.roles?.slug === "cerrador" || permissions.has("workflow:cerrar");
+    if (!isCloser) continue;
+    eligible.push({
+      id: profile.id,
+      full_name: profile.full_name || null,
+      email: profile.email || null,
+      avatar_url: profile.avatar_url || null,
+    });
+  }
+
+  const q = query.toLowerCase();
+  return eligible
+    .filter((member) => {
+      const hay = [member.full_name, member.email].filter(Boolean).join(" ").toLowerCase();
+      return hay.includes(q);
+    })
+    .slice(0, INVITE_SEARCH_LIMIT);
 }
 
 export async function leaveActiveSala(supabase, userId) {
