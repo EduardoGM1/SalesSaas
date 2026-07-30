@@ -26,7 +26,11 @@ export function namedLazy(loader, exportName) {
     loader()
       .then((m) => {
         clearChunkReloadFlag();
-        return { default: m[exportName] };
+        const Component = m[exportName];
+        if (!Component) {
+          throw new Error(`Lazy import "${exportName}" not found in module (exports: ${Object.keys(m).join(", ")})`);
+        }
+        return { default: Component };
       })
       .catch((err) => {
         if (isStaleChunkError(err) && !sessionStorage.getItem(RELOAD_KEY)) {
