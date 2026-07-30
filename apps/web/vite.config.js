@@ -1,14 +1,32 @@
 import path from "path";
+import fs from "fs";
 import { fileURLToPath } from "url";
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const buildId = process.env.VERCEL_GIT_COMMIT_SHA
+  || process.env.VERCEL_DEPLOYMENT_ID
+  || `local-${Date.now()}`;
+
+function writeBuildIdPlugin() {
+  return {
+    name: "write-build-id",
+    closeBundle() {
+      const outDir = path.resolve(__dirname, "dist");
+      fs.mkdirSync(outDir, { recursive: true });
+      fs.writeFileSync(path.join(outDir, "build-id.txt"), `${buildId}\n`);
+    },
+  };
+}
 
 export default defineConfig({
   envDir: path.resolve(__dirname, "../.."),
   envPrefix: ["VITE_", "NEXT_PUBLIC_"],
+  define: {
+    "import.meta.env.VITE_BUILD_ID": JSON.stringify(buildId),
+  },
   plugins: [
     react({
       babel: {
@@ -75,6 +93,19 @@ export default defineConfig({
             handler: "NetworkOnly",
           },
           {
+            urlPattern: ({ url }) => url.pathname === "/build-id.txt",
+            handler: "NetworkOnly",
+          },
+          {
+            urlPattern: ({ url }) => /\/assets\/index-[^/]+\.js$/i.test(url.pathname),
+            handler: "NetworkFirst",
+            options: {
+              cacheName: "app-entry-js",
+              networkTimeoutSeconds: 3,
+              expiration: { maxEntries: 2, maxAgeSeconds: 60 * 60 },
+            },
+          },
+          {
             urlPattern: ({ request, url }) =>
               request.destination === "script"
               || request.destination === "style"
@@ -117,6 +148,7 @@ export default defineConfig({
         ],
       },
     }),
+    writeBuildIdPlugin(),
   ],
   publicDir: path.resolve(__dirname, "../../public"),
   esbuild: {

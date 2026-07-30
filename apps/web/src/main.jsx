@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import App from "./App.jsx";
 import { initPwaUpdates } from "@/lib/pwa-register.js";
+import { ensureFreshBuild } from "@/lib/ensure-fresh-build.js";
 import { ensureAuthSyncBridge, initSessionResumeProbe } from "@/lib/session-api.js";
 import { initSessionSync } from "@/lib/session-cross-device.js";
 import "./styles/globals.css";
@@ -14,10 +15,12 @@ ensureAuthSyncBridge();
 initSessionResumeProbe();
 initSessionSync();
 
-createRoot(document.getElementById("root")).render(
-  <StrictMode>
-    <BrowserRouter>
-      <App />
-    </BrowserRouter>
-  </StrictMode>,
-);
+void ensureFreshBuild().then(() => {
+  createRoot(document.getElementById("root")).render(
+    <StrictMode>
+      <BrowserRouter>
+        <App />
+      </BrowserRouter>
+    </StrictMode>,
+  );
+});

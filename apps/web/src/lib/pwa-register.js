@@ -1,4 +1,5 @@
 import { registerSW } from "virtual:pwa-register";
+import { purgeAppCaches } from "@/lib/purge-app-caches.js";
 
 let reloading = false;
 
@@ -6,20 +7,6 @@ function reloadOnce() {
   if (reloading) return;
   reloading = true;
   window.location.reload();
-}
-
-async function purgeStaleAppCaches() {
-  if (!("caches" in window)) return;
-  try {
-    const keys = await caches.keys();
-    await Promise.all(
-      keys
-        .filter((key) => /workbox|precache|html-navigate|api-cache/i.test(key))
-        .map((key) => caches.delete(key)),
-    );
-  } catch {
-    // ignore
-  }
 }
 
 /**
@@ -36,9 +23,7 @@ async function recoverFromStaleModuleScript() {
     if (res.ok) return;
 
     console.warn("[pwa] stale module script detected, purging caches", script.src, res.status);
-    const regs = await navigator.serviceWorker.getRegistrations();
-    await Promise.all(regs.map((reg) => reg.unregister()));
-    await purgeStaleAppCaches();
+    await purgeAppCaches();
     reloadOnce();
   } catch {
     // Sin red: no forzar reload en bucle.

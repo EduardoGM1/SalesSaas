@@ -1,4 +1,5 @@
 import { lazy } from "react";
+import { purgeAppCaches } from "@/lib/purge-app-caches.js";
 
 const RELOAD_KEY = "vite:chunk-reload";
 
@@ -28,6 +29,11 @@ export function namedLazy(loader, exportName) {
         clearChunkReloadFlag();
         const Component = m[exportName];
         if (!Component) {
+          if (!sessionStorage.getItem(RELOAD_KEY)) {
+            sessionStorage.setItem(RELOAD_KEY, "1");
+            void purgeAppCaches().finally(() => window.location.reload());
+            return new Promise(() => {});
+          }
           throw new Error(`Lazy import "${exportName}" not found in module (exports: ${Object.keys(m).join(", ")})`);
         }
         return { default: Component };
