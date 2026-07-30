@@ -71,13 +71,13 @@ export function SurveyPage({ clientId, shared }: SurveyPageProps) {
   const { fmtD } = useMoney();
   const {
     captureCurrency,
-    setCaptureCurrency,
     currencyMeta,
     currencyMetaSerialized,
     moneda,
     appendMonedaPayload,
     resetMoneda,
     recordMoneyCapture,
+    switchCaptureCurrency,
   } = useMonedaToolBucket({ getBucket, toolKey: "survey", ready, toolsRevision });
   const { fmtResult } = moneda;
 
@@ -333,7 +333,7 @@ export function SurveyPage({ clientId, shared }: SurveyPageProps) {
 
   const handleCaptureCurrencyChange = (next) => {
     markFieldsDirty(dirtyKeysRef, "__captureCurrency");
-    setCaptureCurrency(next);
+    switchCaptureCurrency(next, data, SURVEY_MONEY_FIELDS, setData);
   };
 
   const openConfig = (sectionId) => {

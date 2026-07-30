@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useMoneda } from "@/hooks/use-moneda.js";
 import {
+  convertCaptureMoneyFields,
   normalizeCaptureCurrency,
   parseCurrencyMeta,
   serializeCurrencyMeta,
@@ -39,9 +40,30 @@ export function useMonedaToolBucket({ getBucket, toolKey, ready, toolsRevision }
     }));
   };
 
+  /**
+   * Cambia pestaña USD/MXN y convierte campos monetarios visibles
+   * con el tipo de cambio manual configurado.
+   */
+  const switchCaptureCurrency = (next, fields, moneyFields, setFields) => {
+    const nextCurrency = normalizeCaptureCurrency(next);
+    if (nextCurrency === captureCurrency) return;
+    const { fields: converted, meta } = convertCaptureMoneyFields(
+      fields,
+      moneyFields,
+      captureCurrency,
+      nextCurrency,
+      moneda.ctx,
+      moneda.language,
+    );
+    setFields?.(converted);
+    setCurrencyMeta((prev) => ({ ...prev, ...meta }));
+    setCaptureCurrency(nextCurrency);
+  };
+
   return {
     captureCurrency,
     setCaptureCurrency,
+    switchCaptureCurrency,
     currencyMeta,
     currencyMetaSerialized: serializeCurrencyMeta(currencyMeta),
     moneda,

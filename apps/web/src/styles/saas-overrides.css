@@ -8867,6 +8867,57 @@ body,
   color: var(--muted);
 }
 
+/* Panel tipo de cambio manual (Vacaciones / Survey / Worksheet) */
+.tool-tipo-cambio-panel {
+  margin: 0 0 16px;
+}
+.panel-tipo-cambio-hint {
+  margin: 0 0 12px;
+  font-size: 0.82rem;
+  color: var(--saas-text-muted, #64748b);
+}
+.panel-tipo-cambio-grid {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 12px;
+  align-items: end;
+}
+.panel-tipo-cambio-side {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+.panel-tipo-cambio-selector {
+  max-width: none;
+  margin: 0;
+}
+.panel-tipo-cambio-selector .selector-moneda-captura-text {
+  font-size: 12px;
+}
+.panel-tipo-cambio-equals {
+  align-self: center;
+  padding-bottom: 10px;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+.panel-tipo-cambio-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 14px;
+}
+@media (max-width: 720px) {
+  .panel-tipo-cambio-grid {
+    grid-template-columns: 1fr;
+  }
+  .panel-tipo-cambio-equals {
+    display: none;
+  }
+  .panel-tipo-cambio-actions .btn {
+    width: 100%;
+  }
+}
+
 /* ── Asistente de transferencia Personal → Sala ─────────────── */
 .transfer-wizard {
   display: grid;

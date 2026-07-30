@@ -15,6 +15,7 @@ import { useFlushLibreToolOnLeave } from "@/hooks/use-flush-libre-tool-on-leave.
 import { CollabField, collabFieldId } from "@/components/clients/collab-field.jsx";
 import { SelectorMonedaCaptura } from "@/components/currency/selector-moneda-captura.jsx";
 import { CampoMonedaCaptura } from "@/components/currency/campo-moneda-captura.jsx";
+import { PanelTipoCambio } from "@/components/currency/panel-tipo-cambio.jsx";
 import { applyRemoteFormState, fieldKeyFromCollabId, markFieldsDirty, clearDirtyFields } from "@/lib/collab-form-merge.js";
 
 const DEFAULT_FIELDS = { vv: "", vc: "", va: "", vi: "8" };
@@ -31,13 +32,13 @@ export function VacacionesPage({ clientId, shared }: VacacionesPageProps) {
   const fid = (key) => collabFieldId("vacaciones", key);
   const {
     captureCurrency,
-    setCaptureCurrency,
     currencyMeta,
     currencyMetaSerialized,
     moneda,
     appendMonedaPayload,
     resetMoneda,
     recordMoneyCapture,
+    switchCaptureCurrency,
   } = useMonedaToolBucket({ getBucket, toolKey: "vacaciones", ready, toolsRevision });
   const { fmtResult, fmtResultN } = moneda;
   const [fields, setFields] = useState({ ...DEFAULT_FIELDS });
@@ -124,7 +125,7 @@ export function VacacionesPage({ clientId, shared }: VacacionesPageProps) {
 
   const handleCaptureCurrencyChange = (next) => {
     markFieldsDirty(dirtyKeysRef, "__captureCurrency");
-    setCaptureCurrency(next);
+    switchCaptureCurrency(next, fields, VACACIONES_MONEY_FIELDS, setFields);
   };
 
   return (
@@ -147,6 +148,7 @@ export function VacacionesPage({ clientId, shared }: VacacionesPageProps) {
           disabled={readOnly}
           className="tool-moneda-selector"
         />
+        <PanelTipoCambio disabled={readOnly} className="tool-tipo-cambio-panel" />
         <div className="g2 vacation-calc-layout">
           <div className="card tool-calc-card">
             <div className="card-heading">{t("tools.vacation.inputTitle")}</div>

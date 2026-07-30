@@ -7,13 +7,23 @@ export function CollapsibleSection({
   title,
   subtitle,
   defaultOpen = true,
+  open: openProp,
+  onOpenChange,
   mobileOnly = false,
   className,
   bodyClassName,
   children,
   id,
 }) {
-  const [open, setOpen] = useState(defaultOpen);
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(defaultOpen);
+  const controlled = openProp !== undefined;
+  const open = controlled ? openProp : uncontrolledOpen;
+
+  const setOpen = (next) => {
+    const value = typeof next === "function" ? next(open) : next;
+    if (!controlled) setUncontrolledOpen(value);
+    onOpenChange?.(value);
+  };
 
   return (
     <section

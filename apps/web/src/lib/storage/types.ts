@@ -164,6 +164,8 @@ export interface UserSettings {
   exchangeMode?: "manual" | "auto";
   /** 1 USD = X MXN para captura cuando la moneda visual es USD */
   usdToMxnRate?: number;
+  /** ISO date when the manual FX rate was last saved */
+  exchangeRateUpdatedAt?: string;
   userName?: string;
   userInitials?: string;
   worksheetConfig?: Record<string, string>;

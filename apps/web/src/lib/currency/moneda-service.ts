@@ -163,3 +163,47 @@ export function buildOperationalFields<T extends Record<string, unknown>>(
   }
   return out;
 }
+
+/**
+ * Convierte campos monetarios de captura al cambiar pestaña USD↔MXN.
+ * No reescribe históricos ya persistidos fuera de esta sesión: opera sobre
+ * los valores visibles actuales y regenera snapshots de currency_meta.
+ */
+export function convertCaptureMoneyFields<T extends Record<string, unknown>>(
+  data: T,
+  moneyFields: readonly string[],
+  from: CaptureCurrency,
+  to: CaptureCurrency,
+  ctx: MonedaContext,
+  language: "es" | "en" = "es",
+): { fields: T; meta: CurrencyMetaMap } {
+  if (from === to) {
+    return { fields: data, meta: {} };
+  }
+  const fields = { ...data };
+  const meta: CurrencyMetaMap = {};
+  for (const key of moneyFields) {
+    const raw = data[key];
+    const n = parseMoney(raw as string | number | undefined);
+    if (!Number.isFinite(n) || String(raw ?? "").trim() === "") {
+      (fields as Record<string, unknown>)[key] = raw;
+      continue;
+    }
+    const converted = convertir(n, from, to, ctx);
+    const formatted = formatCaptureMoneyValue(converted, language);
+    (fields as Record<string, unknown>)[key] = formatted;
+    meta[key] = buildAmountRecord(formatted, to, ctx);
+  }
+  return { fields, meta };
+}
+
+/** Normaliza la tasa manual a "1 USD = X MXN". */
+export function resolveUsdToMxnRate(baseCurrency: CaptureCurrency, quoteCurrency: CaptureCurrency, baseAmount: number, quoteAmount: number): number {
+  const base = Number(baseAmount);
+  const quote = Number(quoteAmount);
+  if (!Number.isFinite(base) || !Number.isFinite(quote) || base <= 0 || quote <= 0) return 18;
+  if (baseCurrency === "USD" && quoteCurrency === "MXN") return quote / base;
+  if (baseCurrency === "MXN" && quoteCurrency === "USD") return base / quote;
+  if (baseCurrency === quoteCurrency) return 18;
+  return quote / base;
+}

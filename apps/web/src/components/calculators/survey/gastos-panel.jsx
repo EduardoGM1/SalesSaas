@@ -1,6 +1,7 @@
 import { CollabField } from "@/components/clients/collab-field.jsx";
 import { SelectorMonedaCaptura } from "@/components/currency/selector-moneda-captura.jsx";
 import { CampoMonedaCaptura } from "@/components/currency/campo-moneda-captura.jsx";
+import { PanelTipoCambio } from "@/components/currency/panel-tipo-cambio.jsx";
 import { selectOnFocus } from "@/lib/focus-select.js";
 
 const HIST = ["sh1", "sh2", "sh3"];
@@ -48,6 +49,7 @@ export function GastosPanel({
         disabled={readOnly}
         className="tool-moneda-selector"
       />
+      <PanelTipoCambio disabled={readOnly} className="tool-tipo-cambio-panel" />
 
       <div className="card" style={{ marginBottom: 16 }}>
         <div className="card-heading">{t("tools.survey.currentTrip")}</div>

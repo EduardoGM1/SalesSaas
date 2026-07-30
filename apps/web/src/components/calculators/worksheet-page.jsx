@@ -19,6 +19,7 @@ import { useFlushLibreToolOnLeave } from "@/hooks/use-flush-libre-tool-on-leave.
 import { CollabField, collabFieldId } from "@/components/clients/collab-field.jsx";
 import { SelectorMonedaCaptura } from "@/components/currency/selector-moneda-captura.jsx";
 import { CampoMonedaCaptura } from "@/components/currency/campo-moneda-captura.jsx";
+import { PanelTipoCambio } from "@/components/currency/panel-tipo-cambio.jsx";
 import { applyRemoteFormState, fieldKeyFromCollabId, markFieldsDirty, clearDirtyFields } from "@/lib/collab-form-merge.js";
 import { useDbStore } from "@/stores/db-store";
 import { shallow } from "zustand/shallow";
@@ -37,12 +38,12 @@ export function WorksheetPage({ clientId, shared }: WorksheetPageProps) {
   const fid = (key) => collabFieldId("worksheet", key);
   const {
     captureCurrency,
-    setCaptureCurrency,
     currencyMeta,
     moneda,
     appendMonedaPayload,
     resetMoneda,
     recordMoneyCapture,
+    switchCaptureCurrency,
   } = useMonedaToolBucket({ getBucket, toolKey: "worksheet", ready, toolsRevision });
   const { fmtResult } = moneda;
   const worksheetConfig = useDbStore((s) => s.db.settings?.worksheetConfig, shallow);
@@ -133,7 +134,7 @@ export function WorksheetPage({ clientId, shared }: WorksheetPageProps) {
 
   const handleCaptureCurrencyChange = (next) => {
     markFieldsDirty(dirtyKeysRef, "__captureCurrency");
-    setCaptureCurrency(next);
+    switchCaptureCurrency(next, fields, WORKSHEET_MONEY_FIELDS, setFields);
   };
 
   const moneyField = (key: keyof typeof fields) => (
@@ -169,6 +170,7 @@ export function WorksheetPage({ clientId, shared }: WorksheetPageProps) {
           disabled={readOnly}
           className="tool-moneda-selector"
         />
+        <PanelTipoCambio disabled={readOnly} className="tool-tipo-cambio-panel" />
         <div className="g2">
           <div className="card tool-calc-card">
             <div className="card-heading">{t("tools.worksheet.saleData")}</div>
