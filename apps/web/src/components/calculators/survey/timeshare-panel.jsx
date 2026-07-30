@@ -32,20 +32,22 @@ export function TimesharePanel({
   return (
     <div className="disc-panel">
       <div className="disc-section-head">
-        <div>
-          <h2 className="card-heading">{t("survey.disc.section.timeshare.title")}</h2>
+        <div className="disc-section-head-text">
+          <div className="disc-section-head-row">
+            <h2 className="card-heading">{t("survey.disc.section.timeshare.title")}</h2>
+            {canConfigure && (
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm disc-section-config-btn"
+                disabled={disabled}
+                onClick={onConfigClick}
+              >
+                {t("survey.disc.configQuestions")}
+              </button>
+            )}
+          </div>
           <p className="card-sub">{t("survey.disc.section.timeshare.sub")}</p>
         </div>
-        {canConfigure && (
-          <button
-            type="button"
-            className="btn btn-ghost btn-sm"
-            disabled={disabled}
-            onClick={onConfigClick}
-          >
-            {t("survey.disc.configQuestions")}
-          </button>
-        )}
       </div>
 
       <div className="disc-questions">

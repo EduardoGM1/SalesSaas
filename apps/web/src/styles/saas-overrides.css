@@ -8172,14 +8172,33 @@ body,
 }
 .disc-section-head,
 .disc-subsection-head {
+  display: block;
+  padding: 16px 18px 12px;
+  border-bottom: 1px solid var(--border);
+}
+.disc-section-head-text {
+  min-width: 0;
+}
+.disc-section-head-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+.disc-section-head-row .card-heading {
+  margin-bottom: 0;
+  min-width: 0;
+}
+.disc-section-config-btn {
+  flex-shrink: 0;
+  margin-left: auto;
+}
+.disc-subsection-head {
   display: flex;
   justify-content: space-between;
   gap: 12px;
   align-items: flex-start;
-  padding: 16px 18px 12px;
-  border-bottom: 1px solid var(--border);
-}
-.disc-subsection-head {
   margin-top: 4px;
   border-top: 1px solid var(--border);
 }
