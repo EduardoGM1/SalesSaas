@@ -683,6 +683,52 @@ export async function searchCloserCandidates(supabase, userId, rawQuery) {
     .slice(0, INVITE_SEARCH_LIMIT);
 }
 
+/** Vendedores elegibles en la sala activa (gerente al asignar representante). */
+export async function searchRepresentanteCandidates(supabase, userId, rawQuery) {
+  const active = await requireActiveSalaGerente(supabase, userId);
+  const query = normalizeUserSearchQuery(rawQuery);
+  if (query.length < INVITE_SEARCH_MIN) return [];
+
+  const admin = createServiceSupabaseClient();
+  if (!admin) throw new ServiceError("Service role no configurado.", 500);
+
+  const { data: members, error: mErr } = await admin
+    .from("workspace_miembros")
+    .select("usuario_id, rol_en_workspace, role_id, roles(slug), profiles:profiles!workspace_miembros_usuario_id_fkey(id, full_name, email, avatar_url)")
+    .eq("workspace_id", active.id);
+  if (mErr) throw new ServiceError(mErr.message, 500);
+
+  const eligible = [];
+  for (const row of members || []) {
+    const profile = row.profiles;
+    if (!profile?.id) continue;
+    if (row.rol_en_workspace === "gerente") continue;
+    const { data: permissionKeys } = await admin.rpc("effective_workspace_permissions", {
+      p_usuario_id: profile.id,
+      p_workspace_id: active.id,
+    });
+    const permissions = new Set(Array.isArray(permissionKeys) ? permissionKeys : []);
+    const isCloserOnly = (row.roles?.slug === "cerrador" || permissions.has("workflow:cerrar"))
+      && !permissions.has("expedientes:crear")
+      && row.rol_en_workspace !== "vendedor";
+    if (isCloserOnly) continue;
+    eligible.push({
+      id: profile.id,
+      full_name: profile.full_name || null,
+      email: profile.email || null,
+      avatar_url: profile.avatar_url || null,
+    });
+  }
+
+  const q = query.toLowerCase();
+  return eligible
+    .filter((member) => {
+      const hay = [member.full_name, member.email].filter(Boolean).join(" ").toLowerCase();
+      return hay.includes(q);
+    })
+    .slice(0, INVITE_SEARCH_LIMIT);
+}
+
 export async function leaveActiveSala(supabase, userId) {
   const list = await listUserWorkspaces(supabase, userId);
   const workspaceId = await resolveActiveWorkspaceId(supabase, userId);

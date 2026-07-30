@@ -136,6 +136,12 @@ router.get("/workspace/closers/search", rateLimit({ name: "workspace-closer-sear
   await runService(res, () => workspaceService.searchCloserCandidates(a.supabase, a.userId, req.query.q), { wrap: "data" });
 });
 
+router.get("/workspace/representantes/search", rateLimit({ name: "workspace-representante-search", windowMs: 60_000, max: 40 }), async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  await runService(res, () => workspaceService.searchRepresentanteCandidates(a.supabase, a.userId, req.query.q), { wrap: "data" });
+});
+
 router.get("/workspace/team/prospects", async (req, res) => {
   const a = await requireAuth(req, res);
   if (!a) return;
@@ -362,6 +368,23 @@ router.post("/prospects/:id/participants/assign-closer", async (req, res) => {
       a.userId,
       req.params.id,
       body.cerrador_id ?? body.closer_id,
+    ),
+    { wrap: "data" },
+  );
+});
+
+router.post("/prospects/:id/participants/assign-representante", async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  const body = parseJsonBody(req, res);
+  if (!body) return;
+  await runService(
+    res,
+    () => prospectParticipantsService.assignRepresentante(
+      a.supabase,
+      a.userId,
+      req.params.id,
+      body.representante_id ?? body.vendedor_id,
     ),
     { wrap: "data" },
   );

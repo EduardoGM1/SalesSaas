@@ -159,6 +159,8 @@ export async function getParticipants(_supabase, actorId, prospectId) {
       }),
       can_assign_closer: access.isManager && !state.cerrador_id && state.estado !== "cancelado",
       can_reassign_closer: access.isManager && Boolean(state.cerrador_id) && state.estado !== "cancelado",
+      can_assign_representante: access.isManager && !state.representante_id && state.estado !== "cancelado",
+      can_reassign_representante: access.isManager && Boolean(state.representante_id) && state.estado !== "cancelado",
     },
   };
 }
@@ -232,6 +234,52 @@ export async function assignCloser(_supabase, actorId, prospectId, closerId) {
     prospectName,
     reassigned: Boolean(previousCloserId) && previousCloserId !== closerId,
   }).catch(() => {});
+
+  return data;
+}
+
+/** Asigna o reasigna Vendedor (representante); sincroniza chat. */
+export async function assignRepresentante(_supabase, actorId, prospectId, representanteId) {
+  const access = await loadAccess(actorId, prospectId);
+  const participants = await ensureParticipants(access, actorId);
+  if (!access.isManager) throw new ServiceError("Solo un gerente puede asignar Vendedor.", 403);
+  if (participants.estado === "cancelado") {
+    throw new ServiceError("El expediente está cancelado.", 409);
+  }
+  if (!representanteId) throw new ServiceError("representante_id requerido.", 400);
+
+  const { data: member } = await access.admin
+    .from("workspace_miembros")
+    .select("usuario_id, rol_en_workspace, role_id, roles(slug)")
+    .eq("workspace_id", access.prospect.workspace_id)
+    .eq("usuario_id", representanteId)
+    .maybeSingle();
+  if (!member) throw new ServiceError("El Vendedor debe pertenecer a la misma sala.", 400);
+  if (member.rol_en_workspace === "gerente") {
+    throw new ServiceError("El gerente de la sala no puede ser asignado como Vendedor.", 400);
+  }
+
+  const { data: permissionKeys } = await access.admin.rpc("effective_workspace_permissions", {
+    p_usuario_id: representanteId,
+    p_workspace_id: access.prospect.workspace_id,
+  });
+  const permissions = new Set(Array.isArray(permissionKeys) ? permissionKeys : []);
+  const isCloserOnly = (member.roles?.slug === "cerrador" || permissions.has("workflow:cerrar"))
+    && !permissions.has("expedientes:crear")
+    && member.rol_en_workspace !== "vendedor";
+  if (isCloserOnly) {
+    throw new ServiceError("El usuario seleccionado no puede actuar como Vendedor.", 400);
+  }
+
+  const { data, error } = await access.admin.rpc("assign_prospect_representante", {
+    p_prospect_id: prospectId,
+    p_actor_id: actorId,
+    p_representante_id: representanteId,
+    p_actor_role: access.roleSlug || "gerente",
+  });
+  if (error) throw new ServiceError(error.message, 409);
+
+  await access.admin.rpc("sync_prospect_chat_members", { p_prospect_id: prospectId }).catch(() => {});
 
   return data;
 }

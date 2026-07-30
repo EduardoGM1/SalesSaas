@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { BadgeCheck, Clock3, MessageSquare, UserRound, UserRoundCheck } from "lucide-react";
+import { BadgeCheck, Clock3, MessageSquare, Pencil, Plus, UserRound, UserRoundCheck } from "lucide-react";
 import { AdminStatusBadge } from "@/components/admin/admin-ui.jsx";
-import { BuscadorUsuario } from "@/components/admin/buscador-usuario.jsx";
+import { ProspectParticipantAssignModal } from "@/components/clients/prospect-participant-assign-modal.jsx";
 import { participantsApi } from "@/lib/participants-api.js";
 import { toast } from "@/lib/toast";
 
@@ -11,6 +11,8 @@ const EVENT_LABELS = {
   transferido: "Transferido a la sala",
   cerrador_asignado: "Cerrador asignado",
   cerrador_reasignado: "Cerrador reasignado",
+  vendedor_asignado: "Vendedor asignado",
+  vendedor_reasignado: "Vendedor reasignado",
   archivo_subido: "Archivo subido",
   archivo_eliminado: "Archivo eliminado",
 };
@@ -21,15 +23,15 @@ function personName(profile, fallback) {
 
 /**
  * Participantes del expediente (sin pipeline).
- * Sala, Gerente, Vendedor y Cerrador colaboran sobre el mismo registro.
+ * Gerente, Vendedor y Cerrador colaboran sobre el mismo registro.
  */
 export function ProspectParticipantsPanel({ prospectId, enabled = true, onCapabilities }) {
   const navigate = useNavigate();
   const [payload, setPayload] = useState(null);
-  const [selectedCloser, setSelectedCloser] = useState(null);
   const [pending, setPending] = useState(false);
   const [hidden, setHidden] = useState(false);
   const [error, setError] = useState("");
+  const [assignModal, setAssignModal] = useState(null);
 
   const load = useCallback(async () => {
     if (!enabled || !prospectId) return;
@@ -39,18 +41,6 @@ export function ProspectParticipantsPanel({ prospectId, enabled = true, onCapabi
       onCapabilities?.(data?.capabilities ?? null);
       setHidden(false);
       setError("");
-      if (data?.capabilities?.can_assign_closer || data?.capabilities?.can_reassign_closer) {
-        if (data?.state?.cerrador) {
-          setSelectedCloser({
-            id: data.state.cerrador_id,
-            full_name: data.state.cerrador.full_name || null,
-            email: data.state.cerrador.email || null,
-            avatar_url: data.state.cerrador.avatar_url || null,
-          });
-        } else {
-          setSelectedCloser(null);
-        }
-      }
     } catch (loadError) {
       if (
         [404, 409].includes(loadError?.status)
@@ -70,6 +60,7 @@ export function ProspectParticipantsPanel({ prospectId, enabled = true, onCapabi
     try {
       await work();
       await load();
+      setAssignModal(null);
       toast.success(message);
     } catch (actionError) {
       const messageText = actionError instanceof Error ? actionError.message : "No fue posible completar la acción.";
@@ -80,33 +71,65 @@ export function ProspectParticipantsPanel({ prospectId, enabled = true, onCapabi
     }
   };
 
-  if (!enabled || hidden || (!payload && !error)) return null;
   const state = payload?.state;
   const capabilities = payload?.capabilities || {};
   const context = payload?.context || {};
 
-  const participantes = state
-    ? [
+  const roleCards = useMemo(() => {
+    if (!state) return [];
+    return [
       {
         key: "gerente",
-        icon: <BadgeCheck size={15} aria-hidden />,
+        icon: BadgeCheck,
         label: "Gerente",
-        value: personName(state.gerente, "Sin gerente"),
+        profile: state.gerente,
+        emptyLabel: "Sin gerente",
+        editable: false,
       },
       {
         key: "vendedor",
-        icon: <UserRound size={15} aria-hidden />,
+        icon: UserRound,
         label: "Vendedor",
-        value: personName(state.representante, "Sin vendedor"),
+        profile: state.representante,
+        emptyLabel: "Sin vendedor",
+        canAssign: capabilities.can_assign_representante,
+        canReassign: capabilities.can_reassign_representante,
+        searchPath: "workspace/representantes/search",
+        save: (userId) => participantsApi.assignRepresentante(prospectId, userId),
+        assignSuccess: "Vendedor asignado",
+        reassignSuccess: "Vendedor reasignado",
       },
       {
         key: "cerrador",
-        icon: <UserRoundCheck size={15} aria-hidden />,
+        icon: UserRoundCheck,
         label: "Cerrador",
-        value: personName(state.cerrador, "Sin asignar"),
+        profile: state.cerrador,
+        emptyLabel: "Sin asignar",
+        canAssign: capabilities.can_assign_closer,
+        canReassign: capabilities.can_reassign_closer,
+        searchPath: "workspace/closers/search",
+        save: (userId) => participantsApi.assignCloser(prospectId, userId),
+        assignSuccess: "Cerrador asignado",
+        reassignSuccess: "Cerrador reasignado",
       },
-    ]
-    : [];
+    ];
+  }, [state, capabilities, prospectId]);
+
+  const openAssignModal = (card, reassign) => {
+    setAssignModal({
+      roleKey: card.key,
+      roleLabel: card.label,
+      searchPath: card.searchPath,
+      currentProfile: card.profile,
+      isReassign: reassign,
+      onSave: (userId) => run(
+        () => card.save(userId),
+        reassign ? card.reassignSuccess : card.assignSuccess,
+      ),
+    });
+  };
+
+  if (!enabled || hidden || (!payload && !error)) return null;
 
   return (
     <section className="card prospect-workflow-panel" aria-labelledby="participants-title">
@@ -131,43 +154,54 @@ export function ProspectParticipantsPanel({ prospectId, enabled = true, onCapabi
         <>
           <div className="prospect-workflow-participants" aria-label="Participantes del expediente">
             <div className="prospect-workflow-participants-grid">
-              {participantes.map((item) => (
-                <div key={item.key} className="prospect-workflow-participant">
-                  {item.icon}
-                  <div>
-                    <span>{item.label}</span>
-                    <strong>{item.value}</strong>
-                    {item.detail ? <small>{item.detail}</small> : null}
+              {roleCards.map((card) => {
+                const Icon = card.icon;
+                const assignedId = card.key === "vendedor"
+                  ? state.representante_id
+                  : card.key === "cerrador"
+                    ? state.cerrador_id
+                    : state.gerente_id;
+                const assigned = Boolean(assignedId);
+                const displayName = personName(card.profile, card.emptyLabel);
+                const showAssign = card.canAssign && !assigned;
+                const showEdit = card.canReassign && assigned;
+
+                return (
+                  <div key={card.key} className="prospect-workflow-participant">
+                    <Icon size={15} aria-hidden />
+                    <div className="prospect-workflow-participant-body">
+                      <div className="prospect-workflow-participant-head">
+                        <span>{card.label}</span>
+                        {showEdit ? (
+                          <button
+                            type="button"
+                            className="prospect-workflow-participant-edit"
+                            aria-label={`Editar ${card.label.toLowerCase()}`}
+                            disabled={pending}
+                            onClick={() => openAssignModal(card, true)}
+                          >
+                            <Pencil size={13} />
+                          </button>
+                        ) : null}
+                      </div>
+                      {showAssign ? (
+                        <button
+                          type="button"
+                          className="btn btn-ghost btn-sm prospect-workflow-participant-assign"
+                          disabled={pending}
+                          onClick={() => openAssignModal(card, false)}
+                        >
+                          <Plus size={14} aria-hidden />
+                          Asignar {card.label}
+                        </button>
+                      ) : (
+                        <strong title={displayName}>{displayName}</strong>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
-            {capabilities.can_assign_closer || capabilities.can_reassign_closer ? (
-              <form
-                className="prospect-workflow-assign"
-                onSubmit={(event) => {
-                  event.preventDefault();
-                  if (!selectedCloser?.id) return;
-                  void run(
-                    () => participantsApi.assignCloser(prospectId, selectedCloser.id),
-                    capabilities.can_reassign_closer ? "Cerrador reasignado" : "Cerrador asignado",
-                  );
-                }}
-              >
-                <BuscadorUsuario
-                  searchPath="workspace/closers/search"
-                  value={selectedCloser}
-                  onChange={setSelectedCloser}
-                  placeholder={capabilities.can_reassign_closer ? "Buscar Cerrador por nombre o correo" : "Selecciona Cerrador por nombre o correo"}
-                  disabled={pending}
-                  inputId={`closer-search-${prospectId}`}
-                />
-                <button className="btn btn-primary" disabled={pending || !selectedCloser?.id}>
-                  <UserRoundCheck size={16} />
-                  {capabilities.can_reassign_closer ? "Reasignar Cerrador" : "Asignar Cerrador"}
-                </button>
-              </form>
-            ) : null}
             <div className="btn-row" style={{ marginTop: 8 }}>
               <button
                 type="button"
@@ -223,6 +257,18 @@ export function ProspectParticipantsPanel({ prospectId, enabled = true, onCapabi
           </div>
         </>
       ) : null}
+
+      <ProspectParticipantAssignModal
+        open={Boolean(assignModal)}
+        onOpenChange={(open) => { if (!open) setAssignModal(null); }}
+        roleKey={assignModal?.roleKey}
+        roleLabel={assignModal?.roleLabel}
+        searchPath={assignModal?.searchPath}
+        currentProfile={assignModal?.currentProfile}
+        isReassign={assignModal?.isReassign}
+        pending={pending}
+        onSave={(userId) => assignModal?.onSave?.(userId)}
+      />
     </section>
   );
 }

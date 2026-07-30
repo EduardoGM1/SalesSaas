@@ -8991,9 +8991,44 @@ body,
   margin-top: 2px;
   color: var(--saas-primary, #1e5eff);
 }
-.prospect-workflow-participant > div {
+.prospect-workflow-participant > div,
+.prospect-workflow-participant-body {
   display: grid;
   min-width: 0;
+  flex: 1;
+}
+.prospect-workflow-participant-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  min-width: 0;
+}
+.prospect-workflow-participant-edit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--saas-text-muted, #64748b);
+  cursor: pointer;
+}
+.prospect-workflow-participant-edit:hover:not(:disabled) {
+  background: rgba(30, 94, 255, 0.08);
+  color: var(--saas-primary, #1e5eff);
+}
+.prospect-workflow-participant-assign {
+  justify-self: start;
+  margin-top: 2px;
+  padding-inline: 8px;
+  font-size: 0.78rem;
+}
+.prospect-participant-assign-form .buscador-usuario {
+  width: 100%;
 }
 .prospect-workflow-participant span {
   font-size: 0.7rem;

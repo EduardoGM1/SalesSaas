@@ -21,6 +21,10 @@ export const participantsApi = {
     `prospects/${prospectId}/participants/assign-closer`,
     { method: "POST", body: { cerrador_id: cerradorId } },
   ),
+  assignRepresentante: (prospectId, representanteId) => participantsJson(
+    `prospects/${prospectId}/participants/assign-representante`,
+    { method: "POST", body: { representante_id: representanteId } },
+  ),
   openChat: (prospectId) => participantsJson(`prospects/${prospectId}/chat`, { method: "POST" }),
 };
 
