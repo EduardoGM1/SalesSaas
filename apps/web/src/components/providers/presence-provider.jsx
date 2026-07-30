@@ -3,6 +3,7 @@ import { createClient, primeRealtimeAuth } from "@/lib/supabase/client";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { networkApi } from "@/lib/network-api.js";
 import { fetchRealtimeSession, markPresenceOffline } from "@/lib/presence-api.js";
+import { shouldLimitBackgroundRealtime } from "@/lib/connection-profile.js";
 import {
   ensureRealtimeReady,
   removeChannelSafe,
@@ -123,6 +124,11 @@ export function PresenceProvider({ children }) {
   }, []);
 
   const subscribeToContacts = useCallback(async (supabase, contacts, selfId) => {
+    if (shouldLimitBackgroundRealtime()) {
+      await removePeerChannels();
+      return;
+    }
+
     const peerIds = new Set(
       contacts
         .map((p) => p?.id)
@@ -154,7 +160,7 @@ export function PresenceProvider({ children }) {
         markPeerRetry(peerId);
       }
     }
-  }, [canRetryPeer, clearPeerRetry, markPeerRetry, setUserOnline]);
+  }, [canRetryPeer, clearPeerRetry, markPeerRetry, setUserOnline, removePeerChannels]);
 
   const loadContacts = useCallback(async (supabase) => {
     if (contactsSyncingRef.current) return null;

@@ -9,6 +9,7 @@ import { createClient, primeRealtimeAuth } from "@/lib/supabase/client";
 import { fetchRealtimeSession } from "@/lib/presence-api.js";
 import { ensureRealtimeReady, removeChannelSafe } from "@/lib/presence/realtime.js";
 import { requestSyncRefresh } from "@/lib/sync-refresh.js";
+import { shouldLimitBackgroundRealtime } from "@/lib/connection-profile.js";
 
 const DEBOUNCE_MS = 400;
 const TABLES = ["prospects", "sales", "goals", "calendar_entries"];
@@ -85,6 +86,14 @@ export async function stopDashboardDataRealtime() {
 export async function startDashboardDataRealtime(userId, opts = {}) {
   const force = opts.force === true;
   if (!isSupabaseConfigured() || !userId || starting) return;
+  if (
+    !force
+    && shouldLimitBackgroundRealtime()
+    && typeof document !== "undefined"
+    && document.visibilityState === "hidden"
+  ) {
+    return;
+  }
   if (!force && isDashboardRealtimeHealthy() && activeUserId === userId) return;
 
   starting = true;

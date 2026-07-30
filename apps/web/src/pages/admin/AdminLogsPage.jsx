@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { Link, useOutletContext, useSearchParams } from "react-router-dom";
 import { AdminDataView, AdminFilterBar, AdminPageHeader, AdminPageState } from "@/components/admin/admin-ui.jsx";
 import { useAdminFetch } from "@/hooks/use-admin-session.js";
@@ -22,6 +22,8 @@ const ACTION_OPTIONS = [
   { value: ADMIN_AUDIT_ACTIONS.CAMBIO_ESTADO_TICKET, key: "admin.logs.action.cambio_estado_ticket" },
 ];
 
+const LOGS_PAGE_SIZE = 50;
+
 function formatDetalleRaw(detalle) {
   if (!detalle || typeof detalle !== "object") return "—";
   try {
@@ -37,6 +39,7 @@ export function AdminLogsPage() {
   const [searchParams] = useSearchParams();
   const [expanded, setExpanded] = useState(null);
   const [showRaw, setShowRaw] = useState(null);
+  const [page, setPage] = useState(0);
 
   const filters = useMemo(() => ({
     from: searchParams.get("from") || "",
@@ -45,15 +48,21 @@ export function AdminLogsPage() {
     accion: searchParams.get("accion") || "",
   }), [searchParams]);
 
+  useEffect(() => {
+    setPage(0);
+  }, [filters.from, filters.to, filters.actor, filters.accion]);
+
   const qs = useMemo(() => {
     const p = new URLSearchParams();
     if (filters.from) p.set("from", filters.from);
     if (filters.to) p.set("to", filters.to);
     if (filters.actor) p.set("actor", filters.actor);
     if (filters.accion) p.set("accion", filters.accion);
+    p.set("limit", String(LOGS_PAGE_SIZE));
+    p.set("offset", String(page * LOGS_PAGE_SIZE));
     const s = p.toString();
     return s ? `?${s}` : "";
-  }, [filters]);
+  }, [filters, page]);
 
   const { loading, data, error } = useAdminFetch("logs", qs || "?");
   const { data: sellers } = useAdminFetch("sellers", "");
@@ -66,6 +75,8 @@ export function AdminLogsPage() {
   }
 
   const items = Array.isArray(data?.items) ? data.items : [];
+  const total = Number(data?.total) || items.length;
+  const pageCount = Math.max(1, Math.ceil(total / LOGS_PAGE_SIZE));
   const exportHref = `/api/v1/admin/export/logs${qs}`;
   const actionLabel = (accion) => {
     const opt = ACTION_OPTIONS.find((o) => o.value === accion);
@@ -74,7 +85,7 @@ export function AdminLogsPage() {
 
   return (
     <div className="admin-page admin-system-page">
-      <AdminPageHeader eyebrow="Auditoría" title={t("admin.logs.title")} subtitle={t("admin.logs.sub")} meta={<span>{items.length} eventos visibles</span>} />
+      <AdminPageHeader eyebrow="Auditoría" title={t("admin.logs.title")} subtitle={t("admin.logs.sub")} meta={<span>{total} eventos · página {page + 1} de {pageCount}</span>} />
       <form method="GET" action="/admin/logs">
         <AdminFilterBar actions={<><button type="submit" className="btn btn-primary">{t("admin.filters.apply")}</button>{qs && <Link to="/admin/logs" className="btn btn-ghost">{t("common.clear")}</Link>}<a href={exportHref} className="btn btn-ghost">{t("admin.filters.exportCsv")}</a></>}>
           <div className="admin-filter-field">
@@ -174,6 +185,17 @@ export function AdminLogsPage() {
                 })}
               </tbody>
             </table>
+            {pageCount > 1 ? (
+              <div className="admin-pagination">
+                <button type="button" className="btn btn-ghost btn-sm" disabled={page <= 0 || loading} onClick={() => setPage((p) => Math.max(0, p - 1))}>
+                  Anterior
+                </button>
+                <span>Página {page + 1} de {pageCount}</span>
+                <button type="button" className="btn btn-ghost btn-sm" disabled={page + 1 >= pageCount || loading} onClick={() => setPage((p) => p + 1)}>
+                  Siguiente
+                </button>
+              </div>
+            ) : null}
           </div>
         </AdminDataView>
       </AdminPageState>

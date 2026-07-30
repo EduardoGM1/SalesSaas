@@ -12,17 +12,6 @@ import { AuthCallbackPage } from "@/pages/AuthCallbackPage.jsx";
 import { ExpedienteLinkPage } from "@/pages/ExpedienteLinkPage.jsx";
 import { ExpedienteInvitePage } from "@/pages/ExpedienteInvitePage.jsx";
 import { CalendarPage } from "@/components/calendar/calendar-page.jsx";
-import { GoalsPage } from "@/components/goals/goals-page.jsx";
-import { MetasPage } from "@/components/goals/metas-page.jsx";
-import { ClientsPage } from "@/components/clients/clients-page.jsx";
-import { ClientDetail } from "@/components/clients/client-detail.jsx";
-import { SettingsPage } from "@/components/settings/settings-page.tsx";
-import { SalesHistoryPage } from "@/pages/SalesHistoryPage.jsx";
-import { NetworkPage } from "@/pages/NetworkPage.jsx";
-import { ContactPage } from "@/pages/ContactPage.jsx";
-import { MessagesPage } from "@/pages/MessagesPage.jsx";
-import { ToolsHubPage } from "@/pages/ToolsHubPage.jsx";
-import { TeamPage } from "@/pages/TeamPage.jsx";
 import { AdminSection } from "@/layouts/AdminSection.jsx";
 import { ToolPermissionGate } from "@/components/auth/ToolPermissionGate.jsx";
 import {
@@ -31,6 +20,17 @@ import {
   WorksheetPage,
   MoneyBoxPage,
   AnalysisPage,
+  SettingsPage,
+  ClientsPage,
+  ClientDetailPage,
+  MessagesPage,
+  NetworkPage,
+  ContactPage,
+  TeamPage,
+  SalesHistoryPage,
+  ToolsHubPage,
+  GoalsPage,
+  MetasPage,
   AdminOverviewPage,
   AdminUsersPage,
   AdminGoalsPage,
@@ -49,7 +49,7 @@ function Lazy({ children }) {
 
 function ClientDetailRoute() {
   const { id } = useParams();
-  return <ClientDetail id={id} />;
+  return <Lazy><ClientDetailPage id={id} /></Lazy>;
 }
 
 function gatedTool(tool, page) {
@@ -81,18 +81,20 @@ function SharedToolRoute({ tool }) {
 function SharedClientDetailRoute() {
   const { contactId, prospectId } = useParams();
   return (
-    <ClientDetail
-      id={prospectId}
-      sharedRemote
-      contactId={contactId}
-      backHref={`/red/contacto/${contactId}`}
-    />
+    <Lazy>
+      <ClientDetailPage
+        id={prospectId}
+        sharedRemote
+        contactId={contactId}
+        backHref={`/red/contacto/${contactId}`}
+      />
+    </Lazy>
   );
 }
 
 function ContactRoute() {
   const { contactId } = useParams();
-  return <ContactPage contactId={contactId} />;
+  return <Lazy><ContactPage contactId={contactId} /></Lazy>;
 }
 
 export function AppRoutes() {
@@ -110,12 +112,12 @@ export function AppRoutes() {
       </Route>
       <Route element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
         <Route index element={<CalendarPage />} />
-        <Route path="goals" element={<GoalsPage />} />
-        <Route path="metas" element={<MetasPage />} />
-        <Route path="sales" element={<SalesHistoryPage />} />
-        <Route path="clients" element={<ClientsPage />} />
+        <Route path="goals" element={<Lazy><GoalsPage /></Lazy>} />
+        <Route path="metas" element={<Lazy><MetasPage /></Lazy>} />
+        <Route path="sales" element={<Lazy><SalesHistoryPage /></Lazy>} />
+        <Route path="clients" element={<Lazy><ClientsPage /></Lazy>} />
         <Route path="clients/:id" element={<ClientDetailRoute />} />
-        <Route path="team" element={<TeamPage />} />
+        <Route path="team" element={<Lazy><TeamPage /></Lazy>} />
         <Route path="expedientes" element={<Navigate to="/clients" replace />} />
         <Route path="workflow" element={<Navigate to="/clients" replace />} />
         <Route path="clients/:id/survey" element={<ClientToolRoute tool="survey" />} />
@@ -123,7 +125,7 @@ export function AppRoutes() {
         <Route path="clients/:id/worksheet" element={<ClientToolRoute tool="worksheet" />} />
         <Route path="clients/:id/money-box" element={<ClientToolRoute tool="money-box" />} />
         <Route path="clients/:id/analysis" element={<ClientToolRoute tool="analysis" />} />
-        <Route path="network" element={<NetworkPage />} />
+        <Route path="network" element={<Lazy><NetworkPage /></Lazy>} />
         <Route path="red/contacto/:contactId" element={<ContactRoute />} />
         <Route path="red/contacto/:contactId/expediente/:prospectId" element={<SharedClientDetailRoute />} />
         <Route path="red/contacto/:contactId/expediente/:prospectId/survey" element={<SharedToolRoute tool="survey" />} />
@@ -132,13 +134,13 @@ export function AppRoutes() {
         <Route path="red/contacto/:contactId/expediente/:prospectId/money-box" element={<SharedToolRoute tool="money-box" />} />
         <Route path="red/contacto/:contactId/expediente/:prospectId/analysis" element={<SharedToolRoute tool="analysis" />} />
         <Route path="network/shared/:id" element={<Navigate to="/network" replace />} />
-        <Route path="messages" element={<MessagesPage />} />
-        <Route path="tools" element={<ToolsHubPage />} />
+        <Route path="messages" element={<Lazy><MessagesPage /></Lazy>} />
+        <Route path="tools" element={<Lazy><ToolsHubPage /></Lazy>} />
         <Route path="tools/survey" element={gatedTool("survey", <Lazy><SurveyPage /></Lazy>)} />
         <Route path="tools/vacaciones" element={gatedTool("vacaciones", <Lazy><VacacionesPage /></Lazy>)} />
         <Route path="tools/worksheet" element={gatedTool("worksheet", <Lazy><WorksheetPage /></Lazy>)} />
         <Route path="tools/money-box" element={<Lazy><MoneyBoxPage /></Lazy>} />
-        <Route path="settings" element={<SettingsPage />} />
+        <Route path="settings" element={<Lazy><SettingsPage /></Lazy>} />
         <Route path="admin" element={<AdminSection />}>
           <Route index element={<Lazy><AdminOverviewPage /></Lazy>} />
           <Route path="users" element={<Lazy><AdminUsersPage /></Lazy>} />

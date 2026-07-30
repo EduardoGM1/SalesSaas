@@ -1,4 +1,5 @@
 import { dbToRows, rowsToDb } from "./mappers.js";
+import { SYNC_SELECT } from "./sync-columns.js";
 
 const TEAM_TABLES = new Set(["prospects", "sales", "activities", "tool_calculations"]);
 
@@ -13,7 +14,7 @@ async function pullAll(sb, userId, workspaceId = null, { teamScope = false } = {
   ];
   const results = await Promise.all(
     tables.map((t) => {
-      let q = sb.from(t).select("*");
+      let q = sb.from(t).select(SYNC_SELECT[t]);
       const useTeam = teamScope && TEAM_TABLES.has(t) && workspaceId;
       if (!useTeam) q = q.eq("user_id", userId);
       if (workspaceId) q = q.eq("workspace_id", workspaceId);

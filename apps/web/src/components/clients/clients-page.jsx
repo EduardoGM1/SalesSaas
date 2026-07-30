@@ -79,6 +79,8 @@ function enrichWithTeam(row, teamMetaById) {
   return team ? { ...row, team } : row;
 }
 
+const CLIENTS_PAGE_SIZE = 50;
+
 export function ClientsPage() {
   const { t, lang, months } = useI18n();
   const navigate = useNavigate();
@@ -91,6 +93,7 @@ export function ClientsPage() {
   const [shareClient, setShareClient] = useState(null);
   const [pinned, setPinned] = useState([]);
   const [teamMetaById, setTeamMetaById] = useState({});
+  const [visibleLimit, setVisibleLimit] = useState(CLIENTS_PAGE_SIZE);
   const canShare = isSupabaseConfigured();
   const isSalaWorkspace = active?.tipo === "sala_de_venta";
   const showTeamCols = isSalaWorkspace && canShare;
@@ -170,8 +173,16 @@ export function ClientsPage() {
     () => [...ownedSorted, ...pinnedSorted].map((row) => enrichWithTeam(row, teamMetaById)),
     [ownedSorted, pinnedSorted, teamMetaById],
   );
+  const visibleRows = useMemo(
+    () => allRows.slice(0, visibleLimit),
+    [allRows, visibleLimit],
+  );
   const totalCount = ownedAll.length + pinnedOnly.length;
   const hasSearch = query.trim().length > 0;
+
+  useEffect(() => {
+    setVisibleLimit(CLIENTS_PAGE_SIZE);
+  }, [query, location.key]);
 
   if (!hydrated) return <Topbar title={t("page.clients.title")} subtitle={t("common.loading")} />;
 
@@ -239,7 +250,7 @@ export function ClientsPage() {
                   const nodes = [];
                   let prevYm = "";
                   let prevYear = null;
-                  for (const c of allRows) {
+                  for (const c of visibleRows) {
                     const ymd = clientListYmd(c);
                     const ym = ymd.length >= 7 ? ymd.slice(0, 7) : "";
                     if (ym && ym !== prevYm) {
@@ -338,6 +349,17 @@ export function ClientsPage() {
                 })()}
               </tbody>
             </table>
+            {visibleLimit < allRows.length ? (
+              <div className="btn-row" style={{ padding: "12px 16px", justifyContent: "center" }}>
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-sm"
+                  onClick={() => setVisibleLimit((n) => n + CLIENTS_PAGE_SIZE)}
+                >
+                  {t("clients.loadMore", { shown: visibleRows.length, total: allRows.length })}
+                </button>
+              </div>
+            ) : null}
           </div>
         )}
       </div>

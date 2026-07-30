@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
+import { cachedAdminFetch, invalidateFetchCache } from "@/lib/fetch-cache.js";
 
 let cachedAdminSession = null;
 let fetchInFlight = null;
 
 export function clearAdminSessionCache() {
   cachedAdminSession = null;
+  invalidateFetchCache("admin/me");
 }
 
 async function fetchAdminSession() {
@@ -84,7 +86,10 @@ export function useAdminSession() {
   // Refetch cuando cambia la sesión o se invalidan permisos.
   useEffect(() => {
     const onAuthChanged = () => { void refresh({ force: true }); };
-    const onPermsChanged = () => { void refresh({ force: true }); };
+    const onPermsChanged = () => {
+      invalidateFetchCache();
+      void refresh({ force: true });
+    };
     window.addEventListener("auth:changed", onAuthChanged);
     window.addEventListener("admin:permissions-changed", onPermsChanged);
     return () => {
@@ -155,12 +160,8 @@ export function useAdminFetch(path, search = "") {
     setState({ loading: true, data: null, error: null });
     const url = `/api/v1/admin/${path}${search}`;
     let cancelled = false;
-    fetch(url, { credentials: "include" })
-      .then(async (r) => {
-        const body = await r.json().catch(() => ({}));
-        if (!r.ok) throw new Error(body.error ?? "Error al cargar datos.");
-        return body.data;
-      })
+    cachedAdminFetch(url)
+      .then((body) => body?.data ?? body)
       .then((data) => {
         if (!cancelled) setState({ loading: false, data, error: null });
       })

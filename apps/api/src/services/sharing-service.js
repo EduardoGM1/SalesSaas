@@ -14,6 +14,11 @@ import {
   resolveActiveWorkspaceId,
 } from "./workspace-service.js";
 import { generateClientId, generateProspectCode } from "@salesapp/shared/ids.js";
+import {
+  ACTIVITY_LIST_COLUMNS,
+  PROSPECT_DETAIL_COLUMNS,
+  SALE_LIST_COLUMNS,
+} from "@salesapp/shared/data/sync-columns.js";
 import { getRequestWorkspaceId } from "../lib/workspace-scope.js";
 
 async function loadProfiles(supabase, ids) {
@@ -850,7 +855,7 @@ async function loadProspectTools(supabase, prospectId) {
 async function loadProspectSales(supabase, prospectId) {
   const { data, error } = await supabase
     .from("sales")
-    .select("*")
+    .select(SALE_LIST_COLUMNS)
     .eq("prospect_id", prospectId)
     .order("created_at", { ascending: false });
   if (error) throw new ServiceError(error.message, 500);
@@ -860,7 +865,7 @@ async function loadProspectSales(supabase, prospectId) {
 async function loadProspectActivities(supabase, prospectId) {
   const { data, error } = await supabase
     .from("activities")
-    .select("*")
+    .select(ACTIVITY_LIST_COLUMNS)
     .eq("prospect_id", prospectId)
     .order("created_at", { ascending: false });
   if (error) throw new ServiceError(error.message, 500);
@@ -872,7 +877,7 @@ export async function getSharedProspect(supabase, userId, prospectId) {
 
   const { data: owned } = await supabase
     .from("prospects")
-    .select("*")
+    .select(PROSPECT_DETAIL_COLUMNS)
     .eq("id", prospectId)
     .eq("user_id", userId)
     .maybeSingle();
@@ -895,7 +900,7 @@ export async function getSharedProspect(supabase, userId, prospectId) {
 
   const { data: prospect, error } = await supabase
     .from("prospects")
-    .select("*")
+    .select(PROSPECT_DETAIL_COLUMNS)
     .eq("id", prospectId)
     .maybeSingle();
   if (error) throw new ServiceError(error.message, 500);

@@ -18,7 +18,14 @@ export function NetworkUserAvatar({ user, label, size = "md", showPresence = fal
   return (
     <div className={`network-avatar-wrap ${sizeClass}`.trim()}>
       {user?.avatar_url ? (
-        <img src={user.avatar_url} alt="" className={`network-avatar-img ${sizeClass}`.trim()} />
+        <img
+          src={user.avatar_url}
+          alt=""
+          className={`network-avatar-img ${sizeClass}`.trim()}
+          loading="lazy"
+          decoding="async"
+          referrerPolicy="no-referrer"
+        />
       ) : (
         <div className={`network-avatar ${sizeClass}`.trim()}>{text}</div>
       )}

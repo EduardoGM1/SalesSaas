@@ -1,4 +1,5 @@
 import express from "express";
+import compression from "compression";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import v1Router from "./routes/v1.js";
@@ -13,6 +14,7 @@ export function createApp() {
 
   app.set("trust proxy", 1);
 
+  app.use(compression());
   app.use(cors({
     origin: origins.length ? origins : true,
     credentials: true,

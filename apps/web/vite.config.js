@@ -75,6 +75,27 @@ export default defineConfig({
             handler: "NetworkOnly",
           },
           {
+            urlPattern: ({ request, url }) =>
+              request.destination === "script"
+              || request.destination === "style"
+              || /\.(?:js|css)$/i.test(url.pathname),
+            handler: "StaleWhileRevalidate",
+            options: {
+              cacheName: "static-assets",
+              expiration: { maxEntries: 80, maxAgeSeconds: 60 * 60 * 24 * 30 },
+            },
+          },
+          {
+            urlPattern: ({ request, url }) =>
+              request.destination === "image"
+              || /\.(?:png|jpg|jpeg|webp|svg|ico)$/i.test(url.pathname),
+            handler: "CacheFirst",
+            options: {
+              cacheName: "brand-images",
+              expiration: { maxEntries: 60, maxAgeSeconds: 60 * 60 * 24 * 14 },
+            },
+          },
+          {
             urlPattern: ({ request }) => request.mode === "navigate",
             handler: "NetworkFirst",
             options: {
@@ -141,5 +162,15 @@ export default defineConfig({
   },
   build: {
     outDir: "dist",
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes("node_modules/recharts")) return "recharts";
+          if (id.includes("node_modules/lucide-react")) return "icons";
+          if (id.includes("node_modules/@sentry")) return "sentry";
+          if (id.includes("node_modules/@dnd-kit")) return "dnd-kit";
+        },
+      },
+    },
   },
 });

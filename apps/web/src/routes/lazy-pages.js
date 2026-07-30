@@ -1,5 +1,17 @@
 import { namedLazy } from "@/lib/lazy-retry.js";
 
+export const SettingsPage = namedLazy(() => import("@/components/settings/settings-page.tsx"), "SettingsPage");
+export const ClientsPage = namedLazy(() => import("@/components/clients/clients-page.jsx"), "ClientsPage");
+export const ClientDetailPage = namedLazy(() => import("@/components/clients/client-detail.jsx"), "ClientDetailPage");
+export const MessagesPage = namedLazy(() => import("@/pages/MessagesPage.jsx"), "MessagesPage");
+export const NetworkPage = namedLazy(() => import("@/pages/NetworkPage.jsx"), "NetworkPage");
+export const ContactPage = namedLazy(() => import("@/pages/ContactPage.jsx"), "ContactPage");
+export const TeamPage = namedLazy(() => import("@/pages/TeamPage.jsx"), "TeamPage");
+export const SalesHistoryPage = namedLazy(() => import("@/pages/SalesHistoryPage.jsx"), "SalesHistoryPage");
+export const ToolsHubPage = namedLazy(() => import("@/pages/ToolsHubPage.jsx"), "ToolsHubPage");
+export const GoalsPage = namedLazy(() => import("@/components/goals/goals-page.jsx"), "GoalsPage");
+export const MetasPage = namedLazy(() => import("@/components/goals/metas-page.jsx"), "MetasPage");
+
 export const SurveyPage = namedLazy(() => import("@/components/calculators/survey-page.jsx"), "SurveyPage");
 export const VacacionesPage = namedLazy(() => import("@/components/calculators/vacaciones-page.jsx"), "VacacionesPage");
 export const WorksheetPage = namedLazy(() => import("@/components/calculators/worksheet-page.jsx"), "WorksheetPage");

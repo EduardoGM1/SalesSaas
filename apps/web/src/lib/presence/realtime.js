@@ -1,6 +1,6 @@
 import { channelHasPresence, presenceTopic } from "@/lib/presence/topics.js";
+import { presenceHeartbeatMs } from "@/lib/connection-profile.js";
 
-const HEARTBEAT_MS = 45_000;
 const MAX_SUBSCRIBE_ATTEMPTS = 2;
 const RETRY_BASE_MS = 2_000;
 const SUBSCRIBE_TIMEOUT_MS = 12_000;
@@ -197,7 +197,7 @@ export function startPresenceHeartbeat(channel) {
     }
   };
 
-  const id = window.setInterval(tick, HEARTBEAT_MS);
+  const id = window.setInterval(tick, presenceHeartbeatMs());
   return () => window.clearInterval(id);
 }
 

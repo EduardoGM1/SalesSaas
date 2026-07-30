@@ -1,4 +1,5 @@
 import { isUuid } from "@salesapp/shared/data/mappers.js";
+import { PROSPECT_LIST_COLUMNS } from "@salesapp/shared/data/sync-columns.js";
 import { bodyToProspectInsert, bodyToProspectPatch } from "@salesapp/shared/api/validators.js";
 import { ServiceError, assertFound } from "../lib/service-error.js";
 import {
@@ -24,7 +25,7 @@ export async function listProspects(supabase, userId, { limit, offset, status })
   }
   let q = supabase
     .from("prospects")
-    .select("*", { count: "exact" })
+    .select(PROSPECT_LIST_COLUMNS, { count: "exact" })
     .order("created_at", { ascending: false })
     .range(offset, offset + limit - 1);
   q = scopeByWorkspace(q, ctx.workspaceId);
