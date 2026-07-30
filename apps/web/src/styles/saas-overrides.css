@@ -8662,8 +8662,10 @@ body,
   }
   .disc-section-head,
   .disc-subsection-head {
-    flex-direction: column;
     padding: 14px 12px 10px;
+  }
+  .disc-subsection-head {
+    flex-direction: column;
   }
   .disc-questions,
   .disc-membership,
