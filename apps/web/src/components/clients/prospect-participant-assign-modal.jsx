@@ -31,6 +31,8 @@ export function ProspectParticipantAssignModal({
   onSave,
 }) {
   const [selected, setSelected] = useState(null);
+  const safeLabel = String(roleLabel || "").trim() || "participante";
+  const labelLower = safeLabel.toLowerCase();
 
   useEffect(() => {
     if (!open) {
@@ -40,7 +42,9 @@ export function ProspectParticipantAssignModal({
     setSelected(profileToUser(currentProfile));
   }, [open, currentProfile]);
 
-  const title = isReassign ? `Reasignar ${roleLabel}` : `Asignar ${roleLabel}`;
+  if (!open || !roleLabel || !searchPath) return null;
+
+  const title = isReassign ? `Reasignar ${safeLabel}` : `Asignar ${safeLabel}`;
   const actionLabel = isReassign ? "Guardar cambio" : "Guardar";
 
   return (
@@ -51,7 +55,7 @@ export function ProspectParticipantAssignModal({
       sub={
         isReassign && currentProfile
           ? `Actualmente: ${personLabel(currentProfile)} — busca un reemplazo:`
-          : `Selecciona un miembro de la sala para el rol de ${roleLabel.toLowerCase()}.`
+          : `Selecciona un miembro de la sala para el rol de ${labelLower}.`
       }
       maxWidth={520}
     >
@@ -60,16 +64,16 @@ export function ProspectParticipantAssignModal({
         onSubmit={(event) => {
           event.preventDefault();
           if (!selected?.id || pending) return;
-          onSave(selected.id);
+          onSave?.(selected.id);
         }}
       >
         <BuscadorUsuario
           searchPath={searchPath}
           value={selected}
           onChange={setSelected}
-          placeholder={`Buscar ${roleLabel.toLowerCase()} por nombre o correo`}
+          placeholder={`Buscar ${labelLower} por nombre o correo`}
           disabled={pending}
-          inputId={`participant-assign-${roleKey}`}
+          inputId={`participant-assign-${roleKey || "role"}`}
         />
         <div className="btn-row" style={{ marginTop: 16, justifyContent: "flex-end" }}>
           <button type="button" className="btn btn-ghost" disabled={pending} onClick={() => onOpenChange(false)}>

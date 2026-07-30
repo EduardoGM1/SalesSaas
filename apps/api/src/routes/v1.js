@@ -857,10 +857,12 @@ router.get("/cron/flush-reminders", async (req, res) => {
 
 function authorizeCron(req) {
   const secret = process.env.CRON_SECRET;
+  if (!secret) return false;
   const auth = String(req.get("authorization") || "");
   const bearer = auth.startsWith("Bearer ") ? auth.slice(7).trim() : "";
-  const token = bearer || String(req.query.secret || req.get("x-cron-secret") || "");
-  return Boolean(secret && token === secret);
+  const header = String(req.get("x-cron-secret") || "").trim();
+  const token = bearer || header;
+  return Boolean(token && token === secret);
 }
 
 /**

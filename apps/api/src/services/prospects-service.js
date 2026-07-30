@@ -108,10 +108,18 @@ export async function updateProspect(supabase, userId, id, body) {
   if (loadErr) throw new ServiceError(loadErr.message, 500);
   if (!prospect) throw new ServiceError("Expediente no encontrado.", 404);
 
-  const { data: permissionKeys } = await supabase.rpc("effective_workspace_permissions", {
-    p_usuario_id: userId,
-    p_workspace_id: ctx.workspaceId,
-  });
+  const [{ data: permissionKeys }, { data: member }] = await Promise.all([
+    supabase.rpc("effective_workspace_permissions", {
+      p_usuario_id: userId,
+      p_workspace_id: ctx.workspaceId,
+    }),
+    supabase
+      .from("workspace_miembros")
+      .select("rol_en_workspace")
+      .eq("workspace_id", ctx.workspaceId)
+      .eq("usuario_id", userId)
+      .maybeSingle(),
+  ]);
   const permissions = new Set(Array.isArray(permissionKeys) ? permissionKeys : []);
 
   const { data: workflow } = await supabase
@@ -120,7 +128,13 @@ export async function updateProspect(supabase, userId, id, body) {
     .eq("prospect_id", id)
     .maybeSingle();
 
-  if (!canEditProspectRecord({ actorId: userId, prospect, workflow, permissions })) {
+  if (!canEditProspectRecord({
+    actorId: userId,
+    prospect,
+    workflow,
+    permissions,
+    memberRole: member?.rol_en_workspace || null,
+  })) {
     throw new ServiceError("No tienes permiso para editar este expediente.", 403);
   }
 

@@ -115,12 +115,22 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
   };
 
   useEffect(() => {
-    if (!sharedRemote || !id) return;
+    if (!sharedRemote || !id) return undefined;
+    let cancelled = false;
     setRemoteLoading(true);
     sharingApi.getSharedProspect(id)
-      .then(applySharedPayload)
-      .catch((err) => toast.error(err.message))
-      .finally(() => setRemoteLoading(false));
+      .then((data) => {
+        if (cancelled) return;
+        applySharedPayload(data);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        toast.error(err instanceof Error ? err.message : String(err));
+      })
+      .finally(() => {
+        if (!cancelled) setRemoteLoading(false);
+      });
+    return () => { cancelled = true; };
   }, [id, sharedRemote]);
 
   const reloadRemote = async () => {
@@ -536,7 +546,7 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
               sales.map((sale) => {
                 const pending = sale.status === "pendiente" || sale.processing === "pendiente";
                 return (
-                  <div key={sale.saleId} className="activity-item">
+                  <div key={sale.saleId || `${sale.date}-${sale.contract}-${sale.ts || sale.vol}`} className="activity-item">
                     <span className="activity-dot venta" />
                     <div>
                       <div className="activity-main">

@@ -33,15 +33,17 @@ export function ProspectParticipantsPanel({ prospectId, enabled = true, onCapabi
   const [error, setError] = useState("");
   const [assignModal, setAssignModal] = useState(null);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (signal) => {
     if (!enabled || !prospectId) return;
     try {
       const data = await participantsApi.get(prospectId);
+      if (signal?.aborted) return;
       setPayload(data);
       onCapabilities?.(data?.capabilities ?? null);
       setHidden(false);
       setError("");
     } catch (loadError) {
+      if (signal?.aborted) return;
       if (
         [404, 409].includes(loadError?.status)
         || /prospect_workflows|schema cache|does not exist/i.test(loadError?.message || "")
@@ -51,7 +53,9 @@ export function ProspectParticipantsPanel({ prospectId, enabled = true, onCapabi
   }, [enabled, prospectId, onCapabilities]);
 
   useEffect(() => {
-    void load();
+    const controller = { aborted: false };
+    void load(controller);
+    return () => { controller.aborted = true; };
   }, [load]);
 
   const run = async (work, message) => {
@@ -176,7 +180,7 @@ export function ProspectParticipantsPanel({ prospectId, enabled = true, onCapabi
                           <button
                             type="button"
                             className="prospect-workflow-participant-edit"
-                            aria-label={`Editar ${card.label.toLowerCase()}`}
+                            aria-label={`Editar ${String(card.label || "").toLowerCase()}`}
                             disabled={pending}
                             onClick={() => openAssignModal(card, true)}
                           >

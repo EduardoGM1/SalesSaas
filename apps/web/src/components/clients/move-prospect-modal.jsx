@@ -30,7 +30,8 @@ export function MoveProspectModal({
   const [salaId, setSalaId] = useState("");
 
   useEffect(() => {
-    if (!open || !prospectId) return;
+    if (!open || !prospectId) return undefined;
+    let cancelled = false;
     setLoading(true);
     setError("");
     setSelected("");
@@ -39,6 +40,7 @@ export function MoveProspectModal({
     setSalaId("");
     sharingApi.listTransferTargets(prospectId, mode)
       .then((rows) => {
+        if (cancelled) return;
         const list = Array.isArray(rows) ? rows : [];
         setTargets(list);
         const firstOk = list.find((x) => x.allowed && !x.is_current);
@@ -48,8 +50,14 @@ export function MoveProspectModal({
           if (same) setSelected(same.id);
         }
       })
-      .catch((err) => setError(err.message || t("exp.moveBlocked")))
-      .finally(() => setLoading(false));
+      .catch((err) => {
+        if (cancelled) return;
+        setError(err instanceof Error ? err.message : t("exp.moveBlocked"));
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => { cancelled = true; };
   }, [open, prospectId, mode, t]);
 
   const current = targets.find((x) => x.is_current) || null;

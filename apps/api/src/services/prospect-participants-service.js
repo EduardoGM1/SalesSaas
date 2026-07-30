@@ -92,7 +92,7 @@ async function ensureParticipants(access, actorId) {
     .maybeSingle();
   const { data, error: insertError } = await admin
     .from("prospect_workflows")
-    .insert({
+    .upsert({
       prospect_id: prospect.id,
       workspace_id: prospect.workspace_id,
       representante_id: prospect.user_id,
@@ -100,11 +100,20 @@ async function ensureParticipants(access, actorId) {
       created_by: actorId,
       etapa_actual: "abierto",
       estado: "en_progreso",
-    })
+    }, { onConflict: "prospect_id", ignoreDuplicates: true })
     .select()
-    .single();
+    .maybeSingle();
   if (insertError) throw new ServiceError(insertError.message, 400);
-  return data;
+  if (data) return data;
+
+  const { data: again, error: againError } = await admin
+    .from("prospect_workflows")
+    .select("*")
+    .eq("prospect_id", prospect.id)
+    .maybeSingle();
+  if (againError) throw new ServiceError(againError.message, 500);
+  if (!again) throw new ServiceError("No se pudo inicializar participantes.", 500);
+  return again;
 }
 
 function assertVisibility(access, participants, actorId) {
@@ -156,6 +165,7 @@ export async function getParticipants(_supabase, actorId, prospectId) {
         prospect: access.prospect,
         workflow: state,
         permissions: access.permissions,
+        memberRole: access.member?.rol_en_workspace || null,
       }),
       can_assign_closer: access.isManager && !state.cerrador_id && state.estado !== "cancelado",
       can_reassign_closer: access.isManager && Boolean(state.cerrador_id) && state.estado !== "cancelado",

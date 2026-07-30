@@ -40,6 +40,21 @@ function sanitizeFileName(name) {
   return base || "archivo";
 }
 
+function assertMagicBytes(mime, buffer) {
+  if (mime === "application/pdf" && buffer.slice(0, 5).toString("ascii") !== "%PDF-") {
+    throw new ServiceError("El contenido no coincide con un PDF válido.", 400);
+  }
+  if (mime === "image/png" && !(buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4e && buffer[3] === 0x47)) {
+    throw new ServiceError("El contenido no coincide con una imagen PNG válida.", 400);
+  }
+  if (mime === "image/jpeg" && !(buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff)) {
+    throw new ServiceError("El contenido no coincide con una imagen JPEG válida.", 400);
+  }
+  if (mime === "image/webp" && buffer.slice(0, 4).toString("ascii") !== "RIFF") {
+    throw new ServiceError("El contenido no coincide con una imagen WEBP válida.", 400);
+  }
+}
+
 function decodeDataUrl(dataUrl) {
   const raw = String(dataUrl || "").trim();
   const match = /^data:([^;,]+);base64,(.+)$/i.exec(raw);
@@ -51,6 +66,7 @@ function decodeDataUrl(dataUrl) {
   const buffer = Buffer.from(match[2], "base64");
   if (!buffer.length) throw new ServiceError("Archivo vacío.", 400);
   if (buffer.length > MAX_BYTES) throw new ServiceError("El archivo supera el máximo de 10 MB.", 400);
+  assertMagicBytes(mime, buffer);
   return { mime, buffer, ext: ALLOWED_MIME.get(mime) };
 }
 
@@ -84,6 +100,7 @@ async function assertProspectAccess(admin, actorId, prospectId, { forWrite = fal
   const isCloser = workflow?.cerrador_id === actorId;
   const isRep = workflow?.representante_id === actorId;
   const inWorkspace = Boolean(member) || isSuper;
+  const canWrite = isSuper || isOwner || isManager || isCloser || isRep;
 
   if (!isSuper && !inWorkspace && !isOwner) {
     const { data: share } = await admin
@@ -96,11 +113,12 @@ async function assertProspectAccess(admin, actorId, prospectId, { forWrite = fal
     if (forWrite) throw new ServiceError("Tu permiso compartido no permite subir archivos.", 403);
   }
 
-  if (forWrite && !isSuper && !isOwner && !isManager && !isCloser && !isRep && !inWorkspace) {
+  // Escritura solo para participantes del expediente (no cualquier miembro de sala).
+  if (forWrite && !canWrite) {
     throw new ServiceError("No puedes subir archivos a este expediente.", 403);
   }
 
-  return { prospect, isOwner, isManager, isCloser, isSuper };
+  return { prospect, isOwner, isManager, isCloser, isRep, isSuper, canWrite };
 }
 
 async function withSignedUrl(admin, row) {
@@ -140,22 +158,12 @@ export async function listProspectFiles(_supabase, actorId, prospectId) {
 export async function uploadProspectFile(_supabase, actorId, prospectId, body = {}) {
   if (!isUuid(prospectId)) throw new ServiceError("Expediente inválido.");
   const admin = adminClient();
-  const { prospect, isOwner, isManager, isCloser, isSuper } = await assertProspectAccess(
+  const { prospect, isManager, isCloser } = await assertProspectAccess(
     admin,
     actorId,
     prospectId,
     { forWrite: true },
   );
-
-  if (!isSuper && !isOwner && !isManager && !isCloser) {
-    const { data: member } = await admin
-      .from("workspace_miembros")
-      .select("usuario_id")
-      .eq("workspace_id", prospect.workspace_id)
-      .eq("usuario_id", actorId)
-      .maybeSingle();
-    if (!member) throw new ServiceError("No puedes subir archivos a este expediente.", 403);
-  }
 
   const { count } = await admin
     .from("prospect_archivos")

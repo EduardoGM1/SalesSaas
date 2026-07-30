@@ -221,6 +221,46 @@ export async function sendConversationMessage(_supabase, userId, conversationId,
 export async function ensureProspectConversation(_supabase, userId, prospectId) {
   if (!isUuid(prospectId)) throw new ServiceError("Expediente inválido.");
   const admin = adminClient();
+
+  // AuthZ ANTES del RPC (service-role): evita sync sobre expedientes ajenos.
+  const { data: prospect, error: prospectError } = await admin
+    .from("prospects")
+    .select("id, user_id, workspace_id")
+    .eq("id", prospectId)
+    .maybeSingle();
+  if (prospectError) throw new ServiceError(prospectError.message, 500);
+  assertFound(prospect, "Expediente no encontrado.");
+
+  const [{ data: profile }, { data: member }, { data: workflow }] = await Promise.all([
+    admin.from("profiles").select("is_super_admin").eq("id", userId).maybeSingle(),
+    admin
+      .from("workspace_miembros")
+      .select("rol_en_workspace")
+      .eq("workspace_id", prospect.workspace_id)
+      .eq("usuario_id", userId)
+      .maybeSingle(),
+    admin
+      .from("prospect_workflows")
+      .select("gerente_id, representante_id, cerrador_id")
+      .eq("prospect_id", prospectId)
+      .maybeSingle(),
+  ]);
+
+  const isSuper = profile?.is_super_admin === true;
+  const isParticipant = Boolean(
+    prospect.user_id === userId
+    || member?.rol_en_workspace === "gerente"
+    || workflow?.gerente_id === userId
+    || workflow?.representante_id === userId
+    || workflow?.cerrador_id === userId,
+  );
+  if (!isSuper && !isParticipant && !member) {
+    throw new ServiceError("No puedes acceder al chat de este expediente.", 403);
+  }
+  if (!isSuper && !isParticipant) {
+    throw new ServiceError("Solo los participantes del expediente pueden abrir su chat.", 403);
+  }
+
   const { data: convId, error } = await admin.rpc("sync_prospect_chat_members", {
     p_prospect_id: prospectId,
   });

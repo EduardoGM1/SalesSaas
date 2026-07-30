@@ -23,14 +23,16 @@ export function ProspectFilesPanel({ prospectId, enabled = true, canUpload = tru
   const [error, setError] = useState("");
   const inputRef = useRef(null);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (signal) => {
     if (!enabled || !prospectId) return;
     setLoading(true);
     setError("");
     try {
       const rows = await prospectFilesApi.list(prospectId);
+      if (signal?.aborted) return;
       setFiles(Array.isArray(rows) ? rows : []);
     } catch (err) {
+      if (signal?.aborted) return;
       if (err?.status === 503 || /0058|prospect-files|does not exist|schema cache/i.test(err?.message || "")) {
         setError("Archivos no disponibles. Aplica la migración 0058 en Supabase.");
       } else {
@@ -38,12 +40,14 @@ export function ProspectFilesPanel({ prospectId, enabled = true, canUpload = tru
       }
       setFiles([]);
     } finally {
-      setLoading(false);
+      if (!signal?.aborted) setLoading(false);
     }
   }, [enabled, prospectId]);
 
   useEffect(() => {
-    void load();
+    const controller = { aborted: false };
+    void load(controller);
+    return () => { controller.aborted = true; };
   }, [load]);
 
   const onPick = async (event) => {
@@ -138,14 +142,16 @@ export function ProspectFilesPanel({ prospectId, enabled = true, canUpload = tru
                   {file.created_at ? ` · ${new Date(file.created_at).toLocaleString()}` : ""}
                 </span>
               </div>
-              <button
-                type="button"
-                className="btn btn-ghost btn-sm"
-                title="Eliminar"
-                onClick={() => void onRemove(file)}
-              >
-                <Trash2 size={14} />
-              </button>
+              {canUpload ? (
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-sm"
+                  title="Eliminar"
+                  onClick={() => void onRemove(file)}
+                >
+                  <Trash2 size={14} />
+                </button>
+              ) : null}
             </li>
           ))}
         </ul>
