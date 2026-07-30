@@ -29,7 +29,8 @@ function runQuiet(cmd) {
 }
 
 const list = execSync(`vercel ls ${PROJECT} --format json`, { encoding: "utf8" });
-const deployments = JSON.parse(list);
+const parsed = JSON.parse(list);
+const deployments = Array.isArray(parsed) ? parsed : parsed.deployments ?? [];
 const latest = deployments.find((d) => d.target === "production" && d.state === "READY")
   || deployments.find((d) => d.state === "READY");
 
