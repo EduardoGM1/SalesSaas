@@ -106,19 +106,6 @@ Conversaciones multiparte en la sala (vendedor + gerente + cerrador). UI en
 
 Miembros se sincronizan al crear/transferir el expediente y al asignar/reasignar Cerrador.
 
-## Archivos del expediente
-
-Adjuntos viven en el mismo expediente (`prospect_archivos` + bucket privado `prospect-files`).
-La API usa service-role para Storage y URLs firmadas (30 min).
-
-| Método y ruta | Propósito |
-|---|---|
-| `GET /prospects/:id/files` | Lista adjuntos con URL firmada. |
-| `POST /prospects/:id/files` | Sube archivo (`nombre`, `data_url` base64). Máx. 10 MB, 20 req/min. |
-| `DELETE /prospects/:id/files/:fileId` | Elimina (autor o gerente). |
-
-Formatos: PDF, PNG/JPG/WEBP, Word, Excel, texto. Máximo 30 archivos por expediente.
-
 ## Transferencia de expedientes
 
 El expediente es la única fuente de verdad: la transferencia mueve el mismo registro

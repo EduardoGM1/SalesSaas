@@ -13,8 +13,6 @@ const EVENT_LABELS = {
   cerrador_reasignado: "Cerrador reasignado",
   vendedor_asignado: "Vendedor asignado",
   vendedor_reasignado: "Vendedor reasignado",
-  archivo_subido: "Archivo subido",
-  archivo_eliminado: "Archivo eliminado",
 };
 
 function personName(profile, fallback) {
@@ -242,9 +240,6 @@ export function ProspectParticipantsPanel({ prospectId, enabled = true, onCapabi
                       || "Evento"}
                     {event.event_type === "transferido" && event.metadata?.destino_sala
                       ? ` ${event.metadata.destino_sala}`
-                      : ""}
-                    {event.event_type === "archivo_subido" && event.metadata?.nombre
-                      ? `: ${event.metadata.nombre}`
                       : ""}
                   </strong>
                   <span>

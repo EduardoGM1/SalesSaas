@@ -15,7 +15,6 @@ import { useExpedienteRealtime } from "@/hooks/use-expediente-realtime.js";
 import { ExpedientePresenceBar } from "@/components/clients/expediente-presence-bar.jsx";
 import { ProspectParticipantsPanel } from "@/components/clients/prospect-workflow-panel.jsx";
 import { useWorkspace } from "@/hooks/use-workspace.js";
-import { ProspectFilesPanel } from "@/components/clients/prospect-files-panel.jsx";
 import { Topbar } from "@/components/layout/topbar";
 import { PageBack } from "@/components/layout/page-back";
 import { clientDisplayName, ensureProspectIdentity } from "@/lib/clients";
@@ -416,12 +415,6 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
           prospectId={id}
           enabled={!sharedRemote && isSupabaseConfigured()}
           onCapabilities={setSalaCapabilities}
-        />
-
-        <ProspectFilesPanel
-          prospectId={id}
-          enabled={!sharedRemote && isSupabaseConfigured()}
-          canUpload={canEdit || canComment}
         />
 
         <div className="exp-layout">
