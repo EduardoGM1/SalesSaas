@@ -25,6 +25,38 @@
       "schedule": "0 10 * * *"
     }
   ],
+  "redirects": [
+    {
+      "source": "/:path*",
+      "has": [{ "type": "host", "value": "sales-app-nine-gamma.vercel.app" }],
+      "destination": "https://saletse.vercel.app/:path*",
+      "permanent": true
+    },
+    {
+      "source": "/:path*",
+      "has": [{ "type": "host", "value": "sales-app-eduardolalito99-2908s-projects.vercel.app" }],
+      "destination": "https://saletse.vercel.app/:path*",
+      "permanent": true
+    },
+    {
+      "source": "/:path*",
+      "has": [{ "type": "host", "value": "sales-app-git-main-eduardolalito99-2908s-projects.vercel.app" }],
+      "destination": "https://saletse.vercel.app/:path*",
+      "permanent": true
+    },
+    {
+      "source": "/:path*",
+      "has": [{ "type": "host", "value": "saletse-git-main-eduardolalito99-2908s-projects.vercel.app" }],
+      "destination": "https://saletse.vercel.app/:path*",
+      "permanent": true
+    },
+    {
+      "source": "/:path*",
+      "has": [{ "type": "host", "value": "saletse-eduardolalito99-2908s-projects.vercel.app" }],
+      "destination": "https://saletse.vercel.app/:path*",
+      "permanent": true
+    }
+  ],
   "rewrites": [
     { "source": "/health", "destination": "/api" },
     { "source": "/health/:path*", "destination": "/api" },

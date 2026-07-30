@@ -3,6 +3,9 @@ const LOCAL_ORIGINS = new Set([
   "http://localhost:3000",
 ]);
 
+/** Dominio público único de la app en producción. */
+const CANONICAL_PRODUCTION_ORIGIN = "https://saletse.vercel.app";
+
 const PLACEHOLDER_ORIGIN_PATTERNS = [
   /tu-proyecto\.vercel\.app/i,
   /tu-dominio\.vercel\.app/i,
@@ -33,24 +36,24 @@ function pickFirstValidOrigin(candidates) {
 
 function vercelProductionOrigin() {
   return pickFirstValidOrigin([
+    process.env.WEB_ORIGIN,
+    CANONICAL_PRODUCTION_ORIGIN,
     process.env.VERCEL_PROJECT_PRODUCTION_URL
       ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
       : null,
-    process.env.WEB_ORIGIN,
     process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null,
     process.env.VERCEL_BRANCH_URL ? `https://${process.env.VERCEL_BRANCH_URL}` : null,
   ]);
 }
 
-/** Orígenes permitidos para CORS y redirects de auth (local + Vercel). */
+/** Orígenes permitidos para CORS y redirects de auth (local + producción canónica). */
 export function webOrigins() {
   const production = [
     normalizeOrigin(process.env.WEB_ORIGIN),
+    CANONICAL_PRODUCTION_ORIGIN,
     process.env.VERCEL_PROJECT_PRODUCTION_URL
       ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
       : null,
-    process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null,
-    process.env.VERCEL_BRANCH_URL ? `https://${process.env.VERCEL_BRANCH_URL}` : null,
   ].filter((origin) => origin && !isPlaceholderOrigin(origin));
 
   const local = ["http://localhost:5173", "http://localhost:3000"];
@@ -107,11 +110,7 @@ export function resolveWebOrigin(req, clientOriginHint) {
     if (fromRequest && allowed.has(fromRequest)) return fromRequest;
 
     const fromHost = originFromRequestHost(req);
-    if (fromHost) {
-      if (allowed.has(fromHost)) return fromHost;
-      // Mismo despliegue en Vercel: confiar en el host de la petición.
-      if (process.env.VERCEL && (!hint || hint === fromHost)) return fromHost;
-    }
+    if (fromHost && allowed.has(fromHost)) return fromHost;
 
     // Hint del cliente coincide con el host servido (p. ej. dominio custom).
     if (hint && fromHost && hint === fromHost) return hint;

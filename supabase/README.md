@@ -39,10 +39,10 @@ npx supabase db push
 2. (Opcional) **Google**: pega `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` y
    añade la URL de callback que indique Supabase en Google Cloud Console.
 3. **Authentication → URL Configuration**:
-   - Site URL: tu dominio de producción (ej. `https://sales-saas-api.vercel.app`).
+   - Site URL: `https://saletse.vercel.app`
    - Redirect URLs (añadir todas las que uses):
      - `http://localhost:5173/auth/callback`
-     - `https://sales-saas-api.vercel.app/auth/callback`
+     - `https://saletse.vercel.app/auth/callback`
    - El enlace de recuperación de contraseña redirige a `/auth/callback?next=/reset-password`.
 
 ## 4b. Realtime Presence (estado en línea en Red)
@@ -152,7 +152,7 @@ curl -sI https://TU-DOMINIO/onesignal/OneSignalSDK.sw.js
 
 **Desktop — `ServiceWorker script evaluation failed`:** el entry en producción ya era el oficial de 1 línea; el fallo ocurre al ejecutar `importScripts` hacia el CDN (bloqueado por extensiones/filtros en desktop) o al registrar el SW dos veces (nosotros sin query + OneSignal con `?appId=`). Solución: runtime en `/onesignal/OneSignalSDK.sw.js` (mismo origen) y dejar el `register()` al SDK. No usar `Service-Worker-Allowed: /`. Safari desktop: soporte limitado (Safari 16+ / macOS 13+).
 
-Confirmado en `sales-app-nine-gamma.vercel.app` y `sales-saas-api.vercel.app`: el archivo existe y responde JS válido. Si en tu dominio custom falla, revisa rewrites de la SPA.
+Confirmado en `https://saletse.vercel.app`: el archivo existe y responde JS válido. Si falla, revisa rewrites de la SPA.
 
 **Site URL en OneSignal (obligatorio):**
 
