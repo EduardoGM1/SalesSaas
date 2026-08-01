@@ -6,6 +6,8 @@ import { notifyAuthChanged } from "@/lib/session-api.js";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { AuthField } from "@/components/auth/auth-field.jsx";
 import { safeNextPath } from "@/lib/safe-next.js";
+import { hasAuthParamsInUrl } from "@/lib/auth-callback.js";
+import { authHandoffPath } from "@/lib/auth-intent.js";
 
 const QUERY_KEYS = {
   auth: "auth.login.errorAuth",
@@ -23,12 +25,24 @@ export function LoginPage() {
 
   useEffect(() => {
     if (!isSupabaseConfigured()) return;
+    // Site URL mal puesto en /login + ?code= del recover → reenviar al flujo de reset.
+    // En /login casi siempre es recovery (el signup usa /auth/callback como redirectTo).
+    if (hasAuthParamsInUrl(searchParams)) {
+      navigate(
+        authHandoffPath({
+          searchParams,
+          pathname: "/reset-password",
+        }),
+        { replace: true },
+      );
+      return;
+    }
     fetch("/api/v1/auth/session", { credentials: "include" })
       .then((r) => {
         if (r.ok) navigate(nextPath, { replace: true });
       })
       .catch(() => {});
-  }, [navigate, nextPath]);
+  }, [navigate, nextPath, searchParams]);
 
   const onSubmit = async (e) => {
     e.preventDefault();

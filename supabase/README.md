@@ -38,16 +38,16 @@ npx supabase db push
 1. **Authentication → Providers**: deja **Email** habilitado.
 2. (Opcional) **Google**: pega `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` y
    añade la URL de callback que indique Supabase en Google Cloud Console.
-3. **Authentication → URL Configuration**:
-   - Site URL: `https://saletse.vercel.app` (sin `/login`)
-   - Redirect URLs (añadir todas las que uses):
+3. **Authentication → URL Configuration** (crítico para “olvidé mi contraseña”):
+   - **Site URL:** exactamente `https://saletse.vercel.app` — **NUNCA** `…/login`. Si Site URL es `/login` o falta `/reset-password` en la allowlist, el enlace del correo termina en login.
+   - **Redirect URLs** (añadir todas):
      - `http://localhost:5173/auth/callback`
      - `http://localhost:5173/reset-password`
      - `https://saletse.vercel.app/auth/callback`
      - `https://saletse.vercel.app/reset-password`
      - (recomendado) `https://saletse.vercel.app/**`
-   - El enlace de recuperación redirige a `/reset-password` (canjea el token ahí y muestra el formulario).
-   - Plantilla de correo (opcional, más robusta cross-device): en Authentication → Email Templates → Reset Password, usar un enlace con `token_hash` si el flujo PKCE falla al abrir el correo en otro dispositivo.
+   - El `redirectTo` de la app es `/reset-password`. Si esa URL no está permitida, Supabase usa el Site URL; la app intenta rescatar el `?code=` y mandarlo a restablecer (mejor en el mismo navegador donde pediste el enlace).
+   - Plantilla de correo (opcional): Authentication → Email Templates → Reset Password puede usar `token_hash` + `/reset-password` para abrirlo en otro dispositivo.
 
 ## 4b. Realtime Presence (estado en línea en Red)
 

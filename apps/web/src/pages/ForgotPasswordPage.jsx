@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Mail } from "lucide-react";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { AuthField } from "@/components/auth/auth-field.jsx";
+import { setAuthIntent } from "@/lib/auth-intent.js";
 
 export function ForgotPasswordPage() {
   const { t } = useI18n();
@@ -16,6 +17,8 @@ export function ForgotPasswordPage() {
     setError(null);
     const fd = new FormData(e.currentTarget);
     try {
+      // Misma pestaña/navegador: si Supabase cae al Site URL, sabemos que era recovery.
+      setAuthIntent("recovery");
       const res = await fetch("/auth/forgot-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },

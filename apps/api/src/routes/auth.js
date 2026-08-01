@@ -117,8 +117,14 @@ router.post("/forgot-password", async (req, res) => {
   try {
     const sb = createCookieSupabaseClient(req, res);
     const redirectOrigin = resolveWebOrigin(req, req.body?.redirectOrigin);
-    // Path-only: Supabase suele reemplazar el query string de redirectTo con ?code=,
-    // así que NO usar ?next=/reset-password (se perdía y el usuario caía en / → /login).
+    // Path-only: Supabase suele reemplazar el query string de redirectTo con ?code=.
+    // Preferimos /reset-password; si no está en Redirect URLs, Supabase cae al Site URL
+    // y el frontend reenvía el ?code= gracias a saletse_auth_intent=recovery.
+    const secure = process.env.NODE_ENV === "production" || Boolean(process.env.VERCEL);
+    res.append(
+      "Set-Cookie",
+      `saletse_auth_intent=recovery; Path=/; Max-Age=3600; SameSite=Lax${secure ? "; Secure" : ""}`,
+    );
     const { error } = await sb.auth.resetPasswordForEmail(email, {
       redirectTo: `${redirectOrigin}/reset-password`,
     });

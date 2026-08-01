@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { safeNextPath } from "@/lib/safe-next.js";
 import { consumeAuthParamsFromUrl } from "@/lib/auth-callback.js";
+import { consumeAuthIntent } from "@/lib/auth-intent.js";
 
 export function AuthCallbackPage() {
   const { t } = useI18n();
@@ -16,8 +17,10 @@ export function AuthCallbackPage() {
     async function finish() {
       const hash = window.location.hash.replace(/^#/, "");
       const hashParams = new URLSearchParams(hash);
+      const intent = consumeAuthIntent();
       const recovery =
-        searchParams.get("type") === "recovery"
+        intent === "recovery"
+        || searchParams.get("type") === "recovery"
         || hashParams.get("type") === "recovery";
 
       // Si Supabase strippea ?next=..., recovery debe ir a reset-password (no a / → login).
