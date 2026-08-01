@@ -46,8 +46,16 @@ npx supabase db push
      - `https://saletse.vercel.app/auth/callback`
      - `https://saletse.vercel.app/reset-password`
      - (recomendado) `https://saletse.vercel.app/**`
-   - El `redirectTo` de la app es `/reset-password`. Si esa URL no está permitida, Supabase usa el Site URL; la app intenta rescatar el `?code=` y mandarlo a restablecer (mejor en el mismo navegador donde pediste el enlace).
-   - Plantilla de correo (opcional): Authentication → Email Templates → Reset Password puede usar `token_hash` + `/reset-password` para abrirlo en otro dispositivo.
+   - El `redirectTo` de la app es `/reset-password`. La app envía el correo en flujo **implícito** (sin PKCE) para que el enlace funcione al abrirlo en otro dispositivo.
+   - **Plantilla recomendada** (Authentication → Email Templates → Reset Password) — aún más robusta con `token_hash`:
+
+```html
+<h2>Restablecer contraseña</h2>
+<p>Sigue este enlace para elegir una nueva contraseña:</p>
+<p><a href="{{ .SiteURL }}/reset-password?token_hash={{ .TokenHash }}&type=recovery">Restablecer contraseña</a></p>
+```
+
+     Site URL debe ser `https://saletse.vercel.app` (sin `/login`).
 
 ## 4b. Realtime Presence (estado en línea en Red)
 

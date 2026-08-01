@@ -2,7 +2,7 @@ import { Router } from "express";
 import { isSupabaseConfigured } from "@salesapp/shared/supabase/config.js";
 import { apiError, json } from "../lib/http.js";
 import { resolveWebOrigin } from "../lib/origins.js";
-import { createCookieSupabaseClient } from "../lib/supabase-server.js";
+import { createCookieSupabaseClient, createRecoveryEmailClient } from "../lib/supabase-server.js";
 import { notifySessionRevoked } from "../services/push-notifications-service.js";
 
 const router = Router();
@@ -16,6 +16,9 @@ function traducirError(msg) {
   // Con SMTP integrado suele ser ~2/hora; con SMTP propio se puede subir en el Dashboard.
   if (m.includes("rate limit") || m.includes("over_email_send_rate_limit")) {
     return "Se alcanzó el límite de correos de autenticación de Supabase (cuota del proyecto). Espera unos minutos o configura un SMTP propio en Authentication → Emails.";
+  }
+  if (m.includes("flow state") || m.includes("code verifier")) {
+    return "No se pudo validar el enlace en este navegador. Solicita uno nuevo e ábrelo en el mismo dispositivo, o configura la plantilla con token_hash en Supabase.";
   }
   if (m.includes("same as old password")) return "La nueva contraseña debe ser distinta a la anterior.";
   if (m.includes("fetch") || m.includes("timeout") || m.includes("abort")) {
@@ -115,11 +118,10 @@ router.post("/forgot-password", async (req, res) => {
   const email = String(req.body?.email ?? "").trim();
   if (!email) return apiError(res, "Escribe tu correo.");
   try {
-    const sb = createCookieSupabaseClient(req, res);
+    // Implicit (no PKCE): el enlace funciona al abrirlo en otro navegador/app de correo.
+    // createCookieSupabaseClient usa PKCE y exige code_verifier → "invalid flow state".
+    const sb = createRecoveryEmailClient();
     const redirectOrigin = resolveWebOrigin(req, req.body?.redirectOrigin);
-    // Path-only: Supabase suele reemplazar el query string de redirectTo con ?code=.
-    // Preferimos /reset-password; si no está en Redirect URLs, Supabase cae al Site URL
-    // y el frontend reenvía el ?code= gracias a saletse_auth_intent=recovery.
     const secure = process.env.NODE_ENV === "production" || Boolean(process.env.VERCEL);
     res.append(
       "Set-Cookie",

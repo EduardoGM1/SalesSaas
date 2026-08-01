@@ -6,7 +6,7 @@ import { notifyAuthChanged } from "@/lib/session-api.js";
  */
 export async function consumeAuthParamsFromUrl({ searchParams, t }) {
   const code = searchParams.get("code");
-  const tokenHash = searchParams.get("token_hash");
+  const tokenHash = searchParams.get("token_hash") || searchParams.get("token");
   const type = searchParams.get("type");
   const authError = searchParams.get("error_description") || searchParams.get("error");
 
@@ -74,7 +74,10 @@ export async function consumeAuthParamsFromUrl({ searchParams, t }) {
 }
 
 export function hasAuthParamsInUrl(searchParams) {
-  if (searchParams.get("code") || (searchParams.get("token_hash") && searchParams.get("type"))) {
+  if (
+    searchParams.get("code")
+    || ((searchParams.get("token_hash") || searchParams.get("token")) && searchParams.get("type"))
+  ) {
     return true;
   }
   if (typeof window === "undefined") return false;

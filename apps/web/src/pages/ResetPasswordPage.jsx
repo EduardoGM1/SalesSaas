@@ -69,13 +69,12 @@ export function ResetPasswordPage() {
     <>
       <div className="auth-title auth-landing-title">{t("auth.reset.title")}</div>
       <div className="auth-sub auth-landing-subtitle">{t("auth.reset.sub")}</div>
-      {error && <div className="auth-error">{error}</div>}
       {sessionState === "loading" && (
         <div className="auth-sub">{t("auth.callback.pending")}</div>
       )}
       {sessionState === "missing" && (
         <>
-          <div className="auth-error">{t("auth.reset.sessionExpired")}</div>
+          <div className="auth-error">{error || t("auth.reset.sessionExpired")}</div>
           <div className="auth-foot auth-landing-foot">
             <Link to="/forgot-password">{t("auth.reset.requestNew")}</Link>
           </div>
@@ -83,6 +82,7 @@ export function ResetPasswordPage() {
       )}
       {sessionState === "ready" && (
         <form onSubmit={onSubmit}>
+          {error && <div className="auth-error">{error}</div>}
           <AuthField
             label={t("auth.reset.new")}
             name="password"

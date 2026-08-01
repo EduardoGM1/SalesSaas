@@ -69,6 +69,28 @@ export function createAnonSupabaseClient() {
   });
 }
 
+/**
+ * Cliente para recovery emails: flow implícito (tokens en el hash de la URL).
+ * Evita PKCE/`code_verifier`, que falla al abrir el correo en otro navegador,
+ * app de correo o ventana de incógnito ("invalid flow state").
+ */
+export function createRecoveryEmailClient() {
+  const url = getSupabaseUrl();
+  const key = getSupabaseAnonKey();
+  if (!url || !key) {
+    throw new Error("Supabase no configurado.");
+  }
+  return createClient(url, key, {
+    auth: {
+      flowType: "implicit",
+      persistSession: false,
+      autoRefreshToken: false,
+      detectSessionInUrl: false,
+    },
+    global: { fetch: fetchWithTimeout },
+  });
+}
+
 export function createBearerSupabaseClient(token) {
   const url = getSupabaseUrl();
   const key = getSupabaseAnonKey();
