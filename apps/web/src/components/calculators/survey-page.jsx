@@ -78,6 +78,7 @@ export function SurveyPage({ clientId, shared }: SurveyPageProps) {
     resetMoneda,
     recordMoneyCapture,
     switchCaptureCurrency,
+    alignLoadedFields,
   } = useMonedaToolBucket({ getBucket, toolKey: "survey", ready, toolsRevision });
   const { fmtResult } = moneda;
 
@@ -141,13 +142,14 @@ export function SurveyPage({ clientId, shared }: SurveyPageProps) {
         loaded.svp_city = loaded.svp_city || c.city || "";
       }
     }
-    setData((prev) => applyRemoteFormState(prev, loaded, {
+    const aligned = alignLoadedFields(loaded, SURVEY_MONEY_FIELDS);
+    setData((prev) => applyRemoteFormState(prev, aligned, {
       dirtyKeys: dirtyKeysRef.current,
       focusedKey: focusedKeyRef.current,
       hydratedRef,
     }));
     skipAutosaveRef.current = true;
-  }, [ready, clientId, isFileMode, isShared, getBucket, getClient, prospectId, shared?.prospectId, toolsRevision]);
+  }, [ready, clientId, isFileMode, isShared, getBucket, getClient, prospectId, shared?.prospectId, toolsRevision, alignLoadedFields]);
 
   const client = isFileMode ? (isShared ? session.prospect : (clientId ? getClient(clientId) : undefined)) : undefined;
   const countries = Object.keys(COUNTRY_CITY);

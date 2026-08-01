@@ -12,6 +12,7 @@ export function buildSettingsPayload(settings, fullName) {
     exchangeMode: settings.exchangeMode || "manual",
     usdToMxnRate: Number(settings.usdToMxnRate || settings.exchangeRate || 18),
     exchangeRateUpdatedAt: settings.exchangeRateUpdatedAt || null,
+    activeCaptureCurrency: settings.activeCaptureCurrency === "MXN" ? "MXN" : "USD",
   };
 }
 
@@ -45,7 +46,7 @@ export async function saveProfileRemote({ fullName, phone, avatarUrl, settings }
 }
 
 /** Persiste un parche de settings sin tocar fullName/phone/avatar. */
-export async function saveSettingsPatchRemote(settingsPatch) {
+export async function saveSettingsPatchRemote(settingsPatch, { silent = false } = {}) {
   const db = useDbStore.getState().db;
   const nextSettings = buildSettingsPayload(
     { ...(db.settings || {}), ...(settingsPatch || {}) },
@@ -54,7 +55,7 @@ export async function saveSettingsPatchRemote(settingsPatch) {
   useDbStore.getState().replaceDb({ ...db, settings: nextSettings });
 
   if (!isSupabaseConfigured()) {
-    toast.success(translate("toast.settings.savedLocal"));
+    if (!silent) toast.success(translate("toast.settings.savedLocal"));
     return { ok: true, localOnly: true, settings: nextSettings };
   }
 
@@ -66,6 +67,6 @@ export async function saveSettingsPatchRemote(settingsPatch) {
   });
   const body = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(body.error ?? "No se pudo guardar la configuración.");
-  toast.success(translate("toast.settings.saved"));
+  if (!silent) toast.success(translate("toast.settings.saved"));
   return { ok: true, settings: nextSettings };
 }

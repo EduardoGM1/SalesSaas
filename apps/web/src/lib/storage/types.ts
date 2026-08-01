@@ -166,6 +166,8 @@ export interface UserSettings {
   usdToMxnRate?: number;
   /** ISO date when the manual FX rate was last saved */
   exchangeRateUpdatedAt?: string;
+  /** Preferencia global de moneda de captura (USD/MXN) en herramientas */
+  activeCaptureCurrency?: "USD" | "MXN";
   userName?: string;
   userInitials?: string;
   worksheetConfig?: Record<string, string>;

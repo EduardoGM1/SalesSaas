@@ -13,9 +13,8 @@ import { useMonedaToolBucket } from "@/hooks/use-moneda-tool.js";
 import { useToolSession } from "@/hooks/use-tool-session.js";
 import { useFlushLibreToolOnLeave } from "@/hooks/use-flush-libre-tool-on-leave.js";
 import { CollabField, collabFieldId } from "@/components/clients/collab-field.jsx";
-import { SelectorMonedaCaptura } from "@/components/currency/selector-moneda-captura.jsx";
+import { SelectorMoneda } from "@/components/currency/selector-moneda.jsx";
 import { CampoMonedaCaptura } from "@/components/currency/campo-moneda-captura.jsx";
-import { PanelTipoCambio } from "@/components/currency/panel-tipo-cambio.jsx";
 import { applyRemoteFormState, fieldKeyFromCollabId, markFieldsDirty, clearDirtyFields } from "@/lib/collab-form-merge.js";
 
 const DEFAULT_FIELDS = { vv: "", vc: "", va: "", vi: "8" };
@@ -39,6 +38,7 @@ export function VacacionesPage({ clientId, shared }: VacacionesPageProps) {
     resetMoneda,
     recordMoneyCapture,
     switchCaptureCurrency,
+    alignLoadedFields,
   } = useMonedaToolBucket({ getBucket, toolKey: "vacaciones", ready, toolsRevision });
   const { fmtResult, fmtResultN } = moneda;
   const [fields, setFields] = useState({ ...DEFAULT_FIELDS });
@@ -59,7 +59,7 @@ export function VacacionesPage({ clientId, shared }: VacacionesPageProps) {
   useEffect(() => {
     if (!ready) return;
     const b = getBucket("vacaciones");
-    const next = Object.keys(b).length
+    const base = Object.keys(b).length
       ? {
         vv: String(b.vv ?? ""),
         vc: String(b.vc ?? ""),
@@ -67,12 +67,13 @@ export function VacacionesPage({ clientId, shared }: VacacionesPageProps) {
         vi: b.vi === undefined || b.vi === null || String(b.vi) === "" ? "8" : String(b.vi),
       }
       : { ...DEFAULT_FIELDS };
+    const next = alignLoadedFields(base, VACACIONES_MONEY_FIELDS);
     setFields((prev) => applyRemoteFormState(prev, next, {
       dirtyKeys: dirtyKeysRef.current,
       focusedKey: focusedKeyRef.current,
       hydratedRef,
     }));
-  }, [ready, clientId, getBucket, shared?.prospectId, toolsRevision]);
+  }, [ready, clientId, getBucket, shared?.prospectId, toolsRevision, alignLoadedFields]);
 
   const handleClear = async () => {
     if (readOnly) return;
@@ -142,13 +143,12 @@ export function VacacionesPage({ clientId, shared }: VacacionesPageProps) {
         <SharedToolBanner show={ready && isShared && readOnly} peers={peers} />
 
         <fieldset className="shared-tool-fieldset" disabled={readOnly}>
-        <SelectorMonedaCaptura
+        <SelectorMoneda
           value={captureCurrency}
           onChange={handleCaptureCurrencyChange}
           disabled={readOnly}
           className="tool-moneda-selector"
         />
-        <PanelTipoCambio disabled={readOnly} className="tool-tipo-cambio-panel" />
         <div className="g2 vacation-calc-layout">
           <div className="card tool-calc-card">
             <div className="card-heading">{t("tools.vacation.inputTitle")}</div>

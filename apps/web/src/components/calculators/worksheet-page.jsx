@@ -17,9 +17,8 @@ import { useMonedaToolBucket } from "@/hooks/use-moneda-tool.js";
 import { useToolSession } from "@/hooks/use-tool-session.js";
 import { useFlushLibreToolOnLeave } from "@/hooks/use-flush-libre-tool-on-leave.js";
 import { CollabField, collabFieldId } from "@/components/clients/collab-field.jsx";
-import { SelectorMonedaCaptura } from "@/components/currency/selector-moneda-captura.jsx";
+import { SelectorMoneda } from "@/components/currency/selector-moneda.jsx";
 import { CampoMonedaCaptura } from "@/components/currency/campo-moneda-captura.jsx";
-import { PanelTipoCambio } from "@/components/currency/panel-tipo-cambio.jsx";
 import { applyRemoteFormState, fieldKeyFromCollabId, markFieldsDirty, clearDirtyFields } from "@/lib/collab-form-merge.js";
 import { useDbStore } from "@/stores/db-store";
 import { shallow } from "zustand/shallow";
@@ -44,6 +43,7 @@ export function WorksheetPage({ clientId, shared }: WorksheetPageProps) {
     resetMoneda,
     recordMoneyCapture,
     switchCaptureCurrency,
+    alignLoadedFields,
   } = useMonedaToolBucket({ getBucket, toolKey: "worksheet", ready, toolsRevision });
   const { fmtResult } = moneda;
   const worksheetConfig = useDbStore((s) => s.db.settings?.worksheetConfig, shallow);
@@ -75,16 +75,16 @@ export function WorksheetPage({ clientId, shared }: WorksheetPageProps) {
       if (keys.every((k) => prev[k] === next[k])) return prev;
       return next;
     });
-    const next = {
+    const next = alignLoadedFields({
       wv: String(b.wv ?? ""), we: String(b.we ?? ""),
       wcc: String(b.wcc ?? ""), wob: String(b.wob ?? ""),
-    };
+    }, WORKSHEET_MONEY_FIELDS);
     setFields((prev) => applyRemoteFormState(prev, next, {
       dirtyKeys: dirtyKeysRef.current,
       focusedKey: focusedKeyRef.current,
       hydratedRef,
     }));
-  }, [ready, clientId, getBucket, worksheetConfig, shared?.prospectId, toolsRevision]);
+  }, [ready, clientId, getBucket, worksheetConfig, shared?.prospectId, toolsRevision, alignLoadedFields]);
 
   const handleClear = async () => {
     if (readOnly) return;
@@ -164,13 +164,12 @@ export function WorksheetPage({ clientId, shared }: WorksheetPageProps) {
         <SharedToolBanner show={ready && isShared && readOnly} peers={peers} />
 
         <fieldset className="shared-tool-fieldset" disabled={readOnly}>
-        <SelectorMonedaCaptura
+        <SelectorMoneda
           value={captureCurrency}
           onChange={handleCaptureCurrencyChange}
           disabled={readOnly}
           className="tool-moneda-selector"
         />
-        <PanelTipoCambio disabled={readOnly} className="tool-tipo-cambio-panel" />
         <div className="g2">
           <div className="card tool-calc-card">
             <div className="card-heading">{t("tools.worksheet.saleData")}</div>

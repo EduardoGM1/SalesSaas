@@ -1,5 +1,7 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useMoneda } from "@/hooks/use-moneda.js";
+import { saveSettingsPatchRemote } from "@/actions/settings.js";
+import { useDbStore } from "@/stores/db-store";
 import {
   convertCaptureMoneyFields,
   normalizeCaptureCurrency,
@@ -8,18 +10,28 @@ import {
 } from "@/lib/currency/moneda-service";
 
 /**
- * Estado compartido de moneda de captura + metadata histórica por herramienta.
+ * Moneda de captura por herramienta, sincronizada con preferencia GLOBAL
+ * (`settings.activeCaptureCurrency`) para Vacaciones / Survey / Worksheet.
  */
 export function useMonedaToolBucket({ getBucket, toolKey, ready, toolsRevision }) {
-  const [captureCurrency, setCaptureCurrency] = useState("USD");
+  const settingsCurrency = useDbStore(
+    (s) => normalizeCaptureCurrency(s.db.settings?.activeCaptureCurrency || "USD"),
+  );
+  const [captureCurrency, setCaptureCurrency] = useState(settingsCurrency);
   const [currencyMeta, setCurrencyMeta] = useState({});
   const moneda = useMoneda(captureCurrency);
 
   useEffect(() => {
     if (!ready) return;
     const bucket = getBucket(toolKey);
-    setCaptureCurrency(normalizeCaptureCurrency(bucket.captureCurrency));
+    const preferred = normalizeCaptureCurrency(
+      settingsCurrency || bucket.captureCurrency || "USD",
+    );
+    setCaptureCurrency(preferred);
     setCurrencyMeta(parseCurrencyMeta(bucket.currency_meta));
+    // settingsCurrency intencional fuera de deps: al cambiar moneda en esta pantalla
+    // no debemos pisar currency_meta local con el bucket aún no guardado.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- hydrate on tool load only
   }, [ready, getBucket, toolKey, toolsRevision]);
 
   const appendMonedaPayload = (payload) => ({
@@ -29,7 +41,7 @@ export function useMonedaToolBucket({ getBucket, toolKey, ready, toolsRevision }
   });
 
   const resetMoneda = () => {
-    setCaptureCurrency("USD");
+    setCaptureCurrency(settingsCurrency || "USD");
     setCurrencyMeta({});
   };
 
@@ -40,13 +52,32 @@ export function useMonedaToolBucket({ getBucket, toolKey, ready, toolsRevision }
     }));
   };
 
-  /**
-   * Cambia pestaña USD/MXN y convierte campos monetarios visibles
-   * con el tipo de cambio manual configurado.
-   */
+  /** Alinea campos cargados del bucket a la moneda global activa. */
+  const alignLoadedFields = useCallback((loadedFields, moneyFields) => {
+    const bucket = getBucket(toolKey);
+    const from = normalizeCaptureCurrency(bucket.captureCurrency || "USD");
+    const to = normalizeCaptureCurrency(settingsCurrency || from);
+    setCaptureCurrency(to);
+    if (from === to || !moneyFields?.length) {
+      setCurrencyMeta(parseCurrencyMeta(bucket.currency_meta));
+      return loadedFields;
+    }
+    const { fields, meta } = convertCaptureMoneyFields(
+      loadedFields,
+      moneyFields,
+      from,
+      to,
+      moneda.ctx,
+      moneda.language,
+    );
+    setCurrencyMeta({ ...parseCurrencyMeta(bucket.currency_meta), ...meta });
+    return fields;
+  }, [getBucket, toolKey, settingsCurrency, moneda.ctx, moneda.language]);
+
   const switchCaptureCurrency = (next, fields, moneyFields, setFields) => {
     const nextCurrency = normalizeCaptureCurrency(next);
     if (nextCurrency === captureCurrency) return;
+
     const { fields: converted, meta } = convertCaptureMoneyFields(
       fields,
       moneyFields,
@@ -58,12 +89,18 @@ export function useMonedaToolBucket({ getBucket, toolKey, ready, toolsRevision }
     setFields?.(converted);
     setCurrencyMeta((prev) => ({ ...prev, ...meta }));
     setCaptureCurrency(nextCurrency);
+
+    void saveSettingsPatchRemote(
+      { activeCaptureCurrency: nextCurrency, exchangeMode: "manual" },
+      { silent: true },
+    ).catch(() => {});
   };
 
   return {
     captureCurrency,
     setCaptureCurrency,
     switchCaptureCurrency,
+    alignLoadedFields,
     currencyMeta,
     currencyMetaSerialized: serializeCurrencyMeta(currencyMeta),
     moneda,
