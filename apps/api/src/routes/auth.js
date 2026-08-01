@@ -12,7 +12,11 @@ function traducirError(msg) {
   if (m.includes("invalid login credentials")) return "Correo o contraseña incorrectos.";
   if (m.includes("email not confirmed")) return "Debes confirmar tu correo antes de iniciar sesión.";
   if (m.includes("user already registered")) return "Ya existe una cuenta con ese correo.";
-  if (m.includes("rate limit")) return "Demasiados intentos. Espera un momento.";
+  // Cuota de correos Auth a nivel de proyecto (signup+recover+email change), no por usuario.
+  // Con SMTP integrado suele ser ~2/hora; con SMTP propio se puede subir en el Dashboard.
+  if (m.includes("rate limit") || m.includes("over_email_send_rate_limit")) {
+    return "Se alcanzó el límite de correos de autenticación de Supabase (cuota del proyecto). Espera unos minutos o configura un SMTP propio en Authentication → Emails.";
+  }
   if (m.includes("same as old password")) return "La nueva contraseña debe ser distinta a la anterior.";
   if (m.includes("fetch") || m.includes("timeout") || m.includes("abort")) {
     return "No se pudo contactar al servicio de autenticación. Intenta de nuevo.";
