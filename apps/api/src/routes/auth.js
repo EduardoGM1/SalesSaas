@@ -113,8 +113,10 @@ router.post("/forgot-password", async (req, res) => {
   try {
     const sb = createCookieSupabaseClient(req, res);
     const redirectOrigin = resolveWebOrigin(req, req.body?.redirectOrigin);
+    // Path-only: Supabase suele reemplazar el query string de redirectTo con ?code=,
+    // así que NO usar ?next=/reset-password (se perdía y el usuario caía en / → /login).
     const { error } = await sb.auth.resetPasswordForEmail(email, {
-      redirectTo: `${redirectOrigin}/auth/callback?next=/reset-password`,
+      redirectTo: `${redirectOrigin}/reset-password`,
     });
     if (error) return apiError(res, traducirError(error.message), 400);
     json(res, { message: "Si existe una cuenta con ese correo, recibirás un enlace para restablecer tu contraseña." });

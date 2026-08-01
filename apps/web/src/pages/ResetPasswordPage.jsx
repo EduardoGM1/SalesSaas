@@ -1,13 +1,15 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Lock } from "lucide-react";
 import { isSupabaseConfigured } from "@/lib/supabase/config.js";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { AuthField } from "@/components/auth/auth-field.jsx";
+import { consumeAuthParamsFromUrl, hasAuthParamsInUrl } from "@/lib/auth-callback.js";
 
 export function ResetPasswordPage() {
   const { t } = useI18n();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState(null);
   const [sessionState, setSessionState] = useState(
@@ -15,11 +17,28 @@ export function ResetPasswordPage() {
   );
 
   useEffect(() => {
-    if (!isSupabaseConfigured()) return;
-    fetch("/api/v1/auth/session", { credentials: "include" })
-      .then((r) => setSessionState(r.ok ? "ready" : "missing"))
-      .catch(() => setSessionState("missing"));
-  }, []);
+    if (!isSupabaseConfigured()) return undefined;
+    let active = true;
+
+    async function bootstrap() {
+      try {
+        if (hasAuthParamsInUrl(searchParams)) {
+          await consumeAuthParamsFromUrl({ searchParams, t });
+        }
+
+        const res = await fetch("/api/v1/auth/session", { credentials: "include" });
+        if (!active) return;
+        setSessionState(res.ok ? "ready" : "missing");
+      } catch (err) {
+        if (!active) return;
+        setError(err instanceof Error ? err.message : t("auth.reset.sessionExpired"));
+        setSessionState("missing");
+      }
+    }
+
+    void bootstrap();
+    return () => { active = false; };
+  }, [searchParams, t]);
 
   const onSubmit = async (e) => {
     e.preventDefault();
@@ -57,7 +76,9 @@ export function ResetPasswordPage() {
       {sessionState === "missing" && (
         <>
           <div className="auth-error">{t("auth.reset.sessionExpired")}</div>
-          <div className="auth-foot auth-landing-foot"><Link to="/forgot-password">{t("auth.reset.requestNew")}</Link></div>
+          <div className="auth-foot auth-landing-foot">
+            <Link to="/forgot-password">{t("auth.reset.requestNew")}</Link>
+          </div>
         </>
       )}
       {sessionState === "ready" && (

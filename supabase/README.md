@@ -39,11 +39,15 @@ npx supabase db push
 2. (Opcional) **Google**: pega `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` y
    añade la URL de callback que indique Supabase en Google Cloud Console.
 3. **Authentication → URL Configuration**:
-   - Site URL: `https://saletse.vercel.app`
+   - Site URL: `https://saletse.vercel.app` (sin `/login`)
    - Redirect URLs (añadir todas las que uses):
      - `http://localhost:5173/auth/callback`
+     - `http://localhost:5173/reset-password`
      - `https://saletse.vercel.app/auth/callback`
-   - El enlace de recuperación de contraseña redirige a `/auth/callback?next=/reset-password`.
+     - `https://saletse.vercel.app/reset-password`
+     - (recomendado) `https://saletse.vercel.app/**`
+   - El enlace de recuperación redirige a `/reset-password` (canjea el token ahí y muestra el formulario).
+   - Plantilla de correo (opcional, más robusta cross-device): en Authentication → Email Templates → Reset Password, usar un enlace con `token_hash` si el flujo PKCE falla al abrir el correo en otro dispositivo.
 
 ## 4b. Realtime Presence (estado en línea en Red)
 
