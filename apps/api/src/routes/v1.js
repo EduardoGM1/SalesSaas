@@ -161,6 +161,64 @@ router.post("/workspace/invite", rateLimit({ name: "workspace-invite", windowMs:
   await runService(res, () => workspaceOps.inviteAndNotify(a.supabase, a.userId, body), { wrap: "data", successStatus: 201 });
 });
 
+router.get("/workspace/team/roles", async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  await runService(res, () => workspaceService.listAssignableSalaRoles(a.supabase, a.userId), { wrap: "data" });
+});
+
+router.patch("/workspace/team/members/:memberId/role", async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  const body = parseJsonBody(req, res);
+  if (!body) return;
+  const roleId = body.role_id ?? body.roleId;
+  await runService(
+    res,
+    () => workspaceService.assignMemberSalaRole(a.supabase, a.userId, req.params.memberId, roleId),
+    { wrap: "data" },
+  );
+});
+
+router.get("/workspace/team/members/:memberId/overrides", async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  await runService(
+    res,
+    () => workspaceService.listMemberSalaOverrides(a.supabase, a.userId, req.params.memberId),
+    { wrap: "data" },
+  );
+});
+
+router.put("/workspace/team/members/:memberId/overrides", async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  const body = parseJsonBody(req, res);
+  if (!body) return;
+  const clave = body.clave ?? body.key;
+  const otorgado = body.otorgado !== undefined ? body.otorgado === true : true;
+  await runService(
+    res,
+    () => workspaceService.setMemberSalaOverride(a.supabase, a.userId, req.params.memberId, clave, otorgado),
+    { wrap: "data" },
+  );
+});
+
+router.delete("/workspace/team/members/:memberId/overrides/:clave", async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  await runService(
+    res,
+    () => workspaceService.removeMemberSalaOverride(
+      a.supabase,
+      a.userId,
+      req.params.memberId,
+      decodeURIComponent(req.params.clave),
+    ),
+    { wrap: "data" },
+  );
+});
+
 router.post("/workspace/leave", async (req, res) => {
   const a = await requireAuth(req, res);
   if (!a) return;

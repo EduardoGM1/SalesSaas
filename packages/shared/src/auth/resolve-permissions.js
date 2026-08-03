@@ -6,14 +6,17 @@ import {
 } from "./permission-catalog.js";
 
 /**
- * Resuelve permisos finales: rol + overrides (override gana).
+ * Resuelve permisos efectivos (modelo aditivo):
+ * efectivo = permisos(rol) ∪ overrides con otorgado=true
+ *
+ * Los overrides NUNCA restan. Para quitar acceso: cambiar rol o suspender.
  * Superadmin → todos.
  *
  * @param {{
  *   is_super_admin?: boolean,
  *   role?: string,
  *   role_permission_keys?: string[],
- *   overrides?: { clave: string, otorgado: boolean }[],
+ *   overrides?: { clave: string, otorgado?: boolean }[],
  *   admin_permissions?: string[],
  *   user_permissions?: string[],
  * }} input
@@ -34,16 +37,15 @@ export function resolveUserPermissions(input = {}) {
   for (const ov of overrides) {
     const key = String(ov?.clave || "").trim();
     if (!key) continue;
+    // Solo aditivo: ignorar otorgado=false (deny deprecado).
     if (ov.otorgado === true) granted.add(key);
-    else if (ov.otorgado === false) granted.delete(key);
   }
 
-  // Compat: user_permissions allowlist (vacío = no restringe)
+  // Compat legacy: user_permissions solo puede SUMAR features, nunca restar del rol.
   const userPerms = Array.isArray(input.user_permissions) ? input.user_permissions : null;
   if (userPerms && userPerms.length > 0) {
     for (const feat of ["sales:view_modal", "sales:view_detail", "sales:history"]) {
-      if (!userPerms.includes(feat)) granted.delete(feat);
-      else granted.add(feat);
+      if (userPerms.includes(feat)) granted.add(feat);
     }
   }
 
@@ -55,15 +57,6 @@ function inferRoleKeysFromLegacy(input) {
   if (input.role === "admin") {
     const adminPerms = Array.isArray(input.admin_permissions) ? input.admin_permissions : [];
     for (const p of adminPerms) keys.add(p);
-    for (const p of [
-      "dashboard:read", "users:read", "users:deactivate", "users:activate",
-      "users:export", "goals:read", "tools:analytics", "support:read",
-    ]) {
-      // no forzar; solo lo delegado
-    }
-    if (adminPerms.length) {
-      for (const p of adminPerms) keys.add(p);
-    }
   }
   return [...keys];
 }
@@ -101,13 +94,15 @@ export function legacyAdminPermissionsFromResolved(resolvedSet) {
   return delegable.filter((k) => resolvedSet.has(k));
 }
 
-/** Convert UI allowlist of overridable features → deny overrides for missing ones. */
+/**
+ * Allowlist de features → overrides SOLO aditivos (otorgado:true).
+ * No genera denies. Las features del rol se mantienen aunque no estén en la lista.
+ */
 export function overridesFromFeatureAllowlist(enabledKeys) {
   const enabled = new Set(enabledKeys || []);
-  return OVERRIDABLE_APP_FEATURES.map((clave) => ({
-    clave,
-    otorgado: enabled.has(clave),
-  }));
+  return OVERRIDABLE_APP_FEATURES
+    .filter((clave) => enabled.has(clave))
+    .map((clave) => ({ clave, otorgado: true }));
 }
 
 export function featureAllowlistFromResolved(resolvedSet) {

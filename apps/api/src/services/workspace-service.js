@@ -1,6 +1,8 @@
 import { ServiceError, assertFound } from "../lib/service-error.js";
 import { createServiceSupabaseClient } from "../lib/supabase-server.js";
 import { isSuperAdmin } from "@salesapp/shared/auth/permissions.js";
+import { SUPERADMIN_ONLY_KEYS } from "@salesapp/shared/auth/permission-catalog.js";
+import { ADMIN_AUDIT_ACTIONS, writeAdminLog } from "./admin-audit-service.js";
 
 export const CROSS_BOUNDARY_MSG =
   "No puedes mover información entre tu espacio personal y el de la empresa";
@@ -437,7 +439,7 @@ async function listSalaMembersInternal(workspaceId, excludeUserId = null) {
   if (!admin) throw new ServiceError("Service role no configurado.", 500);
   const { data, error } = await admin
     .from("workspace_miembros")
-    .select("usuario_id, rol_en_workspace, fecha_union")
+    .select("usuario_id, rol_en_workspace, role_id, fecha_union, roles(id, nombre, slug)")
     .eq("workspace_id", workspaceId)
     .order("fecha_union", { ascending: true });
   if (error) throw new ServiceError(error.message, 500);
@@ -455,9 +457,13 @@ async function listSalaMembersInternal(workspaceId, excludeUserId = null) {
     .filter((m) => !excludeUserId || m.usuario_id !== excludeUserId)
     .map((m) => {
       const p = profilesById.get(m.usuario_id);
+      const role = m.roles && typeof m.roles === "object" ? m.roles : null;
       return {
         id: m.usuario_id,
         rol_en_workspace: m.rol_en_workspace,
+        role_id: m.role_id ?? role?.id ?? null,
+        role_nombre: role?.nombre ?? null,
+        role_slug: role?.slug ?? null,
         fecha_union: m.fecha_union,
         email: p?.email ?? null,
         full_name: p?.full_name ?? null,
@@ -548,12 +554,25 @@ export async function inviteToActiveSala(supabase, userId, { email, usuario_id }
     };
   }
 
+  let vendedorRoleId = null;
+  if (active.empresa_id) {
+    const { data: vendedorRole } = await admin
+      .from("roles")
+      .select("id")
+      .eq("empresa_id", active.empresa_id)
+      .eq("scope", "workspace")
+      .eq("slug", "vendedor")
+      .maybeSingle();
+    vendedorRoleId = vendedorRole?.id ?? null;
+  }
+
   const { data: member, error: mErr } = await admin
     .from("workspace_miembros")
     .insert({
       usuario_id: profile.id,
       workspace_id: active.id,
       rol_en_workspace: "vendedor",
+      role_id: vendedorRoleId,
     })
     .select()
     .single();
@@ -567,6 +586,7 @@ export async function inviteToActiveSala(supabase, userId, { email, usuario_id }
       email: profile.email,
       full_name: profile.full_name,
       rol_en_workspace: member.rol_en_workspace,
+      role_id: member.role_id ?? null,
     },
     workspace: { id: active.id, nombre: active.nombre },
     inviter: { id: userId },
@@ -926,4 +946,242 @@ export async function uploadWorkspaceLogo(adminProfile, { tipo, id, dataUrl }) {
     .maybeSingle();
   if (error) throw new ServiceError(error.message, 400);
   return assertFound(data, "Empresa no encontrada.");
+}
+
+/** Roles asignables en la sala activa (scope=workspace de la empresa). Solo lectura para Gerente. */
+export async function listAssignableSalaRoles(supabase, userId) {
+  const active = await requireActiveSalaGerente(supabase, userId);
+  if (!active.empresa_id) throw new ServiceError("La sala no tiene empresa asociada.", 400);
+  const admin = createServiceSupabaseClient();
+  if (!admin) throw new ServiceError("Service role no configurado.", 500);
+  const { data, error } = await admin
+    .from("roles")
+    .select("id, nombre, slug, es_sistema")
+    .eq("empresa_id", active.empresa_id)
+    .eq("scope", "workspace")
+    .order("nombre");
+  if (error) throw new ServiceError(error.message, 500);
+  return data ?? [];
+}
+
+/** Gerente reasigna puesto de un miembro (solo roles ya definidos por la empresa). */
+export async function assignMemberSalaRole(supabase, actorId, memberId, roleId) {
+  const active = await requireActiveSalaGerente(supabase, actorId);
+  if (!active.empresa_id) throw new ServiceError("La sala no tiene empresa asociada.", 400);
+  if (!memberId || !roleId) throw new ServiceError("Miembro y rol requeridos.");
+  const admin = createServiceSupabaseClient();
+  if (!admin) throw new ServiceError("Service role no configurado.", 500);
+
+  const { data: role } = await admin
+    .from("roles")
+    .select("id, nombre, slug")
+    .eq("id", roleId)
+    .eq("empresa_id", active.empresa_id)
+    .eq("scope", "workspace")
+    .maybeSingle();
+  if (!role) throw new ServiceError("Ese rol no está disponible para esta empresa.", 400);
+
+  const { data: before } = await admin
+    .from("workspace_miembros")
+    .select("usuario_id, role_id, rol_en_workspace, roles(nombre, slug)")
+    .eq("workspace_id", active.id)
+    .eq("usuario_id", memberId)
+    .maybeSingle();
+  if (!before) throw new ServiceError("Miembro no encontrado en esta sala.", 404);
+
+  const legacyRol = role.slug === "gerente" ? "gerente" : "vendedor";
+  const { data, error } = await admin
+    .from("workspace_miembros")
+    .update({
+      role_id: role.id,
+      rol_en_workspace: legacyRol,
+    })
+    .eq("workspace_id", active.id)
+    .eq("usuario_id", memberId)
+    .select("workspace_id, usuario_id, role_id, rol_en_workspace")
+    .maybeSingle();
+  if (error) throw new ServiceError(error.message, 400);
+
+  const beforeName = before.roles?.nombre || before.rol_en_workspace || null;
+  await writeAdminLog(admin, {
+    actorId,
+    accion: ADMIN_AUDIT_ACTIONS.CAMBIO_ROL,
+    entidadAfectada: "workspace_miembro",
+    entidadId: memberId,
+    detalle: {
+      workspace_id: active.id,
+      empresa_id: active.empresa_id,
+      de: beforeName,
+      a: role.nombre,
+      role_id_de: before.role_id,
+      role_id_a: role.id,
+      rol_en_workspace_a: legacyRol,
+    },
+  });
+
+  return assertFound(data, "Miembro no encontrado.");
+}
+
+async function empresaWorkspacePermissionCeiling(admin, empresaId) {
+  const blocked = new Set(SUPERADMIN_ONLY_KEYS);
+  const { data: roles, error } = await admin
+    .from("roles")
+    .select("id")
+    .eq("empresa_id", empresaId)
+    .eq("scope", "workspace");
+  if (error) throw new ServiceError(error.message, 500);
+  const roleIds = (roles ?? []).map((r) => r.id);
+  if (!roleIds.length) return new Set();
+  const { data: rp, error: rpErr } = await admin
+    .from("rol_permisos")
+    .select("permisos(clave)")
+    .in("rol_id", roleIds);
+  if (rpErr) throw new ServiceError(rpErr.message, 500);
+  const keys = new Set();
+  for (const row of rp ?? []) {
+    const clave = row.permisos?.clave;
+    if (clave && !blocked.has(clave)) keys.add(clave);
+  }
+  return keys;
+}
+
+export async function listMemberSalaOverrides(supabase, actorId, memberId) {
+  const active = await requireActiveSalaGerente(supabase, actorId);
+  const admin = createServiceSupabaseClient();
+  if (!admin) throw new ServiceError("Service role no configurado.", 500);
+  const { data: member } = await admin
+    .from("workspace_miembros")
+    .select("usuario_id")
+    .eq("workspace_id", active.id)
+    .eq("usuario_id", memberId)
+    .maybeSingle();
+  if (!member) throw new ServiceError("Miembro no encontrado en esta sala.", 404);
+
+  const ceiling = await empresaWorkspacePermissionCeiling(admin, active.empresa_id);
+  const { data: ovRows, error } = await admin
+    .from("workspace_usuario_permisos_override")
+    .select("otorgado, permisos(clave, nombre_visible)")
+    .eq("workspace_id", active.id)
+    .eq("usuario_id", memberId)
+    .eq("otorgado", true);
+  if (error) throw new ServiceError(error.message, 500);
+
+  return {
+    ceiling_keys: [...ceiling].sort(),
+    overrides: (ovRows ?? [])
+      .map((r) => ({
+        clave: r.permisos?.clave,
+        nombre_visible: r.permisos?.nombre_visible ?? null,
+        otorgado: true,
+      }))
+      .filter((o) => o.clave),
+  };
+}
+
+/**
+ * Gerente escribe override aditivo en sala. Rechaza deny y claves fuera del techo empresa.
+ */
+export async function setMemberSalaOverride(supabase, actorId, memberId, clave, otorgado = true) {
+  const active = await requireActiveSalaGerente(supabase, actorId);
+  if (!active.empresa_id) throw new ServiceError("La sala no tiene empresa asociada.", 400);
+  const key = String(clave || "").trim();
+  if (!key) throw new ServiceError("Permiso requerido.");
+  if (otorgado !== true) {
+    throw new ServiceError(
+      "Los overrides solo pueden ser aditivos. Para quitar acceso cambia el rol del miembro o suspéndelo.",
+      400,
+    );
+  }
+
+  const admin = createServiceSupabaseClient();
+  if (!admin) throw new ServiceError("Service role no configurado.", 500);
+
+  const { data: member } = await admin
+    .from("workspace_miembros")
+    .select("usuario_id")
+    .eq("workspace_id", active.id)
+    .eq("usuario_id", memberId)
+    .maybeSingle();
+  if (!member) throw new ServiceError("Miembro no encontrado en esta sala.", 404);
+
+  const ceiling = await empresaWorkspacePermissionCeiling(admin, active.empresa_id);
+  if (!ceiling.has(key)) {
+    throw new ServiceError(
+      "Ese permiso no está en el techo de roles de la empresa; no se puede otorgar.",
+      403,
+    );
+  }
+
+  const { data: perm } = await admin
+    .from("permisos")
+    .select("id")
+    .eq("clave", key)
+    .maybeSingle();
+  if (!perm) throw new ServiceError("Permiso desconocido.", 400);
+
+  const { error } = await admin
+    .from("workspace_usuario_permisos_override")
+    .upsert(
+      {
+        workspace_id: active.id,
+        usuario_id: memberId,
+        permiso_id: perm.id,
+        otorgado: true,
+      },
+      { onConflict: "workspace_id,usuario_id,permiso_id" },
+    );
+  if (error) throw new ServiceError(error.message, 400);
+
+  await writeAdminLog(admin, {
+    actorId,
+    accion: ADMIN_AUDIT_ACTIONS.EDICION_PERMISOS_USUARIO,
+    entidadAfectada: "workspace_miembro",
+    entidadId: memberId,
+    detalle: {
+      workspace_id: active.id,
+      empresa_id: active.empresa_id,
+      tipo: "override_sala_aditivo",
+      clave: key,
+      otorgado: true,
+    },
+  });
+
+  return { ok: true, clave: key, otorgado: true };
+}
+
+export async function removeMemberSalaOverride(supabase, actorId, memberId, clave) {
+  const active = await requireActiveSalaGerente(supabase, actorId);
+  const key = String(clave || "").trim();
+  if (!key) throw new ServiceError("Permiso requerido.");
+  const admin = createServiceSupabaseClient();
+  if (!admin) throw new ServiceError("Service role no configurado.", 500);
+
+  const { data: perm } = await admin
+    .from("permisos")
+    .select("id")
+    .eq("clave", key)
+    .maybeSingle();
+  if (!perm) throw new ServiceError("Permiso desconocido.", 400);
+
+  const { error } = await admin
+    .from("workspace_usuario_permisos_override")
+    .delete()
+    .eq("workspace_id", active.id)
+    .eq("usuario_id", memberId)
+    .eq("permiso_id", perm.id);
+  if (error) throw new ServiceError(error.message, 400);
+
+  await writeAdminLog(admin, {
+    actorId,
+    accion: ADMIN_AUDIT_ACTIONS.EDICION_PERMISOS_USUARIO,
+    entidadAfectada: "workspace_miembro",
+    entidadId: memberId,
+    detalle: {
+      workspace_id: active.id,
+      tipo: "override_sala_remove",
+      clave: key,
+    },
+  });
+
+  return { ok: true };
 }

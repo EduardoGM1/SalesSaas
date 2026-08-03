@@ -85,6 +85,7 @@ e2e/            Playwright
 
 - `MIGRATION.md` — notas de migración
 - `supabase/README.md` — Auth, Redirect URLs, Realtime
+- `docs/RBAC-ADDITIVE.md` — permisos aditivos (rol ∪ overrides); aplicar migración `0063`
 - `docs/` — arquitectura y performance
 - `apps/api/API.md` — API
 

@@ -152,7 +152,8 @@ export async function setUserRoleId(supabase, adminProfile, targetId, roleId, ac
 export async function setUserOverrides(supabase, adminProfile, targetId, overrides, actorId = null, { skipAudit = false } = {}) {
   assertSuperAdmin(adminProfile);
   if (!targetId) throw new ServiceError("Usuario inválido.");
-  const list = Array.isArray(overrides) ? overrides : [];
+  // Solo aditivos: descartar denies (otorgado=false).
+  const list = (Array.isArray(overrides) ? overrides : []).filter((o) => o && o.otorgado === true && o.clave);
   const { error } = await supabase.rpc("admin_set_user_permission_overrides", {
     p_target_id: targetId,
     p_overrides: list,
@@ -170,14 +171,18 @@ export async function setUserOverrides(supabase, adminProfile, targetId, overrid
   return { ok: true };
 }
 
-/** Allowlist UI → mergea overrides de features overridables sin borrar otros. */
+/**
+ * Features UI → solo overrides aditivos.
+ * - Conserva overrides no-feature existentes (solo otorgado=true).
+ * - Para features overridables: escribe otorgado=true solo en las habilitadas.
+ * - No crea denies; quitar una feature del rol requiere cambiar el rol.
+ */
 export async function setUserFeatureAllowlist(supabase, adminProfile, targetId, enabledKeys, options = {}) {
   assertSuperAdmin(adminProfile);
   const raw = (Array.isArray(enabledKeys) ? enabledKeys : []).filter((k) =>
     OVERRIDABLE_APP_FEATURES.includes(k),
   );
-  const allOn = raw.length === 0 || OVERRIDABLE_APP_FEATURES.every((k) => raw.includes(k));
-  const featureOverrides = allOn ? [] : overridesFromFeatureAllowlist(raw);
+  const featureOverrides = overridesFromFeatureAllowlist(raw);
   const featureSet = new Set(OVERRIDABLE_APP_FEATURES);
 
   const { data: existing } = await supabase
@@ -188,8 +193,8 @@ export async function setUserFeatureAllowlist(supabase, adminProfile, targetId, 
   const merged = [];
   for (const row of existing ?? []) {
     const clave = row.permisos?.clave;
-    if (clave && !featureSet.has(clave)) {
-      merged.push({ clave, otorgado: row.otorgado === true });
+    if (clave && !featureSet.has(clave) && row.otorgado === true) {
+      merged.push({ clave, otorgado: true });
     }
   }
   merged.push(...featureOverrides);

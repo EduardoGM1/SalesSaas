@@ -31,10 +31,17 @@ export function TeamPage() {
     && active?.rol_en_workspace === "gerente";
 
   const [members, setMembers] = useState([]);
+  const [roles, setRoles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [prospectsModalOpen, setProspectsModalOpen] = useState(false);
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
+  const [extrasModalOpen, setExtrasModalOpen] = useState(false);
+  const [extrasMember, setExtrasMember] = useState(null);
+  const [extrasCeiling, setExtrasCeiling] = useState([]);
+  const [extrasOverrides, setExtrasOverrides] = useState([]);
+  const [extrasLoading, setExtrasLoading] = useState(false);
+  const [roleSavingId, setRoleSavingId] = useState("");
   const [selectedId, setSelectedId] = useState("");
   const [prospects, setProspects] = useState([]);
   const [prospectsLoading, setProspectsLoading] = useState(false);
@@ -46,11 +53,16 @@ export function TeamPage() {
     setLoading(true);
     setError("");
     try {
-      const rows = await api("/workspace/team");
+      const [rows, roleRows] = await Promise.all([
+        api("/workspace/team"),
+        api("/workspace/team/roles"),
+      ]);
       setMembers(Array.isArray(rows) ? rows : []);
+      setRoles(Array.isArray(roleRows) ? roleRows : []);
     } catch (err) {
       setError(err instanceof Error ? err.message : t("team.error"));
       setMembers([]);
+      setRoles([]);
     } finally {
       setLoading(false);
     }
@@ -127,11 +139,80 @@ export function TeamPage() {
     }
   };
 
+  const changeRole = async (memberId, roleId) => {
+    if (!roleId) return;
+    setRoleSavingId(memberId);
+    try {
+      await api(`/workspace/team/members/${memberId}/role`, {
+        method: "PATCH",
+        body: JSON.stringify({ role_id: roleId }),
+      });
+      toast.success(t("team.roleUpdated"));
+      await refresh();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t("team.roleUpdateError"));
+    } finally {
+      setRoleSavingId("");
+    }
+  };
+
+  const openExtrasModal = async (member) => {
+    setExtrasMember(member);
+    setExtrasModalOpen(true);
+    setExtrasLoading(true);
+    setExtrasCeiling([]);
+    setExtrasOverrides([]);
+    try {
+      const payload = await api(`/workspace/team/members/${member.id}/overrides`);
+      setExtrasCeiling(Array.isArray(payload?.ceiling_keys) ? payload.ceiling_keys : []);
+      setExtrasOverrides(Array.isArray(payload?.overrides) ? payload.overrides.map((o) => o.clave) : []);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t("team.error"));
+      setExtrasModalOpen(false);
+      setExtrasMember(null);
+    } finally {
+      setExtrasLoading(false);
+    }
+  };
+
+  const closeExtrasModal = (open) => {
+    setExtrasModalOpen(open);
+    if (!open) {
+      setExtrasMember(null);
+      setExtrasCeiling([]);
+      setExtrasOverrides([]);
+    }
+  };
+
+  const toggleExtra = async (clave) => {
+    if (!extrasMember) return;
+    const has = extrasOverrides.includes(clave);
+    try {
+      if (has) {
+        await api(`/workspace/team/members/${extrasMember.id}/overrides/${encodeURIComponent(clave)}`, {
+          method: "DELETE",
+        });
+        setExtrasOverrides((prev) => prev.filter((k) => k !== clave));
+      } else {
+        await api(`/workspace/team/members/${extrasMember.id}/overrides`, {
+          method: "PUT",
+          body: JSON.stringify({ clave, otorgado: true }),
+        });
+        setExtrasOverrides((prev) => [...prev, clave]);
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t("team.extrasError"));
+    }
+  };
+
   const selectedLabel = useMemo(() => {
     if (!selectedId) return t("team.allProspects");
     const m = members.find((x) => x.id === selectedId);
     return m ? memberLabel(m) : selectedId;
   }, [selectedId, members, t]);
+
+  const roleLabel = (m) => m.role_nombre
+    || (m.rol_en_workspace === "gerente" ? t("team.role.gerente") : t("team.role.vendedor"));
 
   if (ready && !canManage) {
     return <Navigate to="/" replace />;
@@ -173,8 +254,30 @@ export function TeamPage() {
                       <tr key={m.id}>
                         <td className="admin-cell-name">{memberLabel(m)}</td>
                         <td className="admin-cell-muted">{m.email || "—"}</td>
-                        <td>{m.rol_en_workspace === "gerente" ? t("team.role.gerente") : t("team.role.vendedor")}</td>
                         <td>
+                          <select
+                            className="team-role-select"
+                            value={m.role_id || ""}
+                            disabled={roleSavingId === m.id || !roles.length}
+                            onChange={(e) => changeRole(m.id, e.target.value)}
+                            aria-label={t("team.col.role")}
+                          >
+                            {!m.role_id && (
+                              <option value="">{roleLabel(m)}</option>
+                            )}
+                            {roles.map((r) => (
+                              <option key={r.id} value={r.id}>{r.nombre}</option>
+                            ))}
+                          </select>
+                        </td>
+                        <td className="team-member-actions">
+                          <button
+                            type="button"
+                            className="btn btn-ghost btn-sm"
+                            onClick={() => openExtrasModal(m)}
+                          >
+                            {t("team.extras")}
+                          </button>
                           <button
                             type="button"
                             className="btn btn-ghost btn-sm"
@@ -198,17 +301,37 @@ export function TeamPage() {
                     <div className="team-member-card-main">
                       <div className="team-member-name">{memberLabel(m)}</div>
                       <div className="team-member-email">{m.email || "—"}</div>
-                      <div className="team-member-role">
-                        {m.rol_en_workspace === "gerente" ? t("team.role.gerente") : t("team.role.vendedor")}
-                      </div>
+                      <select
+                        className="team-role-select"
+                        value={m.role_id || ""}
+                        disabled={roleSavingId === m.id || !roles.length}
+                        onChange={(e) => changeRole(m.id, e.target.value)}
+                        aria-label={t("team.col.role")}
+                      >
+                        {!m.role_id && (
+                          <option value="">{roleLabel(m)}</option>
+                        )}
+                        {roles.map((r) => (
+                          <option key={r.id} value={r.id}>{r.nombre}</option>
+                        ))}
+                      </select>
                     </div>
-                    <button
-                      type="button"
-                      className="btn btn-ghost btn-sm team-member-action"
-                      onClick={() => openProspectsModal(m.id)}
-                    >
-                      {t("team.viewProspects")}
-                    </button>
+                    <div className="team-member-actions">
+                      <button
+                        type="button"
+                        className="btn btn-ghost btn-sm"
+                        onClick={() => openExtrasModal(m)}
+                      >
+                        {t("team.extras")}
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-ghost btn-sm team-member-action"
+                        onClick={() => openProspectsModal(m.id)}
+                      >
+                        {t("team.viewProspects")}
+                      </button>
+                    </div>
                   </li>
                 ))}
                 {!members.length && (
@@ -252,6 +375,41 @@ export function TeamPage() {
             </button>
           </div>
         </form>
+      </SalesModal>
+
+      <SalesModal
+        open={extrasModalOpen}
+        onOpenChange={closeExtrasModal}
+        title={t("team.extrasTitle", { name: extrasMember ? memberLabel(extrasMember) : "" })}
+        maxWidth={520}
+      >
+        <p className="team-hint team-hint--modal">{t("team.extrasHint")}</p>
+        {extrasLoading ? (
+          <p className="team-loading">{t("common.loading")}</p>
+        ) : (
+          <ul className="team-extras-list">
+            {extrasCeiling.map((clave) => (
+              <li key={clave}>
+                <label className="team-extra-item">
+                  <input
+                    type="checkbox"
+                    checked={extrasOverrides.includes(clave)}
+                    onChange={() => toggleExtra(clave)}
+                  />
+                  <span>{clave}</span>
+                </label>
+              </li>
+            ))}
+            {!extrasCeiling.length && (
+              <li className="team-empty">{t("team.extrasEmpty")}</li>
+            )}
+          </ul>
+        )}
+        <div className="btn-row team-modal-actions">
+          <button type="button" className="btn btn-ghost" onClick={() => closeExtrasModal(false)}>
+            {t("common.cancel")}
+          </button>
+        </div>
       </SalesModal>
 
       <SalesModal

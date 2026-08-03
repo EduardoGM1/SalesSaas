@@ -24,7 +24,20 @@ export async function getRequestWorkspaceContext(supabase, userId) {
     const active = list.find((w) => w.id === workspaceId) || null;
     const tipo = active?.tipo ?? null;
     const rol = active?.rol_en_workspace ?? null;
-    const teamScope = tipo === "sala_de_venta" && rol === "gerente";
+    // Preferir permiso efectivo; fallback legacy gerente.
+    let teamScope = tipo === "sala_de_venta" && rol === "gerente";
+    if (tipo === "sala_de_venta" && workspaceId) {
+      try {
+        const { data, error } = await supabase.rpc("workspace_has_permission", {
+          p_usuario_id: userId,
+          p_workspace_id: workspaceId,
+          p_clave: "dashboard:ver_equipo",
+        });
+        if (!error && typeof data === "boolean") teamScope = data;
+      } catch {
+        /* keep legacy */
+      }
+    }
     return { workspaceId, tipo, rol, teamScope, active };
   } catch {
     return { workspaceId: null, tipo: null, rol: null, teamScope: false, active: null };
