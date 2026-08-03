@@ -29,14 +29,24 @@ FROM public.workspace_usuario_permisos_override;
 
 2. Aplicar 0063 (borra denies y reescribe resolutores SQL sin `EXCEPT`).
 
-3. Anotar aquí el resultado de la consulta de verificación:
+3. Resultado de la consulta de verificación (prod, 2026-08-02):
 
 | Tabla | adds | denies | Fecha |
 |-------|------|--------|-------|
-| `usuario_permisos_override` | _pendiente_ | _pendiente_ | |
-| `workspace_usuario_permisos_override` | _pendiente_ | _pendiente_ | |
+| `usuario_permisos_override` | **0** | **1** | 2026-08-02 |
+| `workspace_usuario_permisos_override` | _no consultada_ | _no consultada_ | |
 
-> Al eliminar denies, un usuario que dependía de una restricción vía override recuperará el permiso de su rol. Si eso no es deseable, **antes** del deploy cámbiale el rol a uno más restringido.
+**Interpretación:** un solo override restrictivo y ningún aditivo. Al aplicar `0063`, ese deny se borra; el usuario afectado recuperará lo que su **rol** ya otorga para esa clave. Si la restricción debe mantenerse, **antes** de 0063 cámbiale el rol (no reintroducir deny).
+
+Consulta opcional para ver quién/qué es el deny:
+
+```sql
+SELECT o.usuario_id, p.email, p.full_name, perm.clave, o.otorgado
+FROM public.usuario_permisos_override o
+JOIN public.permisos perm ON perm.id = o.permiso_id
+LEFT JOIN public.profiles p ON p.id = o.usuario_id
+WHERE o.otorgado = false;
+```
 
 ## API Gerente (sala activa)
 
