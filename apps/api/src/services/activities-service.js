@@ -1,17 +1,22 @@
 import { isUuid } from "@salesapp/shared/data/mappers.js";
 import { bodyToActivityInsert } from "@salesapp/shared/api/validators.js";
 import { ServiceError, assertFound } from "../lib/service-error.js";
-import { requireWorkspacePermission, scopeByWorkspace } from "../lib/workspace-scope.js";
+import {
+  getRequestWorkspaceContext,
+  requireWorkspacePermission,
+  scopeByWorkspace,
+} from "../lib/workspace-scope.js";
 
 export async function listActivities(supabase, userId, { limit, offset, prospect_id }) {
-  const workspaceId = await requireWorkspacePermission(supabase, userId, "expedientes:ver_propios");
+  const ctx = await getRequestWorkspaceContext(supabase, userId);
+  await requireWorkspacePermission(supabase, userId, "expedientes:ver_propios", ctx.workspaceId);
   let q = supabase
     .from("activities")
     .select("*", { count: "exact" })
-    .eq("user_id", userId)
     .order("created_at", { ascending: false })
     .range(offset, offset + limit - 1);
-  q = scopeByWorkspace(q, workspaceId);
+  q = scopeByWorkspace(q, ctx.workspaceId);
+  if (!ctx.teamScope) q = q.eq("user_id", userId);
   if (prospect_id && isUuid(prospect_id)) q = q.eq("prospect_id", prospect_id);
   const { data, error, count } = await q;
   if (error) throw new ServiceError(error.message, 500);
@@ -29,9 +34,11 @@ export async function createActivity(supabase, userId, body) {
 
 export async function getActivity(supabase, userId, id) {
   if (!isUuid(id)) throw new ServiceError("ID inválido.");
-  const workspaceId = await requireWorkspacePermission(supabase, userId, "expedientes:ver_propios");
-  let q = supabase.from("activities").select("*").eq("id", id).eq("user_id", userId);
-  q = scopeByWorkspace(q, workspaceId);
+  const ctx = await getRequestWorkspaceContext(supabase, userId);
+  await requireWorkspacePermission(supabase, userId, "expedientes:ver_propios", ctx.workspaceId);
+  let q = supabase.from("activities").select("*").eq("id", id);
+  q = scopeByWorkspace(q, ctx.workspaceId);
+  if (!ctx.teamScope) q = q.eq("user_id", userId);
   const { data, error } = await q.maybeSingle();
   if (error) throw new ServiceError(error.message, 500);
   return assertFound(data, "Actividad no encontrada.");

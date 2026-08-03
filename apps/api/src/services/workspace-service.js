@@ -919,6 +919,11 @@ async function resolvePersistedLogoUrl(admin, { tipo, id, logoUrl }) {
   return uploadLogoBuffer(admin, { tipo, id, buffer, mime });
 }
 
+/** Persiste logo (data URL o URL externa) en Storage y devuelve la URL pública. */
+export async function persistBrandingLogo(admin, { tipo, id, logoUrl }) {
+  return resolvePersistedLogoUrl(admin, { tipo, id, logoUrl });
+}
+
 export async function uploadWorkspaceLogo(adminProfile, { tipo, id, dataUrl }) {
   if (!isSuperAdmin(adminProfile)) throw new ServiceError("Solo Superadmin.", 403);
   const admin = createServiceSupabaseClient();

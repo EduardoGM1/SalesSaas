@@ -13,6 +13,7 @@ import { AdminOverflowMenu } from "@/components/admin/admin-overflow-menu.jsx";
 import { BuscadorUsuario } from "@/components/admin/buscador-usuario.jsx";
 import { useAdminFetch } from "@/hooks/use-admin-session.js";
 import { adminJson } from "@/lib/admin/api.js";
+import { compressSupportScreenshot } from "@/lib/support-image.js";
 import { toast } from "@/lib/toast";
 
 const TABS = [
@@ -69,6 +70,8 @@ export function TenantCompanyAdministration({ session, companies = EMPTY_COMPANI
   const [memberForm, setMemberForm] = useState({ workspace_id: "", usuario: null, role_id: "" });
   const [brandForm, setBrandForm] = useState({ logo_url: "", primary: "#1e5eff", accent: "#0f2044", plan_paquete: "" });
   const [pending, setPending] = useState(false);
+  const [logoPending, setLogoPending] = useState(false);
+  const [logoPreviewBroken, setLogoPreviewBroken] = useState(false);
 
   useEffect(() => {
     if (!companyId && options[0]?.id) setCompanyId(options[0].id);
@@ -83,7 +86,31 @@ export function TenantCompanyAdministration({ session, companies = EMPTY_COMPANI
       accent: colors.accent || "#0f2044",
       plan_paquete: selectedCompany.plan_paquete || "",
     });
+    setLogoPreviewBroken(false);
   }, [selectedCompany]);
+
+  const uploadLogo = async (file) => {
+    if (!file || !companyId) return;
+    setLogoPending(true);
+    try {
+      const compressed = await compressSupportScreenshot(file);
+      const updated = await adminJson(`tenant/empresas/${companyId}/branding/logo`, {
+        method: "POST",
+        body: { data_url: compressed.dataUrl },
+      });
+      setBrandForm((current) => ({ ...current, logo_url: updated?.logo_url || current.logo_url }));
+      setLogoPreviewBroken(false);
+      setReload((value) => value + 1);
+      toast.success("Logo actualizado");
+    } catch (error) {
+      setState((current) => ({
+        ...current,
+        error: error instanceof Error ? error.message : "No se pudo subir el logo.",
+      }));
+    } finally {
+      setLogoPending(false);
+    }
+  };
 
   useEffect(() => {
     if (!companyId) return undefined;
@@ -378,22 +405,73 @@ export function TenantCompanyAdministration({ session, companies = EMPTY_COMPANI
           <AdminCard title={`Branding y plan · ${selectedCompany?.nombre || ""}`} subtitle="La configuración se aplica únicamente a esta empresa.">
             <form className="admin-brand-form" onSubmit={(event) => {
               event.preventDefault();
-              void mutate(() => adminJson(`tenant/empresas/${companyId}`, {
-                method: "PATCH",
-                body: {
-                  logo_url: brandForm.logo_url || null,
-                  colores_marca: { primary: brandForm.primary, accent: brandForm.accent },
-                  plan_paquete: brandForm.plan_paquete || null,
-                },
-              }));
+              void mutate(async () => {
+                const updated = await adminJson(`tenant/empresas/${companyId}`, {
+                  method: "PATCH",
+                  body: {
+                    logo_url: brandForm.logo_url || null,
+                    colores_marca: { primary: brandForm.primary, accent: brandForm.accent },
+                    plan_paquete: brandForm.plan_paquete || null,
+                  },
+                });
+                if (updated?.logo_url !== undefined) {
+                  setBrandForm((current) => ({ ...current, logo_url: updated.logo_url || "" }));
+                  setLogoPreviewBroken(false);
+                }
+              });
             }}>
-              <label className="admin-form-field"><span>Logo URL</span><input className="auth-input" value={brandForm.logo_url} onChange={(event) => setBrandForm((current) => ({ ...current, logo_url: event.target.value }))} /></label>
+              <label className="admin-form-field">
+                <span>Logo por URL</span>
+                <input
+                  className="auth-input"
+                  value={brandForm.logo_url}
+                  onChange={(event) => {
+                    setLogoPreviewBroken(false);
+                    setBrandForm((current) => ({ ...current, logo_url: event.target.value }));
+                  }}
+                  placeholder="https://…"
+                />
+              </label>
+              <p className="admin-card-muted">También puedes subir un archivo PNG/JPG/WEBP (máx. 2 MB).</p>
+              <div className="admin-brand-actions">
+                <label className="btn btn-ghost">
+                  {logoPending ? "Subiendo…" : "Subir logo"}
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    hidden
+                    disabled={logoPending || pending || !companyId}
+                    onChange={(event) => {
+                      const file = event.target.files?.[0];
+                      event.target.value = "";
+                      if (file) void uploadLogo(file);
+                    }}
+                  />
+                </label>
+                <button type="submit" className="btn btn-primary" disabled={pending || logoPending}>Guardar configuración</button>
+              </div>
               <div className="admin-color-fields">
                 <label><span>Primario</span><input type="color" value={brandForm.primary} onChange={(event) => setBrandForm((current) => ({ ...current, primary: event.target.value }))} /></label>
                 <label><span>Acento</span><input type="color" value={brandForm.accent} onChange={(event) => setBrandForm((current) => ({ ...current, accent: event.target.value }))} /></label>
               </div>
               <label className="admin-form-field"><span>Plan comercial</span><input className="auth-input" value={brandForm.plan_paquete} onChange={(event) => setBrandForm((current) => ({ ...current, plan_paquete: event.target.value }))} /></label>
-              <button className="btn btn-primary" disabled={pending}>Guardar configuración</button>
+              {brandForm.logo_url ? (
+                <div className="admin-brand-preview-logo" style={{ marginTop: 12, width: 64, height: 64 }}>
+                  {!logoPreviewBroken ? (
+                    <img
+                      src={brandForm.logo_url}
+                      alt="Vista previa del logo"
+                      referrerPolicy="no-referrer"
+                      onError={() => setLogoPreviewBroken(true)}
+                    />
+                  ) : (
+                    <span>SA</span>
+                  )}
+                </div>
+              ) : null}
+              {brandForm.logo_url && logoPreviewBroken ? (
+                <p className="auth-error">No se pudo cargar la vista previa del logo.</p>
+              ) : null}
             </form>
           </AdminCard>
         ) : null}

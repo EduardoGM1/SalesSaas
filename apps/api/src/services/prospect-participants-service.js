@@ -98,7 +98,7 @@ async function ensureParticipants(access, actorId) {
       representante_id: prospect.user_id,
       gerente_id: managerMembership?.usuario_id || null,
       created_by: actorId,
-      etapa_actual: "abierto",
+      // etapa_actual deprecada: default de columna; no hay pipeline.
       estado: "en_progreso",
     }, { onConflict: "prospect_id", ignoreDuplicates: true })
     .select()

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { toggleChip } from "@/lib/survey/discovery-questions.js";
 import { ChipQuestion, StyleMicroGrid } from "./chip-question.jsx";
@@ -16,7 +16,15 @@ export function MotivacionesPanel({
   const { t } = useI18n();
   const answers = discovery.answers || {};
   const contexts = discovery.contexts || {};
+  const defaultOpenId = useMemo(
+    () => beforeQuestions[0]?.id || afterQuestions[0]?.id || null,
+    [beforeQuestions, afterQuestions],
+  );
   const [openQuestionId, setOpenQuestionId] = useState(null);
+  useEffect(() => {
+    if (!defaultOpenId) return;
+    setOpenQuestionId((prev) => prev ?? defaultOpenId);
+  }, [defaultOpenId]);
 
   const setSelected = (id, next) => {
     onPatch({ answers: { ...answers, [id]: next } });

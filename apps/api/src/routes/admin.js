@@ -188,6 +188,22 @@ router.patch("/tenant/empresas/:empresaId", async (req, res) => {
   );
 });
 
+router.post("/tenant/empresas/:empresaId/branding/logo", async (req, res) => {
+  const a = await tenantActor(req, res);
+  if (!a) return;
+  const body = parseJsonBody(req, res);
+  if (!body) return;
+  await runService(
+    res,
+    () => tenantAdminService.uploadScopedEmpresaLogo(
+      a.userId,
+      req.params.empresaId,
+      body.data_url || body.dataUrl,
+    ),
+    { wrap: "data" },
+  );
+});
+
 // GET /tenant/empresas/:empresaId/users/search?q= — usuarios asignables (misma empresa o sin organización).
 router.get(
   "/tenant/empresas/:empresaId/users/search",

@@ -20,6 +20,8 @@ export interface CalEntry {
   processDate?: string;
   completed?: boolean;
   kind?: string;
+  /** Dueño de la entrada (en sala con teamScope puede ser otro vendedor). */
+  ownerUserId?: string;
 }
 
 export interface CalMonth {

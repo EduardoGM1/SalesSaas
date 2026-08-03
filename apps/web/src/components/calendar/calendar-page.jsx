@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Topbar } from "@/components/layout/topbar";
 import { PageBack } from "@/components/layout/page-back.jsx";
@@ -9,6 +9,8 @@ import { translate } from "@/lib/i18n.js";
 import { isActiveAgendaSale, isCancelledAgendaSale } from "@/lib/sales/agenda-sales";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { useMoney } from "@/hooks/use-money.js";
+import { useWorkspace } from "@/hooks/use-workspace.js";
+import { useAppNav } from "@/hooks/use-app-nav.js";
 import { calKey } from "@/lib/format/dates";
 import { EMPTY_CAL_MONTH } from "@/lib/store-empty.js";
 import { useAppStore } from "@/stores/app-store";
@@ -18,12 +20,13 @@ import { EntryDialog } from "./entry-dialog";
 import { SaleDetailModal } from "@/components/sales/sale-detail-modal.jsx";
 import { useUserFeatures } from "@/hooks/use-user-features.js";
 import { resolveEntryClientId } from "@/lib/clients/resolve-entry-client";
-import { CalEntry } from "@/lib/storage/types";
 
 export function CalendarPage() {
   const navigate = useNavigate();
   const { t, months, weekdays, weekdaysShort } = useI18n();
   const { fmt } = useMoney();
+  const { active } = useWorkspace();
+  const { userProfile } = useAppNav();
   const hydrated = useAppStore((s) => s.hydrated);
   const calYear = useAppStore((s) => s.calYear);
   const calMonth = useAppStore((s) => s.calMonth);
@@ -35,15 +38,53 @@ export function CalendarPage() {
   const db = useDbStore((s) => s.db, shallow);
   const data = useDbStore((s) => s.db.cal[calKey(calYear, calMonth)] ?? EMPTY_CAL_MONTH, shallow);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({ venta: true });
-  const [viewSaleId, setViewSaleId] = useState<string | null>(null);
+  const [openGroups, setOpenGroups] = useState({ venta: true });
+  const [viewSaleId, setViewSaleId] = useState(null);
+  const [peerNameById, setPeerNameById] = useState({});
   const { canViewSaleModal, canViewSaleDetail } = useUserFeatures();
+  const isSala = active?.tipo === "sala_de_venta";
+  const myUserId = userProfile?.id || null;
+
+  useEffect(() => {
+    if (!isSala) {
+      setPeerNameById({});
+      return undefined;
+    }
+    let cancelled = false;
+    fetch("/api/v1/workspace/peers", { credentials: "include" })
+      .then(async (res) => {
+        const body = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(body.error || "peers");
+        return body.data ?? body;
+      })
+      .then((rows) => {
+        if (cancelled) return;
+        const map = {};
+        for (const row of Array.isArray(rows) ? rows : []) {
+          if (!row?.id) continue;
+          map[row.id] = row.full_name?.trim() || row.email || t("cal.ownerUnknown");
+        }
+        setPeerNameById(map);
+      })
+      .catch(() => {
+        if (!cancelled) setPeerNameById({});
+      });
+    return () => { cancelled = true; };
+  }, [isSala, t]);
+
+  const ownerLabel = useMemo(() => {
+    return (entry) => {
+      if (!isSala || !entry?.ownerUserId) return null;
+      if (myUserId && entry.ownerUserId === myUserId) return t("cal.ownerYou");
+      return peerNameById[entry.ownerUserId] || t("cal.ownerUnknown");
+    };
+  }, [isSala, myUserId, peerNameById, t]);
 
   if (!hydrated) return <Topbar title={t("page.agenda.title")} subtitle={t("common.loading")} />;
   const first = new Date(calYear, calMonth, 1).getDay();
   const dim = new Date(calYear, calMonth + 1, 0).getDate();
   const today = new Date();
-  const entries: CalEntry[] = selDay
+  const entries = selDay
     ? (data.days[selDay] || []).filter((entry) => !entry.completed && (entry.t !== "venta" || isActiveAgendaSale(db, entry)))
     : [];
 
@@ -52,7 +93,7 @@ export function CalendarPage() {
     setDialogOpen(true);
   };
 
-  const renderGroup = (type: string, label, dotClass, items: CalEntry[]) => {
+  const renderGroup = (type, label, dotClass, items) => {
     if (!items.length) return null;
     const open = openGroups[type] ?? false;
     const totalVol = items.reduce((a, e) => {
@@ -87,6 +128,7 @@ export function CalendarPage() {
               const idx = selDay ? (data.days[selDay] || []).indexOf(e) : -1;
               const clientId = resolveEntryClientId(db, e);
               const cancelled = type === "venta" && isCancelledAgendaSale(db, e);
+              const owner = ownerLabel(e);
               return (
                 <div key={i} className={`dg-entry${cancelled ? " is-cancelled" : ""}`}>
                   <div style={{ flex: 1 }}>
@@ -97,6 +139,7 @@ export function CalendarPage() {
                       </div>
                     )}
                     {e.note && <div className="dp-date" style={{ color: e.t === "venta" ? undefined : "var(--text)" }}>{e.note}</div>}
+                    {owner ? <span className="dg-owner-badge">{owner}</span> : null}
                   </div>
                   <div className="dg-entry-actions">
                     {type === "venta" && e.saleId && canViewSaleModal ? (

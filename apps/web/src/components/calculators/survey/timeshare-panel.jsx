@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { ChipQuestion } from "./chip-question.jsx";
 import { MembershipTable } from "./membership-table.jsx";
@@ -15,7 +15,15 @@ export function TimesharePanel({
   const { t } = useI18n();
   const answers = discovery.answers || {};
   const contexts = discovery.contexts || {};
+  const defaultOpenId = useMemo(
+    () => timeshareQuestions[0]?.id || hasTsQuestion?.id || null,
+    [timeshareQuestions, hasTsQuestion],
+  );
   const [openQuestionId, setOpenQuestionId] = useState(null);
+  useEffect(() => {
+    if (!defaultOpenId) return;
+    setOpenQuestionId((prev) => prev ?? defaultOpenId);
+  }, [defaultOpenId]);
 
   const setSelected = (id, next) => {
     onPatch({ answers: { ...answers, [id]: next } });

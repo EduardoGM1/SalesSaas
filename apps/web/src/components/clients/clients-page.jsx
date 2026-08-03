@@ -16,6 +16,7 @@ import { useI18n } from "@/hooks/use-i18n.js";
 import { useWorkspace } from "@/hooks/use-workspace.js";
 import { selectOnFocus } from "@/lib/focus-select.js";
 import { useAppStore } from "@/stores/app-store";
+import { useDbStore } from "@/stores/db-store";
 import { useClientActions } from "@/hooks/use-client-actions.js";
 
 /** Solo el valor de catálogo (Q, NQ, CT, Member…); sin sufijo "- 1" / "- 0". */
@@ -79,6 +80,41 @@ function enrichWithTeam(row, teamMetaById) {
   return team ? { ...row, team } : row;
 }
 
+function prospectRowToClient(p, existing) {
+  const base = existing || {
+    data: { survey: {}, vacaciones: {}, worksheet: {} },
+    sales: [],
+    activities: [],
+  };
+  return {
+    ...base,
+    id: p.id,
+    prospectId: p.id,
+    ownerUserId: p.user_id ?? base.ownerUserId,
+    prospectCode: p.prospect_code ?? base.prospectCode,
+    name: p.name ?? base.name,
+    name1: p.name1 ?? base.name1,
+    name2: p.name2 ?? base.name2,
+    city: p.city ?? base.city,
+    country: p.country ?? base.country,
+    phone: p.phone ?? base.phone,
+    email: p.email ?? base.email,
+    contract: p.contract ?? base.contract,
+    status: p.status ?? base.status,
+    tourDate: p.tour_date ?? base.tourDate,
+    processDate: p.process_date ?? base.processDate,
+    processAmount: p.process_amount != null ? Number(p.process_amount) : base.processAmount,
+    note: p.note ?? base.note,
+    tipo_tour: p.tipo_tour ?? base.tipo_tour,
+    tour_cuantificable: p.tour_cuantificable != null ? !!p.tour_cuantificable : base.tour_cuantificable,
+    completedExpedient: p.completed != null ? !!p.completed : base.completedExpedient,
+    quickExpedient: p.quick_expedient != null ? !!p.quick_expedient : base.quickExpedient,
+    createdAt: p.created_at ? Date.parse(p.created_at) || base.createdAt : base.createdAt,
+    createdYmd: p.created_at ? String(p.created_at).slice(0, 10) : base.createdYmd,
+    date: p.created_at ? String(p.created_at).slice(0, 10) : base.date,
+  };
+}
+
 const CLIENTS_PAGE_SIZE = 50;
 
 export function ClientsPage() {
@@ -88,17 +124,38 @@ export function ClientsPage() {
   const { active } = useWorkspace();
   const hydrated = useAppStore((s) => s.hydrated);
   const { searchClients, removeClient } = useClientActions();
+  const saveClient = useDbStore((s) => s.saveClient);
+  const getClient = useDbStore((s) => s.getClient);
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [shareClient, setShareClient] = useState(null);
   const [pinned, setPinned] = useState([]);
   const [teamMetaById, setTeamMetaById] = useState({});
   const [visibleLimit, setVisibleLimit] = useState(CLIENTS_PAGE_SIZE);
+  const [remoteTotal, setRemoteTotal] = useState(null);
+  const [remoteOffset, setRemoteOffset] = useState(0);
+  const [remoteLoading, setRemoteLoading] = useState(false);
   const canShare = isSupabaseConfigured();
   const isSalaWorkspace = active?.tipo === "sala_de_venta";
   const showTeamCols = isSalaWorkspace && canShare;
   const tableColSpan = showTeamCols ? 7 : 4;
   const currentYear = new Date().getFullYear();
+
+  const fetchProspectPage = useCallback(async (offset) => {
+    if (!canShare) return { rows: [], total: 0 };
+    const res = await fetch(`/api/v1/prospects?limit=${CLIENTS_PAGE_SIZE}&offset=${offset}`, {
+      credentials: "include",
+    });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(body.error || "Error al cargar clientes");
+    const rows = Array.isArray(body.data) ? body.data : [];
+    const total = Number(body.total) || 0;
+    for (const row of rows) {
+      if (!row?.id) continue;
+      saveClient(prospectRowToClient(row, getClient(row.id)));
+    }
+    return { rows, total };
+  }, [canShare, getClient, saveClient]);
 
   const refreshPinned = useCallback(() => {
     if (!canShare) return Promise.resolve();
@@ -141,6 +198,24 @@ export function ClientsPage() {
 
   useEffect(() => {
     if (!canShare || !hydrated) return;
+    let cancelled = false;
+    setRemoteOffset(0);
+    setRemoteLoading(true);
+    fetchProspectPage(0)
+      .then(({ total }) => {
+        if (!cancelled) setRemoteTotal(total);
+      })
+      .catch(() => {
+        if (!cancelled) setRemoteTotal(null);
+      })
+      .finally(() => {
+        if (!cancelled) setRemoteLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [canShare, hydrated, location.key, active?.id, fetchProspectPage]);
+
+  useEffect(() => {
+    if (!canShare || !hydrated) return;
     const onVisible = () => {
       if (document.visibilityState === "visible") {
         refreshPinned();
@@ -177,12 +252,34 @@ export function ClientsPage() {
     () => allRows.slice(0, visibleLimit),
     [allRows, visibleLimit],
   );
-  const totalCount = ownedAll.length + pinnedOnly.length;
+  const localOwnedCount = ownedAll.length;
+  const totalCount = Math.max(remoteTotal ?? localOwnedCount, localOwnedCount) + pinnedOnly.length;
   const hasSearch = query.trim().length > 0;
+  const canFetchMoreRemote = canShare
+    && remoteTotal != null
+    && remoteOffset + CLIENTS_PAGE_SIZE < remoteTotal;
 
   useEffect(() => {
     setVisibleLimit(CLIENTS_PAGE_SIZE);
   }, [query, location.key]);
+
+  const loadMore = async () => {
+    const nextVisible = visibleLimit + CLIENTS_PAGE_SIZE;
+    setVisibleLimit(nextVisible);
+    if (!canFetchMoreRemote || remoteLoading) return;
+    if (nextVisible <= allRows.length && localOwnedCount >= (remoteTotal ?? 0)) return;
+    setRemoteLoading(true);
+    try {
+      const nextOffset = remoteOffset + CLIENTS_PAGE_SIZE;
+      const { total } = await fetchProspectPage(nextOffset);
+      setRemoteOffset(nextOffset);
+      setRemoteTotal(total);
+    } catch {
+      /* keep local slice */
+    } finally {
+      setRemoteLoading(false);
+    }
+  };
 
   if (!hydrated) return <Topbar title={t("page.clients.title")} subtitle={t("common.loading")} />;
 
@@ -349,14 +446,20 @@ export function ClientsPage() {
                 })()}
               </tbody>
             </table>
-            {visibleLimit < allRows.length ? (
+            {visibleLimit < allRows.length || canFetchMoreRemote ? (
               <div className="btn-row" style={{ padding: "12px 16px", justifyContent: "center" }}>
                 <button
                   type="button"
                   className="btn btn-ghost btn-sm"
-                  onClick={() => setVisibleLimit((n) => n + CLIENTS_PAGE_SIZE)}
+                  disabled={remoteLoading}
+                  onClick={() => { void loadMore(); }}
                 >
-                  {t("clients.loadMore", { shown: visibleRows.length, total: allRows.length })}
+                  {remoteLoading
+                    ? t("common.loading")
+                    : t("clients.loadMore", {
+                      shown: visibleRows.length,
+                      total: hasSearch ? allRows.length : totalCount,
+                    })}
                 </button>
               </div>
             ) : null}

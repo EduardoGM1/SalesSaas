@@ -241,7 +241,7 @@ function dbToRows(db, userId, workspaceId = null) {
         const pid = e.clientId && validProspectIds.has(e.clientId) ? e.clientId : e.prospectId && validProspectIds.has(e.prospectId) ? e.prospectId : null;
         calendar_entries.push({
           id: e.id,
-          user_id: userId,
+          user_id: isUuid(e.ownerUserId) ? e.ownerUserId : userId,
           prospect_id: pid,
           sale_id: e.saleId && validSaleIds.has(e.saleId) ? e.saleId : null,
           type: e.t,
@@ -406,7 +406,8 @@ function rowsToDb(rows) {
       processing: c.processing ?? void 0,
       processDate: c.process_date ?? void 0,
       completed: !!c.completed,
-      kind: c.kind ?? void 0
+      kind: c.kind ?? void 0,
+      ownerUserId: c.user_id ?? void 0,
     };
     (month.days[day] ||= []).push(entry);
   }

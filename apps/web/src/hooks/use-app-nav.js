@@ -128,6 +128,7 @@ export function useAppNav() {
     isAdmin,
     avatarUrl,
     avatarLabel,
+    userProfile,
     unreadMessages,
     workspaceTipo,
     sidebarGroups,

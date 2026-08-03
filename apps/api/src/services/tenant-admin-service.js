@@ -1,5 +1,6 @@
 import { ServiceError } from "../lib/service-error.js";
 import { adminClient, requireEmpresaAdmin } from "../lib/tenant-access.js";
+import { persistBrandingLogo } from "./workspace-service.js";
 
 export async function getHierarchicalAdminContext(userId) {
   const admin = adminClient();
@@ -216,12 +217,38 @@ export async function updateScopedEmpresa(actorId, empresaId, body) {
   const admin = await requireEmpresaAdmin(actorId, empresaId);
   const patch = { updated_at: new Date().toISOString() };
   if (body?.nombre !== undefined) patch.nombre = String(body.nombre).trim();
-  if (body?.logo_url !== undefined) patch.logo_url = body.logo_url || null;
+  if (body?.logo_url !== undefined) {
+    patch.logo_url = await persistBrandingLogo(admin, {
+      tipo: "empresa",
+      id: empresaId,
+      logoUrl: body.logo_url,
+    });
+  }
   if (body?.colores_marca !== undefined) patch.colores_marca = body.colores_marca || {};
   if (body?.plan_paquete !== undefined) patch.plan_paquete = body.plan_paquete || null;
   const { data, error } = await admin
     .from("empresas")
     .update(patch)
+    .eq("id", empresaId)
+    .select("id, nombre, logo_url, colores_marca, plan_paquete, estado")
+    .maybeSingle();
+  if (error) throw new ServiceError(error.message, 400);
+  if (!data) throw new ServiceError("Empresa no encontrada.", 404);
+  return data;
+}
+
+/** Sube logo de empresa (Admin empresa o Superadmin) desde data URL. */
+export async function uploadScopedEmpresaLogo(actorId, empresaId, dataUrl) {
+  const admin = await requireEmpresaAdmin(actorId, empresaId);
+  if (!dataUrl) throw new ServiceError("data_url requerido.", 400);
+  const logoUrl = await persistBrandingLogo(admin, {
+    tipo: "empresa",
+    id: empresaId,
+    logoUrl: dataUrl,
+  });
+  const { data, error } = await admin
+    .from("empresas")
+    .update({ logo_url: logoUrl, updated_at: new Date().toISOString() })
     .eq("id", empresaId)
     .select("id, nombre, logo_url, colores_marca, plan_paquete, estado")
     .maybeSingle();

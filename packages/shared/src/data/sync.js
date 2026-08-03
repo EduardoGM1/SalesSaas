@@ -1,7 +1,54 @@
 import { dbToRows, rowsToDb } from "./mappers.js";
 import { SYNC_SELECT } from "./sync-columns.js";
 
-const TEAM_TABLES = new Set(["prospects", "sales", "activities", "tool_calculations"]);
+const TEAM_TABLES = new Set([
+  "prospects",
+  "sales",
+  "activities",
+  "tool_calculations",
+  "calendar_entries",
+]);
+
+/** Tablas grandes: pull por páginas para no saturar móvil/sala con muchos registros. */
+const PAGED_TABLES = new Set([
+  "prospects",
+  "sales",
+  "calendar_entries",
+  "activities",
+  "tool_calculations",
+]);
+const PULL_PAGE_SIZE = 200;
+
+async function pullTable(sb, table, userId, workspaceId, teamScope) {
+  const useTeam = teamScope && TEAM_TABLES.has(table) && workspaceId;
+  if (!PAGED_TABLES.has(table)) {
+    let q = sb.from(table).select(SYNC_SELECT[table]);
+    if (!useTeam) q = q.eq("user_id", userId);
+    if (workspaceId) q = q.eq("workspace_id", workspaceId);
+    const { data, error } = await q;
+    if (error) throw new Error(`pull ${table}: ${error.message}`);
+    return data ?? [];
+  }
+
+  const all = [];
+  let from = 0;
+  for (;;) {
+    let q = sb
+      .from(table)
+      .select(SYNC_SELECT[table])
+      .order("id", { ascending: true })
+      .range(from, from + PULL_PAGE_SIZE - 1);
+    if (!useTeam) q = q.eq("user_id", userId);
+    if (workspaceId) q = q.eq("workspace_id", workspaceId);
+    const { data, error } = await q;
+    if (error) throw new Error(`pull ${table}: ${error.message}`);
+    const batch = data ?? [];
+    all.push(...batch);
+    if (batch.length < PULL_PAGE_SIZE) break;
+    from += PULL_PAGE_SIZE;
+  }
+  return all;
+}
 
 async function pullAll(sb, userId, workspaceId = null, { teamScope = false } = {}) {
   const tables = [
@@ -13,24 +60,15 @@ async function pullAll(sb, userId, workspaceId = null, { teamScope = false } = {
     "tool_calculations",
   ];
   const results = await Promise.all(
-    tables.map((t) => {
-      let q = sb.from(t).select(SYNC_SELECT[t]);
-      const useTeam = teamScope && TEAM_TABLES.has(t) && workspaceId;
-      if (!useTeam) q = q.eq("user_id", userId);
-      if (workspaceId) q = q.eq("workspace_id", workspaceId);
-      return q;
-    }),
+    tables.map((t) => pullTable(sb, t, userId, workspaceId, teamScope)),
   );
-  results.forEach((res, i) => {
-    if (res.error) throw new Error(`pull ${tables[i]}: ${res.error.message}`);
-  });
   const rows = {
-    prospects: results[0].data ?? [],
-    sales: results[1].data ?? [],
-    calendar_entries: results[2].data ?? [],
-    goals: results[3].data ?? [],
-    activities: results[4].data ?? [],
-    tool_calculations: results[5].data ?? [],
+    prospects: results[0],
+    sales: results[1],
+    calendar_entries: results[2],
+    goals: results[3],
+    activities: results[4],
+    tool_calculations: results[5],
   };
   return rowsToDb(rows);
 }
@@ -85,10 +123,13 @@ async function reconcile(sb, db, userId, workspaceId = null, { teamScope = false
   const ownTools = teamScope
     ? rows.tool_calculations.filter((r) => r.user_id === userId)
     : rows.tool_calculations;
+  const ownCalendar = teamScope
+    ? rows.calendar_entries.filter((r) => r.user_id === userId)
+    : rows.calendar_entries;
 
   await upsert(sb, "prospects", ownProspects);
   await upsert(sb, "sales", ownSales);
-  await upsert(sb, "calendar_entries", rows.calendar_entries);
+  await upsert(sb, "calendar_entries", ownCalendar);
   await upsert(sb, "activities", ownActivities);
   await upsert(sb, "goals", rows.goals, "user_id,year,month");
   await upsert(
@@ -103,7 +144,7 @@ async function reconcile(sb, db, userId, workspaceId = null, { teamScope = false
     ownTools.map((r) => ({ prospect_id: r.prospect_id, tool: r.tool })),
     workspaceId,
   );
-  await deleteMissing(sb, "calendar_entries", userId, rows.calendar_entries.map((r) => r.id), workspaceId);
+  await deleteMissing(sb, "calendar_entries", userId, ownCalendar.map((r) => r.id), workspaceId);
   await deleteMissing(sb, "activities", userId, ownActivities.map((r) => r.id), workspaceId);
   await deleteMissing(sb, "sales", userId, ownSales.map((r) => r.id), workspaceId);
   await deleteMissing(sb, "prospects", userId, ownProspects.map((r) => r.id), workspaceId);

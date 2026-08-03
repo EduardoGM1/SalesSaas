@@ -63,13 +63,13 @@ export async function createProspect(supabase, userId, body) {
         .eq("rol_en_workspace", "gerente")
         .limit(1)
         .maybeSingle();
+      // etapa_actual está deprecada (default DB); no se usa en UI ni lógica de negocio.
       await admin.from("prospect_workflows").upsert({
         prospect_id: data.id,
         workspace_id: workspaceId,
         representante_id: userId,
         gerente_id: gerente?.usuario_id || null,
         created_by: userId,
-        etapa_actual: "abierto",
         estado: "en_progreso",
       }, { onConflict: "prospect_id" });
       await admin.rpc("sync_prospect_chat_members", { p_prospect_id: data.id }).catch(() => {});
