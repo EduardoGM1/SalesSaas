@@ -16,6 +16,7 @@ import {
   getMobileHeaderNavItems,
   getSidebarNavGroups,
 } from "@/lib/nav-config.js";
+import { warmAdminSession } from "@/hooks/use-admin-session.js";
 
 export function useAppNav() {
   const mounted = useMounted();
@@ -49,14 +50,25 @@ export function useAppNav() {
         admin_permissions: Array.isArray(profile.admin_permissions) ? profile.admin_permissions : [],
       });
       setIsAdmin(platformAdmin);
-      if (!platformAdmin) {
+      if (platformAdmin) {
+        // Calentar cache para que /admin no blankee el shell.
+        void fetch("/api/v1/admin/me", { credentials: "include" })
+          .then(async (response) => (response.ok ? response.json() : null))
+          .then((adminSession) => {
+            if (adminSession) warmAdminSession(adminSession);
+          })
+          .catch(() => {});
+      } else {
         fetch("/api/v1/admin/me", { credentials: "include" })
           .then(async (response) => {
             if (!response.ok) return null;
             return response.json();
           })
           .then((adminSession) => {
-            if (adminSession?.userId === profile.id) setIsAdmin(true);
+            if (adminSession?.userId === profile.id) {
+              warmAdminSession(adminSession);
+              setIsAdmin(true);
+            }
           })
           .catch(() => {});
       }

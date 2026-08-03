@@ -10,7 +10,7 @@ export async function listTenantRoles(actorId, empresaId) {
   const admin = await requireEmpresaAdmin(actorId, empresaId);
   const { data, error } = await admin
     .from("roles")
-    .select("id, nombre, slug, scope, empresa_id, paquete_id, es_sistema, paquetes_acceso(id, nombre, slug), rol_permisos(permisos(clave))")
+    .select("id, nombre, slug, scope, empresa_id, paquete_id, es_sistema, paquetes_acceso(id, nombre, slug, paquete_flags(flag_id, activo, flags(clave))), rol_permisos(permisos(clave))")
     .eq("empresa_id", empresaId)
     .order("nombre");
   if (error) throw new ServiceError(error.message, 500);
@@ -18,6 +18,10 @@ export async function listTenantRoles(actorId, empresaId) {
     ...role,
     permission_keys: (role.rol_permisos ?? [])
       .map((row) => row.permisos?.clave)
+      .filter(Boolean),
+    flag_keys: (role.paquetes_acceso?.paquete_flags ?? [])
+      .filter((row) => row.activo !== false)
+      .map((row) => row.flags?.clave)
       .filter(Boolean),
     rol_permisos: undefined,
   }));
@@ -30,11 +34,21 @@ export async function createTenantRole(actorId, empresaId, body) {
   const slug = normalizeSlug(body?.slug || nombre);
   if (!nombre || !slug) throw new ServiceError("Nombre requerido.", 400);
 
-  if (body?.paquete_id) {
+  let paqueteId = body?.paquete_id || null;
+  if (Array.isArray(body?.flag_keys)) {
+    paqueteId = await ensureRolePackageFromFlags(admin, {
+      empresaId,
+      actorId,
+      nombre,
+      slug,
+      flagKeys: body.flag_keys,
+      existingPackageId: paqueteId,
+    });
+  } else if (paqueteId) {
     const { data: pack } = await admin
       .from("paquetes_acceso")
       .select("id")
-      .eq("id", body.paquete_id)
+      .eq("id", paqueteId)
       .eq("empresa_id", empresaId)
       .maybeSingle();
     if (!pack) throw new ServiceError("El paquete no pertenece a la empresa.", 400);
@@ -47,14 +61,18 @@ export async function createTenantRole(actorId, empresaId, body) {
       slug,
       scope,
       empresa_id: empresaId,
-      paquete_id: body?.paquete_id || null,
+      paquete_id: paqueteId,
       es_sistema: false,
     })
     .select("id, nombre, slug, scope, empresa_id, paquete_id, es_sistema")
     .single();
   if (error) throw new ServiceError(error.message, 400);
 
-  await replaceRolePermissions(admin, data.id, body?.permission_keys);
+  // Permisos workflow mínimos; el acceso a herramientas lo define el paquete/flags.
+  await replaceRolePermissions(admin, data.id, body?.permission_keys ?? [
+    "workflow:ver",
+    "workflow:avanzar",
+  ]);
   return data;
 }
 
@@ -62,43 +80,93 @@ export async function updateTenantRole(actorId, empresaId, roleId, body) {
   const admin = await requireEmpresaAdmin(actorId, empresaId);
   const { data: role } = await admin
     .from("roles")
-    .select("id, es_sistema")
+    .select("id, nombre, slug, paquete_id, es_sistema")
     .eq("id", roleId)
     .eq("empresa_id", empresaId)
     .maybeSingle();
   if (!role) throw new ServiceError("Puesto no encontrado.", 404);
-  if (role.es_sistema) throw new ServiceError("Un puesto de sistema no puede modificarse.", 403);
 
-  const patch = {};
-  if (body?.nombre !== undefined) patch.nombre = String(body.nombre).trim();
-  if (body?.slug !== undefined) patch.slug = normalizeSlug(body.slug);
-  if (body?.scope !== undefined) patch.scope = body.scope === "empresa" ? "empresa" : "workspace";
-  if (body?.paquete_id !== undefined) {
-    if (body.paquete_id) {
-      const { data: pack } = await admin
-        .from("paquetes_acceso")
-        .select("id")
-        .eq("id", body.paquete_id)
-        .eq("empresa_id", empresaId)
-        .maybeSingle();
-      if (!pack) throw new ServiceError("El paquete no pertenece a la empresa.", 400);
+  // Sistema: renombrar siempre; módulos solo Liner/Cerrador (paquetes dedicados).
+  if (role.es_sistema) {
+    const patch = {};
+    if (body?.nombre !== undefined) {
+      const nombre = String(body.nombre).trim();
+      if (!nombre) throw new ServiceError("Nombre requerido.", 400);
+      patch.nombre = nombre;
     }
-    patch.paquete_id = body.paquete_id || null;
+    if (Object.keys(patch).length) {
+      const { error } = await admin.from("roles").update(patch).eq("id", roleId);
+      if (error) throw new ServiceError(error.message, 400);
+    }
+    if (Array.isArray(body?.flag_keys)) {
+      if (!["liner", "cerrador"].includes(role.slug)) {
+        throw new ServiceError("Solo Liner y Cerrador permiten ajustar módulos de sistema.", 403);
+      }
+      const packageId = await ensureRolePackageFromFlags(admin, {
+        empresaId,
+        actorId,
+        nombre: patch.nombre || role.nombre,
+        slug: role.slug,
+        flagKeys: body.flag_keys,
+        existingPackageId: role.paquete_id,
+        systemSlug: role.slug === "liner" ? "liner" : "cierre",
+      });
+      if (packageId && packageId !== role.paquete_id) {
+        await admin.from("roles").update({ paquete_id: packageId }).eq("id", roleId);
+      }
+    }
+  } else {
+    const patch = {};
+    if (body?.nombre !== undefined) patch.nombre = String(body.nombre).trim();
+    if (body?.slug !== undefined) patch.slug = normalizeSlug(body.slug);
+    if (body?.scope !== undefined) patch.scope = body.scope === "empresa" ? "empresa" : "workspace";
+    if (body?.paquete_id !== undefined && !Array.isArray(body?.flag_keys)) {
+      if (body.paquete_id) {
+        const { data: pack } = await admin
+          .from("paquetes_acceso")
+          .select("id")
+          .eq("id", body.paquete_id)
+          .eq("empresa_id", empresaId)
+          .maybeSingle();
+        if (!pack) throw new ServiceError("El paquete no pertenece a la empresa.", 400);
+      }
+      patch.paquete_id = body.paquete_id || null;
+    }
+    if (Array.isArray(body?.flag_keys)) {
+      patch.paquete_id = await ensureRolePackageFromFlags(admin, {
+        empresaId,
+        actorId,
+        nombre: patch.nombre || role.nombre,
+        slug: patch.slug || role.slug,
+        flagKeys: body.flag_keys,
+        existingPackageId: role.paquete_id,
+      });
+    }
+    if (Object.keys(patch).length) {
+      const { error } = await admin.from("roles").update(patch).eq("id", roleId);
+      if (error) throw new ServiceError(error.message, 400);
+    }
+    if (body?.permission_keys !== undefined) {
+      await replaceRolePermissions(admin, roleId, body.permission_keys);
+    }
   }
-  if (Object.keys(patch).length) {
-    const { error } = await admin.from("roles").update(patch).eq("id", roleId);
-    if (error) throw new ServiceError(error.message, 400);
-  }
-  if (body?.permission_keys !== undefined) {
-    await replaceRolePermissions(admin, roleId, body.permission_keys);
-  }
+
   const { data, error } = await admin
     .from("roles")
-    .select("id, nombre, slug, scope, empresa_id, paquete_id, es_sistema")
+    .select("id, nombre, slug, scope, empresa_id, paquete_id, es_sistema, paquetes_acceso(id, nombre, slug, paquete_flags(flag_id, activo, flags(clave)))")
     .eq("id", roleId)
     .single();
   if (error) throw new ServiceError(error.message, 500);
-  return data;
+  return {
+    ...data,
+    flag_keys: (data.paquetes_acceso?.paquete_flags ?? [])
+      .filter((row) => row.activo !== false)
+      .map((row) => row.flags?.clave)
+      .filter(Boolean),
+    paquetes_acceso: data.paquetes_acceso
+      ? { id: data.paquetes_acceso.id, nombre: data.paquetes_acceso.nombre, slug: data.paquetes_acceso.slug }
+      : null,
+  };
 }
 
 export async function deleteTenantRole(actorId, empresaId, roleId) {
@@ -131,6 +199,53 @@ async function replaceRolePermissions(admin, roleId, keys) {
     );
     if (insertError) throw new ServiceError(insertError.message, 400);
   }
+}
+
+/** Crea/actualiza el paquete ligado al puesto a partir de flag_keys (módulos). */
+async function ensureRolePackageFromFlags(admin, {
+  empresaId,
+  actorId,
+  nombre,
+  slug,
+  flagKeys,
+  existingPackageId,
+  systemSlug,
+}) {
+  const clean = [...new Set((flagKeys || []).map(String).filter(Boolean))];
+  let packageId = existingPackageId || null;
+
+  if (!packageId) {
+    const packSlug = systemSlug || `puesto-${slug || normalizeSlug(nombre)}`;
+    const { data: created, error } = await admin
+      .from("paquetes_acceso")
+      .insert({
+        empresa_id: empresaId,
+        nombre: `${nombre} (módulos)`,
+        slug: packSlug,
+        descripcion: `Módulos del puesto ${nombre}`,
+        es_sistema: Boolean(systemSlug),
+        activo: true,
+        creado_por: actorId || null,
+      })
+      .select("id")
+      .single();
+    if (error) {
+      // Si el slug ya existe (liner/cierre), reutilizar.
+      const { data: existing } = await admin
+        .from("paquetes_acceso")
+        .select("id")
+        .eq("empresa_id", empresaId)
+        .eq("slug", packSlug)
+        .maybeSingle();
+      if (!existing) throw new ServiceError(error.message, 400);
+      packageId = existing.id;
+    } else {
+      packageId = created.id;
+    }
+  }
+
+  await replacePackageFlags(admin, packageId, clean);
+  return packageId;
 }
 
 export async function listAccessPackages(actorId, empresaId) {

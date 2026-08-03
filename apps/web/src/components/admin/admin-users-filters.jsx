@@ -1,8 +1,7 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Search } from "lucide-react";
 import { AdminFilterBar } from "@/components/admin/admin-ui.jsx";
 import { useI18n } from "@/hooks/use-i18n.js";
-import type { UserAdminFilters } from "@/lib/admin/types";
 import { userFiltersToSearchParams } from "@/lib/admin/filters";
 
 const ROLES = [
@@ -27,16 +26,25 @@ export function AdminUsersFilters({
   filters,
   exportHref,
   showExport = true,
-}: {
-  filters: UserAdminFilters;
-  exportHref;
-  showExport?: boolean;
 }) {
   const { t } = useI18n();
+  const navigate = useNavigate();
   const qs = userFiltersToSearchParams(filters);
 
+  const onSubmit = (event) => {
+    event.preventDefault();
+    const fd = new FormData(event.currentTarget);
+    const params = new URLSearchParams();
+    for (const [key, value] of fd.entries()) {
+      const v = String(value || "").trim();
+      if (v) params.set(key, v);
+    }
+    const search = params.toString();
+    navigate(search ? `/admin/users?${search}` : "/admin/users");
+  };
+
   return (
-    <form method="GET" action="/admin/users">
+    <form onSubmit={onSubmit}>
       <AdminFilterBar
         className="admin-users-filterbar"
         actions={

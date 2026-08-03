@@ -791,7 +791,7 @@
   flex-direction: column;
   min-height: 0;
   width: 100%;
-  animation: pageIn 0.18s ease;
+  /* Sin pageIn: evita sensación de “recarga completa” al entrar al panel */
 }
 .admin-embedded-loading {
   flex: 1;
@@ -801,6 +801,93 @@
   padding: 48px 20px;
   color: var(--muted);
   font-size: 14px;
+}
+.admin-embedded-skeleton {
+  min-height: 180px;
+  border-radius: 12px;
+  background: linear-gradient(90deg, #f1f5f9 0%, #e2e8f0 50%, #f1f5f9 100%);
+  background-size: 200% 100%;
+  animation: adminSkeleton 1.1s ease-in-out infinite;
+}
+@keyframes adminSkeleton {
+  0% { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
+
+.admin-modules-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 14px;
+}
+.admin-module-card {
+  border: 1px solid var(--border2, #e2e8f0);
+  border-radius: 14px;
+  background: var(--white, #fff);
+  padding: 14px 16px;
+}
+.admin-module-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+.admin-module-card-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text, #0f172a);
+}
+.admin-module-card-key {
+  margin: 2px 0 0;
+  font-size: 11px;
+  color: var(--muted, #64748b);
+}
+.admin-module-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  flex: 0 0 auto;
+}
+.admin-module-toggle input {
+  width: 16px;
+  height: 16px;
+}
+.admin-module-rules-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  border: 0;
+  background: #f8fafc;
+  border-radius: 8px;
+  padding: 8px 10px;
+  margin-top: 6px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text, #0f172a);
+  cursor: pointer;
+}
+.admin-module-rules-toggle .is-open,
+.admin-module-rules-toggle svg.is-open {
+  transform: rotate(180deg);
+}
+.admin-module-rules,
+.admin-module-children {
+  margin-top: 10px;
+}
+.admin-module-children .admin-module-card {
+  margin-top: 8px;
+  background: #f8fafc;
+}
+.admin-module-rule-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
 }
 .admin-embedded > .admin-main {
   flex: 1;

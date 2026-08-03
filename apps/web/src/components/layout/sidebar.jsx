@@ -61,7 +61,18 @@ export function Sidebar() {
               const visibleLabel = navLabel(label, language);
               const active = isNavItemActive(pathname, href);
               return (
-                <Link to={href} className={cn("sb-item", active && "active")}>
+                <Link
+                  to={href}
+                  className={cn("sb-item", active && "active")}
+                  onMouseEnter={() => {
+                    void import("@/pages/admin/AdminOverviewPage.jsx");
+                    void import("@/hooks/use-admin-session.js").then((m) => m.prefetchAdminSession?.());
+                  }}
+                  onFocus={() => {
+                    void import("@/pages/admin/AdminOverviewPage.jsx");
+                    void import("@/hooks/use-admin-session.js").then((m) => m.prefetchAdminSession?.());
+                  }}
+                >
                   <Icon size={18} strokeWidth={2} />
                   <span className="sb-tooltip">{visibleLabel}</span>
                 </Link>

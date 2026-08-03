@@ -3,23 +3,80 @@ import { useOutletContext } from "react-router-dom";
 import { AdminDataView, AdminPageHeader, AdminPageState, AdminStatusBadge } from "@/components/admin/admin-ui.jsx";
 import { useAdminFetch } from "@/hooks/use-admin-session.js";
 import { hasPermission } from "@/lib/auth/permissions";
-import { permissionsByModule } from "@salesapp/shared/auth/permission-catalog.js";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { adminJson } from "@/lib/admin/api.js";
 
-function RoleEditor({ role, modules, onClose, onSaved }) {
+function collectFlagKeys(nodes, acc = []) {
+  for (const n of nodes || []) {
+    acc.push(n);
+    if (n.children?.length) collectFlagKeys(n.children, acc);
+  }
+  return acc;
+}
+
+function flagKeysForRole(flagTree, roleId) {
+  const keys = new Set();
+  for (const node of collectFlagKeys(flagTree)) {
+    const hit = (node.rules || []).some(
+      (r) => r.alcance === "rol" && r.alcance_id === roleId && r.activo === true,
+    );
+    if (hit) keys.add(node.clave);
+  }
+  return keys;
+}
+
+function ModuleCheckboxTree({ nodes, selected, onToggle, depth = 0 }) {
+  return (nodes || []).map((node) => (
+    <div key={node.id} style={{ marginLeft: depth * 14, marginBottom: 6 }}>
+      <label className="admin-perm-item">
+        <input
+          type="checkbox"
+          checked={selected.has(node.clave)}
+          onChange={() => onToggle(node)}
+        />
+        <span>
+          {node.nombre_visible}
+          <span className="admin-cell-muted" style={{ marginLeft: 6, fontSize: 11 }}>{node.clave}</span>
+        </span>
+      </label>
+      {node.children?.length > 0 && (
+        <ModuleCheckboxTree
+          nodes={node.children}
+          selected={selected}
+          onToggle={onToggle}
+          depth={depth + 1}
+        />
+      )}
+    </div>
+  ));
+}
+
+function RoleEditor({ role, flagTree, onClose, onSaved }) {
   const { t } = useI18n();
   const isNew = !role?.id;
   const [nombre, setNombre] = useState(role?.nombre ?? "");
-  const [keys, setKeys] = useState(() => new Set(role?.permission_keys ?? []));
+  const [keys, setKeys] = useState(() => (
+    isNew ? new Set() : flagKeysForRole(flagTree, role.id)
+  ));
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
 
-  const toggle = (clave) => {
+  const toggle = (node) => {
     setKeys((prev) => {
       const next = new Set(prev);
-      if (next.has(clave)) next.delete(clave);
-      else next.add(clave);
+      const turningOn = !next.has(node.clave);
+      if (turningOn) {
+        next.add(node.clave);
+        // Activar hijos si se enciende el padre
+        for (const child of collectFlagKeys(node.children || [])) {
+          next.add(child.clave);
+        }
+      } else {
+        next.delete(node.clave);
+        for (const child of collectFlagKeys(node.children || [])) {
+          next.delete(child.clave);
+        }
+      }
       return next;
     });
   };
@@ -29,13 +86,16 @@ function RoleEditor({ role, modules, onClose, onSaved }) {
     setPending(true);
     setError("");
     try {
-      const permission_keys = [...keys];
+      const flag_keys = [...keys];
       if (isNew) {
-        await adminJson("roles", { method: "POST", body: { nombre, permission_keys } });
+        await adminJson("roles", { method: "POST", body: { nombre, flag_keys } });
       } else {
         await adminJson(`roles/${role.id}`, {
           method: "PATCH",
-          body: { nombre: role.es_sistema ? undefined : nombre, permission_keys },
+          body: {
+            nombre: role.es_sistema ? undefined : nombre,
+            flag_keys,
+          },
         });
       }
       try {
@@ -73,26 +133,13 @@ function RoleEditor({ role, modules, onClose, onSaved }) {
               disabled={role?.es_sistema === true}
               required={isNew || !role?.es_sistema}
             />
+            <p className="admin-confirm-sub" style={{ marginTop: 10 }}>
+              {t("admin.roles.modulesHint")}
+            </p>
           </div>
           <div className="admin-confirm-body" style={{ maxHeight: 360, overflow: "auto" }}>
-            {modules.map((mod) => (
-              <div key={mod.id} style={{ marginBottom: 16 }}>
-                <div className="section-label" style={{ marginBottom: 8 }}>{mod.label}</div>
-                <div className="admin-perms-grid">
-                  {mod.permissions.map((p) => (
-                    <label key={p.clave} className="admin-perm-item">
-                      <input
-                        type="checkbox"
-                        checked={keys.has(p.clave)}
-                        onChange={() => toggle(p.clave)}
-                        disabled={role?.slug === "superadmin"}
-                      />
-                      <span>{p.nombre_visible}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-            ))}
+            <div className="section-label" style={{ marginBottom: 8 }}>{t("admin.roles.modulesTitle")}</div>
+            <ModuleCheckboxTree nodes={flagTree} selected={keys} onToggle={toggle} />
           </div>
           {error && <div className="auth-error" style={{ margin: "0 20px 12px" }}>{error}</div>}
           <div className="btn-row">
@@ -116,7 +163,8 @@ export function AdminRolesPage() {
   const [editor, setEditor] = useState(null);
   const [busyId, setBusyId] = useState(null);
   const { loading, data, error } = useAdminFetch("roles", `?_=${reloadKey}`);
-  const modules = useMemo(() => permissionsByModule(), []);
+  const { data: flagsData } = useAdminFetch("flags", `?_=${reloadKey}`);
+  const flagTree = Array.isArray(flagsData) ? flagsData : [];
 
   const canManageRoles = Boolean(
     session?.isSuperAdmin
@@ -127,6 +175,14 @@ export function AdminRolesPage() {
   }
 
   const roles = Array.isArray(data) ? data : [];
+  const moduleCounts = useMemo(() => {
+    const map = new Map();
+    for (const role of roles) {
+      map.set(role.id, flagKeysForRole(flagTree, role.id).size);
+    }
+    return map;
+  }, [roles, flagTree]);
+
   const refresh = () => {
     setEditor(null);
     setReloadKey((k) => k + 1);
@@ -152,7 +208,7 @@ export function AdminRolesPage() {
         eyebrow="Gobierno de acceso"
         title={t("admin.roles.title")}
         subtitle={t("admin.roles.sub")}
-        actions={<button type="button" className="btn btn-primary" onClick={() => setEditor({ permission_keys: [] })}>
+        actions={<button type="button" className="btn btn-primary" onClick={() => setEditor({})}>
           {t("admin.roles.create")}
         </button>}
       />
@@ -165,7 +221,7 @@ export function AdminRolesPage() {
                 <th>{t("admin.roles.col.name")}</th>
                 <th>{t("admin.roles.col.slug")}</th>
                 <th>{t("admin.roles.col.type")}</th>
-                <th style={{ textAlign: "right" }}>{t("admin.roles.col.perms")}</th>
+                <th style={{ textAlign: "right" }}>{t("admin.roles.col.modules")}</th>
                 <th className="admin-cell-actions">{t("admin.users.col.actions")}</th>
               </tr>
             </thead>
@@ -180,7 +236,7 @@ export function AdminRolesPage() {
                       : <AdminStatusBadge tone="neutral">{t("admin.roles.badge.custom")}</AdminStatusBadge>}
                   </td>
                   <td className="admin-cell-num" style={{ textAlign: "right" }}>
-                    {Array.isArray(role.permission_keys) ? role.permission_keys.length : 0}
+                    {moduleCounts.get(role.id) ?? 0}
                   </td>
                   <td className="admin-cell-actions">
                     <div className="admin-table-actions">
@@ -214,7 +270,7 @@ export function AdminRolesPage() {
       {editor && (
         <RoleEditor
           role={editor.id ? editor : null}
-          modules={modules}
+          flagTree={flagTree}
           onClose={() => setEditor(null)}
           onSaved={refresh}
         />

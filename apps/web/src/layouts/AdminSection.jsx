@@ -41,18 +41,31 @@ export function AdminSection() {
     });
   }, [loading, session, hasNavAccess, permissions, pathname]);
 
-  if (loading) {
+  // Mantener chrome admin (Topbar + área) mientras carga — sin blank de página completa.
+  if (loading && !session) {
     return (
-      <>
-        <Topbar title={t("admin.panel.title")} subtitle={t("admin.panel.loading")} />
-        <div className="admin-embedded-loading">{t("admin.panel.loadingBody")}</div>
-      </>
+      <div className="admin-embedded">
+        <Topbar
+          title={t("admin.panel.title")}
+          subtitle={t("admin.panel.loading")}
+          admin={{
+            permissions: [],
+            isSuperAdmin: false,
+            pathname,
+          }}
+        />
+        <div className="admin-main">
+          <div className="admin-embedded-loading admin-embedded-skeleton" aria-busy="true">
+            {t("admin.panel.loadingBody")}
+          </div>
+        </div>
+      </div>
     );
   }
-  if (!session) return <Navigate to="/" replace />;
+  if (!loading && !session) return <Navigate to="/" replace />;
 
   // Ninguna pestaña mapeada → mensaje explícito (barra sin tabs útiles).
-  if (!hasNavAccess || !firstAllowed) {
+  if (session && (!hasNavAccess || !firstAllowed)) {
     return (
       <>
         <Topbar
@@ -73,12 +86,12 @@ export function AdminSection() {
   }
 
   // Entrada a /admin sin resumen → primera tab permitida (no dejar Resumen “fantasma”).
-  if (pathname === "/admin" && !pathAllowed) {
+  if (session && pathname === "/admin" && !pathAllowed && firstAllowed) {
     return <Navigate to={firstAllowed} replace />;
   }
 
   // Acceso directo por URL a una sección sin permiso → mensaje (tabs visibles = solo las permitidas).
-  if (!pathAllowed) {
+  if (session && !pathAllowed) {
     return (
       <div className="admin-embedded">
         <Topbar
@@ -108,13 +121,13 @@ export function AdminSection() {
       />
       <div className="admin-main">
         <AdminErrorBoundary
-          userId={session.userId || session.profile?.id}
+          userId={session?.userId || session?.profile?.id}
           permissions={permissions}
           pathname={pathname}
           title={t("admin.panel.sectionErrorTitle")}
           subtitle={t("admin.panel.sectionErrorBody")}
         >
-          <Outlet context={session} />
+          {loading && !session ? null : <Outlet context={session} />}
         </AdminErrorBoundary>
       </div>
     </div>

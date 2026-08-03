@@ -126,7 +126,9 @@ export async function replaceFlagRules(supabase, adminProfile, flagId, rules) {
   if (!isSuperAdmin(adminProfile)) throw new ServiceError("Solo Superadmin.", 403);
   const list = Array.isArray(rules) ? rules : [];
   for (const r of list) {
-    if (!["rol", "usuario"].includes(r.alcance)) throw new ServiceError("alcance inválido.");
+    if (!["rol", "usuario", "membresia"].includes(r.alcance)) {
+      throw new ServiceError("alcance inválido (rol|usuario|membresia).");
+    }
     if (!r.alcance_id) throw new ServiceError("alcance_id requerido.");
     if (typeof r.activo !== "boolean") throw new ServiceError("activo inválido.");
   }
@@ -153,7 +155,26 @@ export async function replaceFlagRules(supabase, adminProfile, flagId, rules) {
   return data ?? [];
 }
 
-/** Sync regla usuario de Money Box según plan (PRO → activo, otro → quitar o false). */
+/** Lista planes para el editor de reglas por membresía. */
+export async function listPlanesForFlags(adminProfile) {
+  if (!isSuperAdmin(adminProfile) && adminProfile?.role !== "admin") {
+    throw new ServiceError("No autorizado.", 403);
+  }
+  const admin = createServiceSupabaseClient();
+  if (!admin) throw new ServiceError("Service role no configurado.", 500);
+  const { data, error } = await admin
+    .from("planes")
+    .select("id, nombre, activo")
+    .eq("activo", true)
+    .order("nombre");
+  if (error) throw new ServiceError(error.message, 500);
+  return data ?? [];
+}
+
+/**
+ * Sync Money Box: la regla canónica es por membresía (plan Pro).
+ * Limpia overrides por usuario legados para no tapar la precedencia.
+ */
 export async function syncMoneyBoxFlagForUser(userId, planNombre) {
   const admin = createServiceSupabaseClient();
   if (!admin || !userId) return;
@@ -165,20 +186,62 @@ export async function syncMoneyBoxFlagForUser(userId, planNombre) {
     .maybeSingle();
   if (error || !flag) return;
 
-  const isPro = String(planNombre || "").toLowerCase() === "pro";
-  if (isPro) {
+  const { data: proPlan } = await admin
+    .from("planes")
+    .select("id")
+    .eq("nombre", "pro")
+    .maybeSingle();
+  if (proPlan?.id) {
     await admin.from("flag_reglas").upsert({
       flag_id: flag.id,
-      alcance: "usuario",
-      alcance_id: userId,
+      alcance: "membresia",
+      alcance_id: proPlan.id,
       activo: true,
     }, { onConflict: "flag_id,alcance,alcance_id" });
-  } else {
-    await admin
-      .from("flag_reglas")
-      .delete()
-      .eq("flag_id", flag.id)
-      .eq("alcance", "usuario")
-      .eq("alcance_id", userId);
   }
+
+  // Quitar override usuario legado (membresía ya cubre Pro).
+  await admin
+    .from("flag_reglas")
+    .delete()
+    .eq("flag_id", flag.id)
+    .eq("alcance", "usuario")
+    .eq("alcance_id", userId);
+
+  void planNombre;
+}
+
+/**
+ * Reemplaza las reglas alcance=rol de un rol por el set de flags activos.
+ * @param {string[]} flagKeys claves activas para el rol
+ */
+export async function replaceRoleFlagRules(adminProfile, roleId, flagKeys) {
+  if (!isSuperAdmin(adminProfile)) throw new ServiceError("Solo Superadmin.", 403);
+  if (!roleId) throw new ServiceError("roleId requerido.");
+  const admin = createServiceSupabaseClient();
+  if (!admin) throw new ServiceError("Service role no configurado.", 500);
+
+  const clean = [...new Set((Array.isArray(flagKeys) ? flagKeys : []).map(String).filter(Boolean))];
+  const { data: flags } = clean.length
+    ? await admin.from("flags").select("id, clave").in("clave", clean)
+    : { data: [] };
+
+  await admin
+    .from("flag_reglas")
+    .delete()
+    .eq("alcance", "rol")
+    .eq("alcance_id", roleId);
+
+  if (flags?.length) {
+    const { error } = await admin.from("flag_reglas").insert(
+      flags.map((f) => ({
+        flag_id: f.id,
+        alcance: "rol",
+        alcance_id: roleId,
+        activo: true,
+      })),
+    );
+    if (error) throw new ServiceError(error.message, 400);
+  }
+  return { ok: true, count: flags?.length ?? 0 };
 }

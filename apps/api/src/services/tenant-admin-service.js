@@ -278,6 +278,9 @@ export async function createScopedSala(actorId, empresaId, body) {
     .maybeSingle();
   if (!manager) throw new ServiceError("Gerente no encontrado.", 404);
 
+  const { ensureEmpresaOperationalRoles } = await import("./empresa-roles-seed.js");
+  await ensureEmpresaOperationalRoles(admin, empresaId);
+
   const { data: room, error } = await admin
     .from("workspaces")
     .insert({

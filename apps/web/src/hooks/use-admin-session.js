@@ -11,6 +11,18 @@ export function clearAdminSessionCache() {
   invalidateFetchCache("admin/me");
 }
 
+/** Expone sesión ya resuelta (p. ej. desde useAppNav) para evitar blank al entrar a /admin. */
+export function warmAdminSession(session) {
+  if (session && typeof session === "object") {
+    cachedAdminSession = session;
+  }
+}
+
+/** Prefetch de /admin/me sin montar el panel (sidebar hover / detección admin). */
+export function prefetchAdminSession() {
+  return loadAdminSession({ force: false }).catch(() => null);
+}
+
 async function fetchAdminSession() {
   const res = await fetch("/api/v1/admin/me", { credentials: "include" });
   if (!res.ok) {

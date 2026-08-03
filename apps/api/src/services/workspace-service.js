@@ -196,6 +196,8 @@ export async function createEmpresa(adminProfile, body) {
     .select()
     .single();
   if (error) throw new ServiceError(error.message, 400);
+  const { ensureEmpresaOperationalRoles } = await import("./empresa-roles-seed.js");
+  await ensureEmpresaOperationalRoles(admin, data.id);
   return data;
 }
 
@@ -243,9 +245,21 @@ export async function createSala(adminProfile, body) {
     .single();
   if (error) throw new ServiceError(error.message, 400);
 
+  const { ensureEmpresaOperationalRoles } = await import("./empresa-roles-seed.js");
+  await ensureEmpresaOperationalRoles(admin, empresaId);
+
+  const { data: managerRole } = await admin
+    .from("roles")
+    .select("id")
+    .eq("empresa_id", empresaId)
+    .eq("scope", "workspace")
+    .eq("slug", "gerente")
+    .maybeSingle();
+
   const { error: memErr } = await admin.from("workspace_miembros").insert({
     usuario_id: gerenteId,
     workspace_id: ws.id,
+    role_id: managerRole?.id || null,
     rol_en_workspace: "gerente",
   });
   if (memErr) {

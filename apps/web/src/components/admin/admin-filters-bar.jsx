@@ -1,9 +1,7 @@
 
-import { Link } from "react-router-dom";
-import { useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useI18n } from "@/hooks/use-i18n.js";
-import type { SellerInfo } from "@/lib/admin/types";
-import { filtersToSearchParams, type AdminFilters } from "@/lib/admin/filters";
+import { filtersToSearchParams } from "@/lib/admin/filters";
 
 const STATUS_OPTIONS = [
   { value: "", key: "admin.filters.allStatuses" },
@@ -15,21 +13,28 @@ const STATUS_OPTIONS = [
   { value: "cancelada", key: "status.cancelled" },
 ];
 
-interface AdminFiltersBarProps {
-  filters: AdminFilters;
-  sellers: SellerInfo[];
-  showStatus?: boolean;
-  exportHref?;
-}
-
-export function AdminFiltersBar({ filters, sellers, showStatus, exportHref }: AdminFiltersBarProps) {
+/** Filtros admin sin hard reload (navegación SPA). */
+export function AdminFiltersBar({ filters, sellers, showStatus, exportHref }) {
   const { t } = useI18n();
   const { pathname } = useLocation();
+  const navigate = useNavigate();
   const qs = filtersToSearchParams(filters);
+
+  const onSubmit = (event) => {
+    event.preventDefault();
+    const fd = new FormData(event.currentTarget);
+    const params = new URLSearchParams();
+    for (const [key, value] of fd.entries()) {
+      const v = String(value || "").trim();
+      if (v) params.set(key, v);
+    }
+    const search = params.toString();
+    navigate(search ? `${pathname}?${search}` : pathname);
+  };
 
   return (
     <div className="admin-filters">
-      <form method="GET" action={pathname} className="admin-filters-form">
+      <form onSubmit={onSubmit} className="admin-filters-form">
         <div className="admin-filter-field">
           <label>{t("admin.filters.from")}</label>
           <input type="date" name="from" defaultValue={filters.from ?? ""} className="auth-input" />
@@ -42,7 +47,7 @@ export function AdminFiltersBar({ filters, sellers, showStatus, exportHref }: Ad
           <label>{t("admin.filters.seller")}</label>
           <select name="user" defaultValue={filters.userId ?? ""} className="auth-input">
             <option value="">{t("admin.filters.all")}</option>
-            {sellers.map((s) => (
+            {(sellers || []).map((s) => (
               <option key={s.id} value={s.id}>{s.name}</option>
             ))}
           </select>

@@ -41,46 +41,86 @@ export async function listPermissionCatalog() {
   return PERMISSION_CATALOG;
 }
 
-export async function createRole(supabase, adminProfile, { nombre, permission_keys: keys }, actorId = null) {
+const FLAG_TO_TOOL_PERM = {
+  survey: "herramientas:survey",
+  proyeccion_vacaciones: "herramientas:vacaciones",
+  worksheet: "herramientas:worksheet",
+  analysis: "herramientas:analysis",
+};
+
+/** Deriva permission_keys de herramientas a partir de flag_keys de módulos. */
+export function permissionKeysFromFlagKeys(flagKeys, baseKeys = []) {
+  const flags = new Set((flagKeys || []).map(String));
+  const next = new Set(
+    (baseKeys || []).filter((k) => ALL_PERMISSION_KEYS.includes(k) && !String(k).startsWith("herramientas:")),
+  );
+  for (const [flagClave, perm] of Object.entries(FLAG_TO_TOOL_PERM)) {
+    if (flags.has(flagClave)) next.add(perm);
+  }
+  if (flags.has("survey")) next.add("herramientas:survey");
+  return [...next];
+}
+
+export async function createRole(supabase, adminProfile, body, actorId = null) {
   assertSuperAdmin(adminProfile);
-  const name = String(nombre ?? "").trim();
+  const name = String(body?.nombre ?? "").trim();
   if (!name) throw new ServiceError("Nombre requerido.");
-  const clean = (Array.isArray(keys) ? keys : []).filter((k) => ALL_PERMISSION_KEYS.includes(k));
+  const flagKeys = Array.isArray(body?.flag_keys) ? body.flag_keys.map(String) : null;
+  const clean = flagKeys
+    ? permissionKeysFromFlagKeys(flagKeys, body?.permission_keys)
+    : (Array.isArray(body?.permission_keys) ? body.permission_keys : []).filter((k) => ALL_PERMISSION_KEYS.includes(k));
   const { data, error } = await supabase.rpc("admin_create_role", {
     p_nombre: name,
     p_permission_keys: clean,
   });
   if (error) throw new ServiceError(error.message, 400);
   const roleId = data;
+  if (flagKeys) {
+    const { replaceRoleFlagRules } = await import("./flags-service.js");
+    await replaceRoleFlagRules(adminProfile, roleId, flagKeys);
+  }
   if (actorId) {
     await writeAdminLog(supabase, {
       actorId,
       accion: ADMIN_AUDIT_ACTIONS.CREACION_ROL,
       entidadAfectada: "rol",
       entidadId: roleId,
-      detalle: { nombre: name, permission_keys: clean },
+      detalle: { nombre: name, permission_keys: clean, flag_keys: flagKeys },
     });
   }
   return { id: roleId };
 }
 
-export async function updateRole(supabase, adminProfile, roleId, { nombre, permission_keys: keys }, actorId = null) {
+export async function updateRole(supabase, adminProfile, roleId, body, actorId = null) {
   assertSuperAdmin(adminProfile);
   if (!roleId) throw new ServiceError("Rol inválido.");
-  const clean = (Array.isArray(keys) ? keys : []).filter((k) => ALL_PERMISSION_KEYS.includes(k));
+  const flagKeys = Array.isArray(body?.flag_keys) ? body.flag_keys.map(String) : null;
+  let clean = Array.isArray(body?.permission_keys)
+    ? body.permission_keys.filter((k) => ALL_PERMISSION_KEYS.includes(k))
+    : null;
+  if (flagKeys) {
+    const { data: existing } = await supabase.rpc("admin_list_roles");
+    const current = (existing ?? []).find((r) => r.id === roleId);
+    clean = permissionKeysFromFlagKeys(flagKeys, current?.permission_keys || []);
+  }
+  if (clean == null) clean = [];
   const { error } = await supabase.rpc("admin_update_role_permissions", {
     p_rol_id: roleId,
-    p_nombre: nombre ?? null,
+    p_nombre: body?.nombre ?? null,
     p_permission_keys: clean,
   });
   if (error) throw new ServiceError(error.message, 400);
+  if (flagKeys) {
+    const { replaceRoleFlagRules } = await import("./flags-service.js");
+    await replaceRoleFlagRules(adminProfile, roleId, flagKeys);
+  }
   if (actorId) {
     await writeAdminLog(supabase, {
       actorId,
       accion: ADMIN_AUDIT_ACTIONS.EDICION_ROL,
       entidadAfectada: "rol",
       entidadId: roleId,
-      detalle: { nombre: nombre ?? null, permission_keys: clean },
+      detalle: { nombre: body?.nombre ?? null, permission_keys: clean, flag_keys: flagKeys },
     });
   }
   return { ok: true };

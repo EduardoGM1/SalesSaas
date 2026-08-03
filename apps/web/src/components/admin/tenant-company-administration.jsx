@@ -65,7 +65,8 @@ export function TenantCompanyAdministration({ session, companies = EMPTY_COMPANI
   });
   const [roomForm, setRoomForm] = useState({ nombre: "", gerente: null });
   const [adminForm, setAdminForm] = useState({ usuario: null, role_id: "" });
-  const [roleForm, setRoleForm] = useState({ nombre: "", scope: "workspace", paquete_id: "", permission_keys: [] });
+  const [roleForm, setRoleForm] = useState({ nombre: "", scope: "workspace", flag_keys: [] });
+  const [editingRole, setEditingRole] = useState(null);
   const [packageForm, setPackageForm] = useState({ nombre: "", descripcion: "", flag_keys: [] });
   const [memberForm, setMemberForm] = useState({ workspace_id: "", usuario: null, role_id: "" });
   const [brandForm, setBrandForm] = useState({ logo_url: "", primary: "#1e5eff", accent: "#0f2044", plan_paquete: "" });
@@ -366,35 +367,136 @@ export function TenantCompanyAdministration({ session, companies = EMPTY_COMPANI
 
         {tab === "roles" ? (
           <div className="admin-company-layout">
-            <AdminCard title="Crear puesto" subtitle="Los nombres son configurables y no dependen del código.">
+            <AdminCard
+              title={editingRole ? `Editar: ${editingRole.slug}` : "Crear puesto"}
+              subtitle="Marca los módulos existentes. Los puestos de sistema (Liner, Cerrador…) se pueden renombrar y ajustar módulos, pero no eliminar."
+            >
               <form className="admin-inline-form" onSubmit={(event) => {
                 event.preventDefault();
                 void mutate(async () => {
-                  await adminJson(`tenant/empresas/${companyId}/roles`, { method: "POST", body: roleForm });
-                  setRoleForm({ nombre: "", scope: "workspace", paquete_id: "", permission_keys: [] });
-                }, "Puesto creado");
+                  const body = {
+                    nombre: roleForm.nombre,
+                    scope: roleForm.scope,
+                    flag_keys: roleForm.flag_keys,
+                  };
+                  if (editingRole) {
+                    await adminJson(`tenant/empresas/${companyId}/roles/${editingRole.id}`, {
+                      method: "PATCH",
+                      body,
+                    });
+                    setEditingRole(null);
+                  } else {
+                    await adminJson(`tenant/empresas/${companyId}/roles`, { method: "POST", body });
+                  }
+                  setRoleForm({ nombre: "", scope: "workspace", flag_keys: [] });
+                }, editingRole ? "Puesto actualizado" : "Puesto creado");
               }}>
-                <input className="auth-input" placeholder="Ej. Cerrador, Recepción o Postventa" value={roleForm.nombre} onChange={(event) => setRoleForm((current) => ({ ...current, nombre: event.target.value }))} required />
-                <select className="auth-input" value={roleForm.scope} onChange={(event) => setRoleForm((current) => ({ ...current, scope: event.target.value }))}>
-                  <option value="workspace">Sala de Ventas</option>
-                  <option value="empresa">Empresa</option>
-                </select>
-                <select className="auth-input" value={roleForm.paquete_id} onChange={(event) => setRoleForm((current) => ({ ...current, paquete_id: event.target.value }))}>
-                  <option value="">Sin paquete</option>
-                  {state.packages.map((pack) => <option key={pack.id} value={pack.id}>{pack.nombre}</option>)}
-                </select>
+                <input
+                  className="auth-input"
+                  placeholder="Ej. Liner, Cerrador o Recepción"
+                  value={roleForm.nombre}
+                  onChange={(event) => setRoleForm((current) => ({ ...current, nombre: event.target.value }))}
+                  required
+                />
+                {!editingRole && (
+                  <select className="auth-input" value={roleForm.scope} onChange={(event) => setRoleForm((current) => ({ ...current, scope: event.target.value }))}>
+                    <option value="workspace">Sala de Ventas</option>
+                    <option value="empresa">Empresa</option>
+                  </select>
+                )}
+                {editingRole?.es_sistema && (
+                  <p className="admin-card-muted">Clave interna: <code>{editingRole.slug}</code> (no editable)</p>
+                )}
+                <div className="section-label" style={{ marginTop: 8 }}>Módulos</div>
                 <div className="admin-tenant-check-grid">
-                  {state.permissions.filter((permission) => permission.capa === "app").map((permission) => (
-                    <label key={permission.id}><input type="checkbox" checked={roleForm.permission_keys.includes(permission.clave)} onChange={(event) => setRoleForm((current) => ({ ...current, permission_keys: event.target.checked ? [...current.permission_keys, permission.clave] : current.permission_keys.filter((key) => key !== permission.clave) }))} />{permission.nombre_visible}</label>
+                  {state.flags.map((flag) => (
+                    <label key={flag.id}>
+                      <input
+                        type="checkbox"
+                        checked={roleForm.flag_keys.includes(flag.clave)}
+                        onChange={(event) => setRoleForm((current) => ({
+                          ...current,
+                          flag_keys: event.target.checked
+                            ? [...current.flag_keys, flag.clave]
+                            : current.flag_keys.filter((key) => key !== flag.clave),
+                        }))}
+                      />
+                      {flag.nombre_visible}
+                    </label>
                   ))}
                 </div>
-                <button className="btn btn-primary" disabled={pending}>Crear puesto</button>
+                <div className="btn-row" style={{ marginTop: 8 }}>
+                  {editingRole && (
+                    <button
+                      type="button"
+                      className="btn btn-ghost"
+                      disabled={pending}
+                      onClick={() => {
+                        setEditingRole(null);
+                        setRoleForm({ nombre: "", scope: "workspace", flag_keys: [] });
+                      }}
+                    >
+                      Cancelar
+                    </button>
+                  )}
+                  <button className="btn btn-primary" disabled={pending}>
+                    {editingRole ? "Guardar cambios" : "Crear puesto"}
+                  </button>
+                </div>
               </form>
             </AdminCard>
             <div className="admin-room-cards">
               {state.roles.map((role) => (
-                <AdminCard key={role.id} title={role.nombre} subtitle={role.scope === "empresa" ? "Administración de empresa" : "Puesto de sala"} action={!role.es_sistema ? <AdminOverflowMenu label={`Acciones de ${role.nombre}`} items={[{ id: "delete", label: "Eliminar puesto", danger: true, onSelect: () => void mutate(() => adminJson(`tenant/empresas/${companyId}/roles/${role.id}`, { method: "DELETE" }), "Puesto eliminado") }]} /> : null}>
-                  <p className="admin-card-muted">{role.paquetes_acceso?.nombre || "Sin paquete"} · {role.permission_keys?.length || 0} permisos</p>
+                <AdminCard
+                  key={role.id}
+                  title={role.nombre}
+                  subtitle={
+                    role.es_sistema
+                      ? `Sistema · ${role.slug}`
+                      : (role.scope === "empresa" ? "Administración de empresa" : "Puesto de sala")
+                  }
+                  action={(
+                    <AdminOverflowMenu
+                      label={`Acciones de ${role.nombre}`}
+                      items={[
+                        {
+                          id: "edit",
+                          label: "Editar nombre/módulos",
+                          onSelect: () => {
+                            setEditingRole(role);
+                            setRoleForm({
+                              nombre: role.nombre,
+                              scope: role.scope || "workspace",
+                              flag_keys: Array.isArray(role.flag_keys) ? role.flag_keys : [],
+                            });
+                          },
+                        },
+                        ...(!role.es_sistema
+                          ? [{
+                            id: "delete",
+                            label: "Eliminar puesto",
+                            danger: true,
+                            onSelect: () => void mutate(
+                              () => adminJson(`tenant/empresas/${companyId}/roles/${role.id}`, { method: "DELETE" }),
+                              "Puesto eliminado",
+                            ),
+                          }]
+                          : []),
+                      ]}
+                    />
+                  )}
+                >
+                  <p className="admin-card-muted">
+                    {(role.flag_keys?.length ?? 0)} módulos
+                    {role.paquetes_acceso?.nombre ? ` · ${role.paquetes_acceso.nombre}` : ""}
+                  </p>
+                  <div className="admin-tenant-tag-list">
+                    {(role.flag_keys || []).slice(0, 6).map((clave) => (
+                      <AdminStatusBadge key={clave} tone="info">
+                        {state.flags.find((f) => f.clave === clave)?.nombre_visible || clave}
+                      </AdminStatusBadge>
+                    ))}
+                  </div>
                 </AdminCard>
               ))}
             </div>

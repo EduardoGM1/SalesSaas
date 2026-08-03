@@ -1,73 +1,98 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
+import { ChevronDown } from "lucide-react";
 import { useOutletContext } from "react-router-dom";
 import { AdminDataView, AdminPageHeader, AdminPageState } from "@/components/admin/admin-ui.jsx";
 import { useAdminFetch } from "@/hooks/use-admin-session.js";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { adminJson } from "@/lib/admin/api.js";
 
-/** Editor reutilizable: default global + excepciones rol/usuario. */
-function FlagRulesEditor({
-  flag,
+function flattenFlags(nodes, acc = []) {
+  for (const n of nodes || []) {
+    acc.push(n);
+    if (n.children?.length) flattenFlags(n.children, acc);
+  }
+  return acc;
+}
+
+function ModuleCard({
+  node,
   roles,
   users,
-  onClose,
+  planes,
   onSaved,
 }) {
   const { t } = useI18n();
-  const [defaultGlobal, setDefaultGlobal] = useState(flag.default_global === true);
+  const [defaultGlobal, setDefaultGlobal] = useState(node.default_global === true);
   const [rules, setRules] = useState(() =>
-    (flag.rules || []).map((r) => ({
+    (node.rules || []).map((r) => ({
       alcance: r.alcance,
       alcance_id: r.alcance_id,
       activo: r.activo === true,
     })),
   );
+  const [rulesOpen, setRulesOpen] = useState(false);
+  const [childrenOpen, setChildrenOpen] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
+  const [dirty, setDirty] = useState(false);
 
   const roleLabel = (id) => roles.find((r) => r.id === id)?.nombre || id.slice(0, 8);
   const userLabel = (id) => {
     const u = users.find((x) => x.id === id);
     return u ? (u.name || u.full_name || u.email || id.slice(0, 8)) : id.slice(0, 8);
   };
+  const planLabel = (id) => planes.find((p) => p.id === id)?.nombre || id.slice(0, 8);
+
+  const optionsFor = (alcance) => {
+    if (alcance === "rol") return roles;
+    if (alcance === "membresia") return planes;
+    return users;
+  };
 
   const addRule = (alcance) => {
-    const options = alcance === "rol" ? roles : users;
+    const options = optionsFor(alcance);
     const first = options[0];
     if (!first) {
-      setError(alcance === "rol" ? t("admin.modules.error.noRoles") : t("admin.modules.error.noUsers"));
+      setError(
+        alcance === "rol"
+          ? t("admin.modules.error.noRoles")
+          : alcance === "membresia"
+            ? t("admin.modules.error.noPlans")
+            : t("admin.modules.error.noUsers"),
+      );
       return;
     }
-    setRules((prev) => [
-      ...prev,
-      { alcance, alcance_id: first.id, activo: true },
-    ]);
+    setRules((prev) => [...prev, { alcance, alcance_id: first.id, activo: true }]);
+    setRulesOpen(true);
+    setDirty(true);
     setError("");
   };
 
   const updateRule = (idx, patch) => {
     setRules((prev) => prev.map((r, i) => (i === idx ? { ...r, ...patch } : r)));
+    setDirty(true);
   };
 
   const removeRule = (idx) => {
     setRules((prev) => prev.filter((_, i) => i !== idx));
+    setDirty(true);
   };
 
-  const submit = async (e) => {
-    e.preventDefault();
+  const persist = async (nextDefault = defaultGlobal, nextRules = rules) => {
     setPending(true);
     setError("");
     try {
-      if (defaultGlobal !== flag.default_global) {
-        await adminJson(`flags/${flag.id}`, {
+      if (nextDefault !== node.default_global) {
+        await adminJson(`flags/${node.id}`, {
           method: "PATCH",
-          body: { default_global: defaultGlobal },
+          body: { default_global: nextDefault },
         });
       }
-      await adminJson(`flags/${flag.id}/rules`, {
+      await adminJson(`flags/${node.id}/rules`, {
         method: "PUT",
-        body: { rules },
+        body: { rules: nextRules },
       });
+      setDirty(false);
       onSaved();
     } catch (err) {
       setError(err instanceof Error ? err.message : t("admin.modules.error.save"));
@@ -76,188 +101,188 @@ function FlagRulesEditor({
     }
   };
 
+  const toggleSystem = async () => {
+    const next = !defaultGlobal;
+    setDefaultGlobal(next);
+    setDirty(true);
+    await persist(next, rules);
+  };
+
+  const children = Array.isArray(node.children) ? node.children : [];
+
   return (
-    <>
-      <button type="button" className="modal-backdrop" aria-label={t("common.cancel")} onClick={onClose} />
-      <div className="admin-confirm-panel admin-perms-modal admin-modules-modal" role="dialog" aria-modal="true">
-        <div className="admin-confirm-head">
-          <span className="admin-confirm-title">{flag.nombre_visible}</span>
-          <span className="admin-cell-muted" style={{ fontSize: 12 }}>{flag.clave}</span>
+    <article className="admin-module-card">
+      <header className="admin-module-card-head">
+        <div>
+          <h3 className="admin-module-card-title">{node.nombre_visible}</h3>
+          <p className="admin-module-card-key">{node.clave}</p>
         </div>
-        <form onSubmit={submit}>
-          <div style={{ padding: "0 20px 16px" }}>
-            <label className="admin-perm-item" style={{ display: "flex", gap: 10, alignItems: "center" }}>
-              <input
-                type="checkbox"
-                checked={defaultGlobal}
-                onChange={(e) => setDefaultGlobal(e.target.checked)}
-              />
-              <span>{t("admin.modules.defaultGlobal")}</span>
-            </label>
-            <p className="admin-confirm-sub" style={{ marginTop: 8 }}>
-              {t("admin.modules.precedenceHint")}
-            </p>
-          </div>
+        <label className="admin-module-toggle">
+          <input
+            type="checkbox"
+            checked={defaultGlobal}
+            disabled={pending}
+            onChange={() => void toggleSystem()}
+          />
+          <span className={`admin-status-badge ${defaultGlobal ? "admin-status-active" : "admin-status-inactive"}`}>
+            {defaultGlobal ? t("admin.modules.activeSystem") : t("admin.modules.inactiveSystem")}
+          </span>
+        </label>
+      </header>
 
-          <div className="admin-confirm-body admin-modules-modal-body">
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-              <div className="section-label" style={{ marginBottom: 0 }}>{t("admin.modules.rules")}</div>
-              <div style={{ display: "flex", gap: 8 }}>
-                <button type="button" className="btn btn-sm btn-ghost" onClick={() => addRule("rol")}>
-                  {t("admin.modules.addRole")}
-                </button>
-                <button type="button" className="btn btn-sm btn-ghost" onClick={() => addRule("usuario")}>
-                  {t("admin.modules.addUser")}
-                </button>
-              </div>
-            </div>
+      <button
+        type="button"
+        className="admin-module-rules-toggle"
+        aria-expanded={rulesOpen}
+        onClick={() => setRulesOpen((v) => !v)}
+      >
+        <span>
+          {t("admin.modules.rules")}
+          {rules.length ? ` (${rules.length})` : ""}
+        </span>
+        <ChevronDown size={16} className={rulesOpen ? "is-open" : ""} aria-hidden />
+      </button>
 
-            {rules.length === 0 ? (
-              <div className="admin-empty" style={{ padding: 12 }}>{t("admin.modules.rulesEmpty")}</div>
-            ) : (
-              <table className="client-table admin-users-table">
-                <thead>
-                  <tr>
-                    <th>{t("admin.modules.col.scope")}</th>
-                    <th>{t("admin.modules.col.target")}</th>
-                    <th>{t("admin.modules.col.active")}</th>
-                    <th />
-                  </tr>
-                </thead>
-                <tbody>
-                  {rules.map((rule, idx) => (
-                    <tr key={`${rule.alcance}-${rule.alcance_id}-${idx}`}>
-                      <td>
-                        <select
-                          className="admin-role-select"
-                          value={rule.alcance}
-                          onChange={(e) => {
-                            const alcance = e.target.value;
-                            const first = (alcance === "rol" ? roles : users)[0];
-                            updateRule(idx, {
-                              alcance,
-                              alcance_id: first?.id || rule.alcance_id,
-                            });
-                          }}
-                        >
-                          <option value="rol">{t("admin.modules.scope.role")}</option>
-                          <option value="usuario">{t("admin.modules.scope.user")}</option>
-                        </select>
-                      </td>
-                      <td>
-                        <select
-                          className="admin-role-select"
-                          value={rule.alcance_id}
-                          onChange={(e) => updateRule(idx, { alcance_id: e.target.value })}
-                          style={{ minWidth: 160 }}
-                        >
-                          {(rule.alcance === "rol" ? roles : users).map((opt) => (
-                            <option key={opt.id} value={opt.id}>
-                              {rule.alcance === "rol"
-                                ? (opt.nombre || opt.id)
-                                : (opt.name || opt.full_name || opt.email || opt.id)}
-                            </option>
-                          ))}
-                          {/* Si el id actual no está en la lista (paginación), mantener opción */}
-                          {(rule.alcance === "rol"
-                            ? !roles.some((r) => r.id === rule.alcance_id)
-                            : !users.some((u) => u.id === rule.alcance_id)) && (
-                            <option value={rule.alcance_id}>
-                              {rule.alcance === "rol" ? roleLabel(rule.alcance_id) : userLabel(rule.alcance_id)}
-                            </option>
-                          )}
-                        </select>
-                      </td>
-                      <td>
-                        <input
-                          type="checkbox"
-                          checked={rule.activo === true}
-                          onChange={(e) => updateRule(idx, { activo: e.target.checked })}
-                          aria-label={t("admin.modules.col.active")}
-                        />
-                      </td>
-                      <td>
-                        <button type="button" className="btn btn-sm btn-ghost" onClick={() => removeRule(idx)}>
-                          {t("admin.modules.remove")}
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
-
-          {error && <div className="auth-error" style={{ margin: "0 20px 12px" }}>{error}</div>}
-          <div className="btn-row">
-            <button type="button" className="btn btn-ghost" onClick={onClose}>{t("common.cancel")}</button>
-            <button type="submit" className="btn btn-primary" disabled={pending}>
-              {pending ? t("admin.users.confirm.saving") : t("common.save")}
+      {rulesOpen && (
+        <div className="admin-module-rules">
+          <p className="admin-confirm-sub" style={{ marginTop: 0 }}>
+            {t("admin.modules.precedenceHint")}
+          </p>
+          <div className="admin-module-rule-actions">
+            <button type="button" className="btn btn-sm btn-ghost" onClick={() => addRule("rol")}>
+              {t("admin.modules.addRole")}
+            </button>
+            <button type="button" className="btn btn-sm btn-ghost" onClick={() => addRule("usuario")}>
+              {t("admin.modules.addUser")}
+            </button>
+            <button type="button" className="btn btn-sm btn-ghost" onClick={() => addRule("membresia")}>
+              {t("admin.modules.addMembership")}
             </button>
           </div>
-        </form>
-      </div>
-    </>
-  );
-}
 
-function FlagTreeRow({
-  node,
-  depth,
-  expanded,
-  onToggle,
-  onEdit,
-}) {
-  const { t } = useI18n();
-  const hasChildren = Array.isArray(node.children) && node.children.length > 0;
-  const isOpen = expanded.has(node.id);
-  const rulesCount = Array.isArray(node.rules) ? node.rules.length : 0;
+          {rules.length === 0 ? (
+            <div className="admin-empty" style={{ padding: 12 }}>{t("admin.modules.rulesEmpty")}</div>
+          ) : (
+            <table className="client-table admin-users-table">
+              <thead>
+                <tr>
+                  <th>{t("admin.modules.col.scope")}</th>
+                  <th>{t("admin.modules.col.target")}</th>
+                  <th>{t("admin.modules.col.active")}</th>
+                  <th />
+                </tr>
+              </thead>
+              <tbody>
+                {rules.map((rule, idx) => (
+                  <tr key={`${rule.alcance}-${rule.alcance_id}-${idx}`}>
+                    <td>
+                      <select
+                        className="admin-role-select"
+                        value={rule.alcance}
+                        onChange={(e) => {
+                          const alcance = e.target.value;
+                          const first = optionsFor(alcance)[0];
+                          updateRule(idx, {
+                            alcance,
+                            alcance_id: first?.id || rule.alcance_id,
+                          });
+                        }}
+                      >
+                        <option value="rol">{t("admin.modules.scope.role")}</option>
+                        <option value="usuario">{t("admin.modules.scope.user")}</option>
+                        <option value="membresia">{t("admin.modules.scope.membership")}</option>
+                      </select>
+                    </td>
+                    <td>
+                      <select
+                        className="admin-role-select"
+                        value={rule.alcance_id}
+                        onChange={(e) => updateRule(idx, { alcance_id: e.target.value })}
+                        style={{ minWidth: 160 }}
+                      >
+                        {optionsFor(rule.alcance).map((opt) => (
+                          <option key={opt.id} value={opt.id}>
+                            {rule.alcance === "rol"
+                              ? (opt.nombre || opt.id)
+                              : rule.alcance === "membresia"
+                                ? (opt.nombre || opt.id)
+                                : (opt.name || opt.full_name || opt.email || opt.id)}
+                          </option>
+                        ))}
+                        {!optionsFor(rule.alcance).some((o) => o.id === rule.alcance_id) && (
+                          <option value={rule.alcance_id}>
+                            {rule.alcance === "rol"
+                              ? roleLabel(rule.alcance_id)
+                              : rule.alcance === "membresia"
+                                ? planLabel(rule.alcance_id)
+                                : userLabel(rule.alcance_id)}
+                          </option>
+                        )}
+                      </select>
+                    </td>
+                    <td>
+                      <input
+                        type="checkbox"
+                        checked={rule.activo === true}
+                        onChange={(e) => updateRule(idx, { activo: e.target.checked })}
+                        aria-label={t("admin.modules.col.active")}
+                      />
+                    </td>
+                    <td>
+                      <button type="button" className="btn btn-sm btn-ghost" onClick={() => removeRule(idx)}>
+                        {t("admin.modules.remove")}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
 
-  return (
-    <>
-      <tr>
-        <td className="admin-cell-name" style={{ paddingLeft: 12 + depth * 18 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            {hasChildren ? (
+          {error && <div className="auth-error" style={{ marginTop: 8 }}>{error}</div>}
+          {dirty && (
+            <div className="btn-row" style={{ marginTop: 12 }}>
               <button
                 type="button"
-                className="btn btn-sm btn-ghost"
-                aria-expanded={isOpen}
-                onClick={() => onToggle(node.id)}
-                style={{ minWidth: 28, padding: "2px 6px" }}
+                className="btn btn-primary"
+                disabled={pending}
+                onClick={() => void persist()}
               >
-                {isOpen ? "▾" : "▸"}
+                {pending ? t("admin.users.confirm.saving") : t("common.save")}
               </button>
-            ) : (
-              <span style={{ width: 28, display: "inline-block" }} />
-            )}
-            <span>{node.nombre_visible}</span>
-          </div>
-        </td>
-        <td className="admin-cell-muted">{node.clave}</td>
-        <td>
-          <span className={`admin-status-badge ${node.default_global ? "admin-status-active" : "admin-status-inactive"}`}>
-            {node.default_global ? t("admin.modules.on") : t("admin.modules.off")}
-          </span>
-        </td>
-        <td className="admin-cell-num" style={{ textAlign: "right" }}>{rulesCount}</td>
-        <td className="admin-cell-actions">
-          <button type="button" className="btn btn-sm btn-ghost" onClick={() => onEdit(node)}>
-            {t("admin.modules.action.edit")}
+            </div>
+          )}
+        </div>
+      )}
+
+      {children.length > 0 && (
+        <>
+          <button
+            type="button"
+            className="admin-module-rules-toggle"
+            aria-expanded={childrenOpen}
+            onClick={() => setChildrenOpen((v) => !v)}
+          >
+            <span>{t("admin.modules.subfeatures")} ({children.length})</span>
+            <ChevronDown size={16} className={childrenOpen ? "is-open" : ""} aria-hidden />
           </button>
-        </td>
-      </tr>
-      {hasChildren && isOpen && node.children.map((child) => (
-        <FlagTreeRow
-          key={child.id}
-          node={child}
-          depth={depth + 1}
-          expanded={expanded}
-          onToggle={onToggle}
-          onEdit={onEdit}
-        />
-      ))}
-    </>
+          {childrenOpen && (
+            <div className="admin-module-children">
+              {children.map((child) => (
+                <ModuleCard
+                  key={child.id}
+                  node={child}
+                  roles={roles}
+                  users={users}
+                  planes={planes}
+                  onSaved={onSaved}
+                />
+              ))}
+            </div>
+          )}
+        </>
+      )}
+    </article>
   );
 }
 
@@ -265,89 +290,53 @@ export function AdminModulesPage() {
   const { t } = useI18n();
   const session = useOutletContext();
   const [reloadKey, setReloadKey] = useState(0);
-  const [editor, setEditor] = useState(null);
-  const [expanded, setExpanded] = useState(() => new Set());
 
   const { loading, data, error } = useAdminFetch("flags", `?_=${reloadKey}`);
   const { data: rolesData } = useAdminFetch(session?.isSuperAdmin ? "roles" : "", "");
   const { data: usersData } = useAdminFetch(session?.isSuperAdmin ? "users" : "", "");
+  const { data: planesData } = useAdminFetch(session?.isSuperAdmin ? "planes" : "", "");
 
   const tree = Array.isArray(data) ? data : [];
   const roles = Array.isArray(rolesData) ? rolesData : [];
+  const planes = Array.isArray(planesData) ? planesData : [];
   const users = useMemo(() => {
     if (Array.isArray(usersData)) return usersData;
     if (Array.isArray(usersData?.users)) return usersData.users;
     return [];
   }, [usersData]);
 
-  useEffect(() => {
-    if (!tree.length) return;
-    setExpanded((prev) => {
-      if (prev.size) return prev;
-      return new Set(tree.map((n) => n.id));
-    });
-  }, [tree]);
-
   if (!session?.isSuperAdmin) {
     return <div className="admin-page admin-empty">{t("admin.modules.forbidden")}</div>;
   }
 
-  const refresh = () => {
-    setEditor(null);
-    setReloadKey((k) => k + 1);
-  };
-
-  const toggle = (id) => {
-    setExpanded((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
+  const refresh = () => setReloadKey((k) => k + 1);
 
   return (
     <div className="admin-page admin-system-page">
-      <AdminPageHeader eyebrow="Configuración de producto" title={t("admin.modules.title")} subtitle={t("admin.modules.sub")} />
+      <AdminPageHeader
+        eyebrow="Configuración de producto"
+        title={t("admin.modules.title")}
+        subtitle={t("admin.modules.sub")}
+      />
       <AdminPageState loading={loading} error={error}>
         <AdminDataView empty={!tree.length} emptyTitle={t("admin.modules.empty")}>
-          <div className="client-table-card admin-system-table">
-          <table className="client-table admin-users-table">
-            <thead>
-              <tr>
-                <th>{t("admin.modules.col.name")}</th>
-                <th>{t("admin.modules.col.key")}</th>
-                <th>{t("admin.modules.col.default")}</th>
-                <th style={{ textAlign: "right" }}>{t("admin.modules.col.rules")}</th>
-                <th className="admin-cell-actions">{t("admin.users.col.actions")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {tree.map((node) => (
-                <FlagTreeRow
-                  key={node.id}
-                  node={node}
-                  depth={0}
-                  expanded={expanded}
-                  onToggle={toggle}
-                  onEdit={setEditor}
-                />
-              ))}
-            </tbody>
-          </table>
+          <div className="admin-modules-grid">
+            {tree.map((node) => (
+              <ModuleCard
+                key={`${node.id}-${reloadKey}`}
+                node={node}
+                roles={roles}
+                users={users}
+                planes={planes}
+                onSaved={refresh}
+              />
+            ))}
           </div>
         </AdminDataView>
       </AdminPageState>
-
-      {editor && (
-        <FlagRulesEditor
-          flag={editor}
-          roles={roles}
-          users={users}
-          onClose={() => setEditor(null)}
-          onSaved={refresh}
-        />
-      )}
+      <p className="admin-confirm-sub" style={{ marginTop: 16 }}>
+        {t("admin.modules.cardHint", { count: flattenFlags(tree).length })}
+      </p>
     </div>
   );
 }

@@ -738,6 +738,12 @@ router.put("/flags/:id/rules", async (req, res) => {
   );
 });
 
+router.get("/planes", async (req, res) => {
+  const a = await requireSuperAdminApi(req, res);
+  if (!a) return;
+  await runService(res, () => flagsService.listPlanesForFlags(a.profile), { wrap: "data" });
+});
+
 router.get("/empresas", async (req, res) => {
   const a = await requireSuperAdminApi(req, res);
   if (!a) return;
