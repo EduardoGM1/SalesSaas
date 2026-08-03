@@ -4,10 +4,13 @@ import { shallow } from "zustand/shallow";
 import { fmt, fmtD, fmtN, fmtN2 } from "@/lib/format/money";
 
 function buildMoneySettings(settings) {
-  const currency = settings?.currency ?? "USD";
+  // Preferir moneda de captura global (SelectorMoneda); fallback a moneda visual.
+  const currency = settings?.activeCaptureCurrency === "MXN" || settings?.currency === "MXN"
+    ? "MXN"
+    : "USD";
   const exchangeRate = currency === "USD"
     ? 1
-    : Number(settings?.exchangeRate || 1);
+    : Number(settings?.usdToMxnRate || settings?.exchangeRate || 1);
   return {
     currency,
     exchangeRate,
@@ -19,7 +22,9 @@ function buildMoneySettings(settings) {
 export function useMoney() {
   const settings = useDbStore((s) => s.db.settings, shallow);
   const cfg = useMemo(() => buildMoneySettings(settings), [
+    settings?.activeCaptureCurrency,
     settings?.currency,
+    settings?.usdToMxnRate,
     settings?.exchangeRate,
     settings?.exchangeMode,
     settings?.language,

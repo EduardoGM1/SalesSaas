@@ -72,7 +72,7 @@ npm run test:money-box   # unit Money Box
 
 ```
 apps/web/       Frontend Vite + React
-apps/api/       API Express
+apps/api/       API Express (JS, sin TypeScript) — rutas en routes/, lógica en services/
 packages/shared Código compartido
 supabase/       Migraciones y notas Auth
 public/         Assets estáticos (Vite publicDir)
@@ -80,6 +80,13 @@ docs/           Documentación técnica versionada
 scripts/        Utilidades (seed, migrate, verify)
 e2e/            Playwright
 ```
+
+### API (estado refactor)
+
+- Stack: Express + Node.js + JavaScript (sin TypeScript).
+- Capas actuales: `routes/v1.js` (HTTP) + `services/*` (dominio) + `lib/*` (infra).
+- Objetivo MVC incremental: extraer controllers por módulo sin romper rutas existentes; limpiar dead code al migrar cada dominio.
+- Detalle de endpoints: `apps/api/API.md`.
 
 ## Documentación relacionada
 

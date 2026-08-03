@@ -7,10 +7,12 @@ import { CollapsibleSection } from "@/components/ui/collapsible-section.jsx";
 import { useFeatureAccess } from "@/hooks/use-feature-access.js";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { useMoney } from "@/hooks/use-money.js";
+import { SelectorMoneda } from "@/components/currency/selector-moneda.jsx";
 import { selectOnFocus } from "@/lib/focus-select.js";
 import { formatMoneyValue, parseMoney, toDisplayAmount } from "@/lib/format/money";
 import { formatMoneyInput } from "@/lib/format/numeric-input.js";
 import { saveSettingsPatchRemote } from "@/actions/settings.js";
+import { normalizeCaptureCurrency } from "@/lib/currency/moneda-service";
 import {
   defaultPolicyConfig,
   fromCents,
@@ -121,13 +123,12 @@ function ProposalMatrix({ proposals, terms, showTotalToday, t }) {
                 if (!row) {
                   return <td key={`${term.label}-${i}`}>—</td>;
                 }
+                // Solo badges de origen/mejor; el rojo de la celda basta para no factible.
                 const badge = row.origin
                   ? t("moneyBox.originPlan")
                   : row.best && row.feasible
                     ? t("moneyBox.bestPlan")
-                    : row.feasible
-                      ? null
-                      : (row.reason || null);
+                    : null;
                 return (
                   <td
                     key={`${term.label}-${i}`}
@@ -245,6 +246,10 @@ export function MoneyBoxPage({ clientId, shared }) {
   const { allowed, locked, loading, ready } = useFeatureAccess("money_box");
   const worksheetConfig = useDbStore((s) => s.db.settings?.worksheetConfig, shallow);
   const moneyBoxConfig = useDbStore((s) => s.db.settings?.moneyBoxConfig, shallow);
+  const settings = useDbStore((s) => s.db.settings, shallow);
+  const captureCurrency = normalizeCaptureCurrency(
+    settings?.activeCaptureCurrency || settings?.currency || "USD",
+  );
 
   const [minDownPct, setMinDownPct] = useState(DEFAULT_RESTRICTIONS.minDownPct);
   const [maxDownPct, setMaxDownPct] = useState(DEFAULT_RESTRICTIONS.maxDownPct);
@@ -386,6 +391,24 @@ export function MoneyBoxPage({ clientId, shared }) {
             <span className="network-pill ok">{t("moneyBox.active")}</span>
           </div>
         </div>
+
+        <SelectorMoneda
+          value={captureCurrency}
+          onChange={async (next) => {
+            const currency = normalizeCaptureCurrency(next);
+            const rate = Number(settings?.usdToMxnRate || settings?.exchangeRate || 18);
+            try {
+              await saveSettingsPatchRemote({
+                activeCaptureCurrency: currency,
+                currency,
+                exchangeRate: currency === "MXN" ? rate : 1,
+              });
+            } catch (err) {
+              toast.error(err?.message || "No se pudo cambiar la moneda.");
+            }
+          }}
+          className="tool-moneda-selector"
+        />
 
         <CollapsibleSection
           className="card"

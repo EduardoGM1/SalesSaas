@@ -782,7 +782,7 @@ export async function transferProspectOwnership(supabase, userId, prospectId, {
     return transferPersonalToSala(userId, prospectId, dstWs);
   }
   if (srcTipo === "sala_de_venta" && dstTipo === "personal") {
-    throw new ServiceError("Un expediente de la empresa no puede regresar a un espacio personal.", 403);
+    throw new ServiceError(CROSS_BOUNDARY_MSG, 403);
   }
 
   await assertWorkspaceBoundary(supabase, src.workspace_id, dstWs);

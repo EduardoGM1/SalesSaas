@@ -116,7 +116,7 @@ export async function listTransferTargets(supabase, userId, prospectId, mode = "
       }
     } else if (current?.tipo === "sala_de_venta" && w.tipo === "personal") {
       allowed = false;
-      reason = "Un expediente de la empresa no puede regresar a un espacio personal.";
+      reason = workspaceService.CROSS_BOUNDARY_MSG;
     } else {
       try {
         await workspaceService.assertWorkspaceBoundary(supabase, prospect.workspace_id, w.id);

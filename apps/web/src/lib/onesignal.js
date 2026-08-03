@@ -319,6 +319,17 @@ async function waitForPushSubscription(OneSignal, timeoutMs = 25_000) {
   });
 }
 
+/** Espera a que el SDK asigne onesignalId (evita carrera optIn → PUSH_SERVICE_ERROR). */
+async function waitForOnesignalId(OneSignal, timeoutMs = 12_000) {
+  if (OneSignal?.User?.onesignalId) return OneSignal.User.onesignalId;
+  const started = Date.now();
+  while (Date.now() - started < timeoutMs) {
+    await delay(200);
+    if (OneSignal?.User?.onesignalId) return OneSignal.User.onesignalId;
+  }
+  return OneSignal?.User?.onesignalId || null;
+}
+
 async function readNativePushOnOneSignalSw() {
   try {
     const registration = await navigator.serviceWorker.getRegistration(SW_SCOPE);
@@ -908,8 +919,7 @@ async function subscribeToPushInternal() {
     throw codedError("ONESIGNAL_NOT_CONFIGURED", "Server reports push_configured=false");
   }
 
-  // Flujo lineal: init + SW → optIn → token/id → login → registerDevice.
-  // No exigir onesignalId ni logout preventivo antes del optIn.
+  // Flujo lineal: init + SW → onesignalId listo → optIn → token → login → registerDevice.
   const runtime = await ensurePushRuntimeReady();
   const OneSignal = runtime.OneSignal;
   if (!runtime.ready) {
@@ -933,6 +943,11 @@ async function subscribeToPushInternal() {
     );
   }
 
+  const onesignalId = await waitForOnesignalId(OneSignal, 12_000);
+  if (!onesignalId) {
+    console.warn("[onesignal] onesignalId aún ausente tras init; se intenta optIn igualmente");
+  }
+
   const userId = await resolveUserId();
   const already = readSubscriptionState(OneSignal);
   if (already.subscribed) {
@@ -943,6 +958,9 @@ async function subscribeToPushInternal() {
   }
 
   const runOptIn = async () => {
+    if (!OneSignal.User?.onesignalId) {
+      await waitForOnesignalId(OneSignal, 6_000);
+    }
     await OneSignal.User.PushSubscription.optIn();
   };
 

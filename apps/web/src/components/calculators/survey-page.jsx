@@ -253,7 +253,7 @@ export function SurveyPage({ clientId, shared }: SurveyPageProps) {
 
   const handleSave = async ({ openToolModal = true } = {}) => {
     if (readOnly) return false;
-    const errors: Record<string, string> = {};
+    const errors = {};
     const name = data.svp_name1?.trim() || "";
     if (!name) errors.svp_name1 = t("tools.survey.validationRequired");
     else if (!isValidSingleName(name)) errors.svp_name1 = t("tools.survey.validationSingleName");
@@ -547,7 +547,7 @@ export function SurveyPage({ clientId, shared }: SurveyPageProps) {
           </div>
         </fieldset>
 
-        {!readOnly && (
+        {!readOnly && tab !== "resumen" && (
           <div className="save-footer tool-save-footer">
             <span className={`save-confirm${saved ? " show" : ""}`}>{t("common.saved")}</span>
             <button type="button" className="btn btn-primary" onClick={saveFlowHandler}>

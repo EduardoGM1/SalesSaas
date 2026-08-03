@@ -5,6 +5,8 @@ import { Eye, Share2, Trash2 } from "lucide-react";
 import { ShareProspectModal } from "@/components/network/share-prospect-modal.jsx";
 import { NewClientModal } from "@/components/clients/new-client-modal.jsx";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
+import { createClient } from "@/lib/supabase/client";
+import { removeChannelSafe } from "@/lib/presence/realtime.js";
 import { sharingApi } from "@/lib/network-api.js";
 import { participantsApi } from "@/lib/participants-api.js";
 import { Topbar } from "@/components/layout/topbar";
@@ -225,6 +227,51 @@ export function ClientsPage() {
     document.addEventListener("visibilitychange", onVisible);
     return () => document.removeEventListener("visibilitychange", onVisible);
   }, [canShare, hydrated, refreshPinned, refreshTeamMeta]);
+
+  const pinnedIdsKey = useMemo(
+    () => pinned.map((p) => p.id).filter(Boolean).sort().join(","),
+    [pinned],
+  );
+
+  // Realtime: si el dueño cambia tipo_tour (u otros campos) del prospecto
+  // referenciado, refrescar "En Mi Espacio" sin esperar a cambiar de pestaña.
+  useEffect(() => {
+    if (!canShare || !hydrated || !pinnedIdsKey) return undefined;
+    const pinnedIds = new Set(pinnedIdsKey.split(","));
+
+    let cancelled = false;
+    let channel = null;
+    const supabase = createClient();
+    let refreshTimer = null;
+    const scheduleRefresh = () => {
+      clearTimeout(refreshTimer);
+      refreshTimer = window.setTimeout(() => {
+        refreshPinned();
+      }, 350);
+    };
+
+    void (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (cancelled || !user?.id) return;
+      channel = supabase
+        .channel(`clients-pinned-prospects:${user.id}`)
+        .on(
+          "postgres_changes",
+          { event: "UPDATE", schema: "public", table: "prospects" },
+          (payload) => {
+            const id = payload.new?.id;
+            if (id && pinnedIds.has(id)) scheduleRefresh();
+          },
+        )
+        .subscribe();
+    })();
+
+    return () => {
+      cancelled = true;
+      clearTimeout(refreshTimer);
+      if (channel) void removeChannelSafe(supabase, channel);
+    };
+  }, [canShare, hydrated, pinnedIdsKey, refreshPinned]);
 
   const ownedAll = searchClients("");
   const ownedIds = useMemo(() => new Set(ownedAll.map((c) => c.id)), [ownedAll]);
