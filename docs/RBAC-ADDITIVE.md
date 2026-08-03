@@ -33,8 +33,10 @@ FROM public.workspace_usuario_permisos_override;
 
 | Tabla | adds | denies | Fecha |
 |-------|------|--------|-------|
-| `usuario_permisos_override` | **0** | **1** | 2026-08-02 |
-| `workspace_usuario_permisos_override` | _no consultada_ | _no consultada_ | |
+| `usuario_permisos_override` | **0** | **1** (pre-0063) → **0** tras aplicar | 2026-08-02 |
+| `workspace_usuario_permisos_override` | **0** | **0** | 2026-08-02 (post-0063) |
+
+Migración `0063` aplicada vía `scripts/apply-migration-0063.mjs` el 2026-08-02. Post-apply: ambos tablas en 0/0.
 
 **Interpretación:** un solo override restrictivo y ningún aditivo. Al aplicar `0063`, ese deny se borra; el usuario afectado recuperará lo que su **rol** ya otorga para esa clave. Si la restricción debe mantenerse, **antes** de 0063 cámbiale el rol (no reintroducir deny).
 
