@@ -11,44 +11,87 @@ efectivo = techo_plataforma ∩ techo_empresa ∩ (permisos(rol_sala) ∪ overri
 - En sala, la sesión usa `workspace_miembros.role_id` + overrides de sala (misma fuente que RLS vía `effective_workspace_permissions`).
 - Roles de plataforma (Superadmin / Soporte) siguen en `profiles.role_id` fuera del contexto de sala.
 
-## Migración 0063 (obligatoria en Supabase)
+---
 
-Archivo: `supabase/migrations/0063_rbac_additive_overrides.sql`
+## Verificación pre / post migración `0063`
 
-1. **Antes de aplicar**, documentar conteos:
+### Consulta (Paso 1)
 
 ```sql
 SELECT count(*) FILTER (WHERE otorgado) AS adds,
        count(*) FILTER (WHERE NOT otorgado) AS denies
 FROM public.usuario_permisos_override;
-
-SELECT count(*) FILTER (WHERE otorgado) AS adds,
-       count(*) FILTER (WHERE NOT otorgado) AS denies
-FROM public.workspace_usuario_permisos_override;
 ```
 
-2. Aplicar 0063 (borra denies y reescribe resolutores SQL sin `EXCEPT`).
+### Resultados documentados
 
-3. Resultado de la consulta de verificación (prod, 2026-08-02):
+| Momento | Fecha (UTC) | adds | denies | Notas |
+|---------|-------------|------|--------|-------|
+| Pre-migración (SQL Editor, usuario) | 2026-08-02 ~21:00 local | **0** | **1** | Verificado manualmente en Dashboard |
+| Post-migración (aplicación remota) | 2026-08-02 | **0** | **0** | Tras `scripts/apply-migration-0063.mjs` |
+| Re-verificación formal | **2026-08-03T06:05:53.532Z** | **0** | **0** | `scripts/verify-rbac-additive.mjs` |
 
-| Tabla | adds | denies | Fecha |
-|-------|------|--------|-------|
-| `usuario_permisos_override` | **0** | **1** (pre-0063) → **0** tras aplicar | 2026-08-02 |
-| `workspace_usuario_permisos_override` | **0** | **0** | 2026-08-02 (post-0063) |
+Misma consulta sobre `workspace_usuario_permisos_override` (re-verificación):
 
-Migración `0063` aplicada vía `scripts/apply-migration-0063.mjs` el 2026-08-02. Post-apply: ambos tablas en 0/0.
+| Tabla | adds | denies |
+|-------|------|--------|
+| `workspace_usuario_permisos_override` | **0** | **0** |
 
-**Interpretación:** un solo override restrictivo y ningún aditivo. Al aplicar `0063`, ese deny se borra; el usuario afectado recuperará lo que su **rol** ya otorga para esa clave. Si la restricción debe mantenerse, **antes** de 0063 cámbiale el rol (no reintroducir deny).
+### Estado de funciones SQL (re-verificación)
 
-Consulta opcional para ver quién/qué es el deny:
+- `resolve_user_permission_keys`: **sin** `EXCEPT` / sin rama `otorgado = false`
+- `effective_workspace_permissions`: **sin** `EXCEPT` / sin rama `otorgado = false`
+
+→ La migración **0063 ya está aplicada** en producción y el resolutor es aditivo.
+
+---
+
+## Paso 3 — Denies existentes
+
+### Pre-migración
+
+- `denies = 1` en `usuario_permisos_override`.
+- `adds = 0` → era un caso aislado, no un patrón masivo.
+
+### Detalle del deny
+
+La consulta de detalle del prompt usa tablas `usuarios` / columnas que no existen en este schema. Equivalente real:
 
 ```sql
-SELECT o.usuario_id, p.email, p.full_name, perm.clave, o.otorgado
+SELECT o.usuario_id, p.email, p.full_name, o.permiso_id, perm.clave AS permiso, o.otorgado
 FROM public.usuario_permisos_override o
 JOIN public.permisos perm ON perm.id = o.permiso_id
 LEFT JOIN public.profiles p ON p.id = o.usuario_id
 WHERE o.otorgado = false;
 ```
+
+**Estado actual (post-0063):** esa consulta devuelve **0 filas** (el deny ya fue limpiado por la migración).
+
+**Limitación documentada:** el detalle (usuario + clave del deny) **no se capturó** antes de aplicar `0063` el 2026-08-02. Tras la limpieza no hay forma de reconstruir esa fila desde `usuario_permisos_override`. No existe tabla `admin_logs` en este proyecto para rastrearlo.
+
+### Decisión / impacto
+
+| Caso | Decisión | Justificación |
+|------|----------|---------------|
+| Único deny pre-0063 (usuario/clave desconocidos a posteriori) | Sin cambio de rol previo; se dejó limpiar | Era 1 registro aislado; tras limpieza, acceso = solo lo que otorga su rol actual. Si en smoke aparece alguien con un permiso “de más”, ajustar **rol** (no reintroducir deny). |
+
+### Prueba manual recomendada (smoke)
+
+1. Iniciar sesión con un vendedor y un gerente en sala.
+2. Confirmar que la UI/nav refleja el rol de la sala (no un deny fantasma).
+3. Si algún usuario concreto “antes no podía X y ahora sí” y no es deseable: cambiarle el **rol** en Mi equipo / Admin.
+
+---
+
+## Migración 0063
+
+Archivo: `supabase/migrations/0063_rbac_additive_overrides.sql`  
+Script: `scripts/apply-migration-0063.mjs`  
+Verificación: `node scripts/verify-rbac-additive.mjs` (requiere `DATABASE_URL` en `.env.local`)
+
+**Estado producción: APLICADA** (2026-08-02). Re-verificación 2026-08-03 confirma `denies = 0` y funciones sin semántica deny.
+
+---
 
 ## API Gerente (sala activa)
 
