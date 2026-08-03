@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { ChevronDown, LoaderCircle, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -7,6 +7,7 @@ import { navLabel } from "@/lib/i18n.js";
 import { isNavItemActive } from "@/lib/nav-config.js";
 import { useAppNav } from "@/hooks/use-app-nav.js";
 import { useWorkspace } from "@/hooks/use-workspace.js";
+import { WorkspaceBrandMark } from "@/components/layout/workspace-brand-mark.jsx";
 import { WorkspaceSheet } from "@/components/layout/workspace-rail.jsx";
 
 function HeaderNavLinks({ className }) {
@@ -62,34 +63,54 @@ export function DesktopTopNavActions() {
   return <HeaderNavLinks className="topbar-desktop-actions" />;
 }
 
-/** Avatar del header móvil: abre el selector de workspace. */
+/** Avatar del header móvil: abre el selector de workspace (íconos apilados). */
 export function MobileTopAvatar() {
-  const { avatarUrl, avatarLabel } = useAppNav();
   const { t } = useI18n();
-  const { ready, active, workspaces, switching } = useWorkspace();
+  const { ready, active, activeId, workspaces, switching } = useWorkspace();
   const [open, setOpen] = useState(false);
-  const canOpen = ready && Boolean(active) && workspaces.length > 1;
+  // Misma regla que desktop: cambiar workspace o abandonar sala (aunque solo haya 1).
+  const canOpen = ready && Boolean(active)
+    && (workspaces.length > 1 || active?.tipo === "sala_de_venta");
+
+  const stack = useMemo(() => {
+    if (!active) return [];
+    const others = workspaces.filter((w) => w.id !== activeId).slice(0, 2);
+    return [active, ...others];
+  }, [active, activeId, workspaces]);
 
   return (
     <>
       <button
         type="button"
-        className="mobile-top-avatar"
+        className={cn("mobile-top-avatar", stack.length > 1 && "mobile-top-avatar--stack")}
         aria-label={t("workspace.switchTitle")}
         aria-haspopup="dialog"
         aria-expanded={open}
-        disabled={switching}
+        disabled={switching || !canOpen}
         onClick={() => { if (canOpen) setOpen(true); }}
       >
-        <div className="mobile-top-avatar-inner" suppressHydrationWarning>
+        <span className="mobile-ws-stack" aria-hidden>
           {switching ? (
-            <LoaderCircle size={15} className="ws-rail-spinner" />
-          ) : avatarUrl ? (
-            <img src={avatarUrl} alt="" className="mobile-top-avatar-img" />
+            <span className="mobile-ws-stack-item is-active">
+              <LoaderCircle size={15} className="ws-rail-spinner" />
+            </span>
           ) : (
-            avatarLabel.slice(0, 1)
+            stack.map((workspace, index) => (
+              <span
+                key={workspace.id}
+                className={cn("mobile-ws-stack-item", index === 0 && "is-active")}
+                style={{ zIndex: stack.length - index }}
+              >
+                <WorkspaceBrandMark
+                  src={workspace.logo_url}
+                  name={workspace.nombre || (workspace.tipo === "personal" ? t("workspace.personal") : t("workspace.sala"))}
+                  imgClassName="mobile-ws-stack-img"
+                  initialsClassName="mobile-ws-stack-initials"
+                />
+              </span>
+            ))
           )}
-        </div>
+        </span>
         {canOpen ? (
           <span className="mobile-top-avatar-caret" aria-hidden>
             <ChevronDown size={9} strokeWidth={3} />

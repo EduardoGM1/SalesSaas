@@ -1,7 +1,7 @@
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { ChevronDown, LoaderCircle, LogOut } from "lucide-react";
 import { WorkspaceBrandMark } from "@/components/layout/workspace-brand-mark.jsx";
-import { useWorkspace } from "@/hooks/use-workspace.js";
+import { publishWorkspaceTransition, useWorkspace } from "@/hooks/use-workspace.js";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { cn } from "@/lib/utils";
 import { confirmDialog } from "@/lib/confirm";
@@ -37,17 +37,23 @@ async function leaveActiveSala() {
 }
 
 async function performLeaveSala(t) {
-  await leaveActiveSala();
-  const previousSettings = useDbStore.getState().db?.settings || {};
-  useDbStore.getState().replaceDb({ ...emptyDatabase(), settings: previousSettings });
-  notifyAuthChanged();
-  const nextSession = await fetchSession();
-  window.dispatchEvent(new Event("workspace:changed"));
-  await stopDashboardDataRealtime();
-  await requestSyncRefresh({ force: true, reason: "workspace-leave" });
-  const userId = nextSession?.user?.id || nextSession?.profile?.id;
-  if (userId) await startDashboardDataRealtime(userId);
-  toast.success(t("workspace.leaveOk"));
+  publishWorkspaceTransition({ switching: true, target: null });
+  try {
+    await leaveActiveSala();
+    const previousSettings = useDbStore.getState().db?.settings || {};
+    useDbStore.getState().replaceDb({ ...emptyDatabase(), settings: previousSettings });
+    notifyAuthChanged();
+    const nextSession = await fetchSession();
+    window.dispatchEvent(new Event("workspace:changed"));
+    await stopDashboardDataRealtime();
+    await requestSyncRefresh({ force: true, reason: "workspace-leave" });
+    const userId = nextSession?.user?.id || nextSession?.profile?.id;
+    const workspaceId = nextSession?.workspace_activo_id || nextSession?.workspace_activo?.id || null;
+    if (userId) await startDashboardDataRealtime(userId, { workspaceId, force: true });
+    toast.success(t("workspace.leaveOk"));
+  } finally {
+    publishWorkspaceTransition({ switching: false, target: null });
+  }
 }
 
 /**

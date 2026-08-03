@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { Eye, FolderPlus, Pencil } from "lucide-react";
 import { SalesModal } from "@/components/ui/sales-modal";
-import { networkApi, sharingApi } from "@/lib/network-api.js";
+import { MoveProspectModal } from "@/components/clients/move-prospect-modal.jsx";
+import { sharingApi } from "@/lib/network-api.js";
 import { useI18n } from "@/hooks/use-i18n.js";
+import { useWorkspace } from "@/hooks/use-workspace.js";
 import { toast } from "@/lib/toast";
 import { nudgePushPrompt } from "@/lib/push-prompt.js";
 import { fetchProfile } from "@/lib/session-api.js";
@@ -76,16 +78,20 @@ function ShareRow({ share, onPermissionChange, onRemove, t }) {
 
 export function ShareProspectModal({ open, onOpenChange, prospectId, prospectName, prospect }) {
   const { t, lang } = useI18n();
+  const { active } = useWorkspace();
+  const isPersonalWorkspace = !active?.tipo || active.tipo === "personal";
   const [mode, setMode] = useState("internal");
   const [contacts, setContacts] = useState([]);
   const [shares, setShares] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [contactsError, setContactsError] = useState("");
   const [selectedId, setSelectedId] = useState("");
   const [permission, setPermission] = useState("edit");
   const [externalPermission, setExternalPermission] = useState("edit");
   const [invitePayload, setInvitePayload] = useState(null);
   const [sharingOut, setSharingOut] = useState(false);
   const [sharerName, setSharerName] = useState("Saletse");
+  const [moveMode, setMoveMode] = useState(null);
 
   const clientForShare = useMemo(() => {
     if (prospect && typeof prospect === "object") {
@@ -97,20 +103,26 @@ export function ShareProspectModal({ open, onOpenChange, prospectId, prospectNam
   const refresh = async () => {
     if (!prospectId) return;
     setLoading(true);
+    setContactsError("");
     try {
       const [shareContacts, existing] = await Promise.all([
-        sharingApi.listShareContacts(prospectId).catch(() => null),
+        sharingApi.listShareContacts(prospectId).catch((err) => {
+          throw err;
+        }),
         sharingApi.listForProspect(prospectId),
       ]);
-      if (Array.isArray(shareContacts)) {
-        setContacts(shareContacts);
-      } else {
-        const conn = await networkApi.listConnections("accepted");
-        setContacts(conn.map((c) => c.peer).filter(Boolean).map((p) => ({ ...p, selectable: true, same_workspace: true })));
-      }
+      // Nunca marcar contactos de Red como seleccionables sin validación de workspace.
+      setContacts(Array.isArray(shareContacts) ? shareContacts : []);
       setShares(existing);
     } catch (err) {
-      toast.error(err.message);
+      setContacts([]);
+      setContactsError(err?.message || t("network.shareContactsError"));
+      toast.error(err?.message || t("network.shareContactsError"));
+      try {
+        setShares(await sharingApi.listForProspect(prospectId));
+      } catch {
+        setShares([]);
+      }
     } finally {
       setLoading(false);
     }
@@ -130,6 +142,8 @@ export function ShareProspectModal({ open, onOpenChange, prospectId, prospectNam
       setSelectedId("");
       setInvitePayload(null);
       setMode("internal");
+      setMoveMode(null);
+      setContactsError("");
     }
   }, [open, prospectId]);
 
@@ -222,8 +236,9 @@ export function ShareProspectModal({ open, onOpenChange, prospectId, prospectNam
   };
 
   return (
+    <>
     <SalesModal
-      open={open}
+      open={open && !moveMode}
       onOpenChange={onOpenChange}
       title={t("network.shareTitle")}
       sub={t("network.shareSub", { name: prospectName })}
@@ -326,6 +341,8 @@ export function ShareProspectModal({ open, onOpenChange, prospectId, prospectNam
 
           {loading ? (
             <div className="dp-empty">{t("common.loading")}</div>
+          ) : contactsError ? (
+            <div className="ethic-box">{contactsError}</div>
           ) : contacts.length === 0 ? (
             <div className="ethic-box">{t("network.shareNeedContacts")}</div>
           ) : (
@@ -350,7 +367,12 @@ export function ShareProspectModal({ open, onOpenChange, prospectId, prospectNam
                 </div>
               </div>
               <div className="btn-row" style={{ marginTop: 0, marginBottom: 16 }}>
-                <button type="button" className="btn btn-primary btn-sm" disabled={!selectedId} onClick={handleShare}>
+                <button
+                  type="button"
+                  className="btn btn-primary btn-sm"
+                  disabled={!selectedId || contacts.find((c) => c.id === selectedId)?.selectable === false}
+                  onClick={handleShare}
+                >
                   {t("network.shareAction")}
                 </button>
               </div>
@@ -374,11 +396,55 @@ export function ShareProspectModal({ open, onOpenChange, prospectId, prospectNam
             </>
           )}
 
+          {prospectId ? (
+            <div className="share-move-actions">
+              <div className="section-label">{t("network.shareMoveSection")}</div>
+              <p className="admin-cell-muted" style={{ fontSize: 13, marginBottom: 10 }}>
+                {t("network.shareMoveHint")}
+              </p>
+              <div className="btn-row" style={{ marginTop: 0, marginBottom: 12, flexWrap: "wrap" }}>
+                <button type="button" className="btn btn-ghost btn-sm" onClick={() => setMoveMode("duplicate")}>
+                  {t("exp.duplicate")}
+                </button>
+                {isPersonalWorkspace ? (
+                  <button type="button" className="btn btn-ghost btn-sm" onClick={() => setMoveMode("transfer")}>
+                    {t("exp.transfer")}
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-sm"
+                    disabled
+                    title={t("exp.moveBlocked")}
+                  >
+                    {t("exp.transfer")}
+                  </button>
+                )}
+              </div>
+              {!isPersonalWorkspace ? (
+                <p className="admin-cell-muted" style={{ fontSize: 12, marginBottom: 12 }}>
+                  {t("exp.moveBlocked")}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+
           <div className="btn-row">
             <button type="button" className="btn btn-ghost" onClick={() => onOpenChange(false)}>{t("common.cancel")}</button>
           </div>
         </>
       )}
     </SalesModal>
+    {moveMode ? (
+      <MoveProspectModal
+        open={!!moveMode}
+        onOpenChange={(next) => {
+          if (!next) setMoveMode(null);
+        }}
+        prospectId={prospectId}
+        mode={moveMode}
+      />
+    ) : null}
+    </>
   );
 }

@@ -253,43 +253,73 @@ export function TenantCompanyAdministration({ session, companies = EMPTY_COMPANI
               </form>
             </AdminCard>
             <div className="admin-room-cards">
-              {state.rooms.map((room) => (
-                <AdminCard key={room.id} title={room.nombre} subtitle={`${memberRows(room).length} miembros`}>
-                  <div className="admin-tenant-member-list">
-                    {memberRows(room).map((member) => (
-                      <div key={member.usuario_id} className="admin-tenant-member">
-                        <div>
-                          <strong>{member.profiles?.full_name || member.profiles?.email || member.usuario_id}</strong>
-                          {member.rol_en_workspace === "gerente" ? <span>Gerente</span> : (
-                            <select
-                              className="auth-input admin-tenant-role-select"
-                              value={member.role_id || ""}
-                              disabled={pending}
-                              onChange={(event) => void mutate(() => adminJson(`tenant/workspaces/${room.id}/members/${member.usuario_id}/role`, { method: "PATCH", body: { role_id: event.target.value } }), "Puesto actualizado")}
-                            >
-                              <option value="" disabled>Selecciona puesto</option>
-                              {workspaceRoles.filter((role) => role.slug !== "gerente").map((role) => <option key={role.id} value={role.id}>{role.nombre}</option>)}
-                            </select>
-                          )}
-                        </div>
-                        <AdminOverflowMenu label="Acciones del miembro" items={[
-                          member.rol_en_workspace !== "gerente" ? {
-                            id: "manager",
-                            label: "Convertir en gerente",
-                            onSelect: () => void mutate(() => adminJson(`tenant/workspaces/${room.id}/gerente`, { method: "PATCH", body: { usuario_id: member.usuario_id } }), "Gerente actualizado"),
-                          } : null,
-                          member.rol_en_workspace !== "gerente" ? {
-                            id: "remove",
-                            label: "Retirar de la sala",
-                            danger: true,
-                            onSelect: () => void mutate(() => adminJson(`tenant/workspaces/${room.id}/members/${member.usuario_id}`, { method: "DELETE" }), "Miembro retirado"),
-                          } : null,
-                        ]} />
+              {state.rooms.map((room) => {
+                const members = memberRows(room);
+                return (
+                  <AdminCard key={room.id} title={room.nombre} subtitle={`${members.length} miembros`}>
+                    {!members.length ? (
+                      <AdminEmptyState title="Sin miembros" body="Añade vendedores a esta sala." />
+                    ) : (
+                      <div className="admin-members-table-wrap">
+                        <table className="client-table admin-company-members-table">
+                          <thead>
+                            <tr>
+                              <th>Nombre</th>
+                              <th>Correo</th>
+                              <th>Puesto</th>
+                              <th>Acciones</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {members.map((member) => (
+                              <tr key={member.usuario_id}>
+                                <td className="admin-cell-name" data-label="Nombre">
+                                  {member.profiles?.full_name || member.profiles?.email || member.usuario_id}
+                                </td>
+                                <td className="admin-cell-muted" data-label="Correo">
+                                  {member.profiles?.email || "—"}
+                                </td>
+                                <td data-label="Puesto">
+                                  {member.rol_en_workspace === "gerente" ? (
+                                    <AdminStatusBadge tone="info">Gerente</AdminStatusBadge>
+                                  ) : (
+                                    <select
+                                      className="auth-input admin-tenant-role-select"
+                                      value={member.role_id || ""}
+                                      disabled={pending}
+                                      onChange={(event) => void mutate(() => adminJson(`tenant/workspaces/${room.id}/members/${member.usuario_id}/role`, { method: "PATCH", body: { role_id: event.target.value } }), "Puesto actualizado")}
+                                    >
+                                      <option value="" disabled>Selecciona puesto</option>
+                                      {workspaceRoles.filter((role) => role.slug !== "gerente").map((role) => (
+                                        <option key={role.id} value={role.id}>{role.nombre}</option>
+                                      ))}
+                                    </select>
+                                  )}
+                                </td>
+                                <td data-label="Acciones">
+                                  <AdminOverflowMenu label="Acciones del miembro" items={[
+                                    member.rol_en_workspace !== "gerente" ? {
+                                      id: "manager",
+                                      label: "Convertir en gerente",
+                                      onSelect: () => void mutate(() => adminJson(`tenant/workspaces/${room.id}/gerente`, { method: "PATCH", body: { usuario_id: member.usuario_id } }), "Gerente actualizado"),
+                                    } : null,
+                                    member.rol_en_workspace !== "gerente" ? {
+                                      id: "remove",
+                                      label: "Retirar de la sala",
+                                      danger: true,
+                                      onSelect: () => void mutate(() => adminJson(`tenant/workspaces/${room.id}/members/${member.usuario_id}`, { method: "DELETE" }), "Miembro retirado"),
+                                    } : null,
+                                  ]} />
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
                       </div>
-                    ))}
-                  </div>
-                </AdminCard>
-              ))}
+                    )}
+                  </AdminCard>
+                );
+              })}
               {!state.rooms.length ? <AdminEmptyState title="Sin salas" body="Crea la primera Sala de Ventas." /> : null}
             </div>
           </div>

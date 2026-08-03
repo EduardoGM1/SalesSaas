@@ -19,7 +19,7 @@ const SALETSE_BRAND = {
 let workspaceTransition = { switching: false, target: null };
 const workspaceTransitionListeners = new Set();
 
-function publishWorkspaceTransition(next) {
+export function publishWorkspaceTransition(next) {
   workspaceTransition = next;
   workspaceTransitionListeners.forEach((listener) => listener(next));
 }
@@ -102,10 +102,11 @@ export function useWorkspace() {
       window.dispatchEvent(new Event("workspace:changed"));
 
       const userId = nextSession?.user?.id || nextSession?.profile?.id;
+      const nextWorkspaceId = nextSession?.workspace_activo_id || nextSession?.workspace_activo?.id || workspaceId;
       await stopDashboardDataRealtime();
       await requestSyncRefresh({ force: true, reason: "workspace-switch" });
       if (userId) {
-        await startDashboardDataRealtime(userId);
+        await startDashboardDataRealtime(userId, { workspaceId: nextWorkspaceId, force: true });
       }
     } finally {
       publishWorkspaceTransition({ switching: false, target: null });

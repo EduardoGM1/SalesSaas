@@ -30,6 +30,7 @@ const PWA_RESUME_PULL_COOLDOWN_MS = 5_000;
 
 export function SyncProvider({ children }) {
   const userIdRef = useRef(null);
+  const workspaceIdRef = useRef(null);
   const suspendRef = useRef(false);
   const enabledRef = useRef(false);
   const initedForRef = useRef(null);
@@ -152,10 +153,13 @@ export function SyncProvider({ children }) {
             else applyRemote(norm);
             localStorage.setItem(ACCOUNT_KEY, userId);
             useSyncStore.getState().setSynced();
-            void startDashboardDataRealtime(userId).then(() => {
+            void startDashboardDataRealtime(userId, { workspaceId: workspaceIdRef.current }).then(() => {
               if (!isDashboardRealtimeHealthy()) {
                 setTimeout(() => {
-                  void ensureDashboardDataRealtime(userId, { force: true });
+                  void ensureDashboardDataRealtime(userId, {
+                    force: true,
+                    workspaceId: workspaceIdRef.current,
+                  });
                 }, 2500);
               }
             });
@@ -199,11 +203,14 @@ export function SyncProvider({ children }) {
 
       enabledRef.current = true;
       lastResumePullAtRef.current = Date.now();
-      void startDashboardDataRealtime(userId).then(() => {
+      void startDashboardDataRealtime(userId, { workspaceId: workspaceIdRef.current }).then(() => {
         // PWA: a veces el WS aún no está listo al login; reintentar una vez.
         if (!isDashboardRealtimeHealthy()) {
           setTimeout(() => {
-            void ensureDashboardDataRealtime(userId, { force: true });
+            void ensureDashboardDataRealtime(userId, {
+              force: true,
+              workspaceId: workspaceIdRef.current,
+            });
           }, 2500);
         }
       });
@@ -227,6 +234,7 @@ export function SyncProvider({ children }) {
 
     const unsubSession = watchSession((session) => {
       const userId = session?.user?.id;
+      workspaceIdRef.current = session?.workspace_activo_id || session?.workspace_activo?.id || null;
       if (userId) void initForUser(userId);
       else stopForUser();
     });
@@ -241,7 +249,12 @@ export function SyncProvider({ children }) {
     const onOnline = () => {
       lastResumePullAtRef.current = 0;
       const uid = userIdRef.current;
-      if (uid) void ensureDashboardDataRealtime(uid, { force: true });
+      if (uid) {
+        void ensureDashboardDataRealtime(uid, {
+          force: true,
+          workspaceId: workspaceIdRef.current,
+        });
+      }
       void refreshInbound({ reason: "online", force: true });
     };
 
@@ -251,7 +264,10 @@ export function SyncProvider({ children }) {
       const uid = userIdRef.current;
       if (!uid || !enabledRef.current) return;
       const pwa = isStandaloneApp();
-      void ensureDashboardDataRealtime(uid, { force: pwa });
+      void ensureDashboardDataRealtime(uid, {
+        force: pwa,
+        workspaceId: workspaceIdRef.current,
+      });
       // En PWA forzamos pull: el WS a menudo no entregó eventos mientras estaba en background.
       void refreshInbound({ reason: "foreground", force: pwa });
       maybeRequestReminderDigest();

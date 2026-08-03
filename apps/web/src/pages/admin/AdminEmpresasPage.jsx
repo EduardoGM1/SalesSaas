@@ -359,7 +359,8 @@ export function AdminEmpresasPage() {
                         <td data-label={t("team.col.role")}><AdminStatusBadge tone={member.rol_en_workspace === "gerente" ? "info" : "neutral"}>{member.rol_en_workspace === "gerente" ? t("team.role.gerente") : t("team.role.vendedor")}</AdminStatusBadge></td>
                         <td data-label="Acciones"><AdminOverflowMenu label={`Acciones de ${member.full_name || member.email}`} items={[
                           member.rol_en_workspace !== "gerente" ? { id: "manager", label: t("admin.empresas.makeGerente"), onSelect: () => makeGerente(member.id), disabled: pending } : null,
-                          { id: "remove", label: t("admin.empresas.removeMember"), onSelect: () => removeMember(member.id), danger: true, disabled: pending },
+                          // No ofrecer quitar al gerente: la API exige otro gerente primero.
+                          member.rol_en_workspace !== "gerente" ? { id: "remove", label: t("admin.empresas.removeMember"), onSelect: () => removeMember(member.id), danger: true, disabled: pending } : null,
                         ]} /></td>
                       </tr>
                     ))}</tbody>

@@ -3,6 +3,7 @@
  * productionTourSaleCounts / getDashboardWeeks (misma fuente, sin +1 ciego).
  *
  * En PWA el WebSocket suele morir en background: hay que re-suscribir al resume.
+ * El canal se amarra al workspace_id activo cuando existe, para no mezclar salas.
  */
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { createClient, primeRealtimeAuth } from "@/lib/supabase/client";
@@ -16,6 +17,7 @@ const TABLES = ["prospects", "sales", "goals", "calendar_entries"];
 
 let channel = null;
 let activeUserId = null;
+let activeWorkspaceId = null;
 let channelJoined = false;
 let debounceTimer = null;
 let starting = false;
@@ -57,7 +59,6 @@ export function isDashboardRealtimeHealthy() {
   if (!channel || !activeUserId || !channelJoined) return false;
   try {
     const state = channel.state;
-    // joined | subscribed según versión del SDK
     if (state && state !== "joined" && state !== "joined_presence" && state !== "subscribed") {
       return false;
     }
@@ -67,6 +68,10 @@ export function isDashboardRealtimeHealthy() {
   return true;
 }
 
+export function getDashboardRealtimeWorkspaceId() {
+  return activeWorkspaceId;
+}
+
 export async function stopDashboardDataRealtime() {
   clearTimeout(debounceTimer);
   debounceTimer = null;
@@ -74,6 +79,7 @@ export async function stopDashboardDataRealtime() {
   const ch = channel;
   channel = null;
   activeUserId = null;
+  activeWorkspaceId = null;
   channelJoined = false;
   if (ch) await removeChannelSafe(sb, ch);
 }
@@ -81,10 +87,11 @@ export async function stopDashboardDataRealtime() {
 /**
  * Un solo canal, varias suscripciones postgres_changes.
  * @param {string} userId
- * @param {{ force?: boolean }} [opts] force=true recrea el canal aunque parezca vivo
+ * @param {{ force?: boolean, workspaceId?: string|null }} [opts]
  */
 export async function startDashboardDataRealtime(userId, opts = {}) {
   const force = opts.force === true;
+  const workspaceId = opts.workspaceId !== undefined ? (opts.workspaceId || null) : activeWorkspaceId;
   if (!isSupabaseConfigured() || !userId || starting) return;
   if (
     !force
@@ -94,7 +101,14 @@ export async function startDashboardDataRealtime(userId, opts = {}) {
   ) {
     return;
   }
-  if (!force && isDashboardRealtimeHealthy() && activeUserId === userId) return;
+  if (
+    !force
+    && isDashboardRealtimeHealthy()
+    && activeUserId === userId
+    && activeWorkspaceId === workspaceId
+  ) {
+    return;
+  }
 
   starting = true;
   try {
@@ -111,7 +125,14 @@ export async function startDashboardDataRealtime(userId, opts = {}) {
       console.warn("[dashboard-realtime] Realtime no conectó a tiempo");
     }
 
-    let ch = supabase.channel(`dashboard-data:${userId}`);
+    const filter = workspaceId
+      ? `workspace_id=eq.${workspaceId}`
+      : `user_id=eq.${userId}`;
+    const channelName = workspaceId
+      ? `dashboard-data:${userId}:${workspaceId}`
+      : `dashboard-data:${userId}`;
+
+    let ch = supabase.channel(channelName);
     for (const table of TABLES) {
       ch = ch.on(
         "postgres_changes",
@@ -119,7 +140,7 @@ export async function startDashboardDataRealtime(userId, opts = {}) {
           event: "*",
           schema: "public",
           table,
-          filter: `user_id=eq.${userId}`,
+          filter,
         },
         (payload) => {
           scheduleInvalidate(table, payload.eventType || payload.event || "*");
@@ -140,6 +161,7 @@ export async function startDashboardDataRealtime(userId, opts = {}) {
       ch.subscribe((status) => {
         if (status === "SUBSCRIBED") {
           activeUserId = userId;
+          activeWorkspaceId = workspaceId;
           channelJoined = true;
           finish();
           return;
@@ -162,10 +184,14 @@ export async function startDashboardDataRealtime(userId, opts = {}) {
   }
 }
 
-/** Re-suscribe si el canal murió (típico al volver a la PWA). */
+/** Re-suscribe si el canal murió o cambió el workspace (típico al volver a la PWA). */
 export async function ensureDashboardDataRealtime(userId, opts = {}) {
   if (!userId) return;
-  const force = opts.force === true || !isDashboardRealtimeHealthy() || activeUserId !== userId;
+  const workspaceId = opts.workspaceId !== undefined ? (opts.workspaceId || null) : activeWorkspaceId;
+  const force = opts.force === true
+    || !isDashboardRealtimeHealthy()
+    || activeUserId !== userId
+    || activeWorkspaceId !== workspaceId;
   if (!force) return;
-  await startDashboardDataRealtime(userId, { force: true });
+  await startDashboardDataRealtime(userId, { force: true, workspaceId });
 }

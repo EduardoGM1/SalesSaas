@@ -37,6 +37,10 @@ export function InAppNotificationsCoordinator() {
       if (!cancelled) void sync();
     };
     window.addEventListener("auth:resume", onResume);
+    const onWorkspaceChanged = () => {
+      if (!cancelled) void sync();
+    };
+    window.addEventListener("workspace:changed", onWorkspaceChanged);
     document.addEventListener("visibilitychange", () => {
       if (document.visibilityState === "visible") onResume();
     });
@@ -45,6 +49,7 @@ export function InAppNotificationsCoordinator() {
       cancelled = true;
       subscription?.unsubscribe();
       window.removeEventListener("auth:resume", onResume);
+      window.removeEventListener("workspace:changed", onWorkspaceChanged);
       void stopInAppNotificationsRealtime();
     };
   }, []);

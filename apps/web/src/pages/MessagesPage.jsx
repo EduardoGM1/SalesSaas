@@ -156,6 +156,28 @@ export function MessagesPage() {
       .finally(() => setLoading(false));
   }, [teamScope]);
 
+  // Al cambiar de workspace, limpiar estado local del chat (evita hilos de otra sala).
+  useEffect(() => {
+    const onWorkspaceChanged = () => {
+      setConversations([]);
+      setTeamPeers([]);
+      setExpedienteChats([]);
+      setMessages([]);
+      setGroupMeta(null);
+      setDraft("");
+      if (activePeerId || conversationId || teamScope) {
+        navigate("/messages", { replace: true });
+      }
+      setLoading(true);
+      Promise.all([loadConversations(), loadTeamPeers(), loadExpedienteChats()])
+        .then(() => notifyUnreadMessagesChanged())
+        .catch((err) => toast.error(err.message))
+        .finally(() => setLoading(false));
+    };
+    window.addEventListener("workspace:changed", onWorkspaceChanged);
+    return () => window.removeEventListener("workspace:changed", onWorkspaceChanged);
+  }, [activePeerId, conversationId, teamScope, navigate]);
+
   useEffect(() => {
     if (!isSupabaseConfigured()) return undefined;
     if (conversationId) {
