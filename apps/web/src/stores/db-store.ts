@@ -303,7 +303,9 @@ export const useDbStore = create<DbState>((set, get) => ({
     set((s) => {
       const db = cloneDb(s.db);
       const next = ensureProspectIdentity(client);
-      next.updatedAt = Date.now();
+      // El caller debe pasar updatedAt del servidor al hidratar; si no, bumpear (edición local).
+      const incomingTs = Number(client.updatedAt);
+      next.updatedAt = Number.isFinite(incomingTs) && incomingTs > 0 ? incomingTs : Date.now();
       db.clients[client.id] = next;
       saveDatabase(db);
       return { db };
@@ -534,12 +536,13 @@ export const useDbStore = create<DbState>((set, get) => ({
 export function createEmptyClient(name1: string, tourDate?: string, tipoTour?: string, tourCuantificable?: boolean): ClientRecord {
   const id = generateClientId();
   const ymd = tourDate || new Date().toISOString().slice(0, 10);
+  const now = Date.now();
   return {
     id, prospectId: id, prospectCode: generateProspectCode(id),
     name: name1, name1, name2: "",
     tipo_tour: tipoTour,
     tour_cuantificable: tourCuantificable ?? true,
-    createdAt: Date.now(), createdYmd: ymd, tourDate: ymd,
+    createdAt: now, updatedAt: now, createdYmd: ymd, tourDate: ymd,
     quickExpedient: false,
     completedExpedient: true,
     data: { survey: {}, vacaciones: {}, worksheet: {} },

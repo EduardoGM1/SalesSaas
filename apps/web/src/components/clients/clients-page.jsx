@@ -20,6 +20,7 @@ import { selectOnFocus } from "@/lib/focus-select.js";
 import { useAppStore } from "@/stores/app-store";
 import { useDbStore } from "@/stores/db-store";
 import { useClientActions } from "@/hooks/use-client-actions.js";
+import { requestSyncRefresh } from "@/lib/sync-refresh.js";
 
 /** Solo el valor de catálogo (Q, NQ, CT, Member…); sin sufijo "- 1" / "- 0". */
 function formatQualification(tipoTour) {
@@ -112,6 +113,9 @@ function prospectRowToClient(p, existing) {
     completedExpedient: p.completed != null ? !!p.completed : base.completedExpedient,
     quickExpedient: p.quick_expedient != null ? !!p.quick_expedient : base.quickExpedient,
     createdAt: p.created_at ? Date.parse(p.created_at) || base.createdAt : base.createdAt,
+    updatedAt: p.updated_at
+      ? Date.parse(p.updated_at) || base.updatedAt
+      : (p.created_at ? Date.parse(p.created_at) || base.updatedAt : base.updatedAt),
     createdYmd: p.created_at ? String(p.created_at).slice(0, 10) : base.createdYmd,
     date: p.created_at ? String(p.created_at).slice(0, 10) : base.date,
   };
@@ -203,6 +207,8 @@ export function ClientsPage() {
     let cancelled = false;
     setRemoteOffset(0);
     setRemoteLoading(true);
+    // Asegurar store local al día (PWA→Desktop) antes/durante el listado remoto.
+    void requestSyncRefresh({ force: true, reason: "clients-page" });
     fetchProspectPage(0)
       .then(({ total }) => {
         if (!cancelled) setRemoteTotal(total);

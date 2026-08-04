@@ -7,6 +7,7 @@ import { STORAGE_KEY } from "@/lib/storage/keys";
 import { emptyDatabase } from "@/lib/storage/types";
 import { watchSession } from "@/lib/session-api.js";
 import { registerSyncRefresh, unregisterSyncRefresh } from "@/lib/sync-refresh.js";
+import { registerSyncPush, unregisterSyncPush } from "@/lib/sync-outbound.js";
 import {
   ensureDashboardDataRealtime,
   isDashboardRealtimeHealthy,
@@ -14,7 +15,7 @@ import {
   stopDashboardDataRealtime,
 } from "@/lib/dashboard-data-realtime.js";
 import { isOutboundSyncSuspended } from "@/lib/sync-suspend.js";
-import { mergeSyncDatabases } from "@/lib/sync-merge.js";
+import { localNeedsOutboundPush, mergeSyncDatabases } from "@/lib/sync-merge.js";
 import {
   emptyPendingDeletes,
   hasPendingDeletes,
@@ -40,6 +41,9 @@ export function SyncProvider({ children }) {
   const timerRef = useRef(null);
   const lastResumePullAtRef = useRef(0);
   const refreshInFlightRef = useRef(false);
+  const pushInFlightRef = useRef(false);
+  /** Mutaciones locales pendientes de PUT (sobrevive a cancelar el debounce en PWA). */
+  const dirtyOutboundRef = useRef(false);
   const stopFlushLoopRef = useRef(null);
 
   useEffect(() => {
@@ -71,17 +75,26 @@ export function SyncProvider({ children }) {
         useSyncStore.getState().setStatus("offline");
         return;
       }
+      if (pushInFlightRef.current) return;
+      pushInFlightRef.current = true;
       useSyncStore.getState().setStatus("syncing");
       try {
         const remote = await reconcileViaApi(useDbStore.getState().db);
         if (remote) applyRemote(remote, { clearPendingDeletes: true });
+        dirtyOutboundRef.current = false;
         useSyncStore.getState().setSynced();
       } catch (err) {
+        // Conservar dirty para reintentar en el próximo resume/online.
+        dirtyOutboundRef.current = true;
         useSyncStore.getState().setStatus("error", err instanceof Error ? err.message : String(err));
+      } finally {
+        pushInFlightRef.current = false;
       }
     };
 
     const scheduleSync = () => {
+      dirtyOutboundRef.current = true;
+      if (!enabledRef.current) return;
       if (timerRef.current) clearTimeout(timerRef.current);
       timerRef.current = setTimeout(() => {
         timerRef.current = null;
@@ -89,11 +102,21 @@ export function SyncProvider({ children }) {
       }, DEBOUNCE_MS);
     };
 
+    /** Push inmediato (crear expediente, etc.). */
+    const flushOutbound = async () => {
+      dirtyOutboundRef.current = true;
+      if (!enabledRef.current) return;
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
+      await doReconcile();
+    };
+
     /**
      * Pull inbound seguro multi-dispositivo:
      * 1) merge nube + local (LWW / filas solo locales)
-     * 2) si había cambios locales pendientes → upsert (sin deleteMissing)
-     * Nunca empuja un snapshot stale que borre filas remotas.
+     * 2) si hay cambios locales / dirty / solo-locales → PUT
      * @param {{ force?: boolean, reason?: string }} [opts]
      */
     const refreshInbound = async (opts = {}) => {
@@ -110,7 +133,7 @@ export function SyncProvider({ children }) {
       lastResumePullAtRef.current = now;
       refreshInFlightRef.current = true;
 
-      const hadPendingOutbound = !!timerRef.current;
+      const hadPendingOutbound = !!timerRef.current || dirtyOutboundRef.current;
       if (timerRef.current) {
         clearTimeout(timerRef.current);
         timerRef.current = null;
@@ -118,9 +141,20 @@ export function SyncProvider({ children }) {
 
       try {
         useSyncStore.getState().setStatus("syncing");
+        const localBefore = useDbStore.getState().db;
         const cloudDb = await pullViaApi();
+        let needsPush =
+          hadPendingOutbound
+          || dirtyOutboundRef.current
+          || hasPendingDeletes(localBefore);
+
         if (cloudDb) {
+          // Releer local tras el await (pudo mutar durante el pull).
           const local = useDbStore.getState().db;
+          needsPush =
+            needsPush
+            || dirtyOutboundRef.current
+            || localNeedsOutboundPush(local, cloudDb);
           const merged = mergeSyncDatabases(local, cloudDb, {
             localSettings: local.settings,
           });
@@ -129,9 +163,7 @@ export function SyncProvider({ children }) {
           suspendRef.current = false;
         }
 
-        const needsPush =
-          hadPendingOutbound || hasPendingDeletes(useDbStore.getState().db);
-        if (needsPush) {
+        if (needsPush || dirtyOutboundRef.current || hasPendingDeletes(useDbStore.getState().db)) {
           await doReconcile();
         } else {
           useSyncStore.getState().setSynced();
@@ -147,11 +179,25 @@ export function SyncProvider({ children }) {
     };
 
     registerSyncRefresh(refreshInbound);
+    registerSyncPush(flushOutbound);
 
     const onWorkspaceChanged = () => {
       void refreshInbound({ force: true, reason: "workspace:changed" });
     };
     window.addEventListener("workspace:changed", onWorkspaceChanged);
+
+    const startRealtime = (userId) => {
+      void startDashboardDataRealtime(userId, { workspaceId: workspaceIdRef.current }).then(() => {
+        if (!isDashboardRealtimeHealthy()) {
+          setTimeout(() => {
+            void ensureDashboardDataRealtime(userId, {
+              force: true,
+              workspaceId: workspaceIdRef.current,
+            });
+          }, 2500);
+        }
+      });
+    };
 
     const initForUser = async (userId) => {
       if (initedForRef.current === userId) return;
@@ -159,14 +205,16 @@ export function SyncProvider({ children }) {
       userIdRef.current = userId;
       useSyncStore.getState().setStatus("loading");
 
-      const localDb = loadDatabase();
       const account = typeof window !== "undefined" ? localStorage.getItem(ACCOUNT_KEY) : null;
+      // Snapshot fresco; se relee otra vez tras el pull.
+      let localDb = loadDatabase();
 
       let cloudDb;
       try {
         cloudDb = await pullViaApi();
       } catch (err) {
         enabledRef.current = true;
+        localDb = loadDatabase();
         const canPushLocal =
           (account === userId || !account) && !isEmptyDb(localDb);
         if (canPushLocal) {
@@ -175,20 +223,13 @@ export function SyncProvider({ children }) {
             const remote = await reconcileViaApi(norm);
             if (remote) applyRemote(remote, { clearPendingDeletes: true });
             else applyRemote(norm);
+            dirtyOutboundRef.current = false;
             localStorage.setItem(ACCOUNT_KEY, userId);
             useSyncStore.getState().setSynced();
-            void startDashboardDataRealtime(userId, { workspaceId: workspaceIdRef.current }).then(() => {
-              if (!isDashboardRealtimeHealthy()) {
-                setTimeout(() => {
-                  void ensureDashboardDataRealtime(userId, {
-                    force: true,
-                    workspaceId: workspaceIdRef.current,
-                  });
-                }, 2500);
-              }
-            });
+            startRealtime(userId);
             return;
           } catch (syncErr) {
+            dirtyOutboundRef.current = true;
             useSyncStore.getState().setStatus(
               "error",
               syncErr instanceof Error ? syncErr.message : String(syncErr),
@@ -200,47 +241,55 @@ export function SyncProvider({ children }) {
         return;
       }
 
+      // Local actualizado tras el await (crea durante init no se pierden).
+      localDb = useDbStore.getState().db;
+      if (isEmptyDb(localDb)) localDb = loadDatabase();
+
       if (!isEmptyDb(cloudDb)) {
         const merged = mergeSyncDatabases(localDb, cloudDb, {
           localSettings: localDb.settings,
         });
-        // Tras pull inicial: si no hay deletes pendientes locales, limpiar cola.
         applyRemote(merged, { clearPendingDeletes: !hasPendingDeletes(localDb) });
         localStorage.setItem(ACCOUNT_KEY, userId);
-        useSyncStore.getState().setSynced();
+        const mustPush =
+          dirtyOutboundRef.current
+          || localNeedsOutboundPush(localDb, cloudDb)
+          || hasPendingDeletes(useDbStore.getState().db);
+        enabledRef.current = true;
+        if (mustPush) {
+          await doReconcile();
+        } else {
+          useSyncStore.getState().setSynced();
+        }
       } else if (account === userId) {
         const { db: norm } = normalizeIds(localDb);
         applyRemote(norm);
-        if (!isEmptyDb(norm)) {
-          const remote = await reconcileViaApi(norm);
-          if (remote) applyRemote(remote, { clearPendingDeletes: true });
+        enabledRef.current = true;
+        if (!isEmptyDb(norm) || dirtyOutboundRef.current) {
+          await doReconcile();
+        } else {
+          useSyncStore.getState().setSynced();
         }
-        useSyncStore.getState().setSynced();
       } else if (!account && !isEmptyDb(localDb)) {
         const { db: norm } = normalizeIds(localDb);
         applyRemote(norm);
-        const remote = await reconcileViaApi(norm);
-        if (remote) applyRemote(remote, { clearPendingDeletes: true });
+        enabledRef.current = true;
+        await doReconcile();
         localStorage.setItem(ACCOUNT_KEY, userId);
-        useSyncStore.getState().setSynced();
       } else {
         applyRemote(emptyDatabase(), { clearPendingDeletes: true });
         localStorage.setItem(ACCOUNT_KEY, userId);
+        enabledRef.current = true;
         useSyncStore.getState().setSynced();
       }
 
       enabledRef.current = true;
       lastResumePullAtRef.current = Date.now();
-      void startDashboardDataRealtime(userId, { workspaceId: workspaceIdRef.current }).then(() => {
-        if (!isDashboardRealtimeHealthy()) {
-          setTimeout(() => {
-            void ensureDashboardDataRealtime(userId, {
-              force: true,
-              workspaceId: workspaceIdRef.current,
-            });
-          }, 2500);
-        }
-      });
+      // Si hubo mutaciones durante init, subirlas ya.
+      if (dirtyOutboundRef.current) {
+        await doReconcile();
+      }
+      startRealtime(userId);
       maybeRequestReminderDigest();
       if (typeof stopFlushLoopRef.current === "function") stopFlushLoopRef.current();
       stopFlushLoopRef.current = startScheduledReminderFlushLoop();
@@ -251,6 +300,7 @@ export function SyncProvider({ children }) {
       initedForRef.current = null;
       userIdRef.current = null;
       lastResumePullAtRef.current = 0;
+      dirtyOutboundRef.current = false;
       if (typeof stopFlushLoopRef.current === "function") {
         stopFlushLoopRef.current();
         stopFlushLoopRef.current = null;
@@ -268,8 +318,11 @@ export function SyncProvider({ children }) {
 
     const unsub = useDbStore.subscribe((state, prev) => {
       if (state.db === prev.db) return;
-      if (suspendRef.current || !enabledRef.current) return;
+      if (suspendRef.current) return;
       if (isOutboundSyncSuspended()) return;
+      // Marca dirty aunque sync aún no esté enabled (crea durante init).
+      dirtyOutboundRef.current = true;
+      if (!enabledRef.current) return;
       scheduleSync();
     });
 
@@ -340,6 +393,7 @@ export function SyncProvider({ children }) {
 
     return () => {
       unregisterSyncRefresh(refreshInbound);
+      unregisterSyncPush(flushOutbound);
       window.removeEventListener("workspace:changed", onWorkspaceChanged);
       void stopDashboardDataRealtime();
       if (typeof stopFlushLoopRef.current === "function") {

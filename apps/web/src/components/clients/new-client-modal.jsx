@@ -43,7 +43,7 @@ export function NewClientModal({ open, onOpenChange, onCreated, adoptLibreTools 
     if (!next) reset();
   };
 
-  const handleCreate = () => {
+  const handleCreate = async () => {
     let hasError = false;
     const trimmed = name.trim();
     if (!trimmed) {
@@ -63,7 +63,7 @@ export function NewClientModal({ open, onOpenChange, onCreated, adoptLibreTools 
     }
     if (hasError) return;
 
-    const result = createProspectFromName(name.trim(), tipoTour, tourCuantificable);
+    const result = await createProspectFromName(name.trim(), tipoTour, tourCuantificable);
     if (!result.ok) {
       if (result.reason === "missing_name") {
         setMissingName(true);

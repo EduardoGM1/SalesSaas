@@ -267,4 +267,13 @@ La solución debe hacer el sync **seguro ante snapshots incompletos** y garantiz
 
 **Qué se quitó (innecesario / peligroso):** reconcile que borraba todo lo ausente del snapshot local; cooldown Desktop 45s; force-pull solo en PWA; Realtime incompleto para tools.
 
-**Qué se mantiene (necesario):** offline-first local + PUT upsert; MultiTenant por `workspace_id`; debounce outbound; Realtime como invalidación → pull.
+**Qué se mantiene (necesario):** offline-first local + PUT upsert; MultiTenant por `workspace_id`; debounce outbound; Realtime como invalidación → push/pull.
+
+### Follow-up (persistía “solo en móvil”)
+
+Causa residual: crear expediente era **solo local**; el debounce PUT a menudo no corría en PWA (background) y `refreshInbound` no detectaba filas solo-locales para subirlas.
+
+Corrección adicional:
+- `POST /api/v1/prospects` al crear (persistencia inmediata).
+- Flag `dirtyOutbound` + `localNeedsOutboundPush` → PUT tras merge/resume/init.
+- `requestSyncPush` inmediato; Clientes fuerza refresh al montar.

@@ -6,6 +6,8 @@ import { statusLabel } from "@/lib/format/status";
 import { createEmptyClient, useDbStore } from "@/stores/db-store";
 import { toast } from "@/lib/toast";
 import { confirmDialog } from "@/lib/confirm";
+import { isSupabaseConfigured } from "@/lib/supabase/config";
+import { requestSyncPush } from "@/lib/sync-outbound.js";
 
 function normalizeSearch(text) {
   return String(text ?? "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
@@ -40,7 +42,11 @@ export function filterAndSortClients(clients, query) {
   });
 }
 
-export function createProspectFromName(name, tipoTour, tourCuantificable) {
+/**
+ * Crea expediente en local y lo persiste en servidor de inmediato (POST),
+ * para que Desktop/otros dispositivos lo vean sin depender solo del debounce sync.
+ */
+export async function createProspectFromName(name, tipoTour, tourCuantificable) {
   const trimmed = String(name ?? "").trim();
   if (!trimmed) {
     toast.error(translate("toast.client.missingName"));
@@ -55,7 +61,42 @@ export function createProspectFromName(name, tipoTour, tourCuantificable) {
     return { ok: false, reason: "missing_tour_type" };
   }
   const client = createEmptyClient(trimmed, undefined, tipoTour, tourCuantificable);
+  client.updatedAt = Date.now();
   useDbStore.getState().saveClient(client);
+
+  // Subida inmediata a la nube (misma sala/workspace activo del perfil).
+  if (isSupabaseConfigured() && typeof navigator !== "undefined" && navigator.onLine) {
+    try {
+      const res = await fetch("/api/v1/prospects", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: client.id,
+          prospectCode: client.prospectCode,
+          name: client.name1,
+          name1: client.name1,
+          tourDate: client.tourDate,
+          tipo_tour: client.tipo_tour,
+          tour_cuantificable: client.tour_cuantificable,
+          completedExpedient: client.completedExpedient,
+          quickExpedient: client.quickExpedient,
+        }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        // Offline/RLS: el sync blob lo reintentará; no bloquear UX.
+        console.warn("[createProspect] POST falló, se reintentará via sync:", body.error || res.status);
+        await requestSyncPush({ reason: "create-prospect-fallback" });
+      }
+    } catch (err) {
+      console.warn("[createProspect] POST error:", err?.message || err);
+      await requestSyncPush({ reason: "create-prospect-offline" });
+    }
+  } else {
+    await requestSyncPush({ reason: "create-prospect-local" });
+  }
+
   return { ok: true, client };
 }
 
@@ -78,6 +119,7 @@ export function saveClientEdit(client, form) {
   const updated = syncSurveyProspectFields(ensureProspectIdentity({
     ...client,
     ...form,
+    updatedAt: Date.now(),
     name: form.name1 || form.name || client.name,
     name2: "",
     occupation2: "",

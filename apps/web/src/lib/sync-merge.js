@@ -3,7 +3,11 @@
  * - Filas solo locales se conservan (aún no empujadas).
  * - En conflicto por id, gana el updatedAt/ts más reciente (LWW).
  */
-import { emptyPendingDeletes, mergePendingDeletes } from "@/lib/sync-pending-deletes.js";
+import {
+  emptyPendingDeletes,
+  hasPendingDeletes,
+  mergePendingDeletes,
+} from "@/lib/sync-pending-deletes.js";
 
 function tsOfClient(c) {
   return Number(c?.updatedAt || c?.createdAt || 0) || 0;
@@ -182,6 +186,52 @@ function mergeUserActivities(localList, remoteList) {
     if (!prev || tsOfActivity(a) >= tsOfActivity(prev)) byId.set(a.id, a);
   }
   return [...byId.values()].sort((a, b) => (a.ts || 0) - (b.ts || 0));
+}
+
+/**
+ * True si el local tiene filas que la nube no tiene o versiones más nuevas.
+ * Indica que hay que hacer PUT tras un pull/merge.
+ */
+export function localNeedsOutboundPush(local, remote) {
+  if (!local || typeof local !== "object") return false;
+  if (hasPendingDeletes(local)) return true;
+  const remoteClients = remote?.clients || {};
+  for (const [id, client] of Object.entries(local.clients || {})) {
+    const remoteClient = remoteClients[id];
+    if (!remoteClient) return true;
+    if (tsOfClient(client) > tsOfClient(remoteClient)) return true;
+    const localSales = client.sales || [];
+    const remoteSalesById = new Map((remoteClient.sales || []).map((s) => [s.saleId, s]));
+    for (const sale of localSales) {
+      if (!sale?.saleId) continue;
+      const rs = remoteSalesById.get(sale.saleId);
+      if (!rs || tsOfSale(sale) > tsOfSale(rs)) return true;
+    }
+    for (const tool of ["survey", "vacaciones", "worksheet"]) {
+      const lb = client.data?.[tool];
+      const rb = remoteClient.data?.[tool];
+      if (isNonEmptyTool(lb) && (!isNonEmptyTool(rb) || toolBucketTs(lb) > toolBucketTs(rb))) {
+        return true;
+      }
+    }
+  }
+  for (const [id, sale] of Object.entries(local.sales || {})) {
+    const remoteSale = remote?.sales?.[id];
+    if (!remoteSale || tsOfSale(sale) > tsOfSale(remoteSale)) return true;
+  }
+  for (const tool of Object.keys(local.libre || {})) {
+    const lb = local.libre[tool];
+    const rb = remote?.libre?.[tool];
+    if (isNonEmptyTool(lb) && (!isNonEmptyTool(rb) || toolBucketTs(lb) > toolBucketTs(rb))) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function isNonEmptyTool(bucket) {
+  if (!bucket || typeof bucket !== "object") return false;
+  return Object.keys(bucket).some((k) => k !== "_updatedAt");
 }
 
 /**
