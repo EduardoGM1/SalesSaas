@@ -18,6 +18,7 @@ const PAGED_TABLES = new Set([
   "tool_calculations",
 ]);
 const PULL_PAGE_SIZE = 200;
+const DELETE_CHUNK = 100;
 
 async function pullTable(sb, table, userId, workspaceId, teamScope) {
   const useTeam = teamScope && TEAM_TABLES.has(table) && workspaceId;
@@ -79,31 +80,58 @@ async function upsert(sb, table, rows, onConflict) {
   if (error) throw new Error(`upsert ${table}: ${error.message}`);
 }
 
-async function deleteMissing(sb, table, userId, keepIds, workspaceId = null) {
-  let q = sb.from(table).delete().eq("user_id", userId);
-  if (workspaceId) q = q.eq("workspace_id", workspaceId);
-  if (keepIds.length > 0) q = q.not("id", "in", `(${keepIds.join(",")})`);
-  const { error } = await q;
-  if (error) throw new Error(`delete ${table}: ${error.message}`);
+function uniqIds(ids) {
+  return [...new Set((ids || []).filter((id) => typeof id === "string" && id.length > 0))];
 }
 
-async function deleteMissingToolCalculations(sb, userId, keepRows, workspaceId = null) {
+async function deleteByIds(sb, table, userId, ids, workspaceId = null) {
+  const list = uniqIds(ids);
+  if (!list.length) return;
+  for (let i = 0; i < list.length; i += DELETE_CHUNK) {
+    const chunk = list.slice(i, i + DELETE_CHUNK);
+    let q = sb.from(table).delete().eq("user_id", userId).in("id", chunk);
+    if (workspaceId) q = q.eq("workspace_id", workspaceId);
+    const { error } = await q;
+    if (error) throw new Error(`delete ${table}: ${error.message}`);
+  }
+}
+
+async function deleteToolCalculationsExplicit(sb, userId, keys, workspaceId = null) {
+  const list = (keys || []).filter((k) => k && typeof k.tool === "string");
+  if (!list.length) return;
+
   let q = sb.from("tool_calculations").select("id, prospect_id, tool").eq("user_id", userId);
   if (workspaceId) q = q.eq("workspace_id", workspaceId);
   const { data: existing, error: fetchErr } = await q;
   if (fetchErr) throw new Error(`fetch tool_calculations: ${fetchErr.message}`);
-  const keepSet = new Set(
-    keepRows.map((r) => `${r.prospect_id ?? "null"}:${r.tool}`),
-  );
-  const toDelete = (existing ?? []).filter(
-    (r) => !keepSet.has(`${r.prospect_id ?? "null"}:${r.tool}`),
-  );
+
+  const want = new Set(list.map((r) => `${r.prospect_id ?? "null"}:${r.tool}`));
+  const toDelete = (existing ?? [])
+    .filter((r) => want.has(`${r.prospect_id ?? "null"}:${r.tool}`))
+    .map((r) => r.id)
+    .filter(Boolean);
   if (!toDelete.length) return;
-  const { error } = await sb
-    .from("tool_calculations")
-    .delete()
-    .in("id", toDelete.map((r) => r.id));
-  if (error) throw new Error(`delete tool_calculations: ${error.message}`);
+
+  for (let i = 0; i < toDelete.length; i += DELETE_CHUNK) {
+    const chunk = toDelete.slice(i, i + DELETE_CHUNK);
+    const { error } = await sb.from("tool_calculations").delete().in("id", chunk);
+    if (error) throw new Error(`delete tool_calculations: ${error.message}`);
+  }
+}
+
+/**
+ * Aplica solo borrados explícitos del snapshot (pendingDeletes).
+ * Nunca borra filas remotas solo porque falten en el blob local.
+ */
+async function applyExplicitDeletes(sb, db, userId, workspaceId = null) {
+  const pd = db?.pendingDeletes && typeof db.pendingDeletes === "object"
+    ? db.pendingDeletes
+    : {};
+  await deleteToolCalculationsExplicit(sb, userId, pd.tool_calculations, workspaceId);
+  await deleteByIds(sb, "calendar_entries", userId, pd.calendar_entries, workspaceId);
+  await deleteByIds(sb, "activities", userId, pd.activities, workspaceId);
+  await deleteByIds(sb, "sales", userId, pd.sales, workspaceId);
+  await deleteByIds(sb, "prospects", userId, pd.prospects, workspaceId);
 }
 
 async function reconcile(sb, db, userId, workspaceId = null, { teamScope = false } = {}) {
@@ -138,16 +166,8 @@ async function reconcile(sb, db, userId, workspaceId = null, { teamScope = false
     ownTools,
     "user_id,prospect_id,tool",
   );
-  await deleteMissingToolCalculations(
-    sb,
-    userId,
-    ownTools.map((r) => ({ prospect_id: r.prospect_id, tool: r.tool })),
-    workspaceId,
-  );
-  await deleteMissing(sb, "calendar_entries", userId, ownCalendar.map((r) => r.id), workspaceId);
-  await deleteMissing(sb, "activities", userId, ownActivities.map((r) => r.id), workspaceId);
-  await deleteMissing(sb, "sales", userId, ownSales.map((r) => r.id), workspaceId);
-  await deleteMissing(sb, "prospects", userId, ownProspects.map((r) => r.id), workspaceId);
+  // Borrados solo si el cliente los marcó explícitamente (cola pendingDeletes).
+  await applyExplicitDeletes(sb, db, userId, workspaceId);
 }
 
 export {

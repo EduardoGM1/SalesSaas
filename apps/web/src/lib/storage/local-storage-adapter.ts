@@ -1,5 +1,21 @@
 import { STORAGE_KEY } from "./keys";
-import { AppDatabase, emptyDatabase } from "./types";
+import { AppDatabase, emptyDatabase, emptyPendingDeletes } from "./types";
+import { ensurePendingDeletes } from "@/lib/sync-pending-deletes.js";
+
+function normalizeLoaded(parsed: Partial<AppDatabase>): AppDatabase {
+  const db: AppDatabase = {
+    clients: parsed.clients ?? {},
+    libre: parsed.libre ?? {},
+    cal: parsed.cal ?? {},
+    goals: parsed.goals ?? {},
+    sales: parsed.sales ?? {},
+    userActivities: parsed.userActivities ?? [],
+    settings: parsed.settings ?? emptyDatabase().settings,
+    pendingDeletes: parsed.pendingDeletes ?? emptyPendingDeletes(),
+  };
+  ensurePendingDeletes(db);
+  return db;
+}
 
 export function loadDatabase(): AppDatabase {
   if (typeof window === "undefined") return emptyDatabase();
@@ -7,15 +23,7 @@ export function loadDatabase(): AppDatabase {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return emptyDatabase();
     const parsed = JSON.parse(raw) as Partial<AppDatabase>;
-    return {
-      clients: parsed.clients ?? {},
-      libre: parsed.libre ?? {},
-      cal: parsed.cal ?? {},
-      goals: parsed.goals ?? {},
-      sales: parsed.sales ?? {},
-      userActivities: parsed.userActivities ?? [],
-      settings: parsed.settings ?? emptyDatabase().settings,
-    };
+    return normalizeLoaded(parsed);
   } catch {
     return emptyDatabase();
   }
@@ -23,6 +31,7 @@ export function loadDatabase(): AppDatabase {
 
 export function saveDatabase(db: AppDatabase): void {
   if (typeof window === "undefined") return;
+  ensurePendingDeletes(db);
   localStorage.setItem(STORAGE_KEY, JSON.stringify(db));
 }
 
@@ -57,14 +66,7 @@ export function importDatabaseFile(
       const parsed = JSON.parse(reader.result as string);
       const incoming = (parsed.data ?? parsed) as Partial<AppDatabase>;
       if (!incoming || typeof incoming !== "object") throw new Error("invalid");
-      onSuccess({
-        clients: incoming.clients ?? {},
-        libre: incoming.libre ?? {},
-        cal: incoming.cal ?? {},
-        goals: incoming.goals ?? {},
-        userActivities: incoming.userActivities ?? [],
-        settings: incoming.settings ?? emptyDatabase().settings,
-      });
+      onSuccess(normalizeLoaded(incoming));
     } catch {
       onError();
     }

@@ -13,8 +13,13 @@ import {
   startDashboardDataRealtime,
   stopDashboardDataRealtime,
 } from "@/lib/dashboard-data-realtime.js";
-import { isStandaloneApp } from "@/lib/pwa-install.js";
 import { isOutboundSyncSuspended } from "@/lib/sync-suspend.js";
+import { mergeSyncDatabases } from "@/lib/sync-merge.js";
+import {
+  emptyPendingDeletes,
+  hasPendingDeletes,
+  mergePendingDeletes,
+} from "@/lib/sync-pending-deletes.js";
 import { maybeRequestReminderDigest, maybeFlushScheduledReminders, startScheduledReminderFlushLoop } from "@/lib/reminder-digest.js";
 import { useDbStore } from "@/stores/db-store";
 import { useSyncStore } from "@/stores/sync-store";
@@ -23,10 +28,8 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 const ACCOUNT_KEY = "sts4_account";
 const DEBOUNCE_MS = 1200;
-/** Desktop: evita storms al cambiar de pestaña. */
-const RESUME_PULL_COOLDOWN_MS = 45_000;
-/** PWA: el WS suele morir en background → pull más seguido al volver. */
-const PWA_RESUME_PULL_COOLDOWN_MS = 5_000;
+/** Cooldown al volver a primer plano (PWA y Desktop). Realtime usa force=true. */
+const RESUME_PULL_COOLDOWN_MS = 5_000;
 
 export function SyncProvider({ children }) {
   const userIdRef = useRef(null);
@@ -45,13 +48,18 @@ export function SyncProvider({ children }) {
       return;
     }
 
-    const applyRemote = (db) => {
+    const applyRemote = (db, { clearPendingDeletes = false } = {}) => {
       if (!db || typeof db !== "object") return;
-      const localSettings = useDbStore.getState().db.settings;
+      const local = useDbStore.getState().db;
+      const localSettings = local.settings;
+      const pending = clearPendingDeletes
+        ? emptyPendingDeletes()
+        : mergePendingDeletes(local.pendingDeletes, db.pendingDeletes);
       suspendRef.current = true;
       useDbStore.getState().replaceDb({
         ...db,
-        settings: { ...db.settings, ...localSettings },
+        settings: { ...(db.settings || {}), ...localSettings },
+        pendingDeletes: pending,
       });
       suspendRef.current = false;
     };
@@ -66,7 +74,7 @@ export function SyncProvider({ children }) {
       useSyncStore.getState().setStatus("syncing");
       try {
         const remote = await reconcileViaApi(useDbStore.getState().db);
-        if (remote) applyRemote(remote);
+        if (remote) applyRemote(remote, { clearPendingDeletes: true });
         useSyncStore.getState().setSynced();
       } catch (err) {
         useSyncStore.getState().setStatus("error", err instanceof Error ? err.message : String(err));
@@ -82,8 +90,11 @@ export function SyncProvider({ children }) {
     };
 
     /**
+     * Pull inbound seguro multi-dispositivo:
+     * 1) merge nube + local (LWW / filas solo locales)
+     * 2) si había cambios locales pendientes → upsert (sin deleteMissing)
+     * Nunca empuja un snapshot stale que borre filas remotas.
      * @param {{ force?: boolean, reason?: string }} [opts]
-     * force: Realtime / invalidación — ignora cooldown de resume.
      */
     const refreshInbound = async (opts = {}) => {
       const force = opts.force === true;
@@ -95,23 +106,36 @@ export function SyncProvider({ children }) {
       }
 
       const now = Date.now();
-      const cooldown = isStandaloneApp() ? PWA_RESUME_PULL_COOLDOWN_MS : RESUME_PULL_COOLDOWN_MS;
-      if (!force && now - lastResumePullAtRef.current < cooldown) return;
+      if (!force && now - lastResumePullAtRef.current < RESUME_PULL_COOLDOWN_MS) return;
       lastResumePullAtRef.current = now;
       refreshInFlightRef.current = true;
 
-      try {
-        if (timerRef.current) {
-          clearTimeout(timerRef.current);
-          timerRef.current = null;
-          await doReconcile();
-          return;
-        }
+      const hadPendingOutbound = !!timerRef.current;
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
 
+      try {
         useSyncStore.getState().setStatus("syncing");
         const cloudDb = await pullViaApi();
-        if (cloudDb) applyRemote(cloudDb);
-        useSyncStore.getState().setSynced();
+        if (cloudDb) {
+          const local = useDbStore.getState().db;
+          const merged = mergeSyncDatabases(local, cloudDb, {
+            localSettings: local.settings,
+          });
+          suspendRef.current = true;
+          useDbStore.getState().replaceDb(merged);
+          suspendRef.current = false;
+        }
+
+        const needsPush =
+          hadPendingOutbound || hasPendingDeletes(useDbStore.getState().db);
+        if (needsPush) {
+          await doReconcile();
+        } else {
+          useSyncStore.getState().setSynced();
+        }
       } catch (err) {
         useSyncStore.getState().setStatus(
           "error",
@@ -149,7 +173,7 @@ export function SyncProvider({ children }) {
           try {
             const { db: norm } = normalizeIds(localDb);
             const remote = await reconcileViaApi(norm);
-            if (remote) applyRemote(remote);
+            if (remote) applyRemote(remote, { clearPendingDeletes: true });
             else applyRemote(norm);
             localStorage.setItem(ACCOUNT_KEY, userId);
             useSyncStore.getState().setSynced();
@@ -177,7 +201,11 @@ export function SyncProvider({ children }) {
       }
 
       if (!isEmptyDb(cloudDb)) {
-        applyRemote(cloudDb);
+        const merged = mergeSyncDatabases(localDb, cloudDb, {
+          localSettings: localDb.settings,
+        });
+        // Tras pull inicial: si no hay deletes pendientes locales, limpiar cola.
+        applyRemote(merged, { clearPendingDeletes: !hasPendingDeletes(localDb) });
         localStorage.setItem(ACCOUNT_KEY, userId);
         useSyncStore.getState().setSynced();
       } else if (account === userId) {
@@ -185,18 +213,18 @@ export function SyncProvider({ children }) {
         applyRemote(norm);
         if (!isEmptyDb(norm)) {
           const remote = await reconcileViaApi(norm);
-          if (remote) applyRemote(remote);
+          if (remote) applyRemote(remote, { clearPendingDeletes: true });
         }
         useSyncStore.getState().setSynced();
       } else if (!account && !isEmptyDb(localDb)) {
         const { db: norm } = normalizeIds(localDb);
         applyRemote(norm);
         const remote = await reconcileViaApi(norm);
-        if (remote) applyRemote(remote);
+        if (remote) applyRemote(remote, { clearPendingDeletes: true });
         localStorage.setItem(ACCOUNT_KEY, userId);
         useSyncStore.getState().setSynced();
       } else {
-        applyRemote(emptyDatabase());
+        applyRemote(emptyDatabase(), { clearPendingDeletes: true });
         localStorage.setItem(ACCOUNT_KEY, userId);
         useSyncStore.getState().setSynced();
       }
@@ -204,7 +232,6 @@ export function SyncProvider({ children }) {
       enabledRef.current = true;
       lastResumePullAtRef.current = Date.now();
       void startDashboardDataRealtime(userId, { workspaceId: workspaceIdRef.current }).then(() => {
-        // PWA: a veces el WS aún no está listo al login; reintentar una vez.
         if (!isDashboardRealtimeHealthy()) {
           setTimeout(() => {
             void ensureDashboardDataRealtime(userId, {
@@ -258,18 +285,16 @@ export function SyncProvider({ children }) {
       void refreshInbound({ reason: "online", force: true });
     };
 
-    /** PWA/móvil: rearmar Realtime + pull de respaldo al volver a primer plano. */
+    /** PWA y Desktop: rearmar Realtime + pull forzado al volver a primer plano. */
     const onAppForeground = () => {
       if (document.visibilityState && document.visibilityState !== "visible") return;
       const uid = userIdRef.current;
       if (!uid || !enabledRef.current) return;
-      const pwa = isStandaloneApp();
       void ensureDashboardDataRealtime(uid, {
-        force: pwa,
+        force: true,
         workspaceId: workspaceIdRef.current,
       });
-      // En PWA forzamos pull: el WS a menudo no entregó eventos mientras estaba en background.
-      void refreshInbound({ reason: "foreground", force: pwa });
+      void refreshInbound({ reason: "foreground", force: true });
       maybeRequestReminderDigest();
       maybeFlushScheduledReminders({ force: true });
     };
@@ -296,6 +321,7 @@ export function SyncProvider({ children }) {
           sales: parsed.sales ?? {},
           userActivities: parsed.userActivities ?? [],
           settings: parsed.settings ?? emptyDatabase().settings,
+          pendingDeletes: parsed.pendingDeletes ?? emptyPendingDeletes(),
         };
         suspendRef.current = true;
         useDbStore.getState().replaceDb(next);

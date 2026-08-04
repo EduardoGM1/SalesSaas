@@ -222,11 +222,18 @@ export function ClientsPage() {
       if (document.visibilityState === "visible") {
         refreshPinned();
         refreshTeamMeta();
+        // Página remota de expedientes (teamScope): refrescar al volver visibles.
+        setRemoteOffset(0);
+        setRemoteLoading(true);
+        fetchProspectPage(0)
+          .then(({ total }) => setRemoteTotal(total))
+          .catch(() => setRemoteTotal(null))
+          .finally(() => setRemoteLoading(false));
       }
     };
     document.addEventListener("visibilitychange", onVisible);
     return () => document.removeEventListener("visibilitychange", onVisible);
-  }, [canShare, hydrated, refreshPinned, refreshTeamMeta]);
+  }, [canShare, hydrated, refreshPinned, refreshTeamMeta, fetchProspectPage]);
 
   const pinnedIdsKey = useMemo(
     () => pinned.map((p) => p.id).filter(Boolean).sort().join(","),

@@ -42,7 +42,8 @@ function isoToMs(s) {
 }
 function nonEmptyData(d) {
   if (!d || typeof d !== "object") return null;
-  const obj = d;
+  const obj = { ...d };
+  delete obj._updatedAt;
   return Object.keys(obj).length > 0 ? obj : null;
 }
 function parseGoalKey(key) {
@@ -119,6 +120,17 @@ function normalizeIds(db) {
       changed = true;
     }
   }
+  if (next.pendingDeletes) {
+    const remap = (ids, map) => (ids || []).map((id) => map.get(id) || id);
+    next.pendingDeletes.prospects = remap(next.pendingDeletes.prospects, clientIdMap);
+    next.pendingDeletes.sales = remap(next.pendingDeletes.sales, saleIdMap);
+    next.pendingDeletes.tool_calculations = (next.pendingDeletes.tool_calculations || []).map((row) => ({
+      ...row,
+      prospect_id: row.prospect_id && clientIdMap.has(row.prospect_id)
+        ? clientIdMap.get(row.prospect_id)
+        : row.prospect_id,
+    }));
+  }
   return { db: next, changed };
 }
 function generateProspectId() {
@@ -168,7 +180,8 @@ function dbToRows(db, userId, workspaceId = null) {
       tour_cuantificable: client.tour_cuantificable ?? null,
       completed: !!client.completedExpedient,
       quick_expedient: !!client.quickExpedient,
-      created_at: tsToISO(client.createdAt)
+      created_at: tsToISO(client.createdAt),
+      updated_at: tsToISO(client.updatedAt || client.createdAt)
     });
     for (const sale of client.sales ?? []) {
       if (!isUuid(sale.saleId)) continue;
@@ -185,7 +198,8 @@ function dbToRows(db, userId, workspaceId = null) {
         process_date: toDateOrNull(sale.processDate),
         add_processing_followup: !!sale.addProcessingFollowup,
         note: sale.note ?? null,
-        created_at: tsToISO(sale.ts)
+        created_at: tsToISO(sale.ts),
+        updated_at: tsToISO(sale.updatedAt || sale.ts)
       });
     }
     for (const act of client.activities ?? []) {
@@ -257,7 +271,8 @@ function dbToRows(db, userId, workspaceId = null) {
           completed: !!e.completed,
           kind: e.kind ?? null,
           client_name: e.clientName ?? null,
-          created_at: tsToISO(e.ts)
+          created_at: tsToISO(e.ts),
+          updated_at: tsToISO(e.updatedAt || e.ts)
         });
       }
     }
@@ -319,6 +334,7 @@ function rowsToDb(rows) {
       completedExpedient: !!p.completed,
       quickExpedient: !!p.quick_expedient,
       createdAt: isoToMs(p.created_at),
+      updatedAt: isoToMs(p.updated_at || p.created_at),
       createdYmd: p.created_at ? String(p.created_at).slice(0, 10) : void 0,
       date: p.created_at ? String(p.created_at).slice(0, 10) : void 0,
       data: { survey: {}, vacaciones: {}, worksheet: {} },
@@ -341,6 +357,7 @@ function rowsToDb(rows) {
       addProcessingFollowup: !!s.add_processing_followup,
       note: s.note ?? void 0,
       ts: isoToMs(s.created_at),
+      updatedAt: isoToMs(s.updated_at || s.created_at),
       prospectId: s.prospect_id ?? void 0,
       source: void 0
     };
@@ -393,6 +410,7 @@ function rowsToDb(rows) {
       id: c.id,
       t: c.type,
       ts: isoToMs(c.created_at),
+      updatedAt: isoToMs(c.updated_at || c.created_at),
       note: c.note ?? void 0,
       vol: c.vol != null ? num(c.vol) : void 0,
       tours: c.tours != null ? intOr(c.tours, 0) : void 0,
@@ -423,10 +441,12 @@ function rowsToDb(rows) {
     };
   }
   for (const t of rows.tool_calculations) {
+    const stamp = isoToMs(t.updated_at || t.created_at);
+    const payload = { ...(t.data || {}), _updatedAt: stamp };
     if (t.prospect_id && db.clients[t.prospect_id]) {
-      (db.clients[t.prospect_id].data ||= {})[t.tool] = t.data || {};
+      (db.clients[t.prospect_id].data ||= {})[t.tool] = payload;
     } else if (!t.prospect_id) {
-      db.libre[t.tool] = t.data || {};
+      db.libre[t.tool] = payload;
     }
   }
   return db;

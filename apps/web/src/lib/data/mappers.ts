@@ -33,6 +33,7 @@ export interface ProspectRow {
   completed: boolean;
   quick_expedient: boolean;
   created_at?: string;
+  updated_at?: string;
 }
 
 export interface SaleRow {
@@ -51,6 +52,7 @@ export interface SaleRow {
   note: string | null;
   snapshot?: SaleSnapshot | null;
   created_at?: string;
+  updated_at?: string;
 }
 
 export interface CalRow {
@@ -72,6 +74,7 @@ export interface CalRow {
   kind?: string | null;
   client_name?: string | null;
   created_at?: string;
+  updated_at?: string;
 }
 
 export interface GoalRow {
@@ -107,6 +110,8 @@ export interface ToolRow {
   prospect_id: string | null;
   tool: string;
   data: Record<string, string | number>;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface SupabaseRows {
@@ -161,7 +166,8 @@ function isoToMs(s: unknown): number {
 
 function nonEmptyData(d: unknown): Record<string, string | number> | null {
   if (!d || typeof d !== "object") return null;
-  const obj = d as Record<string, string | number>;
+  const obj = { ...(d as Record<string, string | number>) };
+  delete obj._updatedAt;
   return Object.keys(obj).length > 0 ? obj : null;
 }
 
@@ -258,6 +264,20 @@ export function normalizeIds(db: AppDatabase): { db: AppDatabase; changed: boole
     }
   }
 
+  // 5) Remapear IDs en cola de borrados explícitos
+  if (next.pendingDeletes) {
+    const remap = (ids: string[] | undefined, map: Map<string, string>) =>
+      (ids || []).map((id) => map.get(id) || id);
+    next.pendingDeletes.prospects = remap(next.pendingDeletes.prospects, clientIdMap);
+    next.pendingDeletes.sales = remap(next.pendingDeletes.sales, saleIdMap);
+    next.pendingDeletes.tool_calculations = (next.pendingDeletes.tool_calculations || []).map((row) => ({
+      ...row,
+      prospect_id: row.prospect_id && clientIdMap.has(row.prospect_id)
+        ? clientIdMap.get(row.prospect_id)!
+        : row.prospect_id,
+    }));
+  }
+
   return { db: next, changed };
 }
 
@@ -314,6 +334,7 @@ export function dbToRows(db: AppDatabase, userId: string): SupabaseRows {
       completed: !!client.completedExpedient,
       quick_expedient: !!client.quickExpedient,
       created_at: tsToISO(client.createdAt),
+      updated_at: tsToISO(client.updatedAt || client.createdAt),
     });
 
     for (const sale of client.sales ?? []) {
@@ -333,6 +354,7 @@ export function dbToRows(db: AppDatabase, userId: string): SupabaseRows {
         note: sale.note ?? null,
         snapshot: sale.snapshot ?? null,
         created_at: tsToISO(sale.ts),
+        updated_at: tsToISO(sale.updatedAt || sale.ts),
       });
     }
 
@@ -381,6 +403,7 @@ export function dbToRows(db: AppDatabase, userId: string): SupabaseRows {
       note: sale.note ?? null,
       snapshot: sale.snapshot ?? null,
       created_at: tsToISO(sale.ts),
+      updated_at: tsToISO(sale.updatedAt || sale.ts),
     });
   }
 
@@ -416,6 +439,7 @@ export function dbToRows(db: AppDatabase, userId: string): SupabaseRows {
           kind: e.kind ?? null,
           client_name: e.clientName ?? null,
           created_at: tsToISO(e.ts),
+          updated_at: tsToISO(e.updatedAt || e.ts),
         });
       }
     }
@@ -478,6 +502,7 @@ export function rowsToDb(rows: SupabaseRows): AppDatabase {
       completedExpedient: !!p.completed,
       quickExpedient: !!p.quick_expedient,
       createdAt: isoToMs(p.created_at),
+      updatedAt: isoToMs((p as { updated_at?: string }).updated_at || p.created_at),
       createdYmd: p.created_at ? String(p.created_at).slice(0, 10) : undefined,
       date: p.created_at ? String(p.created_at).slice(0, 10) : undefined,
       data: { survey: {}, vacaciones: {}, worksheet: {} },
@@ -501,6 +526,7 @@ export function rowsToDb(rows: SupabaseRows): AppDatabase {
       addProcessingFollowup: !!s.add_processing_followup,
       note: s.note ?? undefined,
       ts: isoToMs(s.created_at),
+      updatedAt: isoToMs((s as { updated_at?: string }).updated_at || s.created_at),
       prospectId: s.prospect_id ?? undefined,
       source: undefined,
       snapshot: (s.snapshot as SaleSnapshot | null) ?? undefined,
@@ -556,6 +582,7 @@ export function rowsToDb(rows: SupabaseRows): AppDatabase {
       id: c.id,
       t: c.type as CalEntry["t"],
       ts: isoToMs(c.created_at),
+      updatedAt: isoToMs((c as { updated_at?: string }).updated_at || c.created_at),
       note: c.note ?? undefined,
       vol: c.vol != null ? num(c.vol) : undefined,
       tours: c.tours != null ? intOr(c.tours, 0) : undefined,
@@ -587,10 +614,12 @@ export function rowsToDb(rows: SupabaseRows): AppDatabase {
   }
 
   for (const t of rows.tool_calculations) {
+    const stamp = isoToMs((t as { updated_at?: string }).updated_at || t.created_at);
+    const payload = { ...(t.data || {}), _updatedAt: stamp };
     if (t.prospect_id && db.clients[t.prospect_id]) {
-      (db.clients[t.prospect_id].data ||= {})[t.tool as "survey" | "vacaciones" | "worksheet"] = t.data || {};
+      (db.clients[t.prospect_id].data ||= {})[t.tool as "survey" | "vacaciones" | "worksheet"] = payload;
     } else if (!t.prospect_id) {
-      db.libre[t.tool] = t.data || {};
+      db.libre[t.tool] = payload;
     }
   }
 

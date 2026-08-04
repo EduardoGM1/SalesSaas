@@ -4,6 +4,7 @@ export interface CalEntry {
   id?: string;
   t: EntryType;
   ts: number;
+  updatedAt?: number;
   note?: string;
   /** Hora local HH:MM del recordatorio (opcional). */
   time?: string;
@@ -74,6 +75,7 @@ export interface SaleRecord {
   addProcessingFollowup?: boolean;
   note?: string;
   ts: number;
+  updatedAt?: number;
   prospectId?: string;
   source?: string;
   snapshot?: SaleSnapshot;
@@ -129,6 +131,8 @@ export interface ClientRecord {
   lastSaleVolume?: number;
   /** Soft delete: oculto en Clientes; ventas/tours siguen contando en stats. */
   deletedAt?: number | null;
+  /** Epoch ms — LWW multi-dispositivo (desde updated_at remoto o mutación local). */
+  updatedAt?: number;
   data?: {
     survey?: Record<string, string | number>;
     vacaciones?: Record<string, string | number>;
@@ -136,6 +140,15 @@ export interface ClientRecord {
   };
   sales?: SaleRecord[];
   activities?: ClientActivity[];
+}
+
+/** Borrados explícitos a aplicar en reconcile (nunca inferir por ausencia en snapshot). */
+export interface PendingDeletes {
+  prospects: string[];
+  sales: string[];
+  calendar_entries: string[];
+  activities: string[];
+  tool_calculations: Array<{ prospect_id: string | null; tool: string }>;
 }
 
 export interface UserActivity {
@@ -157,6 +170,8 @@ export interface AppDatabase {
   goals: Record<string, GoalMonth>;
   userActivities: UserActivity[];
   settings?: UserSettings;
+  /** Cola de deletes a enviar en el próximo PUT /sync */
+  pendingDeletes?: PendingDeletes;
 }
 
 export interface UserSettings {
@@ -195,6 +210,16 @@ export interface UserSettings {
   onesignal_subscription_ids?: string[];
 }
 
+export function emptyPendingDeletes(): PendingDeletes {
+  return {
+    prospects: [],
+    sales: [],
+    calendar_entries: [],
+    activities: [],
+    tool_calculations: [],
+  };
+}
+
 export function emptyDatabase(): AppDatabase {
   return {
     clients: {},
@@ -203,6 +228,7 @@ export function emptyDatabase(): AppDatabase {
     cal: {},
     goals: {},
     userActivities: [],
+    pendingDeletes: emptyPendingDeletes(),
     settings: {
       language: "es",
       currency: "USD",

@@ -1,3 +1,13 @@
+function emptyPendingDeletes() {
+  return {
+    prospects: [],
+    sales: [],
+    calendar_entries: [],
+    activities: [],
+    tool_calculations: [],
+  };
+}
+
 function emptyDatabase() {
   return {
     clients: {},
@@ -6,6 +16,7 @@ function emptyDatabase() {
     cal: {},
     goals: {},
     userActivities: [],
+    pendingDeletes: emptyPendingDeletes(),
     settings: {
       language: "es",
       currency: "USD",
@@ -17,5 +28,6 @@ function emptyDatabase() {
   };
 }
 export {
-  emptyDatabase
+  emptyDatabase,
+  emptyPendingDeletes,
 };

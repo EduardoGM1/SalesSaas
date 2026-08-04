@@ -13,7 +13,14 @@ import { requestSyncRefresh } from "@/lib/sync-refresh.js";
 import { shouldLimitBackgroundRealtime } from "@/lib/connection-profile.js";
 
 const DEBOUNCE_MS = 400;
-const TABLES = ["prospects", "sales", "goals", "calendar_entries"];
+const TABLES = [
+  "prospects",
+  "sales",
+  "goals",
+  "calendar_entries",
+  "tool_calculations",
+  "activities",
+];
 
 let channel = null;
 let activeUserId = null;

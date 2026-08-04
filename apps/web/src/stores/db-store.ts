@@ -6,6 +6,10 @@ import { EMPTY_TOOL_BUCKET } from "@/lib/store-empty.js";
 import { withSaleSnapshot } from "@/lib/sales/snapshot";
 import { loadDatabase, saveDatabase } from "@/lib/storage/local-storage-adapter";
 import {
+  queuePendingDelete,
+  queueToolPendingDelete,
+} from "@/lib/sync-pending-deletes.js";
+import {
   AppDatabase,
   CalEntry,
   CalMonth,
@@ -81,7 +85,15 @@ function removeCalendarEntriesForSale(db: AppDatabase, saleId: string): void {
   if (!saleId) return;
   Object.values(db.cal).forEach((month) => {
     Object.keys(month.days || {}).forEach((day) => {
-      month.days[Number(day)] = (month.days[Number(day)] || []).filter((entry) => entry.saleId !== saleId);
+      const kept: CalEntry[] = [];
+      for (const entry of month.days[Number(day)] || []) {
+        if (entry.saleId === saleId) {
+          if (entry.id) queuePendingDelete(db, "calendar_entries", entry.id);
+          continue;
+        }
+        kept.push(entry);
+      }
+      month.days[Number(day)] = kept;
       if (!month.days[Number(day)]?.length) delete month.days[Number(day)];
     });
   });
@@ -91,10 +103,15 @@ function removeCalendarEntriesForClient(db: AppDatabase, clientId: string): void
   if (!clientId) return;
   Object.values(db.cal).forEach((month) => {
     Object.keys(month.days || {}).forEach((day) => {
-      month.days[Number(day)] = (month.days[Number(day)] || []).filter((entry) => {
-        if (entry.clientId === clientId || entry.prospectId === clientId) return false;
-        return true;
-      });
+      const kept: CalEntry[] = [];
+      for (const entry of month.days[Number(day)] || []) {
+        if (entry.clientId === clientId || entry.prospectId === clientId) {
+          if (entry.id) queuePendingDelete(db, "calendar_entries", entry.id);
+          continue;
+        }
+        kept.push(entry);
+      }
+      month.days[Number(day)] = kept;
       if (!month.days[Number(day)]?.length) delete month.days[Number(day)];
     });
   });
@@ -103,8 +120,15 @@ function removeCalendarEntriesForClient(db: AppDatabase, clientId: string): void
 function removeArchivedSales(db: AppDatabase, saleIds: string[]): void {
   if (!db.sales || !saleIds.length) return;
   for (const saleId of saleIds) {
-    if (saleId) delete db.sales[saleId];
+    if (!saleId) continue;
+    if (db.sales[saleId]) queuePendingDelete(db, "sales", saleId);
+    delete db.sales[saleId];
   }
+}
+
+function isNonEmptyToolBucket(data: Record<string, string | number> | undefined | null): boolean {
+  if (!data || typeof data !== "object") return false;
+  return Object.keys(data).some((k) => k !== "_updatedAt");
 }
 
 function recalcClientSaleMeta(client: ClientRecord): void {
@@ -246,6 +270,7 @@ export const useDbStore = create<DbState>((set, get) => ({
       if (!db.cal[k]) db.cal[k] = { days: {}, weeks: {} };
       if (!db.cal[k].days[day]) db.cal[k].days[day] = [];
       if (!entry.id) entry.id = generateEntryId();
+      entry.updatedAt = entry.updatedAt || Date.now();
       db.cal[k].days[day].push(entry);
       saveDatabase(db);
       return { db };
@@ -256,6 +281,8 @@ export const useDbStore = create<DbState>((set, get) => ({
     const k = calKey(year, month);
     set((s) => {
       const db = cloneDb(s.db);
+      const entry = db.cal[k]?.days[day]?.[index];
+      if (entry?.id) queuePendingDelete(db, "calendar_entries", entry.id);
       db.cal[k]?.days[day]?.splice(index, 1);
       saveDatabase(db);
       return { db };
@@ -275,7 +302,9 @@ export const useDbStore = create<DbState>((set, get) => ({
   saveClient: (client) => {
     set((s) => {
       const db = cloneDb(s.db);
-      db.clients[client.id] = ensureProspectIdentity(client);
+      const next = ensureProspectIdentity(client);
+      next.updatedAt = Date.now();
+      db.clients[client.id] = next;
       saveDatabase(db);
       return { db };
     });
@@ -286,8 +315,20 @@ export const useDbStore = create<DbState>((set, get) => ({
       const db = cloneDb(s.db);
       const client = db.clients[id];
       if (client) {
-        const saleIds = (client.sales ?? []).map((sale) => sale.saleId).filter(Boolean);
-        for (const saleId of saleIds) removeCalendarEntriesForSale(db, saleId);
+        queuePendingDelete(db, "prospects", id);
+        const saleIds = (client.sales ?? []).map((sale) => sale.saleId).filter(Boolean) as string[];
+        for (const saleId of saleIds) {
+          queuePendingDelete(db, "sales", saleId);
+          removeCalendarEntriesForSale(db, saleId);
+        }
+        for (const act of client.activities ?? []) {
+          if (act.id) queuePendingDelete(db, "activities", act.id);
+        }
+        for (const tool of ["survey", "vacaciones", "worksheet"] as const) {
+          if (isNonEmptyToolBucket(client.data?.[tool] as Record<string, string | number> | undefined)) {
+            queueToolPendingDelete(db, id, tool);
+          }
+        }
         removeCalendarEntriesForClient(db, id);
         removeArchivedSales(db, saleIds);
       }
@@ -302,8 +343,13 @@ export const useDbStore = create<DbState>((set, get) => ({
       const db = cloneDb(s.db);
       const client = db.clients[clientId];
       if (!client || !saleId) return s;
+      queuePendingDelete(db, "sales", saleId);
+      for (const act of client.activities ?? []) {
+        if (act.saleId === saleId && act.id) queuePendingDelete(db, "activities", act.id);
+      }
       client.sales = (client.sales ?? []).filter((sale) => sale.saleId !== saleId);
       client.activities = (client.activities ?? []).filter((activity) => activity.saleId !== saleId);
+      client.updatedAt = Date.now();
       recalcClientSaleMeta(client);
       removeCalendarEntriesForSale(db, saleId);
       removeArchivedSales(db, [saleId]);
@@ -315,23 +361,40 @@ export const useDbStore = create<DbState>((set, get) => ({
 
   getToolBucket: (tool, mode, clientId) => {
     const db = get().db;
+    const stripMeta = (bucket: Record<string, string | number> | undefined) => {
+      if (!bucket) return EMPTY_TOOL_BUCKET;
+      const rest = { ...bucket };
+      delete rest._updatedAt;
+      return Object.keys(rest).length ? rest : EMPTY_TOOL_BUCKET;
+    };
     if (mode === "client" && clientId) {
       const c = db.clients[clientId];
       if (!c?.data) return EMPTY_TOOL_BUCKET;
       const bucket = c.data[tool as keyof typeof c.data];
-      return (bucket as Record<string, string | number>) || EMPTY_TOOL_BUCKET;
+      return stripMeta(bucket as Record<string, string | number> | undefined);
     }
-    return db.libre[tool] || EMPTY_TOOL_BUCKET;
+    return stripMeta(db.libre[tool]);
   },
 
   saveToolBucket: (tool, mode, data, clientId) => {
     set((s) => {
       const db = cloneDb(s.db);
+      const stamped = { ...data, _updatedAt: Date.now() };
       if (mode === "client" && clientId && db.clients[clientId]) {
         if (!db.clients[clientId].data) db.clients[clientId].data = {};
-        db.clients[clientId].data![tool as keyof NonNullable<ClientRecord["data"]>] = { ...data };
+        const prev = db.clients[clientId].data![tool as keyof NonNullable<ClientRecord["data"]>] as
+          | Record<string, string | number>
+          | undefined;
+        if (isNonEmptyToolBucket(prev) && !isNonEmptyToolBucket(stamped)) {
+          queueToolPendingDelete(db, clientId, tool);
+        }
+        db.clients[clientId].data![tool as keyof NonNullable<ClientRecord["data"]>] = stamped;
+        db.clients[clientId].updatedAt = Date.now();
       } else {
-        db.libre[tool] = { ...data };
+        if (isNonEmptyToolBucket(db.libre[tool]) && !isNonEmptyToolBucket(stamped)) {
+          queueToolPendingDelete(db, null, tool);
+        }
+        db.libre[tool] = stamped;
       }
       saveDatabase(db);
       return { db };
@@ -342,6 +405,7 @@ export const useDbStore = create<DbState>((set, get) => ({
     set((s) => {
       const db = cloneDb(s.db);
       if (!db.libre[tool] || Object.keys(db.libre[tool]).length === 0) return s;
+      if (isNonEmptyToolBucket(db.libre[tool])) queueToolPendingDelete(db, null, tool);
       db.libre[tool] = { ...EMPTY_TOOL_BUCKET };
       saveDatabase(db);
       return { db };
@@ -357,6 +421,7 @@ export const useDbStore = create<DbState>((set, get) => ({
       c.activities = c.activities || [];
       if (activity.saleId && c.activities.some((a) => a.saleId === activity.saleId)) return s;
       c.activities.push({ id: generateActivityId(), ts: activity.ts ?? Date.now(), ...activity });
+      c.updatedAt = Date.now();
       saveDatabase(db);
       return { db };
     });
@@ -377,6 +442,7 @@ export const useDbStore = create<DbState>((set, get) => ({
       const db = cloneDb(s.db);
       const c = ensureProspectIdentity(db.clients[clientId]);
       const status = sale.status || "venta";
+      const now = Date.now();
       const saleRecord: SaleRecord = {
         saleId,
         date: sale.date,
@@ -388,7 +454,8 @@ export const useDbStore = create<DbState>((set, get) => ({
         processDate: status === "pendiente" ? sale.processDate : "",
         addProcessingFollowup: status === "pendiente" && !!sale.addProcessingFollowup,
         note: sale.note,
-        ts: Date.now(),
+        ts: now,
+        updatedAt: now,
         prospectId: c.prospectId || clientId,
         source: sale.source || "Venta del expediente",
       };
@@ -396,6 +463,7 @@ export const useDbStore = create<DbState>((set, get) => ({
       c.contract = sale.contract || c.contract;
       c.processDate = saleRecord.processDate || "";
       c.tourDate = c.tourDate || sale.date;
+      c.updatedAt = now;
 
       const noteLine = sale.note ? `Venta ${sale.date}: ${sale.note}` : "";
       if (noteLine) c.note = c.note ? `${c.note}\n${noteLine}` : noteLine;
@@ -415,6 +483,7 @@ export const useDbStore = create<DbState>((set, get) => ({
       const c = ensureProspectIdentity(db.clients[clientId]);
       const existing = (c.sales || []).find((item) => item.saleId === saleId);
       const status = sale.status || existing?.status || "venta";
+      const now = Date.now();
       const saleRecord: SaleRecord = {
         ...existing,
         saleId,
@@ -427,7 +496,8 @@ export const useDbStore = create<DbState>((set, get) => ({
         processDate: status === "pendiente" ? sale.processDate : "",
         addProcessingFollowup: status === "pendiente" && !!sale.addProcessingFollowup,
         note: sale.note,
-        ts: Date.now(),
+        ts: now,
+        updatedAt: now,
         prospectId: c.prospectId || clientId,
         source: sale.source || existing?.source || "Venta del expediente",
       };
@@ -435,6 +505,7 @@ export const useDbStore = create<DbState>((set, get) => ({
       c.contract = saleRecord.contract || c.contract;
       c.processDate = saleRecord.processDate || "";
       c.tourDate = c.tourDate || saleRecord.date;
+      c.updatedAt = now;
       db.clients[clientId] = c;
       ensureSaleInClientAndAgenda(db, clientId, withSaleSnapshot(c, saleRecord));
       saveDatabase(db);
@@ -449,6 +520,7 @@ export const useDbStore = create<DbState>((set, get) => ({
       if (!c) return s;
       c.quickExpedient = false;
       c.completedExpedient = true;
+      c.updatedAt = Date.now();
       c.data = c.data || {};
       c.data.survey = c.data.survey || {};
       c.data.vacaciones = c.data.vacaciones || {};
