@@ -21,6 +21,7 @@ import {
   hasPendingDeletes,
   mergePendingDeletes,
 } from "@/lib/sync-pending-deletes.js";
+import { recoverLocalProspectsToCloud } from "@/lib/recover-local-prospects.js";
 import { maybeRequestReminderDigest, maybeFlushScheduledReminders, startScheduledReminderFlushLoop } from "@/lib/reminder-digest.js";
 import { useDbStore } from "@/stores/db-store";
 import { useSyncStore } from "@/stores/sync-store";
@@ -31,6 +32,8 @@ const ACCOUNT_KEY = "sts4_account";
 const DEBOUNCE_MS = 1200;
 /** Cooldown al volver a primer plano (PWA y Desktop). Realtime usa force=true. */
 const RESUME_PULL_COOLDOWN_MS = 5_000;
+/** Reintento de recuperación de expedientes solo-locales. */
+const RECOVERY_COOLDOWN_MS = 15_000;
 
 export function SyncProvider({ children }) {
   const userIdRef = useRef(null);
@@ -44,6 +47,7 @@ export function SyncProvider({ children }) {
   const pushInFlightRef = useRef(false);
   /** Mutaciones locales pendientes de PUT (sobrevive a cancelar el debounce en PWA). */
   const dirtyOutboundRef = useRef(false);
+  const lastRecoveryAtRef = useRef(0);
   const stopFlushLoopRef = useRef(null);
 
   useEffect(() => {
@@ -111,6 +115,40 @@ export function SyncProvider({ children }) {
         timerRef.current = null;
       }
       await doReconcile();
+    };
+
+    /**
+     * Rescata expedientes atrapados en localStorage del dispositivo → BD.
+     * POST faltantes + PUT sync completo.
+     */
+    const runLocalRecovery = async (opts = {}) => {
+      const force = opts.force === true;
+      if (!enabledRef.current) return null;
+      if (typeof navigator !== "undefined" && !navigator.onLine) return null;
+      const now = Date.now();
+      if (!force && now - lastRecoveryAtRef.current < RECOVERY_COOLDOWN_MS) return null;
+      lastRecoveryAtRef.current = now;
+      useSyncStore.getState().setStatus("syncing");
+      try {
+        const result = await recoverLocalProspectsToCloud();
+        if (result.reconciled) dirtyOutboundRef.current = false;
+        else if (result.localOnlyIds?.length || result.failed?.length) {
+          dirtyOutboundRef.current = true;
+        }
+        if (result.error && !result.reconciled) {
+          useSyncStore.getState().setStatus("error", result.error);
+        } else {
+          useSyncStore.getState().setSynced();
+        }
+        return result;
+      } catch (err) {
+        dirtyOutboundRef.current = true;
+        useSyncStore.getState().setStatus(
+          "error",
+          err instanceof Error ? err.message : String(err),
+        );
+        return null;
+      }
     };
 
     /**
@@ -226,6 +264,7 @@ export function SyncProvider({ children }) {
             dirtyOutboundRef.current = false;
             localStorage.setItem(ACCOUNT_KEY, userId);
             useSyncStore.getState().setSynced();
+            await runLocalRecovery({ force: true, reason: "init-offline-push" });
             startRealtime(userId);
             return;
           } catch (syncErr) {
@@ -289,6 +328,8 @@ export function SyncProvider({ children }) {
       if (dirtyOutboundRef.current) {
         await doReconcile();
       }
+      // Rescate: expedientes solo en el teléfono → POST + PUT a la BD.
+      await runLocalRecovery({ force: true, reason: "init" });
       startRealtime(userId);
       maybeRequestReminderDigest();
       if (typeof stopFlushLoopRef.current === "function") stopFlushLoopRef.current();
@@ -335,7 +376,10 @@ export function SyncProvider({ children }) {
           workspaceId: workspaceIdRef.current,
         });
       }
-      void refreshInbound({ reason: "online", force: true });
+      void (async () => {
+        await runLocalRecovery({ force: true, reason: "online" });
+        await refreshInbound({ reason: "online", force: true });
+      })();
     };
 
     /** PWA y Desktop: rearmar Realtime + pull forzado al volver a primer plano. */
@@ -347,7 +391,11 @@ export function SyncProvider({ children }) {
         force: true,
         workspaceId: workspaceIdRef.current,
       });
-      void refreshInbound({ reason: "foreground", force: true });
+      void (async () => {
+        // Primero subir lo atrapado en el teléfono; luego pull+merge.
+        await runLocalRecovery({ reason: "foreground" });
+        await refreshInbound({ reason: "foreground", force: true });
+      })();
       maybeRequestReminderDigest();
       maybeFlushScheduledReminders({ force: true });
     };
