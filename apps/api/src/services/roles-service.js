@@ -26,11 +26,14 @@ export async function listRoles(supabase, adminProfile, opts = {}) {
     assertSuperAdmin(adminProfile);
     const { data, error } = await supabase.rpc("admin_list_roles");
     if (error) throw new ServiceError(error.message, 400);
-    return data ?? [];
+    // Defensa en profundidad: solo plataforma (por si la RPC antigua aún está en prod).
+    const rows = Array.isArray(data) ? data : [];
+    return rows.filter((r) => !r.empresa_id);
   }
   const { data, error } = await supabase
     .from("roles")
     .select("id, nombre, slug, es_sistema")
+    .is("empresa_id", null)
     .neq("slug", "superadmin")
     .order("nombre");
   if (error) throw new ServiceError(error.message, 400);

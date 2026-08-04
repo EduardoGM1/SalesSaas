@@ -6,6 +6,9 @@ import { hasPermission } from "@/lib/auth/permissions";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { adminJson } from "@/lib/admin/api.js";
 
+/** Orden de jerarquía de roles de plataforma (gobierno). */
+const SYSTEM_ROLE_ORDER = ["superadmin", "admin", "soporte", "vendedor"];
+
 function collectFlagKeys(nodes, acc = []) {
   for (const n of nodes || []) {
     acc.push(n);
@@ -23,6 +26,17 @@ function flagKeysForRole(flagTree, roleId) {
     if (hit) keys.add(node.clave);
   }
   return keys;
+}
+
+function sortSystemRoles(roles) {
+  return [...roles].sort((a, b) => {
+    const ia = SYSTEM_ROLE_ORDER.indexOf(a.slug);
+    const ib = SYSTEM_ROLE_ORDER.indexOf(b.slug);
+    const ra = ia === -1 ? 99 : ia;
+    const rb = ib === -1 ? 99 : ib;
+    if (ra !== rb) return ra - rb;
+    return String(a.nombre || "").localeCompare(String(b.nombre || ""), "es");
+  });
 }
 
 function ModuleCheckboxTree({ nodes, selected, onToggle, depth = 0 }) {
@@ -67,15 +81,10 @@ function RoleEditor({ role, flagTree, onClose, onSaved }) {
       const turningOn = !next.has(node.clave);
       if (turningOn) {
         next.add(node.clave);
-        // Activar hijos si se enciende el padre
-        for (const child of collectFlagKeys(node.children || [])) {
-          next.add(child.clave);
-        }
+        for (const child of collectFlagKeys(node.children || [])) next.add(child.clave);
       } else {
         next.delete(node.clave);
-        for (const child of collectFlagKeys(node.children || [])) {
-          next.delete(child.clave);
-        }
+        for (const child of collectFlagKeys(node.children || [])) next.delete(child.clave);
       }
       return next;
     });
@@ -156,6 +165,59 @@ function RoleEditor({ role, flagTree, onClose, onSaved }) {
   );
 }
 
+function RolesTable({ roles, moduleCounts, busyId, onEdit, onRemove, t, emptyLabel }) {
+  if (!roles.length) {
+    return <div className="admin-empty" style={{ padding: 16 }}>{emptyLabel}</div>;
+  }
+  return (
+    <div className="client-table-card admin-system-table">
+      <table className="client-table admin-users-table">
+        <thead>
+          <tr>
+            <th>{t("admin.roles.col.name")}</th>
+            <th>{t("admin.roles.col.slug")}</th>
+            <th style={{ textAlign: "right" }}>{t("admin.roles.col.modules")}</th>
+            <th className="admin-cell-actions">{t("admin.users.col.actions")}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {roles.map((role) => (
+            <tr key={role.id}>
+              <td className="admin-cell-name">{role.nombre}</td>
+              <td className="admin-cell-muted"><code>{role.slug}</code></td>
+              <td className="admin-cell-num" style={{ textAlign: "right" }}>
+                {moduleCounts.get(role.id) ?? (Array.isArray(role.permission_keys) ? role.permission_keys.length : 0)}
+              </td>
+              <td className="admin-cell-actions">
+                <div className="admin-table-actions">
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-ghost"
+                    onClick={() => onEdit(role)}
+                    disabled={role.slug === "superadmin"}
+                  >
+                    {t("admin.roles.action.edit")}
+                  </button>
+                  {!role.es_sistema && (
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-danger"
+                      disabled={busyId === role.id}
+                      onClick={() => onRemove(role)}
+                    >
+                      {t("admin.roles.action.delete")}
+                    </button>
+                  )}
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 export function AdminRolesPage() {
   const { t } = useI18n();
   const session = useOutletContext();
@@ -170,11 +232,21 @@ export function AdminRolesPage() {
     session?.isSuperAdmin
     || (session?.profile && hasPermission(session.profile, "gestionar_roles_permisos")),
   );
-  if (!canManageRoles) {
-    return <div className="admin-page admin-empty">{t("admin.roles.forbidden")}</div>;
-  }
 
-  const roles = Array.isArray(data) ? data : [];
+  const roles = useMemo(
+    () => (Array.isArray(data) ? data : []).filter((r) => !r.empresa_id),
+    [data],
+  );
+  const systemRoles = useMemo(
+    () => sortSystemRoles(roles.filter((r) => r.es_sistema)),
+    [roles],
+  );
+  const customRoles = useMemo(
+    () => [...roles.filter((r) => !r.es_sistema)].sort((a, b) =>
+      String(a.nombre || "").localeCompare(String(b.nombre || ""), "es")),
+    [roles],
+  );
+
   const moduleCounts = useMemo(() => {
     const map = new Map();
     for (const role of roles) {
@@ -182,6 +254,10 @@ export function AdminRolesPage() {
     }
     return map;
   }, [roles, flagTree]);
+
+  if (!canManageRoles) {
+    return <div className="admin-page admin-empty">{t("admin.roles.forbidden")}</div>;
+  }
 
   const refresh = () => {
     setEditor(null);
@@ -207,64 +283,44 @@ export function AdminRolesPage() {
       <AdminPageHeader
         eyebrow="Gobierno de acceso"
         title={t("admin.roles.title")}
-        subtitle={t("admin.roles.sub")}
+        subtitle={t("admin.roles.subPlatform")}
         actions={<button type="button" className="btn btn-primary" onClick={() => setEditor({})}>
           {t("admin.roles.create")}
         </button>}
       />
       <AdminPageState loading={loading} error={error}>
         <AdminDataView empty={!roles.length} emptyTitle={t("admin.roles.empty")}>
-          <div className="client-table-card admin-system-table">
-          <table className="client-table admin-users-table">
-            <thead>
-              <tr>
-                <th>{t("admin.roles.col.name")}</th>
-                <th>{t("admin.roles.col.slug")}</th>
-                <th>{t("admin.roles.col.type")}</th>
-                <th style={{ textAlign: "right" }}>{t("admin.roles.col.modules")}</th>
-                <th className="admin-cell-actions">{t("admin.users.col.actions")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {roles.map((role) => (
-                <tr key={role.id}>
-                  <td className="admin-cell-name">{role.nombre}</td>
-                  <td className="admin-cell-muted">{role.slug}</td>
-                  <td>
-                    {role.es_sistema
-                      ? <AdminStatusBadge tone="info">{t("admin.roles.badge.system")}</AdminStatusBadge>
-                      : <AdminStatusBadge tone="neutral">{t("admin.roles.badge.custom")}</AdminStatusBadge>}
-                  </td>
-                  <td className="admin-cell-num" style={{ textAlign: "right" }}>
-                    {moduleCounts.get(role.id) ?? 0}
-                  </td>
-                  <td className="admin-cell-actions">
-                    <div className="admin-table-actions">
-                      <button
-                        type="button"
-                        className="btn btn-sm btn-ghost"
-                        onClick={() => setEditor(role)}
-                        disabled={role.slug === "superadmin"}
-                      >
-                        {t("admin.roles.action.edit")}
-                      </button>
-                      {!role.es_sistema && (
-                        <button
-                          type="button"
-                          className="btn btn-sm btn-danger"
-                          disabled={busyId === role.id}
-                          onClick={() => removeRole(role)}
-                        >
-                          {t("admin.roles.action.delete")}
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          </div>
+          <section className="admin-roles-section">
+            <div className="admin-roles-section-head">
+              <h2 className="admin-roles-section-title">{t("admin.roles.section.system")}</h2>
+              <p className="admin-roles-section-sub">{t("admin.roles.section.systemSub")}</p>
+            </div>
+            <RolesTable
+              roles={systemRoles}
+              moduleCounts={moduleCounts}
+              busyId={busyId}
+              onEdit={setEditor}
+              onRemove={removeRole}
+              t={t}
+              emptyLabel={t("admin.roles.empty")}
+            />
+          </section>
+
+          <section className="admin-roles-section">
+            <div className="admin-roles-section-head">
+              <h2 className="admin-roles-section-title">{t("admin.roles.section.custom")}</h2>
+              <p className="admin-roles-section-sub">{t("admin.roles.section.customSub")}</p>
+            </div>
+            <RolesTable
+              roles={customRoles}
+              moduleCounts={moduleCounts}
+              busyId={busyId}
+              onEdit={setEditor}
+              onRemove={removeRole}
+              t={t}
+              emptyLabel={t("admin.roles.emptyCustom")}
+            />
+          </section>
         </AdminDataView>
       </AdminPageState>
       {editor && (

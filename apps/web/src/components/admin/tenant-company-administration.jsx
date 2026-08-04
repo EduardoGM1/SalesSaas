@@ -40,16 +40,33 @@ function memberRows(room) {
   return Array.isArray(room?.workspace_miembros) ? room.workspace_miembros : [];
 }
 
-export function TenantCompanyAdministration({ session, companies = EMPTY_COMPANIES, embedded = false }) {
+export function TenantCompanyAdministration({
+  session,
+  companies = EMPTY_COMPANIES,
+  embedded = false,
+  initialCompanyId = "",
+  onCompanyChange,
+}) {
   const { data: contextData } = useAdminFetch("tenant/context");
   const options = useMemo(() => (
     companies.length ? companies : companyOptionsFromContext(contextData)
   ), [companies, contextData]);
-  const [companyId, setCompanyId] = useState("");
+  const [companyId, setCompanyId] = useState(initialCompanyId || "");
   const selectedCompany = useMemo(
     () => options.find((company) => company.id === companyId),
     [companyId, options],
   );
+
+  useEffect(() => {
+    if (!initialCompanyId) return;
+    if (!options.some((c) => c.id === initialCompanyId)) return;
+    setCompanyId((prev) => (prev === initialCompanyId ? prev : initialCompanyId));
+  }, [initialCompanyId, options]);
+
+  const selectCompany = (nextId) => {
+    setCompanyId(nextId);
+    onCompanyChange?.(nextId);
+  };
   const [tab, setTab] = useState("summary");
   const [reload, setReload] = useState(0);
   const [state, setState] = useState({
@@ -75,7 +92,11 @@ export function TenantCompanyAdministration({ session, companies = EMPTY_COMPANI
   const [logoPreviewBroken, setLogoPreviewBroken] = useState(false);
 
   useEffect(() => {
-    if (!companyId && options[0]?.id) setCompanyId(options[0].id);
+    if (companyId || !options[0]?.id) return;
+    const first = options[0].id;
+    setCompanyId(first);
+    onCompanyChange?.(first);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- solo hidratar primera empresa
   }, [companyId, options]);
 
   useEffect(() => {
@@ -176,7 +197,7 @@ export function TenantCompanyAdministration({ session, companies = EMPTY_COMPANI
       <div className="admin-tenant-company-picker">
         <label className="admin-form-field">
           <span>Empresa activa</span>
-          <select className="auth-input" value={companyId} onChange={(event) => setCompanyId(event.target.value)}>
+          <select className="auth-input" value={companyId} onChange={(event) => selectCompany(event.target.value)}>
             {options.map((company) => <option key={company.id} value={company.id}>{company.nombre}</option>)}
           </select>
         </label>

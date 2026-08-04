@@ -814,6 +814,65 @@
   100% { background-position: -100% 0; }
 }
 
+/* Breadcrumb Organización → Empresa (un solo nivel de tabs visible) */
+.admin-org-breadcrumb {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+  margin-bottom: 16px;
+  padding: 10px 14px;
+  border: 1px solid var(--border2, #e2e8f0);
+  border-radius: 12px;
+  background: #f8fafc;
+}
+.admin-org-breadcrumb-back {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--saas-primary, #1e5eff);
+  cursor: pointer;
+}
+.admin-org-breadcrumb-back:hover {
+  text-decoration: underline;
+}
+.admin-org-breadcrumb-sep {
+  color: var(--muted, #94a3b8);
+  font-size: 13px;
+}
+.admin-org-breadcrumb-current {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text, #0f172a);
+}
+.admin-org-breadcrumb-meta {
+  margin-left: auto;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted, #64748b);
+}
+
+.admin-roles-section {
+  margin-bottom: 28px;
+}
+.admin-roles-section-head {
+  margin-bottom: 10px;
+}
+.admin-roles-section-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 750;
+  color: var(--text, #0f172a);
+}
+.admin-roles-section-sub {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--muted, #64748b);
+}
+
 .admin-modules-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));

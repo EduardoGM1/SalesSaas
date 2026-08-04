@@ -8,8 +8,11 @@ const LINER_FLAG_MATCH = (clave) =>
   || clave === "proyeccion_vacaciones";
 
 /**
- * Idempotente: paquetes + puestos operativos (Gerente, Vendedor, Liner, Cerrador)
- * para una empresa. Se llama al crear empresa o sala.
+ * Idempotente por (empresa_id, slug): paquetes + puestos operativos
+ * (Gerente, Vendedor, Liner, Cerrador) **por empresa**.
+ *
+ * No son roles globales de plataforma: cada tenant puede renombrar Liner/Cerrador
+ * y ajustar módulos. El Panel → Roles solo lista roles con empresa_id IS NULL.
  */
 export async function ensureEmpresaOperationalRoles(admin, empresaId) {
   if (!admin || !empresaId) throw new ServiceError("empresaId requerido.", 400);

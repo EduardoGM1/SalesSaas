@@ -42,6 +42,8 @@ export function AdminEmpresasPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const sectionParam = searchParams.get("section") || "summary";
   const section = SECTIONS.includes(sectionParam) ? sectionParam : "summary";
+  const accessEmpresaId = searchParams.get("empresa") || "";
+  const inAccessFocus = section === "access";
   const [reloadKey, setReloadKey] = useState(0);
   const [empresaNombre, setEmpresaNombre] = useState("");
   const [salaForm, setSalaForm] = useState({ empresa_id: "", nombre: "", gerente: null });
@@ -207,8 +209,24 @@ export function AdminEmpresasPage() {
     const params = new URLSearchParams(searchParams);
     if (next === "summary") params.delete("section");
     else params.set("section", next);
+    // Al salir de Acceso, conservar ?empresa= para recordar contexto al volver.
+    if (next !== "access" && !params.get("empresa") && accessEmpresaId) {
+      params.set("empresa", accessEmpresaId);
+    }
     setSearchParams(params);
   };
+
+  const setAccessEmpresa = (empresaId) => {
+    const params = new URLSearchParams(searchParams);
+    params.set("section", "access");
+    if (empresaId) params.set("empresa", empresaId);
+    else params.delete("empresa");
+    setSearchParams(params);
+  };
+
+  const accessCompanyName = list.find((c) => c.id === accessEmpresaId)?.nombre
+    || list[0]?.nombre
+    || "Empresa";
   const selectMembersRoom = (roomId) => {
     setMembersSalaId(roomId);
     selectSection("members");
@@ -233,13 +251,32 @@ export function AdminEmpresasPage() {
 
   return (
     <div className="admin-page admin-companies-enterprise">
-      <AdminPageHeader
-        eyebrow="Organización"
-        title={t("admin.empresas.title")}
-        subtitle={t("admin.empresas.sub")}
-        meta={<><span>{list.length} empresas</span><span>{salasList.length} salas</span></>}
-      />
-      <AdminSubNav items={navItems} activeId={section} onSelect={selectSection} ariaLabel="Secciones de empresas" />
+      {inAccessFocus ? (
+        <header className="admin-org-breadcrumb" aria-label="Navegación de organización">
+          <button
+            type="button"
+            className="admin-org-breadcrumb-back"
+            onClick={() => selectSection("summary")}
+          >
+            ← Organización
+          </button>
+          <span className="admin-org-breadcrumb-sep" aria-hidden>›</span>
+          <span className="admin-org-breadcrumb-current">{accessCompanyName}</span>
+          <span className="admin-org-breadcrumb-meta">
+            {list.length} empresas · {salasList.length} salas
+          </span>
+        </header>
+      ) : (
+        <>
+          <AdminPageHeader
+            eyebrow="Organización"
+            title={t("admin.empresas.title")}
+            subtitle={t("admin.empresas.sub")}
+            meta={<><span>{list.length} empresas</span><span>{salasList.length} salas</span></>}
+          />
+          <AdminSubNav items={navItems} activeId={section} onSelect={selectSection} ariaLabel="Secciones de empresas" />
+        </>
+      )}
       {error ? <div className="auth-error admin-company-error">{error}</div> : null}
 
       <AdminPageState loading={loading} error={loadErr}>
@@ -372,7 +409,13 @@ export function AdminEmpresasPage() {
         ) : null}
 
         {section === "access" ? (
-          <TenantCompanyAdministration session={session} companies={list} embedded />
+          <TenantCompanyAdministration
+            session={session}
+            companies={list}
+            embedded
+            initialCompanyId={accessEmpresaId}
+            onCompanyChange={setAccessEmpresa}
+          />
         ) : null}
 
         {section === "branding" ? (
