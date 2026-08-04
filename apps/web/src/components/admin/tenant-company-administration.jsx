@@ -374,19 +374,29 @@ export function TenantCompanyAdministration({ session, companies = EMPTY_COMPANI
               <form className="admin-inline-form" onSubmit={(event) => {
                 event.preventDefault();
                 void mutate(async () => {
-                  const body = {
-                    nombre: roleForm.nombre,
-                    scope: roleForm.scope,
-                    flag_keys: roleForm.flag_keys,
-                  };
                   if (editingRole) {
+                    // PATCH parcial: solo nombre si los módulos no cambiaron.
+                    // Evita reenviar flag_keys=[] y borrar el paquete al “solo renombrar”.
+                    const baseline = new Set(editingRole.flag_keys || []);
+                    const current = new Set(roleForm.flag_keys || []);
+                    const modulesChanged = baseline.size !== current.size
+                      || [...current].some((key) => !baseline.has(key));
+                    const body = { nombre: roleForm.nombre };
+                    if (modulesChanged) body.flag_keys = roleForm.flag_keys;
                     await adminJson(`tenant/empresas/${companyId}/roles/${editingRole.id}`, {
                       method: "PATCH",
                       body,
                     });
                     setEditingRole(null);
                   } else {
-                    await adminJson(`tenant/empresas/${companyId}/roles`, { method: "POST", body });
+                    await adminJson(`tenant/empresas/${companyId}/roles`, {
+                      method: "POST",
+                      body: {
+                        nombre: roleForm.nombre,
+                        scope: roleForm.scope,
+                        flag_keys: roleForm.flag_keys,
+                      },
+                    });
                   }
                   setRoleForm({ nombre: "", scope: "workspace", flag_keys: [] });
                 }, editingRole ? "Puesto actualizado" : "Puesto creado");

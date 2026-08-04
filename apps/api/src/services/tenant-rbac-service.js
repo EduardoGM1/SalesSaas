@@ -86,6 +86,8 @@ export async function updateTenantRole(actorId, empresaId, roleId, body) {
     .maybeSingle();
   if (!role) throw new ServiceError("Puesto no encontrado.", 404);
 
+  const currentFlagKeys = await loadRoleFlagKeys(admin, role.paquete_id);
+
   // Sistema: renombrar siempre; módulos solo Liner/Cerrador (paquetes dedicados).
   if (role.es_sistema) {
     const patch = {};
@@ -98,16 +100,24 @@ export async function updateTenantRole(actorId, empresaId, roleId, body) {
       const { error } = await admin.from("roles").update(patch).eq("id", roleId);
       if (error) throw new ServiceError(error.message, 400);
     }
-    if (Array.isArray(body?.flag_keys)) {
+    // Solo tocar módulos si el cliente envió flag_keys Y cambiaron de verdad.
+    if (Array.isArray(body?.flag_keys) && !sameFlagKeySet(currentFlagKeys, body.flag_keys)) {
       if (!["liner", "cerrador"].includes(role.slug)) {
         throw new ServiceError("Solo Liner y Cerrador permiten ajustar módulos de sistema.", 403);
+      }
+      const nextKeys = normalizeFlagKeys(body.flag_keys);
+      if (nextKeys.length === 0) {
+        throw new ServiceError(
+          "No se pueden vaciar los módulos de un puesto de sistema. Omite flag_keys para solo renombrar.",
+          400,
+        );
       }
       const packageId = await ensureRolePackageFromFlags(admin, {
         empresaId,
         actorId,
         nombre: patch.nombre || role.nombre,
         slug: role.slug,
-        flagKeys: body.flag_keys,
+        flagKeys: nextKeys,
         existingPackageId: role.paquete_id,
         systemSlug: role.slug === "liner" ? "liner" : "cierre",
       });
@@ -132,13 +142,13 @@ export async function updateTenantRole(actorId, empresaId, roleId, body) {
       }
       patch.paquete_id = body.paquete_id || null;
     }
-    if (Array.isArray(body?.flag_keys)) {
+    if (Array.isArray(body?.flag_keys) && !sameFlagKeySet(currentFlagKeys, body.flag_keys)) {
       patch.paquete_id = await ensureRolePackageFromFlags(admin, {
         empresaId,
         actorId,
         nombre: patch.nombre || role.nombre,
         slug: patch.slug || role.slug,
-        flagKeys: body.flag_keys,
+        flagKeys: normalizeFlagKeys(body.flag_keys),
         existingPackageId: role.paquete_id,
       });
     }
@@ -199,6 +209,32 @@ async function replaceRolePermissions(admin, roleId, keys) {
     );
     if (insertError) throw new ServiceError(insertError.message, 400);
   }
+}
+
+function normalizeFlagKeys(keys) {
+  return [...new Set((Array.isArray(keys) ? keys : []).map(String).filter(Boolean))].sort();
+}
+
+function sameFlagKeySet(a, b) {
+  const left = normalizeFlagKeys(a);
+  const right = normalizeFlagKeys(b);
+  if (left.length !== right.length) return false;
+  return left.every((key, idx) => key === right[idx]);
+}
+
+async function loadRoleFlagKeys(admin, paqueteId) {
+  if (!paqueteId) return [];
+  const { data, error } = await admin
+    .from("paquete_flags")
+    .select("activo, flags(clave)")
+    .eq("paquete_id", paqueteId);
+  if (error) throw new ServiceError(error.message, 500);
+  return normalizeFlagKeys(
+    (data ?? [])
+      .filter((row) => row.activo !== false)
+      .map((row) => row.flags?.clave)
+      .filter(Boolean),
+  );
 }
 
 /** Crea/actualiza el paquete ligado al puesto a partir de flag_keys (módulos). */
