@@ -354,7 +354,6 @@ export function dbToRows(db: AppDatabase, userId: string): SupabaseRows {
         note: sale.note ?? null,
         snapshot: sale.snapshot ?? null,
         created_at: tsToISO(sale.ts),
-        updated_at: tsToISO(sale.updatedAt || sale.ts),
       });
     }
 
@@ -403,7 +402,6 @@ export function dbToRows(db: AppDatabase, userId: string): SupabaseRows {
       note: sale.note ?? null,
       snapshot: sale.snapshot ?? null,
       created_at: tsToISO(sale.ts),
-      updated_at: tsToISO(sale.updatedAt || sale.ts),
     });
   }
 
@@ -439,7 +437,6 @@ export function dbToRows(db: AppDatabase, userId: string): SupabaseRows {
           kind: e.kind ?? null,
           client_name: e.clientName ?? null,
           created_at: tsToISO(e.ts),
-          updated_at: tsToISO(e.updatedAt || e.ts),
         });
       }
     }

@@ -199,7 +199,6 @@ function dbToRows(db, userId, workspaceId = null) {
         add_processing_followup: !!sale.addProcessingFollowup,
         note: sale.note ?? null,
         created_at: tsToISO(sale.ts),
-        updated_at: tsToISO(sale.updatedAt || sale.ts)
       });
     }
     for (const act of client.activities ?? []) {
@@ -272,7 +271,6 @@ function dbToRows(db, userId, workspaceId = null) {
           kind: e.kind ?? null,
           client_name: e.clientName ?? null,
           created_at: tsToISO(e.ts),
-          updated_at: tsToISO(e.updatedAt || e.ts)
         });
       }
     }

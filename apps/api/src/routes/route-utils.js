@@ -29,6 +29,7 @@ export async function runService(res, handler, { successStatus, wrap } = {}) {
     return json(res, result, successStatus);
   } catch (err) {
     if (err instanceof ServiceError) return apiError(res, err.message, err.status);
-    throw err;
+    console.error("[runService]", err);
+    return apiError(res, err instanceof Error ? err.message : "Error interno del servidor.", 500);
   }
 }
