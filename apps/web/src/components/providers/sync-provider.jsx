@@ -28,6 +28,7 @@ import {
 } from "@/lib/sync-outbox.js";
 import { recoverLocalBlobToCloud } from "@/lib/recover-local-prospects.js";
 import { alignWorkspaceWithServer } from "@/lib/workspace-align.js";
+import { suspendCloudPersist } from "@/lib/cloud-persist-bridge.js";
 import { maybeRequestReminderDigest, maybeFlushScheduledReminders, startScheduledReminderFlushLoop } from "@/lib/reminder-digest.js";
 import { useDbStore } from "@/stores/db-store";
 import { useSyncStore } from "@/stores/sync-store";
@@ -35,7 +36,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 const ACCOUNT_KEY = "sts4_account";
-const DEBOUNCE_MS = 1200;
+const DEBOUNCE_MS = 400;
 const RESUME_PULL_COOLDOWN_MS = 5_000;
 const RECOVERY_COOLDOWN_MS = 15_000;
 
@@ -80,12 +81,14 @@ export function SyncProvider({ children }) {
         ? emptyPendingDeletes()
         : mergePendingDeletes(local.pendingDeletes, db.pendingDeletes);
       suspendRef.current = true;
+      suspendCloudPersist(true);
       useDbStore.getState().replaceDb({
         ...db,
         settings: { ...(db.settings || {}), ...localSettings },
         pendingDeletes: pending,
       });
       suspendRef.current = false;
+      suspendCloudPersist(false);
     };
 
     const doReconcile = async () => {
@@ -207,8 +210,10 @@ export function SyncProvider({ children }) {
             localSettings: local.settings,
           });
           suspendRef.current = true;
+          suspendCloudPersist(true);
           useDbStore.getState().replaceDb(merged);
           suspendRef.current = false;
+          suspendCloudPersist(false);
         }
 
         if (needsPush || isOutboxDirty() || hasPendingDeletes(useDbStore.getState().db)) {
@@ -445,8 +450,10 @@ export function SyncProvider({ children }) {
           pendingDeletes: parsed.pendingDeletes ?? emptyPendingDeletes(),
         };
         suspendRef.current = true;
+        suspendCloudPersist(true);
         useDbStore.getState().replaceDb(next);
         suspendRef.current = false;
+        suspendCloudPersist(false);
       } catch {
         // ignore
       }

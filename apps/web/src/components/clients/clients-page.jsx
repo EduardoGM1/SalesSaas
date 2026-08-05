@@ -19,6 +19,7 @@ import { useWorkspace } from "@/hooks/use-workspace.js";
 import { selectOnFocus } from "@/lib/focus-select.js";
 import { useAppStore } from "@/stores/app-store";
 import { useDbStore } from "@/stores/db-store";
+import { runWithoutOutboundSync } from "@/lib/sync-suspend.js";
 import { useClientActions } from "@/hooks/use-client-actions.js";
 import { requestSyncRefresh } from "@/lib/sync-refresh.js";
 import { mirrorClientsWithCloud } from "@/lib/clients-mirror.js";
@@ -161,10 +162,12 @@ export function ClientsPage() {
     if (!res.ok) throw new Error(body.error || "Error al cargar clientes");
     const rows = Array.isArray(body.data) ? body.data : [];
     const total = Number(body.total) || 0;
-    for (const row of rows) {
-      if (!row?.id) continue;
-      saveClient(prospectRowToClient(row, getClient(row.id)));
-    }
+    runWithoutOutboundSync(() => {
+      for (const row of rows) {
+        if (!row?.id) continue;
+        saveClient(prospectRowToClient(row, getClient(row.id)));
+      }
+    });
     return { rows, total };
   }, [canShare, getClient, saveClient]);
 

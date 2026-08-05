@@ -10,6 +10,20 @@ import {
   queueToolPendingDelete,
 } from "@/lib/sync-pending-deletes.js";
 import {
+  notifyActivityAdded,
+  notifyCalEntryAdded,
+  notifyCalEntryDeleted,
+  notifyClientCompleted,
+  notifyGoalSaved,
+  notifyProspectDeleted,
+  notifyProspectSaved,
+  notifySaleDeleted,
+  notifySaleRegistered,
+  notifySaleUpdated,
+  notifyToolSaved,
+  notifyUserActivityAdded,
+} from "@/lib/cloud-persist-bridge.js";
+import {
   AppDatabase,
   CalEntry,
   CalMonth,
@@ -259,6 +273,7 @@ export const useDbStore = create<DbState>((set, get) => ({
       const db = cloneDb(s.db);
       db.goals[k] = { ...db.goals[k], ...goal, updatedAt: Date.now() };
       saveDatabase(db);
+      notifyGoalSaved(year, month, db.goals[k]);
       return { db };
     });
   },
@@ -273,6 +288,7 @@ export const useDbStore = create<DbState>((set, get) => ({
       entry.updatedAt = entry.updatedAt || Date.now();
       db.cal[k].days[day].push(entry);
       saveDatabase(db);
+      notifyCalEntryAdded(year, month, day, entry);
       return { db };
     });
   },
@@ -282,7 +298,10 @@ export const useDbStore = create<DbState>((set, get) => ({
     set((s) => {
       const db = cloneDb(s.db);
       const entry = db.cal[k]?.days[day]?.[index];
-      if (entry?.id) queuePendingDelete(db, "calendar_entries", entry.id);
+      if (entry?.id) {
+        queuePendingDelete(db, "calendar_entries", entry.id);
+        notifyCalEntryDeleted(entry.id);
+      }
       db.cal[k]?.days[day]?.splice(index, 1);
       saveDatabase(db);
       return { db };
@@ -303,11 +322,11 @@ export const useDbStore = create<DbState>((set, get) => ({
     set((s) => {
       const db = cloneDb(s.db);
       const next = ensureProspectIdentity(client);
-      // El caller debe pasar updatedAt del servidor al hidratar; si no, bumpear (edición local).
       const incomingTs = Number(client.updatedAt);
       next.updatedAt = Number.isFinite(incomingTs) && incomingTs > 0 ? incomingTs : Date.now();
       db.clients[client.id] = next;
       saveDatabase(db);
+      notifyProspectSaved(next);
       return { db };
     });
   },
@@ -336,6 +355,7 @@ export const useDbStore = create<DbState>((set, get) => ({
       }
       delete db.clients[id];
       saveDatabase(db);
+      notifyProspectDeleted(id);
       return { db };
     });
   },
@@ -357,6 +377,7 @@ export const useDbStore = create<DbState>((set, get) => ({
       removeArchivedSales(db, [saleId]);
       db.clients[clientId] = client;
       saveDatabase(db);
+      notifySaleDeleted(saleId);
       return { db };
     });
   },
@@ -399,6 +420,7 @@ export const useDbStore = create<DbState>((set, get) => ({
         db.libre[tool] = stamped;
       }
       saveDatabase(db);
+      notifyToolSaved(tool, mode, stamped, clientId ?? null);
       return { db };
     });
   },
@@ -410,6 +432,7 @@ export const useDbStore = create<DbState>((set, get) => ({
       if (isNonEmptyToolBucket(db.libre[tool])) queueToolPendingDelete(db, null, tool);
       db.libre[tool] = { ...EMPTY_TOOL_BUCKET };
       saveDatabase(db);
+      notifyToolSaved(tool, "libre", {}, null);
       return { db };
     });
   },
@@ -422,9 +445,11 @@ export const useDbStore = create<DbState>((set, get) => ({
       ensureProspectIdentity(c);
       c.activities = c.activities || [];
       if (activity.saleId && c.activities.some((a) => a.saleId === activity.saleId)) return s;
-      c.activities.push({ id: generateActivityId(), ts: activity.ts ?? Date.now(), ...activity });
+      const row = { id: generateActivityId(), ts: activity.ts ?? Date.now(), ...activity };
+      c.activities.push(row);
       c.updatedAt = Date.now();
       saveDatabase(db);
+      notifyActivityAdded(clientId, row);
       return { db };
     });
   },
@@ -432,8 +457,10 @@ export const useDbStore = create<DbState>((set, get) => ({
   addUserActivity: (activity) => {
     set((s) => {
       const db = cloneDb(s.db);
-      db.userActivities.push({ id: generateActivityId("u"), ts: Date.now(), ...activity });
+      const row = { id: generateActivityId("u"), ts: Date.now(), ...activity };
+      db.userActivities.push(row);
       saveDatabase(db);
+      notifyUserActivityAdded(row);
       return { db };
     });
   },
@@ -476,6 +503,7 @@ export const useDbStore = create<DbState>((set, get) => ({
       return { db };
     });
 
+    notifySaleRegistered(clientId, saleId);
     return saleId;
   },
 
@@ -511,6 +539,7 @@ export const useDbStore = create<DbState>((set, get) => ({
       db.clients[clientId] = c;
       ensureSaleInClientAndAgenda(db, clientId, withSaleSnapshot(c, saleRecord));
       saveDatabase(db);
+      notifySaleUpdated(clientId, saleId);
       return { db };
     });
   },
@@ -528,6 +557,7 @@ export const useDbStore = create<DbState>((set, get) => ({
       c.data.vacaciones = c.data.vacaciones || {};
       c.data.worksheet = c.data.worksheet || {};
       saveDatabase(db);
+      notifyClientCompleted(c);
       return { db };
     });
   },
