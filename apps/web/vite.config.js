@@ -140,10 +140,23 @@ export default defineConfig({
               url.pathname.startsWith("/api/v1/auth/") || url.pathname.startsWith("/auth/"),
             handler: "NetworkOnly",
           },
+          // Sync / prospects: nunca cachear (evita PWA↔Desktop con blob stale).
+          {
+            urlPattern: ({ url }) =>
+              url.pathname === "/api/v1/sync"
+              || url.pathname.startsWith("/api/v1/sync/")
+              || url.pathname === "/api/v1/prospects"
+              || /^\/api\/v1\/prospects(\/|$)/.test(url.pathname),
+            handler: "NetworkOnly",
+          },
           {
             urlPattern: ({ url }) => url.pathname.startsWith("/api/"),
             handler: "NetworkFirst",
-            options: { cacheName: "api-cache", networkTimeoutSeconds: 10 },
+            options: {
+              cacheName: "api-cache",
+              networkTimeoutSeconds: 10,
+              expiration: { maxEntries: 32, maxAgeSeconds: 60 },
+            },
           },
         ],
       },

@@ -226,7 +226,34 @@ export function localNeedsOutboundPush(local, remote) {
       return true;
     }
   }
+
+  // Goals: clave YYYY-MM
+  for (const [key, localGoal] of Object.entries(local.goals || {})) {
+    const remoteGoal = remote?.goals?.[key];
+    if (!remoteGoal || tsOfGoal(localGoal) > tsOfGoal(remoteGoal)) return true;
+  }
+
+  // Calendar: entradas solo locales o más nuevas
+  const remoteEntries = collectCalEntries(remote?.cal);
+  for (const e of collectCalEntries(local.cal)) {
+    if (!e?.id) continue;
+    const re = remoteEntries.get(e.id);
+    if (!re || tsOfEntry(e) > tsOfEntry(re)) return true;
+  }
+
   return false;
+}
+
+function collectCalEntries(cal) {
+  const map = new Map();
+  for (const month of Object.values(cal || {})) {
+    for (const entries of Object.values(month?.days || {})) {
+      for (const e of entries || []) {
+        if (e?.id) map.set(e.id, e);
+      }
+    }
+  }
+  return map;
 }
 
 function isNonEmptyTool(bucket) {

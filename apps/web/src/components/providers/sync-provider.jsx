@@ -21,7 +21,13 @@ import {
   hasPendingDeletes,
   mergePendingDeletes,
 } from "@/lib/sync-pending-deletes.js";
-import { recoverLocalProspectsToCloud } from "@/lib/recover-local-prospects.js";
+import {
+  clearOutboxAck,
+  isOutboxDirty,
+  markOutboxDirty,
+} from "@/lib/sync-outbox.js";
+import { recoverLocalBlobToCloud } from "@/lib/recover-local-prospects.js";
+import { alignWorkspaceWithServer } from "@/lib/workspace-align.js";
 import { maybeRequestReminderDigest, maybeFlushScheduledReminders, startScheduledReminderFlushLoop } from "@/lib/reminder-digest.js";
 import { useDbStore } from "@/stores/db-store";
 import { useSyncStore } from "@/stores/sync-store";
@@ -30,10 +36,18 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 const ACCOUNT_KEY = "sts4_account";
 const DEBOUNCE_MS = 1200;
-/** Cooldown al volver a primer plano (PWA y Desktop). Realtime usa force=true. */
 const RESUME_PULL_COOLDOWN_MS = 5_000;
-/** Reintento de recuperación de expedientes solo-locales. */
 const RECOVERY_COOLDOWN_MS = 15_000;
+
+function markDirty(reason) {
+  markOutboxDirty(reason);
+  useSyncStore.getState().setPendingOutbound(true);
+}
+
+function ackClean() {
+  clearOutboxAck();
+  useSyncStore.getState().setPendingOutbound(false);
+}
 
 export function SyncProvider({ children }) {
   const userIdRef = useRef(null);
@@ -45,8 +59,6 @@ export function SyncProvider({ children }) {
   const lastResumePullAtRef = useRef(0);
   const refreshInFlightRef = useRef(false);
   const pushInFlightRef = useRef(false);
-  /** Mutaciones locales pendientes de PUT (sobrevive a cancelar el debounce en PWA). */
-  const dirtyOutboundRef = useRef(false);
   const lastRecoveryAtRef = useRef(0);
   const stopFlushLoopRef = useRef(null);
 
@@ -55,6 +67,8 @@ export function SyncProvider({ children }) {
       useSyncStore.getState().setStatus("disabled");
       return;
     }
+
+    useSyncStore.getState().refreshPendingFromOutbox();
 
     const applyRemote = (db, { clearPendingDeletes = false } = {}) => {
       if (!db || typeof db !== "object") return;
@@ -85,11 +99,10 @@ export function SyncProvider({ children }) {
       try {
         const remote = await reconcileViaApi(useDbStore.getState().db);
         if (remote) applyRemote(remote, { clearPendingDeletes: true });
-        dirtyOutboundRef.current = false;
+        ackClean();
         useSyncStore.getState().setSynced();
       } catch (err) {
-        // Conservar dirty para reintentar en el próximo resume/online.
-        dirtyOutboundRef.current = true;
+        markDirty("reconcile-error");
         useSyncStore.getState().setStatus("error", err instanceof Error ? err.message : String(err));
       } finally {
         pushInFlightRef.current = false;
@@ -97,7 +110,7 @@ export function SyncProvider({ children }) {
     };
 
     const scheduleSync = () => {
-      dirtyOutboundRef.current = true;
+      markDirty("mutation");
       if (!enabledRef.current) return;
       if (timerRef.current) clearTimeout(timerRef.current);
       timerRef.current = setTimeout(() => {
@@ -106,9 +119,8 @@ export function SyncProvider({ children }) {
       }, DEBOUNCE_MS);
     };
 
-    /** Push inmediato (crear expediente, etc.). */
     const flushOutbound = async () => {
-      dirtyOutboundRef.current = true;
+      markDirty("flush");
       if (!enabledRef.current) return;
       if (timerRef.current) {
         clearTimeout(timerRef.current);
@@ -117,10 +129,6 @@ export function SyncProvider({ children }) {
       await doReconcile();
     };
 
-    /**
-     * Rescata expedientes atrapados en localStorage del dispositivo → BD.
-     * POST faltantes + PUT sync completo.
-     */
     const runLocalRecovery = async (opts = {}) => {
       const force = opts.force === true;
       if (!enabledRef.current) return null;
@@ -130,10 +138,10 @@ export function SyncProvider({ children }) {
       lastRecoveryAtRef.current = now;
       useSyncStore.getState().setStatus("syncing");
       try {
-        const result = await recoverLocalProspectsToCloud();
-        if (result.reconciled) dirtyOutboundRef.current = false;
-        else if (result.localOnlyIds?.length || result.failed?.length) {
-          dirtyOutboundRef.current = true;
+        const result = await recoverLocalBlobToCloud();
+        if (result.reconciled) ackClean();
+        else if (result.localOnlyIds?.length || result.failed?.length || isOutboxDirty()) {
+          markDirty("recovery-pending");
         }
         if (result.error && !result.reconciled) {
           useSyncStore.getState().setStatus("error", result.error);
@@ -142,7 +150,7 @@ export function SyncProvider({ children }) {
         }
         return result;
       } catch (err) {
-        dirtyOutboundRef.current = true;
+        markDirty("recovery-error");
         useSyncStore.getState().setStatus(
           "error",
           err instanceof Error ? err.message : String(err),
@@ -152,9 +160,6 @@ export function SyncProvider({ children }) {
     };
 
     /**
-     * Pull inbound seguro multi-dispositivo:
-     * 1) merge nube + local (LWW / filas solo locales)
-     * 2) si hay cambios locales / dirty / solo-locales → PUT
      * @param {{ force?: boolean, reason?: string }} [opts]
      */
     const refreshInbound = async (opts = {}) => {
@@ -171,7 +176,7 @@ export function SyncProvider({ children }) {
       lastResumePullAtRef.current = now;
       refreshInFlightRef.current = true;
 
-      const hadPendingOutbound = !!timerRef.current || dirtyOutboundRef.current;
+      const hadPendingOutbound = !!timerRef.current || isOutboxDirty();
       if (timerRef.current) {
         clearTimeout(timerRef.current);
         timerRef.current = null;
@@ -183,15 +188,14 @@ export function SyncProvider({ children }) {
         const cloudDb = await pullViaApi();
         let needsPush =
           hadPendingOutbound
-          || dirtyOutboundRef.current
+          || isOutboxDirty()
           || hasPendingDeletes(localBefore);
 
         if (cloudDb) {
-          // Releer local tras el await (pudo mutar durante el pull).
           const local = useDbStore.getState().db;
           needsPush =
             needsPush
-            || dirtyOutboundRef.current
+            || isOutboxDirty()
             || localNeedsOutboundPush(local, cloudDb);
           const merged = mergeSyncDatabases(local, cloudDb, {
             localSettings: local.settings,
@@ -201,7 +205,7 @@ export function SyncProvider({ children }) {
           suspendRef.current = false;
         }
 
-        if (needsPush || dirtyOutboundRef.current || hasPendingDeletes(useDbStore.getState().db)) {
+        if (needsPush || isOutboxDirty() || hasPendingDeletes(useDbStore.getState().db)) {
           await doReconcile();
         } else {
           useSyncStore.getState().setSynced();
@@ -242,9 +246,9 @@ export function SyncProvider({ children }) {
       initedForRef.current = userId;
       userIdRef.current = userId;
       useSyncStore.getState().setStatus("loading");
+      useSyncStore.getState().refreshPendingFromOutbox();
 
       const account = typeof window !== "undefined" ? localStorage.getItem(ACCOUNT_KEY) : null;
-      // Snapshot fresco; se relee otra vez tras el pull.
       let localDb = loadDatabase();
 
       let cloudDb;
@@ -254,21 +258,21 @@ export function SyncProvider({ children }) {
         enabledRef.current = true;
         localDb = loadDatabase();
         const canPushLocal =
-          (account === userId || !account) && !isEmptyDb(localDb);
+          (account === userId || !account) && (!isEmptyDb(localDb) || isOutboxDirty());
         if (canPushLocal) {
           try {
             const { db: norm } = normalizeIds(localDb);
             const remote = await reconcileViaApi(norm);
             if (remote) applyRemote(remote, { clearPendingDeletes: true });
             else applyRemote(norm);
-            dirtyOutboundRef.current = false;
+            ackClean();
             localStorage.setItem(ACCOUNT_KEY, userId);
             useSyncStore.getState().setSynced();
             await runLocalRecovery({ force: true, reason: "init-offline-push" });
             startRealtime(userId);
             return;
           } catch (syncErr) {
-            dirtyOutboundRef.current = true;
+            markDirty("init-offline-error");
             useSyncStore.getState().setStatus(
               "error",
               syncErr instanceof Error ? syncErr.message : String(syncErr),
@@ -280,7 +284,6 @@ export function SyncProvider({ children }) {
         return;
       }
 
-      // Local actualizado tras el await (crea durante init no se pierden).
       localDb = useDbStore.getState().db;
       if (isEmptyDb(localDb)) localDb = loadDatabase();
 
@@ -291,7 +294,7 @@ export function SyncProvider({ children }) {
         applyRemote(merged, { clearPendingDeletes: !hasPendingDeletes(localDb) });
         localStorage.setItem(ACCOUNT_KEY, userId);
         const mustPush =
-          dirtyOutboundRef.current
+          isOutboxDirty()
           || localNeedsOutboundPush(localDb, cloudDb)
           || hasPendingDeletes(useDbStore.getState().db);
         enabledRef.current = true;
@@ -304,7 +307,7 @@ export function SyncProvider({ children }) {
         const { db: norm } = normalizeIds(localDb);
         applyRemote(norm);
         enabledRef.current = true;
-        if (!isEmptyDb(norm) || dirtyOutboundRef.current) {
+        if (!isEmptyDb(norm) || isOutboxDirty()) {
           await doReconcile();
         } else {
           useSyncStore.getState().setSynced();
@@ -324,11 +327,9 @@ export function SyncProvider({ children }) {
 
       enabledRef.current = true;
       lastResumePullAtRef.current = Date.now();
-      // Si hubo mutaciones durante init, subirlas ya.
-      if (dirtyOutboundRef.current) {
+      if (isOutboxDirty()) {
         await doReconcile();
       }
-      // Rescate: expedientes solo en el teléfono → POST + PUT a la BD.
       await runLocalRecovery({ force: true, reason: "init" });
       startRealtime(userId);
       maybeRequestReminderDigest();
@@ -341,13 +342,13 @@ export function SyncProvider({ children }) {
       initedForRef.current = null;
       userIdRef.current = null;
       lastResumePullAtRef.current = 0;
-      dirtyOutboundRef.current = false;
       if (typeof stopFlushLoopRef.current === "function") {
         stopFlushLoopRef.current();
         stopFlushLoopRef.current = null;
       }
       void stopDashboardDataRealtime();
       useSyncStore.getState().setStatus("disabled");
+      useSyncStore.getState().refreshPendingFromOutbox();
     };
 
     const unsubSession = watchSession((session) => {
@@ -361,11 +362,27 @@ export function SyncProvider({ children }) {
       if (state.db === prev.db) return;
       if (suspendRef.current) return;
       if (isOutboundSyncSuspended()) return;
-      // Marca dirty aunque sync aún no esté enabled (crea durante init).
-      dirtyOutboundRef.current = true;
+      markDirty("db-mutation");
       if (!enabledRef.current) return;
       scheduleSync();
     });
+
+    const realignThenSync = async (reason) => {
+      const aligned = await alignWorkspaceWithServer(workspaceIdRef.current);
+      if (aligned.workspaceId) workspaceIdRef.current = aligned.workspaceId;
+      if (aligned.changed) {
+        const uid = userIdRef.current;
+        if (uid) {
+          await stopDashboardDataRealtime();
+          await startDashboardDataRealtime(uid, {
+            force: true,
+            workspaceId: workspaceIdRef.current,
+          });
+        }
+      }
+      await runLocalRecovery({ force: reason === "online" || reason === "init", reason });
+      await refreshInbound({ reason, force: true });
+    };
 
     const onOnline = () => {
       lastResumePullAtRef.current = 0;
@@ -376,13 +393,9 @@ export function SyncProvider({ children }) {
           workspaceId: workspaceIdRef.current,
         });
       }
-      void (async () => {
-        await runLocalRecovery({ force: true, reason: "online" });
-        await refreshInbound({ reason: "online", force: true });
-      })();
+      void realignThenSync("online");
     };
 
-    /** PWA y Desktop: rearmar Realtime + pull forzado al volver a primer plano. */
     const onAppForeground = () => {
       if (document.visibilityState && document.visibilityState !== "visible") return;
       const uid = userIdRef.current;
@@ -391,11 +404,7 @@ export function SyncProvider({ children }) {
         force: true,
         workspaceId: workspaceIdRef.current,
       });
-      void (async () => {
-        // Primero subir lo atrapado en el teléfono; luego pull+merge.
-        await runLocalRecovery({ reason: "foreground" });
-        await refreshInbound({ reason: "foreground", force: true });
-      })();
+      void realignThenSync("foreground");
       maybeRequestReminderDigest();
       maybeFlushScheduledReminders({ force: true });
     };

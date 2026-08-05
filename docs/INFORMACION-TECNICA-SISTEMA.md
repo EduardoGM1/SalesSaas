@@ -433,11 +433,17 @@ Layouts:
 
 ## 10. Flujos de datos destacados
 
-### 10.1 Offline → nube
+### 10.1 Offline → nube (PWA y Desktop = misma SPA)
 
-1. UI escribe en store local (Zustand / IndexedDB-like).  
-2. Sync periódica / al volver online hacia `/api/v1/sync`.  
-3. Tablas remotas + Realtime refrescan otras sesiones.
+1. UI escribe en Zustand (`db-store`) → `localStorage` key `sts4_v1`.  
+2. Outbox durable `sts4_outbound_v1` marca dirty hasta ACK del PUT.  
+3. Debounce ~1.2s o flush inmediato → `PUT /api/v1/sync` (upsert + `pendingDeletes`).  
+4. Altas de expediente: además `POST /api/v1/prospects` cuando hay red.  
+5. Init / online / foreground: realinea `workspace_activo_id`, recovery de blob local, pull + merge LWW.  
+6. Realtime (prospects, sales, goals, calendar_entries, tool_calculations, activities) invalida → force pull.  
+7. Service Worker: `/api/v1/sync` y `/api/v1/prospects` son **NetworkOnly** (no cache stale).  
+
+Detalle y checklist: `docs/INFORME-SYNC-PWA-DESKTOP.md`, `docs/TEST-SYNC-PWA-DESKTOP.md`.
 
 ### 10.2 Expediente en sala
 

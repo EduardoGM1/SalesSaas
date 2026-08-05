@@ -7,6 +7,7 @@ import { AdminTopbarTabs } from "@/components/layout/admin-topbar-tabs.jsx";
 import { MobileTopAvatar, MobileTopNavActions, DesktopTopNavActions } from "@/components/layout/mobile-top-nav.jsx";
 import { WorkspaceBrandMark } from "@/components/layout/workspace-brand-mark.jsx";
 import { useWorkspace } from "@/hooks/use-workspace.js";
+import { useSyncStore } from "@/stores/sync-store";
 
 export function Topbar({ title, subtitle, showMonthNav, admin }) {
   const { t, months } = useI18n();
@@ -16,6 +17,8 @@ export function Topbar({ title, subtitle, showMonthNav, admin }) {
   const calPrev = useAppStore((s) => s.calPrev);
   const calNext = useAppStore((s) => s.calNext);
   const { brand, active } = useWorkspace();
+  const pendingOutbound = useSyncStore((s) => s.pendingOutbound);
+  const syncStatus = useSyncStore((s) => s.status);
 
   if (admin) {
     const { permissions, isSuperAdmin, pathname } = admin;
@@ -91,6 +94,25 @@ export function Topbar({ title, subtitle, showMonthNav, admin }) {
               <div className="tb-month-label">{months[calMonth]} {calYear}</div>
               <button type="button" className="tb-nav-btn" onClick={calNext} aria-label={t("common.nextMonth")}>›</button>
             </div>
+          )}
+          {(pendingOutbound || syncStatus === "syncing" || syncStatus === "offline") && (
+            <span
+              className="tb-sync-chip"
+              title={
+                syncStatus === "offline"
+                  ? "Sin conexión — cambios pendientes"
+                  : syncStatus === "syncing"
+                    ? "Sincronizando…"
+                    : "Pendiente de sincronizar"
+              }
+              aria-live="polite"
+            >
+              {syncStatus === "offline"
+                ? "Offline"
+                : syncStatus === "syncing"
+                  ? "Sync…"
+                  : "Pendiente"}
+            </span>
           )}
           <DesktopTopNavActions />
           {saletseLogo}
