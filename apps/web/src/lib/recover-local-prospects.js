@@ -14,45 +14,23 @@ import { runWithoutOutboundSync } from "@/lib/sync-suspend.js";
 import { useDbStore } from "@/stores/db-store";
 import { useSyncStore } from "@/stores/sync-store";
 import { toast } from "@/lib/toast";
+import { persistProspectCreate } from "@/lib/prospects-persist.js";
 
 function listLocalClients(db) {
   return Object.values(db?.clients || {}).filter((c) => c?.id);
 }
 
 async function postMissingProspect(client) {
-  const res = await fetch("/api/v1/prospects", {
-    method: "POST",
-    credentials: "include",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      id: client.id,
-      prospectCode: client.prospectCode,
-      name: client.name1 || client.name,
-      name1: client.name1 || client.name,
-      name2: client.name2 || null,
-      city: client.city || null,
-      country: client.country || null,
-      phone: client.phone || null,
-      email: client.email || null,
-      contract: client.contract || null,
-      status: client.status || null,
-      tourDate: client.tourDate || null,
-      processDate: client.processDate || null,
-      processAmount: client.processAmount || 0,
-      note: client.note || null,
-      tipo_tour: client.tipo_tour || null,
-      tour_cuantificable: client.tour_cuantificable,
-      completedExpedient: client.completedExpedient,
-      quickExpedient: client.quickExpedient,
-    }),
-  });
-  if (res.ok || res.status === 409) return { ok: true, id: client.id };
-  const body = await res.json().catch(() => ({}));
-  const msg = String(body.error || "");
-  if (/duplicate|already exists|unique/i.test(msg)) {
-    return { ok: true, id: client.id, already: true };
+  try {
+    const row = await persistProspectCreate(client);
+    return { ok: true, id: client.id, row };
+  } catch (err) {
+    const msg = err?.message || String(err);
+    if (/duplicate|already exists|unique/i.test(msg)) {
+      return { ok: true, id: client.id, already: true };
+    }
+    return { ok: false, id: client.id, error: msg };
   }
-  return { ok: false, id: client.id, error: msg || `HTTP ${res.status}` };
 }
 
 /**

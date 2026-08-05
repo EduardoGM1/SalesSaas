@@ -6,7 +6,11 @@ import { statusLabel } from "@/lib/format/status";
 import { createEmptyClient, useDbStore } from "@/stores/db-store";
 import { toast } from "@/lib/toast";
 import { confirmDialog } from "@/lib/confirm";
-import { isCloudAvailable } from "@/lib/cloud-persist.js";
+import {
+  isCloudAvailable,
+  persistProspectOnlineFirst,
+  prospectRowToClient,
+} from "@/lib/prospects-persist.js";
 
 function normalizeSearch(text) {
   return String(text ?? "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
@@ -42,7 +46,7 @@ export function filterAndSortClients(clients, query) {
 }
 
 /**
- * Crea expediente en caché local y lo sube al instante vía API (cloud-persist-bridge).
+ * Online-first: persiste en PostgreSQL antes de confirmar éxito al usuario.
  */
 export async function createProspectFromName(name, tipoTour, tourCuantificable) {
   const trimmed = String(name ?? "").trim();
@@ -58,15 +62,31 @@ export async function createProspectFromName(name, tipoTour, tourCuantificable) 
     toast.error(translate("toast.client.missingTourType"));
     return { ok: false, reason: "missing_tour_type" };
   }
-  const client = createEmptyClient(trimmed, undefined, tipoTour, tourCuantificable);
-  client.updatedAt = Date.now();
-  useDbStore.getState().saveClient(client);
 
-  if (!isCloudAvailable()) {
-    toast.error("Sin conexión; el expediente quedó pendiente de sincronizar.");
+  const draft = createEmptyClient(trimmed, undefined, tipoTour, tourCuantificable);
+  draft.updatedAt = Date.now();
+
+  if (isCloudAvailable()) {
+    try {
+      const row = await persistProspectOnlineFirst(draft, { isNew: true });
+      const client = prospectRowToClient(row, draft);
+      useDbStore.getState().saveClient(client, { skipCloud: true });
+      return { ok: true, client };
+    } catch (err) {
+      const offline = err?.offline === true;
+      useDbStore.getState().saveClient(draft);
+      toast.error(
+        offline
+          ? "Sin conexión al servidor; el expediente quedó pendiente de sincronizar."
+          : (err?.message || "No se pudo guardar el expediente en la nube."),
+      );
+      return { ok: offline, client: draft, pending: true, reason: offline ? "offline" : "cloud_error" };
+    }
   }
 
-  return { ok: true, client };
+  useDbStore.getState().saveClient(draft);
+  toast.error("Sin conexión al servidor; el expediente quedó pendiente de sincronizar.");
+  return { ok: true, client: draft, pending: true, reason: "offline" };
 }
 
 function syncSurveyProspectFields(client) {

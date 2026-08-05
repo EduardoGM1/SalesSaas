@@ -163,10 +163,10 @@ export function ClientsPage() {
     const rows = Array.isArray(body.data) ? body.data : [];
     const total = Number(body.total) || 0;
     runWithoutOutboundSync(() => {
-      for (const row of rows) {
-        if (!row?.id) continue;
-        saveClient(prospectRowToClient(row, getClient(row.id)));
-      }
+    for (const row of rows) {
+      if (!row?.id) continue;
+      saveClient(prospectRowToClient(row, getClient(row.id)), { skipCloud: true });
+    }
     });
     return { rows, total };
   }, [canShare, getClient, saveClient]);

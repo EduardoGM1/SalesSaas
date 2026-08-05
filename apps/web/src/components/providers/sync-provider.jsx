@@ -29,6 +29,7 @@ import {
 import { recoverLocalBlobToCloud } from "@/lib/recover-local-prospects.js";
 import { alignWorkspaceWithServer } from "@/lib/workspace-align.js";
 import { suspendCloudPersist } from "@/lib/cloud-persist-bridge.js";
+import { hydrateProspectsFromApi } from "@/lib/prospects-persist.js";
 import { maybeRequestReminderDigest, maybeFlushScheduledReminders, startScheduledReminderFlushLoop } from "@/lib/reminder-digest.js";
 import { useDbStore } from "@/stores/db-store";
 import { useSyncStore } from "@/stores/sync-store";
@@ -222,10 +223,15 @@ export function SyncProvider({ children }) {
           useSyncStore.getState().setSynced();
         }
       } catch (err) {
-        useSyncStore.getState().setStatus(
-          "error",
-          err instanceof Error ? err.message : String(err),
-        );
+        try {
+          await hydrateProspectsFromApi();
+          useSyncStore.getState().setSynced();
+        } catch {
+          useSyncStore.getState().setStatus(
+            "error",
+            err instanceof Error ? err.message : String(err),
+          );
+        }
       } finally {
         refreshInFlightRef.current = false;
         const pending = pendingRefreshOptsRef.current;
@@ -273,6 +279,16 @@ export function SyncProvider({ children }) {
       } catch (err) {
         enabledRef.current = true;
         localDb = loadDatabase();
+        // Fallback: /sync puede fallar (504) pero GET /prospects sigue operativo.
+        try {
+          await hydrateProspectsFromApi();
+          useSyncStore.getState().setSynced();
+          await runLocalRecovery({ force: true, reason: "init-sync-fallback" });
+          startRealtime(userId);
+          return;
+        } catch {
+          /* continuar con flujo offline-push */
+        }
         const canPushLocal =
           (account === userId || !account) && (!isEmptyDb(localDb) || isOutboxDirty());
         if (canPushLocal) {

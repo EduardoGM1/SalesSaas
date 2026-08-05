@@ -2,12 +2,14 @@
  * Puente db-store → cloud-persist.
  */
 import {
+  persistProspectDelete,
+  persistProspectUpsert,
+} from "@/lib/prospects-persist.js";
+import {
   persistActivityUpsert,
   persistCalendarDelete,
   persistCalendarUpsert,
   persistGoalUpsert,
-  persistProspectDelete,
-  persistProspectUpsert,
   persistSaleDelete,
   persistToolUpsert,
   scheduleCloudPersist,

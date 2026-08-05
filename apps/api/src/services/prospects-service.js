@@ -46,36 +46,43 @@ export async function createProspect(supabase, userId, body) {
   const { data, error } = await supabase.from("prospects").insert(row).select().single();
   if (error) throw new ServiceError(error.message, 400);
 
-  // En sala: registrar participantes y chat (Gerente + Vendedor) de inmediato.
+  // Side-effects de sala en background: no bloquear la respuesta HTTP (evita 504 en Vercel).
+  void ensureProspectSalaSideEffects(supabase, userId, workspaceId, data.id).catch((err) => {
+    console.error("[createProspect] sala side-effects:", err?.message || err);
+  });
+  return data;
+}
+
+async function ensureProspectSalaSideEffects(supabase, userId, workspaceId, prospectId) {
   const { data: ws } = await supabase
     .from("workspaces")
     .select("tipo")
     .eq("id", workspaceId)
     .maybeSingle();
-  if (ws?.tipo === "sala_de_venta") {
-    const { createServiceSupabaseClient } = await import("../lib/supabase-server.js");
-    const admin = createServiceSupabaseClient();
-    if (admin) {
-      const { data: gerente } = await admin
-        .from("workspace_miembros")
-        .select("usuario_id")
-        .eq("workspace_id", workspaceId)
-        .eq("rol_en_workspace", "gerente")
-        .limit(1)
-        .maybeSingle();
-      // etapa_actual está deprecada (default DB); no se usa en UI ni lógica de negocio.
-      await admin.from("prospect_workflows").upsert({
-        prospect_id: data.id,
-        workspace_id: workspaceId,
-        representante_id: userId,
-        gerente_id: gerente?.usuario_id || null,
-        created_by: userId,
-        estado: "en_progreso",
-      }, { onConflict: "prospect_id" });
-      await admin.rpc("sync_prospect_chat_members", { p_prospect_id: data.id }).catch(() => {});
-    }
-  }
-  return data;
+  if (ws?.tipo !== "sala_de_venta") return;
+
+  const { createServiceSupabaseClient } = await import("../lib/supabase-server.js");
+  const admin = createServiceSupabaseClient();
+  if (!admin) return;
+
+  const { data: gerente } = await admin
+    .from("workspace_miembros")
+    .select("usuario_id")
+    .eq("workspace_id", workspaceId)
+    .eq("rol_en_workspace", "gerente")
+    .limit(1)
+    .maybeSingle();
+
+  await admin.from("prospect_workflows").upsert({
+    prospect_id: prospectId,
+    workspace_id: workspaceId,
+    representante_id: userId,
+    gerente_id: gerente?.usuario_id || null,
+    created_by: userId,
+    estado: "en_progreso",
+  }, { onConflict: "prospect_id" });
+
+  await admin.rpc("sync_prospect_chat_members", { p_prospect_id: prospectId }).catch(() => {});
 }
 
 export async function getProspect(supabase, userId, id) {

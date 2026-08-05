@@ -1,20 +1,20 @@
 /**
- * Persistencia online-first: envía cambios a la API al instante cuando hay red.
- * localStorage queda como caché; si falla la API, se encola reconcile vía outbox.
+ * Persistencia online-first para entidades distintas de expedientes.
+ * Expedientes: ver prospects-persist.js (fuente única).
  */
-import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { markOutboxDirty } from "@/lib/sync-outbox.js";
 import { requestSyncPush } from "@/lib/sync-outbound.js";
+import {
+  isCloudAvailable,
+  persistProspectCreate,
+  persistProspectDelete,
+  persistProspectUpdate,
+  persistProspectUpsert,
+} from "@/lib/prospects-persist.js";
+
+export { isCloudAvailable, persistProspectCreate, persistProspectDelete, persistProspectUpdate, persistProspectUpsert };
 
 const API = "/api/v1";
-
-export function isCloudAvailable() {
-  return (
-    isSupabaseConfigured()
-    && typeof navigator !== "undefined"
-    && navigator.onLine
-  );
-}
 
 async function apiJson(method, path, body) {
   const res = await fetch(`${API}${path}`, {
@@ -46,32 +46,6 @@ function stripToolMeta(data) {
   const out = { ...data };
   delete out._updatedAt;
   return out;
-}
-
-function prospectBody(client) {
-  return {
-    id: client.id,
-    prospectCode: client.prospectCode,
-    name: client.name1 || client.name,
-    name1: client.name1,
-    name2: client.name2,
-    occupation1: client.occupation1,
-    occupation2: client.occupation2,
-    city: client.city,
-    country: client.country,
-    phone: client.phone,
-    email: client.email,
-    contract: client.contract,
-    status: client.status,
-    tourDate: client.tourDate,
-    processDate: client.processDate,
-    processAmount: client.processAmount,
-    note: client.note,
-    tipo_tour: client.tipo_tour,
-    tour_cuantificable: client.tour_cuantificable,
-    completedExpedient: client.completedExpedient,
-    quickExpedient: client.quickExpedient,
-  };
 }
 
 function saleBody(clientId, sale) {
@@ -130,25 +104,6 @@ function calBody(entry, entryDate) {
     kind: entry.kind,
     clientName: entry.clientName,
   };
-}
-
-export async function persistProspectUpsert(client) {
-  if (!client?.id) return { ok: false };
-  try {
-    await apiJson("PATCH", `/prospects/${client.id}`, prospectBody(client));
-    return { ok: true };
-  } catch (err) {
-    if (err.status === 404) {
-      await apiJson("POST", "/prospects", prospectBody(client));
-      return { ok: true };
-    }
-    throw err;
-  }
-}
-
-export async function persistProspectDelete(id) {
-  await apiJson("DELETE", `/prospects/${id}`);
-  return { ok: true };
 }
 
 export async function persistSaleUpsert(clientId, sale) {

@@ -46,7 +46,7 @@ interface DbState {
   deleteCalEntry: (year: number, month: number, day: number, index: number) => void;
   addCalEntryByDate: (dateStr: string, entry: CalEntry) => void;
   getClient: (id: string) => ClientRecord | undefined;
-  saveClient: (client: ClientRecord) => void;
+  saveClient: (client: ClientRecord, opts?: { skipCloud?: boolean }) => void;
   deleteClient: (id: string) => void;
   deleteClientSale: (clientId: string, saleId: string) => void;
   getToolBucket: (tool: string, mode: "libre" | "client", clientId?: string | null) => Record<string, string | number>;
@@ -318,7 +318,7 @@ export const useDbStore = create<DbState>((set, get) => ({
     return get().db.clients[id];
   },
 
-  saveClient: (client) => {
+  saveClient: (client, opts) => {
     set((s) => {
       const db = cloneDb(s.db);
       const next = ensureProspectIdentity(client);
@@ -326,7 +326,7 @@ export const useDbStore = create<DbState>((set, get) => ({
       next.updatedAt = Number.isFinite(incomingTs) && incomingTs > 0 ? incomingTs : Date.now();
       db.clients[client.id] = next;
       saveDatabase(db);
-      notifyProspectSaved(next);
+      if (!opts?.skipCloud) notifyProspectSaved(next);
       return { db };
     });
   },
