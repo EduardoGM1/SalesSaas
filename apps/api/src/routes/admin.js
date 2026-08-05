@@ -28,6 +28,7 @@ import * as rolesService from "../services/roles-service.js";
 import * as adminAuditService from "../services/admin-audit-service.js";
 import * as flagsService from "../services/flags-service.js";
 import * as workspaceService from "../services/workspace-service.js";
+import * as modulosCustomController from "../controllers/modulos-custom-controller.js";
 import * as tenantRbacService from "../services/tenant-rbac-service.js";
 import * as tenantAdminService from "../services/tenant-admin-service.js";
 
@@ -398,6 +399,62 @@ router.get("/tenant/empresas/:empresaId/flags", async (req, res) => {
   await runService(
     res,
     () => tenantRbacService.listTenantFlagCatalog(a.userId, req.params.empresaId),
+    { wrap: "data" },
+  );
+});
+
+router.get("/tenant/empresas/:empresaId/modulos-custom", async (req, res) => {
+  const a = await tenantActor(req, res);
+  if (!a) return;
+  await runService(
+    res,
+    () => modulosCustomController.listarFlagsEmpresa(a, req.params.empresaId),
+    { wrap: "data" },
+  );
+});
+
+router.post("/tenant/empresas/:empresaId/modulos-custom", async (req, res) => {
+  const a = await tenantActor(req, res);
+  if (!a) return;
+  const body = parseJsonBody(req, res);
+  if (!body) return;
+  await runService(
+    res,
+    () => modulosCustomController.crearModuloCustom(a, req.params.empresaId, body),
+    { wrap: "data", successStatus: 201 },
+  );
+});
+
+router.patch("/tenant/empresas/:empresaId/modulos-custom/:moduloId", async (req, res) => {
+  const a = await tenantActor(req, res);
+  if (!a) return;
+  const body = parseJsonBody(req, res);
+  if (!body) return;
+  await runService(
+    res,
+    () => modulosCustomController.actualizarModuloCustom(a, req.params.empresaId, req.params.moduloId, body),
+    { wrap: "data" },
+  );
+});
+
+router.get("/tenant/empresas/:empresaId/modulos-custom/:moduloId/datos", async (req, res) => {
+  const a = await tenantActor(req, res);
+  if (!a) return;
+  await runService(
+    res,
+    () => modulosCustomController.listarDatosModulo(a, req.params.empresaId, req.params.moduloId, req.query),
+    { wrap: "data" },
+  );
+});
+
+router.put("/tenant/empresas/:empresaId/modulos-custom/:moduloId/datos", async (req, res) => {
+  const a = await tenantActor(req, res);
+  if (!a) return;
+  const body = parseJsonBody(req, res);
+  if (!body) return;
+  await runService(
+    res,
+    () => modulosCustomController.upsertDatosModulo(a, req.params.empresaId, req.params.moduloId, body),
     { wrap: "data" },
   );
 });

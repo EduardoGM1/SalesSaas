@@ -23,7 +23,12 @@ export function createApp() {
   app.use(cookieParser());
 
   app.get("/health", (_req, res) => {
-    res.json({ ok: true, service: "@salesapp/api" });
+    res.json({
+      ok: true,
+      service: "@salesapp/api",
+      commit: process.env.VERCEL_GIT_COMMIT_SHA || process.env.VITE_BUILD_ID || null,
+      deployment: process.env.VERCEL_DEPLOYMENT_ID || null,
+    });
   });
 
   app.get("/health/supabase", async (_req, res) => {

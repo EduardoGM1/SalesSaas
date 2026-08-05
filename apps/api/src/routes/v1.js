@@ -6,8 +6,8 @@ import { requireAuth, parseJsonBody, runService } from "./route-utils.js";
 import { rateLimit } from "../middleware/rate-limit.js";
 import * as sessionService from "../services/session-service.js";
 import * as profileService from "../services/profile-service.js";
-import * as syncService from "../services/sync-service.js";
-import * as prospectsService from "../services/prospects-service.js";
+import * as syncController from "../controllers/sync-controller.js";
+import * as prospectsController from "../controllers/prospects-controller.js";
 import * as salesService from "../services/sales-service.js";
 import * as calendarService from "../services/calendar-service.js";
 import * as goalsService from "../services/goals-service.js";
@@ -281,7 +281,7 @@ router.post("/profile/presence/offline", async (req, res) => {
 router.get("/sync", async (req, res) => {
   const a = await requireAuth(req, res);
   if (!a) return;
-  await runService(res, () => syncService.pullUserDatabase(a.supabase, a.userId), { wrap: "sync" });
+  await runService(res, () => syncController.obtenerSincronizacion(a), { wrap: "sync" });
 });
 
 router.put("/sync", async (req, res) => {
@@ -290,14 +290,13 @@ router.put("/sync", async (req, res) => {
   const body = parseJsonBody(req, res);
   if (!body) return;
   const incoming = body?.data ?? body;
-  await runService(res, () => syncService.reconcileUserDatabase(a.supabase, a.userId, incoming), { wrap: "sync" });
+  await runService(res, () => syncController.reconciliarSincronizacion(a, incoming), { wrap: "sync" });
 });
 
 router.get("/prospects", async (req, res) => {
   const a = await requireAuth(req, res);
   if (!a) return;
-  const paging = parseLimitOffset(req.query);
-  await runService(res, () => prospectsService.listProspects(a.supabase, a.userId, { ...paging, status: req.query.status }));
+  await runService(res, () => prospectsController.listarExpedientes(a, req.query));
 });
 
 router.get("/prospects/active", async (req, res) => {
@@ -315,13 +314,13 @@ router.post("/prospects", async (req, res) => {
   if (!a) return;
   const body = parseJsonBody(req, res);
   if (!body) return;
-  await runService(res, () => prospectsService.createProspect(a.supabase, a.userId, body), { wrap: "data", successStatus: 201 });
+  await runService(res, () => prospectsController.crearExpediente(a, body), { wrap: "data", successStatus: 201 });
 });
 
 router.get("/prospects/:id", async (req, res) => {
   const a = await requireAuth(req, res);
   if (!a) return;
-  await runService(res, () => prospectsService.getProspect(a.supabase, a.userId, req.params.id), { wrap: "data" });
+  await runService(res, () => prospectsController.obtenerExpediente(a, req.params.id), { wrap: "data" });
 });
 
 router.patch("/prospects/:id", async (req, res) => {
@@ -329,13 +328,13 @@ router.patch("/prospects/:id", async (req, res) => {
   if (!a) return;
   const body = parseJsonBody(req, res);
   if (!body) return;
-  await runService(res, () => prospectsService.updateProspect(a.supabase, a.userId, req.params.id, body), { wrap: "data" });
+  await runService(res, () => prospectsController.actualizarExpediente(a, req.params.id, body), { wrap: "data" });
 });
 
 router.delete("/prospects/:id", async (req, res) => {
   const a = await requireAuth(req, res);
   if (!a) return;
-  await runService(res, () => prospectsService.deleteProspect(a.supabase, a.userId, req.params.id), { wrap: "ok" });
+  await runService(res, () => prospectsController.eliminarExpediente(a, req.params.id), { wrap: "ok" });
 });
 
 router.get("/workflow/inbox", async (req, res) => {
