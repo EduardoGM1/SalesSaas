@@ -59,6 +59,8 @@ export function SyncProvider({ children }) {
   const lastResumePullAtRef = useRef(0);
   const refreshInFlightRef = useRef(false);
   const pushInFlightRef = useRef(false);
+  /** Si llega un refresh mientras hay otro en vuelo, reejecutar al terminar. */
+  const pendingRefreshOptsRef = useRef(null);
   const lastRecoveryAtRef = useRef(0);
   const stopFlushLoopRef = useRef(null);
 
@@ -165,7 +167,11 @@ export function SyncProvider({ children }) {
     const refreshInbound = async (opts = {}) => {
       const force = opts.force === true;
       const uid = userIdRef.current;
-      if (!uid || !enabledRef.current || refreshInFlightRef.current) return;
+      if (!uid || !enabledRef.current) return;
+      if (refreshInFlightRef.current) {
+        pendingRefreshOptsRef.current = { ...opts, force: true };
+        return;
+      }
       if (typeof navigator !== "undefined" && !navigator.onLine) {
         useSyncStore.getState().setStatus("offline");
         return;
@@ -217,6 +223,11 @@ export function SyncProvider({ children }) {
         );
       } finally {
         refreshInFlightRef.current = false;
+        const pending = pendingRefreshOptsRef.current;
+        pendingRefreshOptsRef.current = null;
+        if (pending) {
+          void refreshInbound(pending);
+        }
       }
     };
 

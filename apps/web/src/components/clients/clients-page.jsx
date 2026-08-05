@@ -21,6 +21,8 @@ import { useAppStore } from "@/stores/app-store";
 import { useDbStore } from "@/stores/db-store";
 import { useClientActions } from "@/hooks/use-client-actions.js";
 import { requestSyncRefresh } from "@/lib/sync-refresh.js";
+import { mirrorClientsWithCloud } from "@/lib/clients-mirror.js";
+import { toast } from "@/lib/toast";
 
 /** Solo el valor de catálogo (Q, NQ, CT, Member…); sin sufijo "- 1" / "- 0". */
 function formatQualification(tipoTour) {
@@ -127,7 +129,7 @@ export function ClientsPage() {
   const { t, lang, months } = useI18n();
   const navigate = useNavigate();
   const location = useLocation();
-  const { active } = useWorkspace();
+  const { active, ready: workspaceReady } = useWorkspace();
   const hydrated = useAppStore((s) => s.hydrated);
   const { searchClients, removeClient } = useClientActions();
   const saveClient = useDbStore((s) => s.saveClient);
@@ -141,16 +143,19 @@ export function ClientsPage() {
   const [remoteTotal, setRemoteTotal] = useState(null);
   const [remoteOffset, setRemoteOffset] = useState(0);
   const [remoteLoading, setRemoteLoading] = useState(false);
+  const [listError, setListError] = useState(null);
   const canShare = isSupabaseConfigured();
   const isSalaWorkspace = active?.tipo === "sala_de_venta";
   const showTeamCols = isSalaWorkspace && canShare;
   const tableColSpan = showTeamCols ? 7 : 4;
   const currentYear = new Date().getFullYear();
+  const workspaceLabel = active?.nombre || active?.name || null;
 
   const fetchProspectPage = useCallback(async (offset) => {
     if (!canShare) return { rows: [], total: 0 };
     const res = await fetch(`/api/v1/prospects?limit=${CLIENTS_PAGE_SIZE}&offset=${offset}`, {
       credentials: "include",
+      cache: "no-store",
     });
     const body = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(body.error || "Error al cargar clientes");
@@ -203,43 +208,71 @@ export function ClientsPage() {
   }, [canShare, hydrated, location.key, refreshPinned, refreshTeamMeta]);
 
   useEffect(() => {
-    if (!canShare || !hydrated) return;
+    if (!canShare || !hydrated || !workspaceReady) return;
     let cancelled = false;
     setRemoteOffset(0);
     setRemoteLoading(true);
-    // Asegurar store local al día (PWA→Desktop) antes/durante el listado remoto.
-    void requestSyncRefresh({ force: true, reason: "clients-page" });
-    fetchProspectPage(0)
-      .then(({ total }) => {
-        if (!cancelled) setRemoteTotal(total);
-      })
-      .catch(() => {
-        if (!cancelled) setRemoteTotal(null);
-      })
-      .finally(() => {
+    setListError(null);
+
+    (async () => {
+      try {
+        // 1) Pull sync (encolado si hay otro en vuelo)
+        await requestSyncRefresh({ force: true, reason: "clients-page" });
+        if (cancelled) return;
+        // 2) Espejo REST: bajar nube → store + subir solo-locales
+        const mirror = await mirrorClientsWithCloud();
+        if (cancelled) return;
+        setRemoteTotal(mirror.remoteTotal);
+        if (mirror.posted?.length) {
+          toast.success(
+            mirror.posted.length === 1
+              ? "1 expediente local se guardó en la nube"
+              : `${mirror.posted.length} expedientes locales se guardaron en la nube`,
+          );
+        }
+        if (mirror.failed?.length) {
+          toast.error(`No se pudieron subir ${mirror.failed.length} expediente(s) a la nube`);
+        }
+      } catch (err) {
+        if (cancelled) return;
+        const msg = err instanceof Error ? err.message : String(err);
+        setListError(msg);
+        setRemoteTotal(null);
+        // Fallback: intentar página simple
+        try {
+          const { total } = await fetchProspectPage(0);
+          if (!cancelled) setRemoteTotal(total);
+        } catch {
+          /* keep error */
+        }
+      } finally {
         if (!cancelled) setRemoteLoading(false);
-      });
+      }
+    })();
+
     return () => { cancelled = true; };
-  }, [canShare, hydrated, location.key, active?.id, fetchProspectPage]);
+  }, [canShare, hydrated, workspaceReady, location.key, active?.id, fetchProspectPage]);
 
   useEffect(() => {
-    if (!canShare || !hydrated) return;
+    if (!canShare || !hydrated || !workspaceReady) return;
     const onVisible = () => {
-      if (document.visibilityState === "visible") {
-        refreshPinned();
-        refreshTeamMeta();
-        // Página remota de expedientes (teamScope): refrescar al volver visibles.
-        setRemoteOffset(0);
-        setRemoteLoading(true);
-        fetchProspectPage(0)
-          .then(({ total }) => setRemoteTotal(total))
-          .catch(() => setRemoteTotal(null))
-          .finally(() => setRemoteLoading(false));
-      }
+      if (document.visibilityState !== "visible") return;
+      refreshPinned();
+      refreshTeamMeta();
+      setRemoteOffset(0);
+      setRemoteLoading(true);
+      setListError(null);
+      mirrorClientsWithCloud()
+        .then((mirror) => setRemoteTotal(mirror.remoteTotal))
+        .catch((err) => {
+          setListError(err instanceof Error ? err.message : String(err));
+          setRemoteTotal(null);
+        })
+        .finally(() => setRemoteLoading(false));
     };
     document.addEventListener("visibilitychange", onVisible);
     return () => document.removeEventListener("visibilitychange", onVisible);
-  }, [canShare, hydrated, refreshPinned, refreshTeamMeta, fetchProspectPage]);
+  }, [canShare, hydrated, workspaceReady, refreshPinned, refreshTeamMeta]);
 
   const pinnedIdsKey = useMemo(
     () => pinned.map((p) => p.id).filter(Boolean).sort().join(","),
@@ -357,6 +390,19 @@ export function ClientsPage() {
           <PageBack inline />
           <button type="button" className="btn btn-primary btn-sm" onClick={() => setOpen(true)}>{t("clients.new")}</button>
         </div>
+
+        {workspaceLabel ? (
+          <div className="clients-workspace-hint" style={{ fontSize: 12, opacity: 0.75, marginBottom: 8 }}>
+            Workspace: <strong>{workspaceLabel}</strong>
+            {isSalaWorkspace ? " (sala)" : " (personal)"}
+            {remoteLoading ? " · sincronizando…" : null}
+          </div>
+        ) : null}
+        {listError ? (
+          <div className="clients-list-error" style={{ color: "var(--danger, #c0392b)", fontSize: 13, marginBottom: 10 }}>
+            No se pudo sincronizar con el servidor: {listError}
+          </div>
+        ) : null}
 
         <div className="client-search-card">
           <div className="client-search-row">

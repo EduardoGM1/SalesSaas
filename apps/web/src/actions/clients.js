@@ -85,12 +85,13 @@ export async function createProspectFromName(name, tipoTour, tourCuantificable) 
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) {
-        // Offline/RLS: el sync blob lo reintentará; no bloquear UX.
         console.warn("[createProspect] POST falló, se reintentará via sync:", body.error || res.status);
+        toast.error(body.error || "No se pudo guardar en la nube; se reintentará al sincronizar.");
         await requestSyncPush({ reason: "create-prospect-fallback" });
       }
     } catch (err) {
       console.warn("[createProspect] POST error:", err?.message || err);
+      toast.error("Sin conexión al servidor; el expediente quedó pendiente de sincronizar.");
       await requestSyncPush({ reason: "create-prospect-offline" });
     }
   } else {
