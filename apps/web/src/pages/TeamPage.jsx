@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, Navigate } from "react-router-dom";
 import { Users } from "lucide-react";
 import { BuscadorUsuario } from "@/components/admin/buscador-usuario.jsx";
+import { DelegacionChecklist } from "@/components/admin/delegacion-checklist.jsx";
 import { Topbar } from "@/components/layout/topbar";
 import { SalesModal } from "@/components/ui/sales-modal";
 import { useWorkspace } from "@/hooks/use-workspace.js";
@@ -48,6 +49,12 @@ export function TeamPage() {
   const [inviteUser, setInviteUser] = useState(null);
   const [invitePending, setInvitePending] = useState(false);
   const [inviteErr, setInviteErr] = useState("");
+  const [delegModalOpen, setDelegModalOpen] = useState(false);
+  const [delegMember, setDelegMember] = useState(null);
+  const [delegCeiling, setDelegCeiling] = useState([]);
+  const [delegSelected, setDelegSelected] = useState([]);
+  const [delegLoading, setDelegLoading] = useState(false);
+  const [delegSaving, setDelegSaving] = useState(false);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -139,6 +146,49 @@ export function TeamPage() {
     }
   };
 
+  const openDelegacion = async (member) => {
+    setDelegMember(member);
+    setDelegModalOpen(true);
+    setDelegLoading(true);
+    setDelegCeiling([]);
+    setDelegSelected([]);
+    try {
+      const [ceiling, keys] = await Promise.all([
+        api("/workspace/team/delegacion/techo"),
+        api(`/workspace/team/delegacion?asistente_id=${encodeURIComponent(member.id)}`),
+      ]);
+      setDelegCeiling(Array.isArray(ceiling) ? ceiling : []);
+      setDelegSelected(Array.isArray(keys) ? keys : []);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t("team.error"));
+      setDelegModalOpen(false);
+      setDelegMember(null);
+    } finally {
+      setDelegLoading(false);
+    }
+  };
+
+  const saveDelegacion = async () => {
+    if (!delegMember) return;
+    setDelegSaving(true);
+    try {
+      await api("/workspace/team/delegacion", {
+        method: "PUT",
+        body: JSON.stringify({
+          asistente_id: delegMember.id,
+          permiso_keys: delegSelected,
+        }),
+      });
+      toast.success("Permisos delegados actualizados");
+      setDelegModalOpen(false);
+      setDelegMember(null);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t("team.error"));
+    } finally {
+      setDelegSaving(false);
+    }
+  };
+
   const changeRole = async (memberId, roleId) => {
     if (!roleId) return;
     setRoleSavingId(memberId);
@@ -149,6 +199,11 @@ export function TeamPage() {
       });
       toast.success(t("team.roleUpdated"));
       await refresh();
+      const role = roles.find((r) => r.id === roleId);
+      const member = members.find((m) => m.id === memberId);
+      if (role?.slug === "asistente_sala" && member) {
+        await openDelegacion({ ...member, id: memberId });
+      }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t("team.roleUpdateError"));
     } finally {
@@ -271,13 +326,23 @@ export function TeamPage() {
                           </select>
                         </td>
                         <td className="team-member-actions">
-                          <button
-                            type="button"
-                            className="btn btn-ghost btn-sm"
-                            onClick={() => openExtrasModal(m)}
-                          >
-                            {t("team.extras")}
-                          </button>
+                          {roles.find((r) => r.id === m.role_id)?.slug === "asistente_sala" ? (
+                            <button
+                              type="button"
+                              className="btn btn-ghost btn-sm"
+                              onClick={() => openDelegacion(m)}
+                            >
+                              Delegar
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              className="btn btn-ghost btn-sm"
+                              onClick={() => openExtrasModal(m)}
+                            >
+                              {t("team.extras")}
+                            </button>
+                          )}
                           <button
                             type="button"
                             className="btn btn-ghost btn-sm"
@@ -317,13 +382,23 @@ export function TeamPage() {
                       </select>
                     </div>
                     <div className="team-member-actions">
-                      <button
-                        type="button"
-                        className="btn btn-ghost btn-sm"
-                        onClick={() => openExtrasModal(m)}
-                      >
-                        {t("team.extras")}
-                      </button>
+                      {roles.find((r) => r.id === m.role_id)?.slug === "asistente_sala" ? (
+                        <button
+                          type="button"
+                          className="btn btn-ghost btn-sm"
+                          onClick={() => openDelegacion(m)}
+                        >
+                          Delegar
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          className="btn btn-ghost btn-sm"
+                          onClick={() => openExtrasModal(m)}
+                        >
+                          {t("team.extras")}
+                        </button>
+                      )}
                       <button
                         type="button"
                         className="btn btn-ghost btn-sm team-member-action"
@@ -408,6 +483,34 @@ export function TeamPage() {
         <div className="btn-row team-modal-actions">
           <button type="button" className="btn btn-ghost" onClick={() => closeExtrasModal(false)}>
             {t("common.cancel")}
+          </button>
+        </div>
+      </SalesModal>
+
+      <SalesModal
+        open={delegModalOpen}
+        onOpenChange={(open) => {
+          setDelegModalOpen(open);
+          if (!open) setDelegMember(null);
+        }}
+        title={`Delegar permisos — ${delegMember ? memberLabel(delegMember) : ""}`}
+        maxWidth={520}
+      >
+        <p className="team-hint team-hint--modal">
+          Solo puedes marcar permisos que tú ya tienes. El Asistente de Sala no recibe ningún otro acceso.
+        </p>
+        <DelegacionChecklist
+          ceiling={delegCeiling}
+          selected={delegSelected}
+          onChange={setDelegSelected}
+          loading={delegLoading}
+        />
+        <div className="btn-row team-modal-actions">
+          <button type="button" className="btn btn-ghost" onClick={() => setDelegModalOpen(false)} disabled={delegSaving}>
+            {t("common.cancel")}
+          </button>
+          <button type="button" className="btn btn-primary" onClick={saveDelegacion} disabled={delegSaving || delegLoading}>
+            {delegSaving ? t("common.loading") : "Guardar delegación"}
           </button>
         </div>
       </SalesModal>

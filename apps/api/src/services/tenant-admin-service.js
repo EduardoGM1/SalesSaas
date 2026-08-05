@@ -73,9 +73,12 @@ export async function listEmpresaAdmins(actorId, empresaId) {
     .from("empresa_miembros")
     .select("id, empresa_id, usuario_id, role_id, es_admin, estado, fecha_union, profiles(full_name, email, avatar_url), roles(nombre, slug)")
     .eq("empresa_id", empresaId)
+    .eq("estado", "activo")
     .order("fecha_union");
   if (error) throw new ServiceError(error.message, 500);
-  return data ?? [];
+  // Admins reales + Asistentes de Empresa (delegados).
+  return (data ?? []).filter((row) =>
+    row.es_admin === true || row.roles?.slug === "asistente_empresa");
 }
 
 const SEARCH_MIN_CHARS = 2;
@@ -154,16 +157,23 @@ export async function upsertEmpresaAdmin(actorId, empresaId, body) {
   }
   if (!userId) throw new ServiceError("Usuario no encontrado.", 404);
 
+  let roleSlug = null;
   if (body?.role_id) {
     const { data: role } = await admin
       .from("roles")
-      .select("id")
+      .select("id, slug")
       .eq("id", body.role_id)
       .eq("empresa_id", empresaId)
       .eq("scope", "empresa")
       .maybeSingle();
     if (!role) throw new ServiceError("Rol administrativo inválido.", 400);
+    roleSlug = role.slug;
   }
+
+  // Asistente de Empresa: sin es_admin (acceso solo vía permisos_delegados).
+  const esAdmin = roleSlug === "asistente_empresa"
+    ? false
+    : body?.es_admin !== false;
 
   const { data, error } = await admin
     .from("empresa_miembros")
@@ -171,7 +181,7 @@ export async function upsertEmpresaAdmin(actorId, empresaId, body) {
       empresa_id: empresaId,
       usuario_id: userId,
       role_id: body?.role_id || null,
-      es_admin: body?.es_admin !== false,
+      es_admin: esAdmin,
       estado: "activo",
     }, { onConflict: "empresa_id,usuario_id" })
     .select("id, empresa_id, usuario_id, role_id, es_admin, estado, fecha_union")

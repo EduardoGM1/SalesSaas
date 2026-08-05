@@ -29,6 +29,7 @@ import * as adminAuditService from "../services/admin-audit-service.js";
 import * as flagsService from "../services/flags-service.js";
 import * as workspaceService from "../services/workspace-service.js";
 import * as modulosCustomController from "../controllers/modulos-custom-controller.js";
+import * as delegacionController from "../controllers/delegacion-controller.js";
 import * as tenantRbacService from "../services/tenant-rbac-service.js";
 import * as tenantAdminService from "../services/tenant-admin-service.js";
 
@@ -465,6 +466,67 @@ router.get("/tenant/empresas/:empresaId/permissions", async (req, res) => {
   await runService(
     res,
     () => tenantRbacService.listTenantPermissionCatalog(a.userId, req.params.empresaId),
+    { wrap: "data" },
+  );
+});
+
+router.get("/tenant/empresas/:empresaId/delegacion/techo", async (req, res) => {
+  const a = await tenantActor(req, res);
+  if (!a) return;
+  await runService(
+    res,
+    () => delegacionController.listarTechoDelegacion(a, { empresa_id: req.params.empresaId }),
+    { wrap: "data" },
+  );
+});
+
+router.get("/tenant/empresas/:empresaId/delegacion", async (req, res) => {
+  const a = await tenantActor(req, res);
+  if (!a) return;
+  await runService(
+    res,
+    () => delegacionController.listarPermisosDelegados(a, {
+      asistente_id: req.query.asistente_id,
+      empresa_id: req.params.empresaId,
+    }),
+    { wrap: "data" },
+  );
+});
+
+router.put("/tenant/empresas/:empresaId/delegacion", async (req, res) => {
+  const a = await tenantActor(req, res);
+  if (!a) return;
+  const body = parseJsonBody(req, res);
+  if (!body) return;
+  await runService(
+    res,
+    () => delegacionController.reemplazarPermisosDelegados(a, {
+      ...body,
+      empresa_id: req.params.empresaId,
+      sala_id: null,
+    }),
+    { wrap: "data" },
+  );
+});
+
+router.get("/tenant/empresas/:empresaId/gerentes/:gerenteId/acceso-cruzado", async (req, res) => {
+  const a = await tenantActor(req, res);
+  if (!a) return;
+  await runService(
+    res,
+    () => delegacionController.listarAccesoCruzado(a, req.params.empresaId, req.params.gerenteId),
+    { wrap: "data" },
+  );
+});
+
+router.put("/tenant/empresas/:empresaId/gerentes/:gerenteId/acceso-cruzado", async (req, res) => {
+  const a = await tenantActor(req, res);
+  if (!a) return;
+  const body = parseJsonBody(req, res);
+  if (!body) return;
+  await runService(
+    res,
+    () => delegacionController.fijarAccesoCruzado(a, req.params.empresaId, req.params.gerenteId, body),
     { wrap: "data" },
   );
 });

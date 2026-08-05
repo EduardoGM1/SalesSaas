@@ -13,6 +13,7 @@ const LINER_FLAG_MATCH = (clave) =>
  *
  * No son roles globales de plataforma: cada tenant puede renombrar Liner/Cerrador
  * y ajustar módulos. El Panel → Roles solo lista roles con empresa_id IS NULL.
+ * Asistente de Empresa / Sala: sin permisos de catálogo; acceso vía permisos_delegados.
  */
 export async function ensureEmpresaOperationalRoles(admin, empresaId) {
   if (!admin || !empresaId) throw new ServiceError("empresaId requerido.", 400);
@@ -90,10 +91,12 @@ export async function ensureEmpresaOperationalRoles(admin, empresaId) {
   }
 
   const rolesSpec = [
-    { slug: "gerente", nombre: "Gerente", packageSlug: "operacion-base" },
-    { slug: "vendedor", nombre: "Vendedor", packageSlug: "operacion-base" },
-    { slug: "liner", nombre: "Liner", packageSlug: "liner" },
-    { slug: "cerrador", nombre: "Cerrador", packageSlug: "cierre" },
+    { slug: "gerente", nombre: "Gerente", packageSlug: "operacion-base", scope: "workspace" },
+    { slug: "vendedor", nombre: "Vendedor", packageSlug: "operacion-base", scope: "workspace" },
+    { slug: "liner", nombre: "Liner", packageSlug: "liner", scope: "workspace" },
+    { slug: "cerrador", nombre: "Cerrador", packageSlug: "cierre", scope: "workspace" },
+    { slug: "asistente_sala", nombre: "Asistente de Sala", packageSlug: null, scope: "workspace", delegatedOnly: true },
+    { slug: "asistente_empresa", nombre: "Asistente de Empresa", packageSlug: null, scope: "empresa", delegatedOnly: true },
   ];
 
   for (const spec of rolesSpec) {
@@ -112,8 +115,8 @@ export async function ensureEmpresaOperationalRoles(admin, empresaId) {
           empresa_id: empresaId,
           nombre: spec.nombre,
           slug: spec.slug,
-          scope: "workspace",
-          paquete_id: packageIds[spec.packageSlug] || null,
+          scope: spec.scope,
+          paquete_id: spec.packageSlug ? (packageIds[spec.packageSlug] || null) : null,
           es_sistema: true,
         })
         .select("id")
@@ -121,11 +124,14 @@ export async function ensureEmpresaOperationalRoles(admin, empresaId) {
       if (error) throw new ServiceError(error.message, 400);
       roleId = created.id;
     } else {
-      await admin
-        .from("roles")
-        .update({ paquete_id: packageIds[spec.packageSlug] || null })
-        .eq("id", roleId)
-        .is("paquete_id", null);
+      const patch = { scope: spec.scope };
+      if (spec.packageSlug) patch.paquete_id = packageIds[spec.packageSlug] || null;
+      await admin.from("roles").update(patch).eq("id", roleId);
+    }
+
+    if (spec.delegatedOnly) {
+      await admin.from("rol_permisos").delete().eq("rol_id", roleId);
+      continue;
     }
 
     const { data: existingPerms } = await admin

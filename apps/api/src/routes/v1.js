@@ -8,6 +8,7 @@ import * as sessionService from "../services/session-service.js";
 import * as profileService from "../services/profile-service.js";
 import * as syncController from "../controllers/sync-controller.js";
 import * as prospectsController from "../controllers/prospects-controller.js";
+import * as delegacionController from "../controllers/delegacion-controller.js";
 import * as salesService from "../services/sales-service.js";
 import * as calendarService from "../services/calendar-service.js";
 import * as goalsService from "../services/goals-service.js";
@@ -215,6 +216,48 @@ router.delete("/workspace/team/members/:memberId/overrides/:clave", async (req, 
       req.params.memberId,
       decodeURIComponent(req.params.clave),
     ),
+    { wrap: "data" },
+  );
+});
+
+router.get("/workspace/team/delegacion/techo", async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  const salaId = await workspaceService.resolveActiveWorkspaceId(a.supabase, a.userId);
+  await runService(
+    res,
+    () => delegacionController.listarTechoDelegacion(a, { sala_id: salaId }),
+    { wrap: "data" },
+  );
+});
+
+router.get("/workspace/team/delegacion", async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  const salaId = await workspaceService.resolveActiveWorkspaceId(a.supabase, a.userId);
+  await runService(
+    res,
+    () => delegacionController.listarPermisosDelegados(a, {
+      asistente_id: req.query.asistente_id,
+      sala_id: salaId,
+    }),
+    { wrap: "data" },
+  );
+});
+
+router.put("/workspace/team/delegacion", async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  const body = parseJsonBody(req, res);
+  if (!body) return;
+  const salaId = await workspaceService.resolveActiveWorkspaceId(a.supabase, a.userId);
+  await runService(
+    res,
+    () => delegacionController.reemplazarPermisosDelegados(a, {
+      ...body,
+      sala_id: salaId,
+      empresa_id: null,
+    }),
     { wrap: "data" },
   );
 });

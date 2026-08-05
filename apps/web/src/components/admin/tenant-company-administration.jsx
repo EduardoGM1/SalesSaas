@@ -11,6 +11,8 @@ import {
 } from "@/components/admin/admin-ui.jsx";
 import { AdminOverflowMenu } from "@/components/admin/admin-overflow-menu.jsx";
 import { BuscadorUsuario } from "@/components/admin/buscador-usuario.jsx";
+import { DelegacionChecklist } from "@/components/admin/delegacion-checklist.jsx";
+import { SalesModal } from "@/components/ui/sales-modal";
 import { useAdminFetch } from "@/hooks/use-admin-session.js";
 import { adminJson } from "@/lib/admin/api.js";
 import { compressSupportScreenshot } from "@/lib/support-image.js";
@@ -90,6 +92,14 @@ export function TenantCompanyAdministration({
   const [pending, setPending] = useState(false);
   const [logoPending, setLogoPending] = useState(false);
   const [logoPreviewBroken, setLogoPreviewBroken] = useState(false);
+  const [delegOpen, setDelegOpen] = useState(false);
+  const [delegAsistente, setDelegAsistente] = useState(null);
+  const [delegCeiling, setDelegCeiling] = useState([]);
+  const [delegSelected, setDelegSelected] = useState([]);
+  const [delegLoading, setDelegLoading] = useState(false);
+  const [crossGerenteId, setCrossGerenteId] = useState("");
+  const [crossRows, setCrossRows] = useState([]);
+  const [crossLoading, setCrossLoading] = useState(false);
 
   useEffect(() => {
     if (companyId || !options[0]?.id) return;
@@ -187,6 +197,73 @@ export function TenantCompanyAdministration({
 
   const companyRoles = state.roles.filter((role) => role.scope === "empresa");
   const workspaceRoles = state.roles.filter((role) => role.scope === "workspace");
+
+  const openEmpresaDelegacion = async (adminRow) => {
+    setDelegAsistente(adminRow);
+    setDelegOpen(true);
+    setDelegLoading(true);
+    try {
+      const [ceiling, keys] = await Promise.all([
+        adminJson(`tenant/empresas/${companyId}/delegacion/techo`),
+        adminJson(`tenant/empresas/${companyId}/delegacion?asistente_id=${encodeURIComponent(adminRow.usuario_id)}`),
+      ]);
+      setDelegCeiling(Array.isArray(ceiling) ? ceiling : []);
+      setDelegSelected(Array.isArray(keys) ? keys : []);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "No se pudo cargar la delegación");
+      setDelegOpen(false);
+    } finally {
+      setDelegLoading(false);
+    }
+  };
+
+  const saveEmpresaDelegacion = async () => {
+    if (!delegAsistente) return;
+    setPending(true);
+    try {
+      await adminJson(`tenant/empresas/${companyId}/delegacion`, {
+        method: "PUT",
+        body: {
+          asistente_id: delegAsistente.usuario_id,
+          permiso_keys: delegSelected,
+        },
+      });
+      toast.success("Permisos delegados actualizados");
+      setDelegOpen(false);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Error al guardar");
+    } finally {
+      setPending(false);
+    }
+  };
+
+  const loadAccesoCruzado = async (gerenteId) => {
+    setCrossGerenteId(gerenteId);
+    setCrossLoading(true);
+    try {
+      const rows = await adminJson(`tenant/empresas/${companyId}/gerentes/${gerenteId}/acceso-cruzado`);
+      setCrossRows(Array.isArray(rows) ? rows : []);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "No se pudo cargar acceso cruzado");
+      setCrossRows([]);
+    } finally {
+      setCrossLoading(false);
+    }
+  };
+
+  const toggleAccesoCruzado = async (salaId, activo) => {
+    if (!crossGerenteId) return;
+    try {
+      await adminJson(`tenant/empresas/${companyId}/gerentes/${crossGerenteId}/acceso-cruzado`, {
+        method: "PUT",
+        body: { sala_id: salaId, activo },
+      });
+      await loadAccesoCruzado(crossGerenteId);
+      toast.success(activo ? "Acceso otorgado" : "Acceso revocado");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "No se pudo actualizar el acceso");
+    }
+  };
 
   if (!session?.isSuperAdmin && session?.scope !== "empresa") {
     return <AdminEmptyState title="Sin acceso empresarial" body="Tu alcance actual no permite administrar empresas." />;
@@ -344,11 +421,57 @@ export function TenantCompanyAdministration({
               })}
               {!state.rooms.length ? <AdminEmptyState title="Sin salas" body="Crea la primera Sala de Ventas." /> : null}
             </div>
+
+            <AdminCard title="Acceso cruzado entre salas" subtitle="Otorga a un Gerente visibilidad de otra sala de esta misma empresa.">
+              <div className="admin-room-form">
+                <select
+                  className="auth-input"
+                  value={crossGerenteId}
+                  onChange={(event) => {
+                    const id = event.target.value;
+                    if (id) void loadAccesoCruzado(id);
+                    else {
+                      setCrossGerenteId("");
+                      setCrossRows([]);
+                    }
+                  }}
+                >
+                  <option value="">Selecciona Gerente</option>
+                  {state.rooms.flatMap((room) => memberRows(room)
+                    .filter((m) => m.rol_en_workspace === "gerente")
+                    .map((m) => (
+                      <option key={`${room.id}-${m.usuario_id}`} value={m.usuario_id}>
+                        {m.profiles?.full_name || m.profiles?.email || m.usuario_id} — {room.nombre}
+                      </option>
+                    )))}
+                </select>
+              </div>
+              {crossLoading ? <p>Cargando…</p> : null}
+              {!crossLoading && crossGerenteId ? (
+                <ul className="team-extras-list">
+                  {crossRows.filter((r) => !r.es_miembro).map((row) => (
+                    <li key={row.sala_id}>
+                      <label className="team-extras-item">
+                        <input
+                          type="checkbox"
+                          checked={!!row.acceso_cruzado}
+                          onChange={(event) => void toggleAccesoCruzado(row.sala_id, event.target.checked)}
+                        />
+                        <span>{row.nombre}</span>
+                      </label>
+                    </li>
+                  ))}
+                  {!crossRows.filter((r) => !r.es_miembro).length ? (
+                    <li className="team-empty">No hay otras salas disponibles para acceso cruzado.</li>
+                  ) : null}
+                </ul>
+              ) : null}
+            </AdminCard>
           </div>
         ) : null}
 
         {tab === "admins" ? (
-          <AdminCard title="Administradores de Empresa" subtitle="Nunca podrán administrar otra empresa.">
+          <AdminCard title="Administradores de Empresa" subtitle="Nunca podrán administrar otra empresa. Asistente de Empresa recibe solo permisos delegados.">
             <form className="admin-room-form" onSubmit={(event) => {
               event.preventDefault();
               if (!adminForm.usuario?.id) {
@@ -356,8 +479,13 @@ export function TenantCompanyAdministration({
                 return;
               }
               void mutate(async () => {
-                await adminJson(`tenant/empresas/${companyId}/admins`, { method: "POST", body: { usuario_id: adminForm.usuario.id, role_id: adminForm.role_id } });
+                const userSnap = adminForm.usuario;
+                await adminJson(`tenant/empresas/${companyId}/admins`, { method: "POST", body: { usuario_id: userSnap.id, role_id: adminForm.role_id } });
+                const role = companyRoles.find((r) => r.id === adminForm.role_id);
                 setAdminForm({ usuario: null, role_id: "" });
+                if (role?.slug === "asistente_empresa") {
+                  await openEmpresaDelegacion({ usuario_id: userSnap.id, profiles: userSnap });
+                }
               }, "Administrador añadido");
             }}>
               <BuscadorUsuario
@@ -377,8 +505,18 @@ export function TenantCompanyAdministration({
               <div className="admin-tenant-member-list">
                 {state.admins.map((admin) => (
                   <div key={admin.usuario_id} className="admin-tenant-member">
-                    <div><strong>{admin.profiles?.full_name || admin.profiles?.email}</strong><span>{admin.roles?.nombre || "Administrador de Empresa"}</span></div>
-                    <button type="button" className="btn btn-danger btn-sm" disabled={pending} onClick={() => void mutate(() => adminJson(`tenant/empresas/${companyId}/admins/${admin.usuario_id}`, { method: "DELETE" }), "Administrador retirado")}>Retirar</button>
+                    <div>
+                      <strong>{admin.profiles?.full_name || admin.profiles?.email}</strong>
+                      <span>{admin.roles?.nombre || "Administrador de Empresa"}</span>
+                    </div>
+                    <div className="btn-row">
+                      {admin.roles?.slug === "asistente_empresa" ? (
+                        <button type="button" className="btn btn-ghost btn-sm" disabled={pending} onClick={() => openEmpresaDelegacion(admin)}>
+                          Delegar permisos
+                        </button>
+                      ) : null}
+                      <button type="button" className="btn btn-danger btn-sm" disabled={pending} onClick={() => void mutate(() => adminJson(`tenant/empresas/${companyId}/admins/${admin.usuario_id}`, { method: "DELETE" }), "Administrador retirado")}>Retirar</button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -639,6 +777,32 @@ export function TenantCompanyAdministration({
           </AdminCard>
         ) : null}
       </AdminPageState>
+
+      <SalesModal
+        open={delegOpen}
+        onOpenChange={(open) => {
+          setDelegOpen(open);
+          if (!open) setDelegAsistente(null);
+        }}
+        title={`Delegar permisos — ${delegAsistente?.profiles?.full_name || delegAsistente?.profiles?.email || ""}`}
+        maxWidth={560}
+      >
+        <p className="team-hint team-hint--modal">
+          Solo puedes marcar permisos que tú ya tienes como Admin de Empresa.
+        </p>
+        <DelegacionChecklist
+          ceiling={delegCeiling}
+          selected={delegSelected}
+          onChange={setDelegSelected}
+          loading={delegLoading}
+        />
+        <div className="btn-row team-modal-actions">
+          <button type="button" className="btn btn-ghost" onClick={() => setDelegOpen(false)} disabled={pending}>Cancelar</button>
+          <button type="button" className="btn btn-primary" onClick={saveEmpresaDelegacion} disabled={pending || delegLoading}>
+            Guardar delegación
+          </button>
+        </div>
+      </SalesModal>
     </>
   );
 

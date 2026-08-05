@@ -20,6 +20,8 @@ function applyBrand(brand) {
   root.style.setProperty("--ws-brand-accent", accent);
   root.style.setProperty("--blue", primary);
   root.style.setProperty("--blue-lt", primary);
+  root.style.setProperty("--blue-xlt", `color-mix(in srgb, ${primary} 16%, white)`);
+  root.style.setProperty("--blue-glow", `color-mix(in srgb, ${primary} 22%, transparent)`);
   root.style.setProperty("--navy", accent);
   root.style.setProperty("--navy2", accent);
   root.dataset.workspaceBrand = b.nombre || "Saletse";

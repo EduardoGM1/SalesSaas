@@ -71,7 +71,7 @@ export async function listUserWorkspaces(supabase, userId) {
     throw new ServiceError(error.message, 500);
   }
 
-  return (memberships || [])
+  const fromMembership = (memberships || [])
     .filter((m) => m.workspaces && m.workspaces.estado !== "archivado")
     .map((m) => {
       const w = m.workspaces;
@@ -87,13 +87,44 @@ export async function listUserWorkspaces(supabase, userId) {
         rol_en_workspace: m.rol_en_workspace,
         fecha_union: m.fecha_union,
         brand,
+        acceso_cruzado: false,
       };
-    })
-    .sort((a, b) => {
-      if (a.tipo === "personal" && b.tipo !== "personal") return -1;
-      if (b.tipo === "personal" && a.tipo !== "personal") return 1;
-      return String(a.nombre).localeCompare(String(b.nombre));
     });
+
+  const memberIds = new Set(fromMembership.map((w) => w.id));
+
+  // Salas con acceso cruzado activo (Gerente) — misma empresa, no membresía.
+  let cross = [];
+  try {
+    const { listCrossAccessSalasForUser } = await import("./delegacion-service.js");
+    const rows = await listCrossAccessSalasForUser(userId);
+    cross = rows
+      .filter((w) => w && !memberIds.has(w.id))
+      .map((w) => {
+        const emp = w.empresas || null;
+        const brand = resolveBrand(w, emp);
+        return {
+          id: w.id,
+          tipo: w.tipo,
+          nombre: w.nombre,
+          logo_url: brand.logo_url,
+          empresa_id: w.empresa_id,
+          empresa_nombre: emp?.nombre ?? null,
+          rol_en_workspace: "gerente",
+          fecha_union: null,
+          brand,
+          acceso_cruzado: true,
+        };
+      });
+  } catch {
+    cross = [];
+  }
+
+  return [...fromMembership, ...cross].sort((a, b) => {
+    if (a.tipo === "personal" && b.tipo !== "personal") return -1;
+    if (b.tipo === "personal" && a.tipo !== "personal") return 1;
+    return String(a.nombre).localeCompare(String(b.nombre));
+  });
 }
 
 export async function resolveActiveWorkspaceId(supabase, userId, preferredId = null) {
