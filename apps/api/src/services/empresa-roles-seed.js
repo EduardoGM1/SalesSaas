@@ -1,6 +1,7 @@
 import { ServiceError } from "../lib/service-error.js";
 
-const VENDEDOR_PLATFORM_ROLE_ID = "a0000000-0000-4000-8000-000000000003";
+/** Rol plataforma Liner (ex-Vendedor, mismo UUID tras migración 0069). */
+const LINER_PLATFORM_ROLE_ID = "a0000000-0000-4000-8000-000000000003";
 
 const LINER_FLAG_MATCH = (clave) =>
   clave === "survey"
@@ -9,11 +10,12 @@ const LINER_FLAG_MATCH = (clave) =>
 
 /**
  * Idempotente por (empresa_id, slug): paquetes + puestos operativos
- * (Gerente, Vendedor, Liner, Cerrador) **por empresa**.
+ * (Gerente, Liner, Cerrador) **por empresa**.
  *
  * No son roles globales de plataforma: cada tenant puede renombrar Liner/Cerrador
  * y ajustar módulos. El Panel → Roles solo lista roles con empresa_id IS NULL.
  * Asistente de Empresa / Sala: sin permisos de catálogo; acceso vía permisos_delegados.
+ * (Rol Vendedor eliminado en 0069 — migrado a Liner.)
  */
 export async function ensureEmpresaOperationalRoles(admin, empresaId) {
   if (!admin || !empresaId) throw new ServiceError("empresaId requerido.", 400);
@@ -92,7 +94,6 @@ export async function ensureEmpresaOperationalRoles(admin, empresaId) {
 
   const rolesSpec = [
     { slug: "gerente", nombre: "Gerente", packageSlug: "operacion-base", scope: "workspace" },
-    { slug: "vendedor", nombre: "Vendedor", packageSlug: "operacion-base", scope: "workspace" },
     { slug: "liner", nombre: "Liner", packageSlug: "liner", scope: "workspace" },
     { slug: "cerrador", nombre: "Cerrador", packageSlug: "cierre", scope: "workspace" },
     { slug: "asistente_sala", nombre: "Asistente de Sala", packageSlug: null, scope: "workspace", delegatedOnly: true },
@@ -143,7 +144,7 @@ export async function ensureEmpresaOperationalRoles(admin, empresaId) {
     const { data: basePerms } = await admin
       .from("rol_permisos")
       .select("permiso_id")
-      .eq("rol_id", VENDEDOR_PLATFORM_ROLE_ID);
+      .eq("rol_id", LINER_PLATFORM_ROLE_ID);
 
     const workflowKeys = spec.slug === "cerrador"
       ? ["workflow:ver", "workflow:avanzar", "workflow:cerrar"]

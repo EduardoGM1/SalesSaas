@@ -6,7 +6,7 @@ import { userFiltersToSearchParams } from "@/lib/admin/filters";
 
 const ROLES = [
   { value: "", key: "admin.filters.allRoles" },
-  { value: "vendedor", key: "admin.filters.seller" },
+  { value: "liner", key: "admin.filters.liner" },
   { value: "admin", label: "Admin" },
 ];
 

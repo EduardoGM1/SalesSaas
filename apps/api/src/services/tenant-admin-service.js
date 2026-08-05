@@ -343,17 +343,17 @@ export async function setScopedSalaGerente(actorId, workspaceId, userId) {
     .eq("scope", "workspace")
     .eq("slug", "gerente")
     .maybeSingle();
-  const { data: sellerRole } = await admin
+  const { data: linerRole } = await admin
     .from("roles")
     .select("id")
     .eq("empresa_id", room.empresa_id)
     .eq("scope", "workspace")
-    .eq("slug", "vendedor")
+    .eq("slug", "liner")
     .maybeSingle();
 
   await admin
     .from("workspace_miembros")
-    .update({ rol_en_workspace: "vendedor", role_id: sellerRole?.id || null })
+    .update({ rol_en_workspace: "vendedor", role_id: linerRole?.id || null })
     .eq("workspace_id", workspaceId)
     .eq("rol_en_workspace", "gerente");
   const { data, error } = await admin

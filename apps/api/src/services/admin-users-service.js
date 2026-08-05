@@ -3,19 +3,23 @@ import { isSuperAdmin, sanitizeDelegatedPermissions } from "@salesapp/shared/aut
 import { sanitizeVendorFeatures } from "@salesapp/shared/auth/user-features.js";
 import { ADMIN_AUDIT_ACTIONS, writeAdminLog } from "./admin-audit-service.js";
 
-const ROLES = new Set(["vendedor", "admin"]);
+const ROLES = new Set(["liner", "vendedor", "admin"]); // vendedor = alias legacy API
 
 const SYSTEM_ROLE_IDS = {
   admin: "a0000000-0000-4000-8000-000000000002",
+  liner: "a0000000-0000-4000-8000-000000000003",
+  /** @deprecated usar liner — UUID histórico del ex-rol Vendedor */
   vendedor: "a0000000-0000-4000-8000-000000000003",
 };
 
 export async function updateUserRole(supabase, targetId, role, actorId = null) {
   if (!targetId || !ROLES.has(role)) throw new ServiceError("Datos inválidos.");
+  // user_role enum legacy: liner de catálogo se persiste como 'vendedor' en profiles.role
+  const legacyRole = role === "liner" ? "vendedor" : role;
   const { data: before } = await supabase.from("profiles").select("role, role_id").eq("id", targetId).maybeSingle();
-  const { error } = await supabase.rpc("admin_update_user_role", { p_target_id: targetId, p_role: role });
+  const { error } = await supabase.rpc("admin_update_user_role", { p_target_id: targetId, p_role: legacyRole });
   if (error) throw new ServiceError(error.message, 400);
-  const roleId = SYSTEM_ROLE_IDS[role];
+  const roleId = SYSTEM_ROLE_IDS[role === "vendedor" ? "liner" : role] ?? SYSTEM_ROLE_IDS[role];
   if (roleId) {
     await supabase.from("profiles").update({ role_id: roleId }).eq("id", targetId);
     try {
@@ -31,7 +35,7 @@ export async function updateUserRole(supabase, targetId, role, actorId = null) {
       accion: ADMIN_AUDIT_ACTIONS.CAMBIO_ROL,
       entidadAfectada: "usuario",
       entidadId: targetId,
-      detalle: { de: before?.role ?? null, a: data?.role ?? role, role_id: data?.role_id ?? roleId },
+      detalle: { de: before?.role ?? null, a: data?.role ?? legacyRole, role_id: data?.role_id ?? roleId, catalog_slug: role === "vendedor" ? "liner" : role },
     });
   }
   return data;

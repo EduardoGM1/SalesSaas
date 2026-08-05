@@ -357,7 +357,7 @@ export function TenantCompanyAdministration({
                 return (
                   <AdminCard key={room.id} title={room.nombre} subtitle={`${members.length} miembros`}>
                     {!members.length ? (
-                      <AdminEmptyState title="Sin miembros" body="Añade vendedores a esta sala." />
+                      <AdminEmptyState title="Sin miembros" body="Añade miembros a esta sala." />
                     ) : (
                       <div className="admin-members-table-wrap">
                         <table className="client-table admin-company-members-table">

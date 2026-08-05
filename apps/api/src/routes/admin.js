@@ -752,7 +752,7 @@ router.get("/export/users", async (req, res) => {
   try {
     const filters = parseUserAdminFilters(req.query);
     const users = await getUsers(a.supabase, filters, { includeMetrics: false });
-    const ROLE_LABEL = { vendedor: "Vendedor", gerente: "Gerente", admin: "Admin" };
+    const ROLE_LABEL = { vendedor: "Liner", liner: "Liner", gerente: "Gerente", admin: "Admin", soporte: "Soporte" };
     const headers = ["Nombre", "Correo", "Rol", "Estado", "Alta", "Último acceso"];
     const csv = toCsv(
       headers,

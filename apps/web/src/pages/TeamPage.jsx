@@ -267,7 +267,7 @@ export function TeamPage() {
   }, [selectedId, members, t]);
 
   const roleLabel = (m) => m.role_nombre
-    || (m.rol_en_workspace === "gerente" ? t("team.role.gerente") : t("team.role.vendedor"));
+    || (m.rol_en_workspace === "gerente" ? t("team.role.gerente") : t("team.role.liner"));
 
   if (ready && !canManage) {
     return <Navigate to="/" replace />;

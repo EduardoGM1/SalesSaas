@@ -19,7 +19,13 @@ import { useMoney } from "@/hooks/use-money.js";
 import { longDate } from "@/lib/format/dates";
 import { notifyAuthChanged } from "@/lib/session-api.js";
 
-const ROLE_KEYS = { vendedor: "admin.users.role.seller", gerente: "admin.users.role.manager", admin: "admin.users.role.admin" };
+const ROLE_KEYS = {
+  vendedor: "admin.users.role.liner",
+  liner: "admin.users.role.liner",
+  gerente: "admin.users.role.manager",
+  admin: "admin.users.role.admin",
+  soporte: "admin.users.role.support",
+};
 const ERROR_KEYS = {
   invalid: "admin.users.error.invalid",
   role: "admin.users.error.role",

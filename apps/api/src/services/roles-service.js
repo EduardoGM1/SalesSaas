@@ -11,6 +11,7 @@ import {
   resolveUserPermissions,
 } from "@salesapp/shared/auth/resolve-permissions.js";
 import { ADMIN_AUDIT_ACTIONS, writeAdminLog } from "./admin-audit-service.js";
+import { createServiceSupabaseClient } from "../lib/supabase-server.js";
 
 function assertSuperAdmin(profile) {
   if (!isSuperAdmin(profile)) throw new ServiceError("No autorizado.", 403);
@@ -19,6 +20,7 @@ function assertSuperAdmin(profile) {
 /**
  * @param {{ full?: boolean }} [opts] full=true (default) exige Superadmin y devuelve permission_keys.
  * full=false: lista ligera para asignar rol en Usuarios (gestionar_usuarios).
+ * En full también incluye roles tenant (empresa_id set) para visibilidad en Panel.
  */
 export async function listRoles(supabase, adminProfile, opts = {}) {
   const full = opts.full !== false;
@@ -26,9 +28,37 @@ export async function listRoles(supabase, adminProfile, opts = {}) {
     assertSuperAdmin(adminProfile);
     const { data, error } = await supabase.rpc("admin_list_roles");
     if (error) throw new ServiceError(error.message, 400);
-    // Defensa en profundidad: solo plataforma (por si la RPC antigua aún está en prod).
-    const rows = Array.isArray(data) ? data : [];
-    return rows.filter((r) => !r.empresa_id);
+    const platform = (Array.isArray(data) ? data : [])
+      .filter((r) => !r.empresa_id)
+      .map((r) => ({ ...r, capa: "plataforma", empresa_nombre: null }));
+
+    // Tenant roles viven en BD; admin_list_roles (0066) los excluye a propósito.
+    // El Panel debe mostrarlos diferenciados (Globales vs Tenant) — no están pérdida de datos.
+    const admin = createServiceSupabaseClient() || supabase;
+    const { data: tenantRows, error: tErr } = await admin
+      .from("roles")
+      .select("id, nombre, slug, es_sistema, scope, empresa_id, created_at, empresas(nombre), rol_permisos(permisos(clave))")
+      .not("empresa_id", "is", null)
+      .order("slug");
+    if (tErr) throw new ServiceError(tErr.message, 400);
+
+    const tenant = (tenantRows || []).map((r) => ({
+      id: r.id,
+      nombre: r.nombre,
+      slug: r.slug,
+      es_sistema: r.es_sistema,
+      scope: r.scope || "workspace",
+      empresa_id: r.empresa_id,
+      empresa_nombre: r.empresas?.nombre || null,
+      created_at: r.created_at,
+      capa: "tenant",
+      permission_keys: (r.rol_permisos || [])
+        .map((rp) => rp.permisos?.clave)
+        .filter(Boolean)
+        .sort(),
+    }));
+
+    return [...platform, ...tenant];
   }
   const { data, error } = await supabase
     .from("roles")
@@ -37,7 +67,7 @@ export async function listRoles(supabase, adminProfile, opts = {}) {
     .neq("slug", "superadmin")
     .order("nombre");
   if (error) throw new ServiceError(error.message, 400);
-  return (data ?? []).map((r) => ({ ...r, permission_keys: [] }));
+  return (data ?? []).map((r) => ({ ...r, permission_keys: [], capa: "plataforma" }));
 }
 
 export async function listPermissionCatalog() {

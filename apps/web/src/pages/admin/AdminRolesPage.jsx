@@ -7,7 +7,7 @@ import { useI18n } from "@/hooks/use-i18n.js";
 import { adminJson } from "@/lib/admin/api.js";
 
 /** Orden de jerarquía de roles de plataforma (gobierno). */
-const SYSTEM_ROLE_ORDER = ["superadmin", "admin", "soporte", "vendedor"];
+const SYSTEM_ROLE_ORDER = ["superadmin", "admin", "soporte", "liner"];
 
 function collectFlagKeys(nodes, acc = []) {
   for (const n of nodes || []) {
@@ -165,7 +165,17 @@ function RoleEditor({ role, flagTree, onClose, onSaved }) {
   );
 }
 
-function RolesTable({ roles, moduleCounts, busyId, onEdit, onRemove, t, emptyLabel }) {
+function RolesTable({
+  roles,
+  moduleCounts,
+  busyId,
+  onEdit,
+  onRemove,
+  t,
+  emptyLabel,
+  showEmpresa = false,
+  readOnly = false,
+}) {
   if (!roles.length) {
     return <div className="admin-empty" style={{ padding: 16 }}>{emptyLabel}</div>;
   }
@@ -176,8 +186,10 @@ function RolesTable({ roles, moduleCounts, busyId, onEdit, onRemove, t, emptyLab
           <tr>
             <th>{t("admin.roles.col.name")}</th>
             <th>{t("admin.roles.col.slug")}</th>
+            {showEmpresa ? <th>Empresa</th> : null}
+            <th>Capa</th>
             <th style={{ textAlign: "right" }}>{t("admin.roles.col.modules")}</th>
-            <th className="admin-cell-actions">{t("admin.users.col.actions")}</th>
+            {!readOnly ? <th className="admin-cell-actions">{t("admin.users.col.actions")}</th> : null}
           </tr>
         </thead>
         <tbody>
@@ -185,31 +197,41 @@ function RolesTable({ roles, moduleCounts, busyId, onEdit, onRemove, t, emptyLab
             <tr key={role.id}>
               <td className="admin-cell-name">{role.nombre}</td>
               <td className="admin-cell-muted"><code>{role.slug}</code></td>
+              {showEmpresa ? (
+                <td className="admin-cell-muted">{role.empresa_nombre || role.empresa_id || "—"}</td>
+              ) : null}
+              <td>
+                <AdminStatusBadge tone={role.empresa_id ? "info" : "success"}>
+                  {role.empresa_id ? "Tenant" : "Global"}
+                </AdminStatusBadge>
+              </td>
               <td className="admin-cell-num" style={{ textAlign: "right" }}>
                 {moduleCounts.get(role.id) ?? (Array.isArray(role.permission_keys) ? role.permission_keys.length : 0)}
               </td>
-              <td className="admin-cell-actions">
-                <div className="admin-table-actions">
-                  <button
-                    type="button"
-                    className="btn btn-sm btn-ghost"
-                    onClick={() => onEdit(role)}
-                    disabled={role.slug === "superadmin"}
-                  >
-                    {t("admin.roles.action.edit")}
-                  </button>
-                  {!role.es_sistema && (
+              {!readOnly ? (
+                <td className="admin-cell-actions">
+                  <div className="admin-table-actions">
                     <button
                       type="button"
-                      className="btn btn-sm btn-danger"
-                      disabled={busyId === role.id}
-                      onClick={() => onRemove(role)}
+                      className="btn btn-sm btn-ghost"
+                      onClick={() => onEdit(role)}
+                      disabled={role.slug === "superadmin"}
                     >
-                      {t("admin.roles.action.delete")}
+                      {t("admin.roles.action.edit")}
                     </button>
-                  )}
-                </div>
-              </td>
+                    {!role.es_sistema && (
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-danger"
+                        disabled={busyId === role.id}
+                        onClick={() => onRemove(role)}
+                      >
+                        {t("admin.roles.action.delete")}
+                      </button>
+                    )}
+                  </div>
+                </td>
+              ) : null}
             </tr>
           ))}
         </tbody>
@@ -233,27 +255,39 @@ export function AdminRolesPage() {
     || (session?.profile && hasPermission(session.profile, "gestionar_roles_permisos")),
   );
 
-  const roles = useMemo(
-    () => (Array.isArray(data) ? data : []).filter((r) => !r.empresa_id),
+  const allRoles = useMemo(
+    () => (Array.isArray(data) ? data : []),
     [data],
   );
+  const platformRoles = useMemo(
+    () => allRoles.filter((r) => !r.empresa_id),
+    [allRoles],
+  );
+  const tenantRoles = useMemo(
+    () => [...allRoles.filter((r) => r.empresa_id)].sort((a, b) => {
+      const emp = String(a.empresa_nombre || "").localeCompare(String(b.empresa_nombre || ""), "es");
+      if (emp !== 0) return emp;
+      return String(a.slug || "").localeCompare(String(b.slug || ""), "es");
+    }),
+    [allRoles],
+  );
   const systemRoles = useMemo(
-    () => sortSystemRoles(roles.filter((r) => r.es_sistema)),
-    [roles],
+    () => sortSystemRoles(platformRoles.filter((r) => r.es_sistema)),
+    [platformRoles],
   );
   const customRoles = useMemo(
-    () => [...roles.filter((r) => !r.es_sistema)].sort((a, b) =>
+    () => [...platformRoles.filter((r) => !r.es_sistema)].sort((a, b) =>
       String(a.nombre || "").localeCompare(String(b.nombre || ""), "es")),
-    [roles],
+    [platformRoles],
   );
 
   const moduleCounts = useMemo(() => {
     const map = new Map();
-    for (const role of roles) {
+    for (const role of platformRoles) {
       map.set(role.id, flagKeysForRole(flagTree, role.id).size);
     }
     return map;
-  }, [roles, flagTree]);
+  }, [platformRoles, flagTree]);
 
   if (!canManageRoles) {
     return <div className="admin-page admin-empty">{t("admin.roles.forbidden")}</div>;
@@ -265,7 +299,7 @@ export function AdminRolesPage() {
   };
 
   const removeRole = async (role) => {
-    if (role.es_sistema) return;
+    if (role.es_sistema || role.empresa_id) return;
     if (!window.confirm(t("admin.roles.confirmDelete", { name: role.nombre }))) return;
     setBusyId(role.id);
     try {
@@ -283,16 +317,16 @@ export function AdminRolesPage() {
       <AdminPageHeader
         eyebrow="Gobierno de acceso"
         title={t("admin.roles.title")}
-        subtitle={t("admin.roles.subPlatform")}
+        subtitle="Globales (plataforma) y Tenant (por empresa). Los puestos de sala se editan en Empresas → Acceso; aquí se listan para auditoría."
         actions={<button type="button" className="btn btn-primary" onClick={() => setEditor({})}>
           {t("admin.roles.create")}
         </button>}
       />
       <AdminPageState loading={loading} error={error}>
-        <AdminDataView empty={!roles.length} emptyTitle={t("admin.roles.empty")}>
+        <AdminDataView empty={!allRoles.length} emptyTitle={t("admin.roles.empty")}>
           <section className="admin-roles-section">
             <div className="admin-roles-section-head">
-              <h2 className="admin-roles-section-title">{t("admin.roles.section.system")}</h2>
+              <h2 className="admin-roles-section-title">Globales — sistema</h2>
               <p className="admin-roles-section-sub">{t("admin.roles.section.systemSub")}</p>
             </div>
             <RolesTable
@@ -308,7 +342,7 @@ export function AdminRolesPage() {
 
           <section className="admin-roles-section">
             <div className="admin-roles-section-head">
-              <h2 className="admin-roles-section-title">{t("admin.roles.section.custom")}</h2>
+              <h2 className="admin-roles-section-title">Globales — personalizados</h2>
               <p className="admin-roles-section-sub">{t("admin.roles.section.customSub")}</p>
             </div>
             <RolesTable
@@ -321,9 +355,30 @@ export function AdminRolesPage() {
               emptyLabel={t("admin.roles.emptyCustom")}
             />
           </section>
+
+          <section className="admin-roles-section">
+            <div className="admin-roles-section-head">
+              <h2 className="admin-roles-section-title">Tenant — por empresa</h2>
+              <p className="admin-roles-section-sub">
+                Gerente, Liner, Cerrador y puestos custom por empresa ({tenantRoles.length} en total).
+                Solo lectura aquí; editar en Empresas → Acceso. Admin de Empresa es membresía (`es_admin`), no una fila de este catálogo.
+              </p>
+            </div>
+            <RolesTable
+              roles={tenantRoles}
+              moduleCounts={moduleCounts}
+              busyId={busyId}
+              onEdit={() => {}}
+              onRemove={() => {}}
+              t={t}
+              emptyLabel="No hay roles de tenant en la base de datos."
+              showEmpresa
+              readOnly
+            />
+          </section>
         </AdminDataView>
       </AdminPageState>
-      {editor && (
+      {editor && !editor.empresa_id && (
         <RoleEditor
           role={editor.id ? editor : null}
           flagTree={flagTree}

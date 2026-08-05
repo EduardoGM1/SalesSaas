@@ -599,16 +599,16 @@ export async function inviteToActiveSala(supabase, userId, { email, usuario_id }
     };
   }
 
-  let vendedorRoleId = null;
+  let linerRoleId = null;
   if (active.empresa_id) {
-    const { data: vendedorRole } = await admin
+    const { data: linerRole } = await admin
       .from("roles")
       .select("id")
       .eq("empresa_id", active.empresa_id)
       .eq("scope", "workspace")
-      .eq("slug", "vendedor")
+      .eq("slug", "liner")
       .maybeSingle();
-    vendedorRoleId = vendedorRole?.id ?? null;
+    linerRoleId = linerRole?.id ?? null;
   }
 
   const { data: member, error: mErr } = await admin
@@ -617,7 +617,7 @@ export async function inviteToActiveSala(supabase, userId, { email, usuario_id }
       usuario_id: profile.id,
       workspace_id: active.id,
       rol_en_workspace: "vendedor",
-      role_id: vendedorRoleId,
+      role_id: linerRoleId,
     })
     .select()
     .single();

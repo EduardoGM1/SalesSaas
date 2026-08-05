@@ -393,7 +393,7 @@ export function AdminEmpresasPage() {
                       <tr key={member.id}>
                         <td className="admin-cell-name" data-label={t("team.col.name")}>{member.full_name || member.email || member.id}</td>
                         <td className="admin-cell-muted" data-label={t("team.col.email")}>{member.email || "—"}</td>
-                        <td data-label={t("team.col.role")}><AdminStatusBadge tone={member.rol_en_workspace === "gerente" ? "info" : "neutral"}>{member.rol_en_workspace === "gerente" ? t("team.role.gerente") : t("team.role.vendedor")}</AdminStatusBadge></td>
+                        <td data-label={t("team.col.role")}><AdminStatusBadge tone={member.rol_en_workspace === "gerente" ? "info" : "neutral"}>{member.roles?.nombre || member.role_nombre || (member.rol_en_workspace === "gerente" ? t("team.role.gerente") : t("team.role.liner"))}</AdminStatusBadge></td>
                         <td data-label="Acciones"><AdminOverflowMenu label={`Acciones de ${member.full_name || member.email}`} items={[
                           member.rol_en_workspace !== "gerente" ? { id: "manager", label: t("admin.empresas.makeGerente"), onSelect: () => makeGerente(member.id), disabled: pending } : null,
                           // No ofrecer quitar al gerente: la API exige otro gerente primero.

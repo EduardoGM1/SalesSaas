@@ -107,7 +107,12 @@ export async function getUsers(sb, filters = {}, options = {}) {
     .select("id, full_name, email, role, role_id, created_at, is_active, is_super_admin, admin_permissions, user_permissions, last_seen_at")
     .order("created_at", { ascending: true });
 
-  if (filters.role) profilesQuery = profilesQuery.eq("role", filters.role);
+  if (filters.role === "liner" || filters.role === "vendedor") {
+    // Catálogo: Liner. Columna legacy profiles.role sigue siendo enum 'vendedor'.
+    profilesQuery = profilesQuery.eq("role", "vendedor");
+  } else if (filters.role) {
+    profilesQuery = profilesQuery.eq("role", filters.role);
+  }
   if (filters.state === "active") profilesQuery = profilesQuery.eq("is_active", true);
   if (filters.state === "inactive") profilesQuery = profilesQuery.eq("is_active", false);
   if (filters.q) {
@@ -132,7 +137,11 @@ export async function getUsers(sb, filters = {}, options = {}) {
       .from("profiles")
       .select("id, full_name, email, role, created_at, is_active, is_super_admin, admin_permissions, user_permissions")
       .order("created_at", { ascending: true });
-    if (filters.role) legacyQuery = legacyQuery.eq("role", filters.role);
+    if (filters.role === "liner" || filters.role === "vendedor") {
+      legacyQuery = legacyQuery.eq("role", "vendedor");
+    } else if (filters.role) {
+      legacyQuery = legacyQuery.eq("role", filters.role);
+    }
     if (filters.state === "active") legacyQuery = legacyQuery.eq("is_active", true);
     if (filters.state === "inactive") legacyQuery = legacyQuery.eq("is_active", false);
     if (filters.q) {
