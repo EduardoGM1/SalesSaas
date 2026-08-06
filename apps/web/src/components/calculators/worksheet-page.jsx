@@ -30,7 +30,7 @@ const EMPTY_FIELDS = { wv: "", we: "", wcc: "", wob: "" };
 export function WorksheetPage({ clientId, shared }) {
   const rhFlag = useFlag(WORKSHEET_ROYAL_HOLIDAY_FLAG);
   if (rhFlag.loading) {
-    return <div className="page">Cargando…</div>;
+    return <div className="sales-page" style={{ padding: 24 }}>Cargando…</div>;
   }
   if (rhFlag.enabled) {
     return <WorksheetRoyalHolidayPage clientId={clientId} shared={shared} />;
@@ -57,7 +57,7 @@ function WorksheetStandardPage({ clientId, shared }) {
   const worksheetConfig = useDbStore((s) => s.db.settings?.worksheetConfig, shallow);
   const [fields, setFields] = useState({ ...EMPTY_FIELDS });
   const [configOpen, setConfigOpen] = useState(false);
-  const [config, setConfig] = useState<Record<string, string>>({ ...WS_DEFAULTS });
+  const [config, setConfig] = useState({ ...WS_DEFAULTS });
   const [saved, setSaved] = useState(false);
   const [saveToolOpen, setSaveToolOpen] = useState(false);
   const dirtyKeysRef = useRef(new Set());
@@ -145,7 +145,7 @@ function WorksheetStandardPage({ clientId, shared }) {
     switchCaptureCurrency(next, fields, WORKSHEET_MONEY_FIELDS, setFields);
   };
 
-  const moneyField = (key: keyof typeof fields) => (
+  const moneyField = (key) => (
     <CampoMonedaCaptura
       currency={captureCurrency}
       value={fields[key]}

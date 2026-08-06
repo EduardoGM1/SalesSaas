@@ -184,7 +184,9 @@ export function WorksheetRoyalHolidayPage({ clientId, shared }) {
     }
   };
 
-  if (!ready) return <div className="page">{t("common.loading") || "Cargando…"}</div>;
+  if (!ready) {
+    return <div className="sales-page" style={{ padding: 24 }}>{t("common.loading") || "Cargando…"}</div>;
+  }
 
   const boardOk = preview?.precio_ok;
   const maxDp = catalogo?.parametros?.max_extra_dp ?? 6;
@@ -192,9 +194,12 @@ export function WorksheetRoyalHolidayPage({ clientId, shared }) {
   const adminOptions = (catalogo?.costo_administrativo || []).map((c) => c.monto_usd);
 
   return (
-    <div className="page worksheet-rh">
+    <>
       <Topbar title="Worksheet · Royal Holiday" />
-      <PageBack href={backHref} />
+      <div className="sales-page tool-calc-page worksheet-rh">
+      <div className="page-toolbar">
+        <PageBack inline href={backHref} />
+      </div>
       <nav className="admin-subnav" style={{ display: "flex", gap: 8, flexWrap: "wrap", margin: "12px 0" }}>
         {TABS.map((tb) => (
           <button
@@ -388,6 +393,7 @@ export function WorksheetRoyalHolidayPage({ clientId, shared }) {
       {!empresaId && (
         <p className="muted">Activa un workspace de sala Royal Holiday para cargar el catálogo.</p>
       )}
-    </div>
+      </div>
+    </>
   );
 }
