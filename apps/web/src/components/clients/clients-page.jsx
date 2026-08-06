@@ -16,6 +16,8 @@ import { isQuantifiableSaleClient } from "@/lib/calculations/tour-summary";
 import { shortDate } from "@/lib/format/dates";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { useWorkspace } from "@/hooks/use-workspace.js";
+import { useCustomModules } from "@/hooks/use-custom-modules.js";
+import { EXTENSION_POINTS } from "@/lib/custom-modules/extension-points.js";
 import { selectOnFocus } from "@/lib/focus-select.js";
 import { useAppStore } from "@/stores/app-store";
 import { useDbStore } from "@/stores/db-store";
@@ -131,6 +133,7 @@ export function ClientsPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { active, ready: workspaceReady } = useWorkspace();
+  const { modules: customColumnModules } = useCustomModules(EXTENSION_POINTS.CLIENTES_COLUMNA);
   const hydrated = useAppStore((s) => s.hydrated);
   const { searchClients, removeClient } = useClientActions();
   const saveClient = useDbStore((s) => s.saveClient);
@@ -148,7 +151,8 @@ export function ClientsPage() {
   const canShare = isSupabaseConfigured();
   const isSalaWorkspace = active?.tipo === "sala_de_venta";
   const showTeamCols = isSalaWorkspace && canShare;
-  const tableColSpan = showTeamCols ? 7 : 4;
+  const customColCount = customColumnModules.length;
+  const tableColSpan = (showTeamCols ? 7 : 4) + customColCount;
   const currentYear = new Date().getFullYear();
   const workspaceLabel = active?.nombre || active?.name || null;
 
@@ -448,6 +452,9 @@ export function ClientsPage() {
                       <th className="client-th-team client-th-updated">{t("clients.colUpdated")}</th>
                     </>
                   ) : null}
+                  {customColumnModules.map((mod) => (
+                    <th key={mod.id} className="client-th-custom">{mod.nombre_visible || mod.clave}</th>
+                  ))}
                   <th style={{ textAlign: "center" }}>{t("clients.colActions")}</th>
                 </tr>
               </thead>
@@ -528,6 +535,15 @@ export function ClientsPage() {
                             <td className="client-td-team client-td-updated">{teamActivity || "—"}</td>
                           </>
                         ) : null}
+                        {customColumnModules.map((mod) => (
+                          <td key={mod.id} className="client-td-custom">
+                            {!c.pinned ? (
+                              <Link to={`/clients/${c.id}`} className="client-custom-col-link" title={mod.nombre_visible}>
+                                Abrir
+                              </Link>
+                            ) : "—"}
+                          </td>
+                        ))}
                         <td>
                           <div className="client-actions" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
                             <Link to={href} className="icon-btn client-action-view" title={t("clients.viewFile")}><Eye size={14} /></Link>

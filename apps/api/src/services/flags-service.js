@@ -34,7 +34,8 @@ function flagsMissing(error) {
 }
 
 /**
- * Resuelve todos los flags del usuario. Fallback vacío si 0051 no está aplicada.
+ * Resuelve flags estándar globales (sin custom de tenant).
+ * Preferir resolveSessionFlags cuando hay workspace activo.
  */
 export async function resolveAllFlags(supabase, userId) {
   if (!userId) return {};
@@ -51,9 +52,44 @@ export async function resolveAllFlags(supabase, userId) {
   }
 }
 
-export async function resolveFlag(supabase, userId, clave) {
+/**
+ * Flags de sesión tenant-aware: estándar + custom de la empresa del workspace.
+ * Fallback a resolver_all_flags si 0072 aún no está aplicada.
+ */
+export async function resolveSessionFlags(supabase, userId, workspaceId = null) {
+  if (!userId) return {};
+  try {
+    const { data, error } = await supabase.rpc("resolver_session_flags", {
+      p_usuario_id: userId,
+      p_workspace_id: workspaceId || null,
+    });
+    if (error) {
+      if (flagsMissing(error) || error.code === "PGRST202" || error.code === "42883") {
+        return resolveAllFlags(supabase, userId);
+      }
+      throw new ServiceError(error.message, 500);
+    }
+    return data && typeof data === "object" ? data : {};
+  } catch (err) {
+    if (err instanceof ServiceError) throw err;
+    return resolveAllFlags(supabase, userId);
+  }
+}
+
+export async function resolveFlag(supabase, userId, clave, workspaceId = null) {
   if (!userId || !clave) return false;
   try {
+    if (workspaceId) {
+      const { data, error } = await supabase.rpc("resolver_workspace_flag", {
+        p_clave: clave,
+        p_usuario_id: userId,
+        p_workspace_id: workspaceId,
+      });
+      if (!error) return data === true;
+      if (!flagsMissing(error) && error.code !== "PGRST202" && error.code !== "42883") {
+        throw new ServiceError(error.message, 500);
+      }
+    }
     const { data, error } = await supabase.rpc("resolver_flag", {
       p_clave: clave,
       p_usuario_id: userId,

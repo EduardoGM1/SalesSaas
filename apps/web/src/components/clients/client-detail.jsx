@@ -35,6 +35,9 @@ import { useSaleActions } from "@/hooks/use-sale-actions.js";
 import { useCalendarActions } from "@/hooks/use-calendar-actions.js";
 import { toast } from "@/lib/toast";
 import { selectOnFocus } from "@/lib/focus-select.js";
+import { useCustomModules } from "@/hooks/use-custom-modules.js";
+import { CustomModulePanel } from "@/components/custom-modules/CustomModulePanel.jsx";
+import { EXTENSION_POINTS } from "@/lib/custom-modules/extension-points.js";
 
 const NOTE_TYPE_OPTIONS = [
   ["nota", "exp.note.typeNote"],
@@ -62,6 +65,7 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
   const { can } = useUserPermissions();
   const { isEnabled, hasCatalog } = useFlags();
   const { active } = useWorkspace();
+  const { modules: customExpedienteModules } = useCustomModules(EXTENSION_POINTS.EXPEDIENTE_TAB);
   const isPersonalWorkspace = !active || active.tipo === "personal";
   const isGerenteSala = active?.tipo === "sala_de_venta" && active?.rol_en_workspace === "gerente";
   const toolAllowed = (toolKey) => {
@@ -525,6 +529,22 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
             </div>
           </CollapsibleSection>
         </div>
+
+        {!sharedRemote && customExpedienteModules.map((mod) => (
+          <CollapsibleSection
+            key={mod.id}
+            defaultOpen={false}
+            className="card exp-collapsible-card"
+            title={<div className="card-heading">{mod.nombre_visible || mod.clave}</div>}
+            subtitle="Módulo personalizado"
+          >
+            <CustomModulePanel
+              modulo={mod}
+              entidadId={id}
+              canEdit={canEdit}
+            />
+          </CollapsibleSection>
+        ))}
 
         <CollapsibleSection
           mobileOnly

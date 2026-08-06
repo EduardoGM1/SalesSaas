@@ -9437,3 +9437,21 @@ body,
   color: var(--saas-text-muted, #64748b);
   margin-bottom: 2px;
 }
+
+/* SchemaForm — motor schema_ui */
+.schema-form { display: flex; flex-direction: column; gap: 12px; }
+.schema-form-title { margin: 0; font-size: 1rem; font-weight: 650; }
+.schema-form-desc, .schema-form-help { margin: 0; font-size: 0.85rem; color: var(--muted2, #64748b); }
+.schema-form-fields { display: flex; flex-direction: column; gap: 12px; }
+.schema-form-field label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 4px; }
+.schema-form-check { display: inline-flex; align-items: center; gap: 8px; font-size: 0.9rem; }
+.schema-form-radio-group { display: flex; flex-direction: column; gap: 6px; }
+.schema-form-section { border: 1px solid var(--border, #e2e8f0); border-radius: 10px; padding: 12px; margin: 0; }
+.schema-form-section legend { padding: 0 6px; font-weight: 650; }
+.schema-form-tablist { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.schema-form-tablist button { border: 1px solid var(--border, #e2e8f0); background: transparent; border-radius: 8px; padding: 6px 10px; cursor: pointer; }
+.schema-form-tablist button.is-active { background: rgba(30, 94, 255, 0.1); border-color: var(--saas-primary, #1e5eff); color: var(--saas-primary, #1e5eff); }
+.schema-form-error { margin: 4px 0 0; color: var(--danger, #dc2626); font-size: 0.8rem; }
+.schema-form-empty { color: var(--muted2, #64748b); font-size: 0.9rem; padding: 8px 0; }
+.schema-form-actions { display: flex; justify-content: flex-end; margin-top: 4px; }
+.schema-form .input { width: 100%; }

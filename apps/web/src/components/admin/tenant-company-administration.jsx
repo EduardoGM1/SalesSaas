@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { Building2, Boxes, ShieldCheck, UsersRound } from "lucide-react";
+import { Building2, Boxes, Puzzle, ShieldCheck, UsersRound } from "lucide-react";
+import { EXTENSION_POINT_META } from "@/lib/custom-modules/extension-points.js";
 import {
   AdminCard,
   AdminDataView,
@@ -24,8 +25,16 @@ const TABS = [
   { id: "admins", label: "Administradores", icon: ShieldCheck },
   { id: "roles", label: "Puestos", icon: UsersRound },
   { id: "packages", label: "Paquetes", icon: Boxes },
+  { id: "modules", label: "Módulos custom", icon: Puzzle },
   { id: "branding", label: "Branding y plan", icon: Building2 },
 ];
+
+const EMPTY_MODULE_FORM = {
+  clave: "",
+  nombre_visible: "",
+  punto_extension: "expediente.tab",
+  schema_json: '{\n  "fields": [\n    { "key": "nota", "label": "Nota", "type": "textarea", "required": false }\n  ]\n}',
+};
 const EMPTY_COMPANIES = [];
 
 function companyOptionsFromContext(context) {
@@ -78,8 +87,9 @@ export function TenantCompanyAdministration({
     rooms: [],
     admins: [],
     roles: [],
-    packages: [],
+        packages: [],
     flags: [],
+    modulos: [],
     permissions: [],
   });
   const [roomForm, setRoomForm] = useState({ nombre: "", gerente: null });
@@ -87,6 +97,7 @@ export function TenantCompanyAdministration({
   const [roleForm, setRoleForm] = useState({ nombre: "", scope: "workspace", flag_keys: [] });
   const [editingRole, setEditingRole] = useState(null);
   const [packageForm, setPackageForm] = useState({ nombre: "", descripcion: "", flag_keys: [] });
+  const [moduleForm, setModuleForm] = useState(EMPTY_MODULE_FORM);
   const [memberForm, setMemberForm] = useState({ workspace_id: "", usuario: null, role_id: "" });
   const [brandForm, setBrandForm] = useState({ logo_url: "", primary: "#1e5eff", accent: "#0f2044", plan_paquete: "" });
   const [pending, setPending] = useState(false);
@@ -155,8 +166,9 @@ export function TenantCompanyAdministration({
       adminJson(`tenant/empresas/${companyId}/roles`),
       adminJson(`tenant/empresas/${companyId}/packages`),
       adminJson(`tenant/empresas/${companyId}/flags`),
+      adminJson(`tenant/empresas/${companyId}/modulos-custom`),
       adminJson(`tenant/empresas/${companyId}/permissions`),
-    ]).then(([overview, rooms, admins, roles, packages, flags, permissions]) => {
+    ]).then(([overview, rooms, admins, roles, packages, flags, modulos, permissions]) => {
       if (cancelled) return;
       setState({
         loading: false,
@@ -167,6 +179,9 @@ export function TenantCompanyAdministration({
         roles: Array.isArray(roles) ? roles : [],
         packages: Array.isArray(packages) ? packages : [],
         flags: Array.isArray(flags) ? flags : [],
+        modulos: Array.isArray(modulos)
+          ? modulos.filter((m) => m.tipo === "custom" && m.empresa_id === companyId)
+          : [],
         permissions: Array.isArray(permissions) ? permissions : [],
       });
     }).catch((error) => {
@@ -666,6 +681,91 @@ export function TenantCompanyAdministration({
                       </AdminStatusBadge>
                     ))}
                   </div>
+                </AdminCard>
+              ))}
+            </div>
+          </div>
+        ) : null}
+
+        {tab === "modules" ? (
+          <div className="admin-company-layout">
+            <AdminCard
+              title="Crear módulo custom"
+              subtitle="Solo visible para esta empresa. Actívalo en un Paquete de Acceso para que el puesto lo use."
+            >
+              <form
+                className="admin-inline-form"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  void mutate(async () => {
+                    let schema_ui = {};
+                    try {
+                      schema_ui = JSON.parse(moduleForm.schema_json || "{}");
+                    } catch {
+                      throw new Error("schema_ui debe ser JSON válido.");
+                    }
+                    await adminJson(`tenant/empresas/${companyId}/modulos-custom`, {
+                      method: "POST",
+                      body: {
+                        clave: moduleForm.clave.trim(),
+                        nombre_visible: moduleForm.nombre_visible.trim(),
+                        punto_extension: moduleForm.punto_extension || null,
+                        schema_ui,
+                      },
+                    });
+                    setModuleForm(EMPTY_MODULE_FORM);
+                  }, "Módulo custom creado");
+                }}
+              >
+                <input
+                  className="auth-input"
+                  placeholder="clave (ej. toy.checklist)"
+                  value={moduleForm.clave}
+                  onChange={(event) => setModuleForm((c) => ({ ...c, clave: event.target.value }))}
+                  required
+                />
+                <input
+                  className="auth-input"
+                  placeholder="Nombre visible"
+                  value={moduleForm.nombre_visible}
+                  onChange={(event) => setModuleForm((c) => ({ ...c, nombre_visible: event.target.value }))}
+                  required
+                />
+                <select
+                  className="auth-input"
+                  value={moduleForm.punto_extension}
+                  onChange={(event) => setModuleForm((c) => ({ ...c, punto_extension: event.target.value }))}
+                >
+                  {Object.entries(EXTENSION_POINT_META).map(([key, meta]) => (
+                    <option key={key} value={key}>{meta.label}</option>
+                  ))}
+                </select>
+                <textarea
+                  className="auth-input"
+                  rows={8}
+                  value={moduleForm.schema_json}
+                  onChange={(event) => setModuleForm((c) => ({ ...c, schema_json: event.target.value }))}
+                  spellCheck={false}
+                />
+                <button className="btn btn-primary" disabled={pending}>Crear módulo</button>
+              </form>
+            </AdminCard>
+            <div className="admin-room-cards">
+              {(state.modulos || []).length === 0 ? (
+                <AdminEmptyState title="Sin módulos custom" body="Crea el primero con el formulario. Luego inclúyelo en un paquete." />
+              ) : (state.modulos || []).map((mod) => (
+                <AdminCard
+                  key={mod.id}
+                  title={mod.nombre_visible}
+                  subtitle={mod.clave}
+                >
+                  <div className="admin-tenant-tag-list">
+                    <AdminStatusBadge tone="info">{mod.punto_extension || "sin punto"}</AdminStatusBadge>
+                    <AdminStatusBadge tone="info">custom</AdminStatusBadge>
+                  </div>
+                  <p className="admin-card-muted" style={{ marginTop: 8 }}>
+                    Campos: {Array.isArray(mod.schema_ui?.fields) ? mod.schema_ui.fields.length : 0}
+                  </p>
                 </AdminCard>
               ))}
             </div>

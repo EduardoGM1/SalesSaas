@@ -27,6 +27,7 @@ import * as workspaceOps from "../services/workspace-ops-service.js";
 import * as workflowService from "../services/workflow-service.js";
 import * as prospectParticipantsService from "../services/prospect-participants-service.js";
 import * as chatService from "../services/chat-service.js";
+import * as modulosCustomController from "../controllers/modulos-custom-controller.js";
 import { ServiceError } from "../lib/service-error.js";
 
 const router = Router();
@@ -110,6 +111,39 @@ router.post("/auth/workspace", async (req, res) => {
   if (!body) return;
   const workspaceId = body.workspace_id ?? body.workspaceId;
   await runService(res, () => sessionService.switchWorkspace(a.supabase, a.userId, workspaceId));
+});
+
+/** Módulos custom habilitados en el workspace activo (metadata + schema_ui). */
+router.get("/custom-modules", async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  await runService(
+    res,
+    () => modulosCustomController.listarModulosWorkspace(a, req.query),
+    { wrap: "data" },
+  );
+});
+
+router.get("/custom-modules/:moduloId/datos", async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  await runService(
+    res,
+    () => modulosCustomController.obtenerDatosEntidad(a, req.params.moduloId, req.query),
+    { wrap: "data" },
+  );
+});
+
+router.put("/custom-modules/:moduloId/datos", async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  const body = parseJsonBody(req, res);
+  if (!body) return;
+  await runService(
+    res,
+    () => modulosCustomController.guardarDatosEntidad(a, req.params.moduloId, body),
+    { wrap: "data" },
+  );
 });
 
 router.get("/workspace/team", async (req, res) => {

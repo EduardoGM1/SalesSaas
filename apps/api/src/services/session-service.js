@@ -2,7 +2,7 @@ import { ServiceError } from "../lib/service-error.js";
 import { getCurrentMembership, listPremiumFeatures } from "./membership-service.js";
 import { resolveUserPermissions } from "@salesapp/shared/auth/resolve-permissions.js";
 import { VENDEDOR_DEFAULT_PERMISSIONS } from "@salesapp/shared/auth/permission-catalog.js";
-import { resolveAllFlags } from "./flags-service.js";
+import { resolveSessionFlags } from "./flags-service.js";
 import * as workspaceService from "./workspace-service.js";
 
 async function loadRolePermissionKeys(supabase, roleId) {
@@ -171,7 +171,8 @@ export async function getSession(supabase, userId) {
 
   let flags = {};
   try {
-    flags = await resolveAllFlags(supabase, userId);
+    // Tenant-aware: estándar + custom de la empresa del workspace activo (nunca otros tenants).
+    flags = await resolveSessionFlags(supabase, userId, workspaceActivoId);
   } catch {
     flags = {};
   }

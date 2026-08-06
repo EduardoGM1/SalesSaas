@@ -3,9 +3,9 @@ import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { watchSession } from "@/lib/session-api.js";
 
 /**
- * Motor único de feature flags (sesión → resolver_flag en API).
- * Si la migración 0051 aún no está, `flags` llega vacío y `readyFlags` es false
- * → los gates deben degradar a legacy (permisos/plan).
+ * Motor único de feature flags (sesión → resolver_session_flags en API).
+ * La sesión solo incluye flags estándar + custom de la empresa del workspace activo.
+ * Si el catálogo aún no está, `hasCatalog` es false → gates degradan a legacy.
  */
 export function useFlags() {
   const [flags, setFlags] = useState(null);

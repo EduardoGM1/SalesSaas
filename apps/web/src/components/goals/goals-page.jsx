@@ -1,14 +1,18 @@
 import { useMemo, useState } from "react";
-import { BarChart3, Calendar, List, Tag, Target, TrendingUp } from "lucide-react";
+import { BarChart3, Calendar, List, Puzzle, Tag, Target, TrendingUp } from "lucide-react";
 import { Topbar } from "@/components/layout/topbar";
 import { PageBack } from "@/components/layout/page-back";
 import { DashboardChart } from "@/components/goals/dashboard-chart";
 import { DashboardKpiCard } from "@/components/goals/dashboard-kpi-card.jsx";
 import { CollapsibleSection } from "@/components/ui/collapsible-section.jsx";
+import { CustomModulePanel } from "@/components/custom-modules/CustomModulePanel.jsx";
 import { getDashboardWeeks, normalizeGoal, workingDaysRemaining } from "@/lib/calculations/calendar";
 import { productionTourSaleCounts } from "@/lib/calculations/tour-summary";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { useMoney } from "@/hooks/use-money.js";
+import { useWorkspace } from "@/hooks/use-workspace.js";
+import { useCustomModules } from "@/hooks/use-custom-modules.js";
+import { EXTENSION_POINTS } from "@/lib/custom-modules/extension-points.js";
 import { calKey } from "@/lib/format/dates";
 import { DEFAULT_TOUR_TYPES, EMPTY_CAL_MONTH } from "@/lib/store-empty.js";
 import { useAppStore } from "@/stores/app-store";
@@ -17,6 +21,8 @@ import { shallow } from "zustand/shallow";
 
 export function GoalsPage() {
   const { t, months } = useI18n();
+  const { active } = useWorkspace();
+  const { modules: dashboardModules } = useCustomModules(EXTENSION_POINTS.DASHBOARD_SALA_BLOQUE);
   const { fmt, fmtN, settings: moneySettings } = useMoney();
   /** Formato KPI: "5,000 USD" (número + espacio + código). */
   const kpiMoney = (n) => `${fmtN(n)} ${moneySettings.currency || "USD"}`;
@@ -148,6 +154,13 @@ export function GoalsPage() {
           <DashboardKpiCard icon={TrendingUp} label={t("goals.efficiency")} value={kpiMoney(efic)} />
         </div>
       </div>
+
+      {active?.tipo === "sala_de_venta" && dashboardModules.map((mod) => (
+        <div key={mod.id} className="dash-data-card">
+          <div className="dash-card-title"><Puzzle size={18} color="#2563eb" /> {mod.nombre_visible || mod.clave}</div>
+          <CustomModulePanel modulo={mod} entidadId={active.id} canEdit />
+        </div>
+      ))}
     </div>
   );
 
