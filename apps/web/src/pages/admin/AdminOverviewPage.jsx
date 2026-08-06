@@ -15,7 +15,7 @@ import {
 import { useAdminFetch } from "@/hooks/use-admin-session.js";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { useMoney } from "@/hooks/use-money.js";
-import { hasPermission } from "@/lib/auth/permissions";
+import { adminPermissionSetHas, expandAdminPermissionSet } from "@/lib/auth/permissions";
 import { narrateAdminLogSummary } from "@/lib/admin/log-narrative.js";
 
 function formatMinutes(mins, t) {
@@ -94,7 +94,8 @@ export function AdminOverviewPage() {
       ? `tenant/workspaces/${scopedId}/overview`
       : "overview";
   const { loading, data, error } = useAdminFetch(overviewPath);
-  const canSeeLogs = Boolean(session?.isSuperAdmin || hasPermission(session?.profile, "ver_logs"));
+  const permSet = expandAdminPermissionSet(session?.permissions || session?.profile?.admin_permissions || []);
+  const canSeeLogs = Boolean(session?.isSuperAdmin || adminPermissionSetHas(permSet, "ver_logs"));
   const canSeeCompanies = Boolean(session?.isSuperAdmin);
 
   const generated = data?.generatedAt

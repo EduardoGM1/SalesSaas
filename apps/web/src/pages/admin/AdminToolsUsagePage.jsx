@@ -7,8 +7,8 @@ import { AdminToolsTrendChart } from "@/components/admin/admin-tools-trend-chart
 import { AdminChartCard, AdminKpiCard, AdminPageHeader, AdminPageState } from "@/components/admin/admin-ui.jsx";
 import { useAdminFetch } from "@/hooks/use-admin-session.js";
 import { useAdminViewPref } from "@/hooks/use-admin-view-pref.js";
-import { parseAdminFilters } from "@/lib/admin/filters";
-import { isSuperAdmin } from "@/lib/auth/permissions";
+import { parseAdminFilters, filtersToSearchParams } from "@/lib/admin/filters";
+import { adminPermissionSetHas, expandAdminPermissionSet, isSuperAdmin } from "@/lib/auth/permissions";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { useMoney } from "@/hooks/use-money.js";
 
@@ -33,6 +33,9 @@ export function AdminToolsUsagePage() {
   const canUseTableView = Boolean(
     session?.isSuperAdmin || (session?.profile && isSuperAdmin(session.profile)),
   );
+  const permSet = expandAdminPermissionSet(session?.permissions || session?.profile?.admin_permissions || []);
+  const canExport = Boolean(session?.isSuperAdmin || adminPermissionSetHas(permSet, "metricas.export_csv"));
+  const exportHref = `/api/v1/admin/export/metrics${filtersToSearchParams(filters)}`;
   const byToolMode = canUseTableView ? byToolView : "chart";
   const trendMode = canUseTableView ? trendView : "chart";
 
@@ -45,7 +48,7 @@ export function AdminToolsUsagePage() {
   return (
     <div className="admin-page admin-system-page">
       <AdminPageHeader eyebrow="Adopción" title={t("admin.tools.title")} subtitle={t("admin.tools.sub")} />
-      <AdminFiltersBar filters={filters} sellers={sellers} />
+      <AdminFiltersBar filters={filters} sellers={sellers} exportHref={canExport ? exportHref : undefined} />
       <AdminPageState loading={toolsState.loading || sellersState.loading} error={toolsState.error} skeleton="overview">
         <>
       <div className="admin-tools-kpis">

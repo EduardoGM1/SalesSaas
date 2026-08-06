@@ -80,25 +80,28 @@ router.get("/me", async (req, res) => {
   if (error || !profile || (profile.role !== "admin" && !tenantContext)) {
     return apiError(res, "No autorizado.", 403);
   }
+  const isPlatformAdmin = profile.role === "admin";
   const adminProfile = {
     id: profile.id,
-    role: tenantContext ? "admin" : profile.role,
+    role: isPlatformAdmin || tenantContext ? "admin" : profile.role,
     is_super_admin: profile.is_super_admin ?? false,
     admin_permissions: profile.admin_permissions ?? [],
   };
-  // Preferir keys del rol (catálogo nuevo); fallback a admin_permissions legacy.
+
+  // Plataforma: rol ∪ overrides ∪ admin_permissions (nunca pisar con tenant).
+  // Solo-tenant (empresa/sala sin role admin): permisos del alcance tenant.
   let permissionKeys = effectivePermissions(adminProfile);
-  if (tenantContext?.permissions?.length) {
-    permissionKeys = tenantContext.permissions;
-  }
-  if (!tenantContext) {
+  if (isPlatformAdmin) {
     try {
       const ctx = await rolesService.loadUserPermissionContext(base.supabase, base.userId);
       if (ctx?.permission_keys?.length) permissionKeys = ctx.permission_keys;
     } catch {
       // fallback legacy
     }
+  } else if (tenantContext?.permissions?.length) {
+    permissionKeys = tenantContext.permissions;
   }
+
   if (isSuperAdmin(adminProfile)) {
     for (const k of [
       "ver_resumen",
@@ -121,7 +124,7 @@ router.get("/me", async (req, res) => {
       if (!permissionKeys.includes(k)) permissionKeys = [...permissionKeys, k];
     }
   }
-  // Acceso: legacy admin_permissions O al menos una key de pestaña del rol.
+
   if (
     !isSuperAdmin(adminProfile)
     && !hasAnyAdminAccess(adminProfile)
@@ -129,12 +132,16 @@ router.get("/me", async (req, res) => {
   ) {
     return apiError(res, "No autorizado.", 403);
   }
+
+  // Admin de sistema siempre opera el panel de plataforma (aunque también sea gerente de sala).
+  const scope = isPlatformAdmin ? "plataforma" : (tenantContext?.scope || "plataforma");
+
   json(res, {
     profile: { ...adminProfile, role_id: profile.role_id ?? null },
     permissions: permissionKeys,
     isSuperAdmin: isSuperAdmin(adminProfile),
     userId: base.userId,
-    scope: tenantContext?.scope || "plataforma",
+    scope,
     empresaIds: tenantContext?.empresa_ids || [],
     workspaceIds: tenantContext?.workspace_ids || [],
   });
@@ -751,6 +758,104 @@ router.get("/tools-usage", async (req, res) => {
     json(res, { data });
   } catch (err) {
     apiError(res, err instanceof Error ? err.message : "Error al cargar uso de herramientas.", 500);
+  }
+});
+
+router.get("/export/goals", async (req, res) => {
+  const a = await adminAuth(req, res, "metas.export_csv");
+  if (!a) return;
+  try {
+    const filters = parseAdminFilters(req.query);
+    const goals = await getGoals(a.supabase, filters);
+    const csv = toCsv(
+      ["Vendedor", "Año", "Mes", "Volumen", "Tours", "Ventas", "Días", "Descansos"],
+      goals.map((g) => [g.seller, g.year, g.month, g.vol, g.tours, g.ventas, g.dias, g.descansos]),
+    );
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader("Content-Disposition", 'attachment; filename="metas.csv"');
+    res.send(csv);
+  } catch (err) {
+    apiError(res, err instanceof Error ? err.message : "Error al exportar.", 500);
+  }
+});
+
+router.get("/export/metas", async (req, res) => {
+  const a = await adminAuth(req, res, "metas.export_csv");
+  if (!a) return;
+  try {
+    const filters = parseAdminFilters(req.query);
+    const goals = await getGoals(a.supabase, filters);
+    const csv = toCsv(
+      ["Vendedor", "Año", "Mes", "Volumen", "Tours", "Ventas", "Días", "Descansos"],
+      goals.map((g) => [g.seller, g.year, g.month, g.vol, g.tours, g.ventas, g.dias, g.descansos]),
+    );
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader("Content-Disposition", 'attachment; filename="metas.csv"');
+    res.send(csv);
+  } catch (err) {
+    apiError(res, err instanceof Error ? err.message : "Error al exportar.", 500);
+  }
+});
+
+router.get("/export/metrics", async (req, res) => {
+  const a = await adminAuth(req, res, "metricas.export_csv");
+  if (!a) return;
+  try {
+    const filters = parseAdminFilters(req.query);
+    const data = await getToolsUsage(a.supabase, filters);
+    const csv = toCsv(
+      ["Herramienta", "Guardados", "Usuarios únicos", "Libre", "Vinculados"],
+      (data.byTool || []).map((row) => [
+        row.tool,
+        row.saves,
+        row.uniqueUsers,
+        row.libre,
+        row.linked,
+      ]),
+    );
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader("Content-Disposition", 'attachment; filename="metricas.csv"');
+    res.send(csv);
+  } catch (err) {
+    apiError(res, err instanceof Error ? err.message : "Error al exportar.", 500);
+  }
+});
+
+router.get("/export/support", async (req, res) => {
+  const a = await adminAuth(req, res, "soporte.export_csv");
+  if (!a) return;
+  try {
+    const status = typeof req.query.status === "string" ? req.query.status : undefined;
+    const statusFilter = status && status !== "all" ? status : undefined;
+    const items = [];
+    for (let offset = 0; offset < 5000; offset += 100) {
+      const data = await supportService.listSupportRequestsForAdmin(a.supabase, {
+        status: statusFilter,
+        limit: 100,
+        offset,
+      });
+      const batch = Array.isArray(data?.items) ? data.items : [];
+      items.push(...batch);
+      if (batch.length < 100) break;
+    }
+    const csv = toCsv(
+      ["ID", "Estado", "Tipo", "Área", "Usuario", "Email", "Creado", "Actualizado"],
+      items.map((t) => [
+        t.id,
+        t.status,
+        t.request_type_label || t.request_type || "",
+        t.app_area_label || t.app_area || "",
+        t.user?.name || "",
+        t.user?.email || "",
+        t.created_at || "",
+        t.updated_at || "",
+      ]),
+    );
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader("Content-Disposition", 'attachment; filename="soporte.csv"');
+    res.send(csv);
+  } catch (err) {
+    apiError(res, err instanceof Error ? err.message : "Error al exportar.", 500);
   }
 });
 

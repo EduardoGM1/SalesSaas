@@ -1,9 +1,10 @@
 import { useMemo } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useOutletContext, useSearchParams } from "react-router-dom";
 import { AdminFiltersBar } from "@/components/admin/admin-filters-bar.jsx";
 import { AdminDataView, AdminPageHeader, AdminPageState } from "@/components/admin/admin-ui.jsx";
 import { useAdminFetch } from "@/hooks/use-admin-session.js";
-import { parseAdminFilters } from "@/lib/admin/filters";
+import { parseAdminFilters, filtersToSearchParams } from "@/lib/admin/filters";
+import { adminPermissionSetHas, expandAdminPermissionSet } from "@/lib/auth/permissions";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { useMoney } from "@/hooks/use-money.js";
 
@@ -12,11 +13,15 @@ const MONTHS = ["", "Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep
 export function AdminGoalsPage() {
   const { t } = useI18n();
   const { fmt, fmtN } = useMoney();
+  const session = useOutletContext();
   const [searchParams] = useSearchParams();
   const filters = useMemo(() => parseAdminFilters(Object.fromEntries(searchParams.entries())), [searchParams]);
   const search = searchParams.toString() ? `?${searchParams.toString()}` : "";
   const goalsState = useAdminFetch("goals", search);
   const sellersState = useAdminFetch("sellers");
+  const permSet = expandAdminPermissionSet(session?.permissions || session?.profile?.admin_permissions || []);
+  const canExport = Boolean(session?.isSuperAdmin || adminPermissionSetHas(permSet, "metas.export_csv"));
+  const exportHref = `/api/v1/admin/export/goals${filtersToSearchParams(filters)}`;
 
   const goals = goalsState.data ?? [];
   const sellers = sellersState.data ?? [];
@@ -24,7 +29,7 @@ export function AdminGoalsPage() {
   return (
     <div className="admin-page admin-system-page">
       <AdminPageHeader eyebrow="Objetivos" title={t("admin.goals.title")} subtitle={t("admin.goals.sub")} meta={<span>{goals.length} metas visibles</span>} />
-      <AdminFiltersBar filters={filters} sellers={sellers} />
+      <AdminFiltersBar filters={filters} sellers={sellers} exportHref={canExport ? exportHref : undefined} />
       <AdminPageState loading={goalsState.loading || sellersState.loading} error={goalsState.error}>
         <AdminDataView empty={!goals.length} emptyTitle={t("admin.goals.empty")}>
           <div className="client-table-card admin-system-table">

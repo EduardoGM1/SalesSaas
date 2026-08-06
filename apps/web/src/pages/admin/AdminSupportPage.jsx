@@ -4,7 +4,7 @@ import { useI18n } from "@/hooks/use-i18n.js";
 import { longDate } from "@/lib/format/dates";
 import { PageBack } from "@/components/layout/page-back";
 import { AdminDataView, AdminPageHeader, AdminPageState } from "@/components/admin/admin-ui.jsx";
-import { hasPermission } from "@/lib/auth/permissions";
+import { adminPermissionSetHas, expandAdminPermissionSet } from "@/lib/auth/permissions";
 
 const STATUS_OPTIONS = [
   { id: "all", labelKey: "admin.support.filterAll" },
@@ -67,10 +67,14 @@ export function AdminSupportPage() {
   const [replyDraft, setReplyDraft] = useState({});
   const [replyBusy, setReplyBusy] = useState(null);
 
+  const permSet = expandAdminPermissionSet(session?.permissions || session?.profile?.admin_permissions || []);
   const canReply = Boolean(
-    session?.isSuperAdmin
-    || (session?.profile && hasPermission(session.profile, "gestionar_soporte")),
+    session?.isSuperAdmin || adminPermissionSetHas(permSet, "gestionar_soporte"),
   );
+  const canExport = Boolean(
+    session?.isSuperAdmin || adminPermissionSetHas(permSet, "soporte.export_csv"),
+  );
+  const exportHref = `/api/v1/admin/export/support${status && status !== "all" ? `?status=${encodeURIComponent(status)}` : ""}`;
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -141,6 +145,9 @@ export function AdminSupportPage() {
       <div className="page-toolbar page-toolbar--between">
         <PageBack inline fallback="/admin" />
         <div className="admin-support-filters">
+          {canExport ? (
+            <a href={exportHref} className="btn btn-ghost btn-sm">{t("admin.filters.exportCsv")}</a>
+          ) : null}
           <label className="admin-support-filter-label" htmlFor="support-status-filter">
             {t("admin.support.filter")}
           </label>
