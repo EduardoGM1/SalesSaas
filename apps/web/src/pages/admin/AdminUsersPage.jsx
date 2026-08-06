@@ -524,7 +524,8 @@ export function AdminUsersPage() {
         icon: <Shield size={15} />,
         href: userAdminUrl(filters, { editPerms: user.id }),
       },
-      caps.canFeatures && canMutatePeer && user.role !== "admin" && !user.is_super_admin && {
+      // Superadmin: funciones de cualquier no-superadmin. Delegados: solo no-admins.
+      caps.canFeatures && !user.is_super_admin && (viewerIsSuper || !targetIsAdmin) && {
         id: "features",
         label: t("admin.users.action.features"),
         icon: <Layers size={15} />,
@@ -623,7 +624,8 @@ export function AdminUsersPage() {
           onDone={(err) => refresh(err)}
         />
       )}
-      {featuresUser && caps.canFeatures && featuresUser.role !== "admin" && !featuresUser.is_super_admin && (
+      {featuresUser && caps.canFeatures && !featuresUser.is_super_admin
+        && (viewerIsSuper || featuresUser.role !== "admin") && (
         <VendorFeaturesModal
           user={featuresUser}
           onClose={() => navigate(returnTo, { replace: true })}
