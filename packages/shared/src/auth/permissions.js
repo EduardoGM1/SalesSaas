@@ -25,6 +25,7 @@ const EXPORT_ADMIN_PERMISSIONS = [
 const SENSITIVE_USER_ADMIN_PERMISSIONS = [
   { key: "usuarios.cambiar_plan", label: "Cambiar plan de usuario" },
   { key: "usuarios.desactivar_cuenta", label: "Desactivar / activar cuentas" },
+  { key: "usuarios.gestionar_permisos", label: "Gestionar permisos y funciones" },
 ];
 
 /** Claves asignables en el modal de permisos admin (secciones + exports + sensibles). */

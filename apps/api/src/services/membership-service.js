@@ -61,6 +61,11 @@ export async function assignMembership(userId, planNombre, options = {}) {
   if (planKey !== "basico" && planKey !== "pro") {
     throw new ServiceError("Plan no válido.", 400);
   }
+  if (options.actorProfile && options.supabase) {
+    const { assertCanMutateTargetUser, loadTargetProfile } = await import("../lib/admin-peer-guard.js");
+    const target = await loadTargetProfile(options.supabase, userId);
+    assertCanMutateTargetUser(options.actorProfile, target, "cambios de plan");
+  }
   const serviceSb = createServiceSupabaseClient();
   if (!serviceSb) throw new ServiceError("Service role no configurado.", 500);
 

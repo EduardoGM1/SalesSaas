@@ -222,8 +222,18 @@ export async function setUserRoleId(supabase, adminProfile, targetId, roleId, ac
   return data;
 }
 
-export async function setUserOverrides(supabase, adminProfile, targetId, overrides, actorId = null, { skipAudit = false } = {}) {
-  assertSuperAdmin(adminProfile);
+export async function setUserOverrides(
+  supabase,
+  adminProfile,
+  targetId,
+  overrides,
+  actorId = null,
+  { skipAudit = false, allowDelegated = false } = {},
+) {
+  if (!allowDelegated) assertSuperAdmin(adminProfile);
+  else if (!adminProfile || (adminProfile.role !== "admin" && !isSuperAdmin(adminProfile))) {
+    throw new ServiceError("No autorizado.", 403);
+  }
   if (!targetId) throw new ServiceError("Usuario inválido.");
   // Solo aditivos: descartar denies (otorgado=false).
   const list = (Array.isArray(overrides) ? overrides : []).filter((o) => o && o.otorgado === true && o.clave);
@@ -251,7 +261,7 @@ export async function setUserOverrides(supabase, adminProfile, targetId, overrid
  * - No crea denies; quitar una feature del rol requiere cambiar el rol.
  */
 export async function setUserFeatureAllowlist(supabase, adminProfile, targetId, enabledKeys, options = {}) {
-  assertSuperAdmin(adminProfile);
+  if (!options.allowDelegated) assertSuperAdmin(adminProfile);
   const raw = (Array.isArray(enabledKeys) ? enabledKeys : []).filter((k) =>
     OVERRIDABLE_APP_FEATURES.includes(k),
   );
@@ -273,6 +283,7 @@ export async function setUserFeatureAllowlist(supabase, adminProfile, targetId, 
   merged.push(...featureOverrides);
   return setUserOverrides(supabase, adminProfile, targetId, merged, options.actorId || null, {
     skipAudit: options.skipAudit === true,
+    allowDelegated: options.allowDelegated === true,
   });
 }
 

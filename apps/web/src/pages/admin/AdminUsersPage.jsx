@@ -422,6 +422,7 @@ export function AdminUsersPage() {
   const canExportUsers = viewerIsSuper || adminPermissionSetHas(permSet, "usuarios.export_csv");
   const canChangePlan = viewerIsSuper || adminPermissionSetHas(permSet, "usuarios.cambiar_plan");
   const canToggleAccount = viewerIsSuper || adminPermissionSetHas(permSet, "usuarios.desactivar_cuenta");
+  const canManageFeatures = viewerIsSuper || adminPermissionSetHas(permSet, "usuarios.gestionar_permisos");
   const { data: rolesData } = useAdminFetch(canManageUsers ? "roles" : null, canManageUsers ? `?_=${reloadKey}` : "");
 
   const caps = {
@@ -429,13 +430,21 @@ export function AdminUsersPage() {
     canChangePlan,
     canDeactivate: canToggleAccount,
     canActivate: canToggleAccount,
-    canPermissions: canManageUsers,
+    /** Permisos del panel admin: solo Superadmin. */
+    canPermissions: viewerIsSuper,
+    /** Funciones de app (no-admin): Superadmin o permiso sensible. */
+    canFeatures: canManageFeatures,
   };
 
   const assignableRoles = useMemo(() => {
     const list = Array.isArray(rolesData) ? rolesData : [];
-    return list.filter((r) => r.slug !== "superadmin");
-  }, [rolesData]);
+    return list.filter((r) => {
+      if (r.slug === "superadmin") return false;
+      // Solo Superadmin puede otorgar el rol Admin.
+      if (r.slug === "admin" && !viewerIsSuper) return false;
+      return true;
+    });
+  }, [rolesData, viewerIsSuper]);
 
   const confirmKind = searchParams.get("confirm");
   const confirmUserId = searchParams.get("userId");
@@ -475,10 +484,13 @@ export function AdminUsersPage() {
     setReloadKey((k) => k + 1);
   };
 
-  const hasActions = caps.canRole || caps.canChangePlan || caps.canDeactivate || caps.canActivate || caps.canPermissions;
+  const hasActions = caps.canRole || caps.canChangePlan || caps.canDeactivate || caps.canActivate || caps.canPermissions || caps.canFeatures;
   const userActions = (user) => {
     const isSelf = user.id === session?.userId;
-    const roleReadOnly = !caps.canRole || user.is_super_admin || isSelf;
+    const targetIsAdmin = user.role === "admin" || user.is_super_admin;
+    // Entre admins solo el Superadmin puede mutar (rol, plan, cuenta, permisos, funciones).
+    const canMutatePeer = viewerIsSuper || !targetIsAdmin;
+    const roleReadOnly = !caps.canRole || user.is_super_admin || isSelf || !canMutatePeer;
     return [
       caps.canRole && !roleReadOnly && {
         id: "change-role",
@@ -487,20 +499,20 @@ export function AdminUsersPage() {
         disabled: !user.is_active || assignableRoles.length === 0,
         href: userAdminUrl(filters, { editRole: user.id }),
       },
-      caps.canChangePlan && (!user.is_super_admin || isSelf) && {
+      caps.canChangePlan && canMutatePeer && (!user.is_super_admin || isSelf) && {
         id: "change-plan",
         label: t("admin.users.action.changePlan"),
         icon: <CreditCard size={15} />,
         href: userAdminUrl(filters, { editMembership: user.id }),
       },
-      !isSelf && !user.is_super_admin && caps.canDeactivate && user.is_active && {
+      !isSelf && canMutatePeer && !user.is_super_admin && caps.canDeactivate && user.is_active && {
         id: "deactivate",
         label: t("admin.users.action.deactivate"),
         icon: <IconUserX size={15} />,
         href: userAdminUrl(filters, { confirm: "deactivate", userId: user.id }),
         danger: true,
       },
-      !isSelf && !user.is_super_admin && caps.canActivate && !user.is_active && {
+      !isSelf && canMutatePeer && !user.is_super_admin && caps.canActivate && !user.is_active && {
         id: "activate",
         label: t("admin.users.action.activate"),
         icon: <IconUserCheck size={15} />,
@@ -512,7 +524,7 @@ export function AdminUsersPage() {
         icon: <Shield size={15} />,
         href: userAdminUrl(filters, { editPerms: user.id }),
       },
-      caps.canPermissions && !user.is_super_admin && {
+      caps.canFeatures && canMutatePeer && user.role !== "admin" && !user.is_super_admin && {
         id: "features",
         label: t("admin.users.action.features"),
         icon: <Layers size={15} />,
@@ -573,7 +585,8 @@ export function AdminUsersPage() {
           </div>
         </AdminDataView>
       </AdminPageState>
-      {rolePickerUser && caps.canRole && !rolePickerUser.is_super_admin && rolePickerUser.id !== session?.userId ? (
+      {rolePickerUser && caps.canRole && !rolePickerUser.is_super_admin && rolePickerUser.id !== session?.userId
+        && (viewerIsSuper || rolePickerUser.role !== "admin") ? (
         <RolePickerModal
           user={rolePickerUser}
           roles={assignableRoles}
@@ -581,7 +594,8 @@ export function AdminUsersPage() {
           onContinue={(roleId) => navigate(userAdminUrl(filters, { confirm: "role", userId: rolePickerUser.id, newRoleId: roleId }))}
         />
       ) : null}
-      {confirmUser && confirmKind === "role" && caps.canRole && !confirmUser.is_super_admin && (
+      {confirmUser && confirmKind === "role" && caps.canRole && !confirmUser.is_super_admin
+        && (viewerIsSuper || confirmUser.role !== "admin") && (
         <ConfirmModal
           kind={confirmKind}
           user={confirmUser}
@@ -591,7 +605,8 @@ export function AdminUsersPage() {
           onDone={(err) => refresh(err)}
         />
       )}
-      {confirmUser && ["deactivate", "activate"].includes(confirmKind) && (caps.canDeactivate || caps.canActivate) && !confirmUser.is_super_admin && (
+      {confirmUser && ["deactivate", "activate"].includes(confirmKind) && (caps.canDeactivate || caps.canActivate)
+        && !confirmUser.is_super_admin && (viewerIsSuper || confirmUser.role !== "admin") && (
         <ConfirmModal
           kind={confirmKind}
           user={confirmUser}
@@ -608,14 +623,16 @@ export function AdminUsersPage() {
           onDone={(err) => refresh(err)}
         />
       )}
-      {featuresUser && caps.canPermissions && !featuresUser.is_super_admin && (
+      {featuresUser && caps.canFeatures && featuresUser.role !== "admin" && !featuresUser.is_super_admin && (
         <VendorFeaturesModal
           user={featuresUser}
           onClose={() => navigate(returnTo, { replace: true })}
           onDone={(err) => refresh(err)}
         />
       )}
-      {membershipUser && caps.canChangePlan && (!membershipUser.is_super_admin || membershipUser.id === session?.userId) && (
+      {membershipUser && caps.canChangePlan
+        && (viewerIsSuper || membershipUser.role !== "admin")
+        && (!membershipUser.is_super_admin || membershipUser.id === session?.userId) && (
         <MembershipModal
           user={membershipUser}
           onClose={() => navigate(returnTo, { replace: true })}

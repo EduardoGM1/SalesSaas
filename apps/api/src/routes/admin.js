@@ -120,6 +120,7 @@ router.get("/me", async (req, res) => {
       "soporte.export_csv",
       "usuarios.cambiar_plan",
       "usuarios.desactivar_cuenta",
+      "usuarios.gestionar_permisos",
     ]) {
       if (!permissionKeys.includes(k)) permissionKeys = [...permissionKeys, k];
     }
@@ -892,7 +893,11 @@ router.patch("/users/:id/role", async (req, res) => {
   const body = parseJsonBody(req, res);
   if (!body) return;
   const role = typeof body.role === "string" ? body.role : "";
-  await runService(res, () => adminUsersService.updateUserRole(a.supabase, req.params.id, role, a.userId), { wrap: "data" });
+  await runService(
+    res,
+    () => adminUsersService.updateUserRole(a.supabase, req.params.id, role, a.userId, a.profile),
+    { wrap: "data" },
+  );
 });
 
 router.patch("/users/:id/status", async (req, res) => {
@@ -903,11 +908,15 @@ router.patch("/users/:id/status", async (req, res) => {
   const isActive = body.is_active ?? body.isActive;
   const a = await requireApiAdmin(base, "usuarios.desactivar_cuenta");
   if (!a.ok) return apiError(res, a.message, a.status);
-  await runService(res, () => adminUsersService.updateUserStatus(a.supabase, req.params.id, isActive, a.userId), { wrap: "data" });
+  await runService(
+    res,
+    () => adminUsersService.updateUserStatus(a.supabase, req.params.id, isActive, a.userId, a.profile),
+    { wrap: "data" },
+  );
 });
 
 router.patch("/users/:id/permissions", async (req, res) => {
-  const a = await adminAuth(req, res, "gestionar_usuarios");
+  const a = await requireSuperAdminApi(req, res);
   if (!a) return;
   const body = parseJsonBody(req, res);
   if (!body) return;
@@ -916,12 +925,22 @@ router.patch("/users/:id/permissions", async (req, res) => {
 });
 
 router.patch("/users/:id/features", async (req, res) => {
-  const a = await adminAuth(req, res, "gestionar_usuarios");
+  const a = await adminAuth(req, res, null);
   if (!a) return;
+  if (!a.isSuperAdmin) {
+    const set = expandAdminPermissionSet(a.permissions || []);
+    if (!adminPermissionSetHas(set, "usuarios.gestionar_permisos")) {
+      return apiError(res, "No tienes permiso para gestionar funciones de usuario.", 403);
+    }
+  }
   const body = parseJsonBody(req, res);
   if (!body) return;
   const raw = Array.isArray(body.features) ? body.features : Array.isArray(body.permissions) ? body.permissions : [];
-  await runService(res, () => adminUsersService.updateUserFeatures(a.supabase, a.profile, req.params.id, raw, a.userId), { wrap: "data" });
+  await runService(
+    res,
+    () => adminUsersService.updateUserFeatures(a.supabase, a.profile, req.params.id, raw, a.userId, a.permissions),
+    { wrap: "data" },
+  );
 });
 
 /** Asignar plan basico/pro (histórico de membresías). */
@@ -933,7 +952,11 @@ router.patch("/users/:id/membership", async (req, res) => {
   const plan = body.plan ?? body.planNombre ?? body.nombre;
   await runService(
     res,
-    () => membershipService.assignMembership(req.params.id, plan, { changedBy: a.userId }),
+    () => membershipService.assignMembership(req.params.id, plan, {
+      changedBy: a.userId,
+      actorProfile: a.profile,
+      supabase: a.supabase,
+    }),
     { wrap: "data" },
   );
 });

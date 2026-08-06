@@ -71,6 +71,7 @@ export const PERMISSION_CATALOG = [
   // Acciones sensibles de cuenta (solo Superadmin puede asignarlas)
   { clave: "usuarios.cambiar_plan", nombre_visible: "Cambiar plan de usuario", modulo: "admin", capa: "admin" },
   { clave: "usuarios.desactivar_cuenta", nombre_visible: "Desactivar / activar cuentas", modulo: "admin", capa: "admin" },
+  { clave: "usuarios.gestionar_permisos", nombre_visible: "Gestionar permisos y funciones", modulo: "admin", capa: "admin" },
   // Excepción: métricas financieras por usuario (no es pestaña)
   {
     clave: "ver_metricas_financieras_usuarios",

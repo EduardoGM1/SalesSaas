@@ -23,6 +23,7 @@ export const EXPORT_ADMIN_PERMISSIONS = [
 export const SENSITIVE_USER_ADMIN_PERMISSIONS = [
   { key: "usuarios.cambiar_plan", labelKey: "admin.perm.cambiarPlan" },
   { key: "usuarios.desactivar_cuenta", labelKey: "admin.perm.desactivarCuenta" },
+  { key: "usuarios.gestionar_permisos", labelKey: "admin.perm.gestionarPermisos" },
 ] as const;
 
 export const ASSIGNABLE_ADMIN_PERMISSIONS = [
