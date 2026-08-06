@@ -19,9 +19,16 @@ export const EXPORT_ADMIN_PERMISSIONS = [
   { key: "soporte.export_csv", labelKey: "admin.perm.exportSoporteCsv" },
 ] as const;
 
+/** Acciones sensibles de cuenta — solo Superadmin puede asignarlas. */
+export const SENSITIVE_USER_ADMIN_PERMISSIONS = [
+  { key: "usuarios.cambiar_plan", labelKey: "admin.perm.cambiarPlan" },
+  { key: "usuarios.desactivar_cuenta", labelKey: "admin.perm.desactivarCuenta" },
+] as const;
+
 export const ASSIGNABLE_ADMIN_PERMISSIONS = [
   ...DELEGATABLE_ADMIN_PERMISSIONS,
   ...EXPORT_ADMIN_PERMISSIONS,
+  ...SENSITIVE_USER_ADMIN_PERMISSIONS,
 ] as const;
 
 export type DelegatablePermission = (typeof ASSIGNABLE_ADMIN_PERMISSIONS)[number]["key"];
@@ -40,12 +47,11 @@ const PERMISSION_EQUIVALENCE_GROUPS: readonly (readonly string[])[] = [
   [
     "gestionar_usuarios",
     "users:read",
-    "users:deactivate",
-    "users:activate",
     "users:export",
     "users:role",
     "users:permissions",
   ],
+  ["usuarios.desactivar_cuenta", "users:deactivate", "users:activate"],
   ["ver_logs", "ver_logs_administracion"],
   ["gestionar_metas", "goals:read"],
   ["ver_metricas", "tools:analytics", "worksheets:read"],
@@ -97,8 +103,8 @@ const LEGACY_PERMISSION_MAP: Record<string, DelegatablePermission | null> = {
   "support:read": "gestionar_soporte",
   "dashboard:read": "ver_resumen",
   "users:read": "gestionar_usuarios",
-  "users:deactivate": "gestionar_usuarios",
-  "users:activate": "gestionar_usuarios",
+  "users:deactivate": "usuarios.desactivar_cuenta",
+  "users:activate": "usuarios.desactivar_cuenta",
   "users:export": "gestionar_usuarios",
   "users:role": "gestionar_usuarios",
   "users:permissions": "gestionar_usuarios",

@@ -68,6 +68,9 @@ export const PERMISSION_CATALOG = [
   { clave: "metricas.export_csv", nombre_visible: "Exportar métricas (CSV)", modulo: "admin", capa: "admin" },
   { clave: "ventas.export_csv", nombre_visible: "Exportar ventas (CSV)", modulo: "admin", capa: "admin" },
   { clave: "soporte.export_csv", nombre_visible: "Exportar soporte (CSV)", modulo: "admin", capa: "admin" },
+  // Acciones sensibles de cuenta (solo Superadmin puede asignarlas)
+  { clave: "usuarios.cambiar_plan", nombre_visible: "Cambiar plan de usuario", modulo: "admin", capa: "admin" },
+  { clave: "usuarios.desactivar_cuenta", nombre_visible: "Desactivar / activar cuentas", modulo: "admin", capa: "admin" },
   // Excepción: métricas financieras por usuario (no es pestaña)
   {
     clave: "ver_metricas_financieras_usuarios",

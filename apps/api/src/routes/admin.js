@@ -115,6 +115,8 @@ router.get("/me", async (req, res) => {
       "metricas.export_csv",
       "ventas.export_csv",
       "soporte.export_csv",
+      "usuarios.cambiar_plan",
+      "usuarios.desactivar_cuenta",
     ]) {
       if (!permissionKeys.includes(k)) permissionKeys = [...permissionKeys, k];
     }
@@ -794,7 +796,7 @@ router.patch("/users/:id/status", async (req, res) => {
   const body = parseJsonBody(req, res);
   if (!body) return;
   const isActive = body.is_active ?? body.isActive;
-  const a = await requireApiAdmin(base, "gestionar_usuarios");
+  const a = await requireApiAdmin(base, "usuarios.desactivar_cuenta");
   if (!a.ok) return apiError(res, a.message, a.status);
   await runService(res, () => adminUsersService.updateUserStatus(a.supabase, req.params.id, isActive, a.userId), { wrap: "data" });
 });
@@ -819,7 +821,7 @@ router.patch("/users/:id/features", async (req, res) => {
 
 /** Asignar plan basico/pro (histórico de membresías). */
 router.patch("/users/:id/membership", async (req, res) => {
-  const a = await adminAuth(req, res, "gestionar_usuarios");
+  const a = await adminAuth(req, res, "usuarios.cambiar_plan");
   if (!a) return;
   const body = parseJsonBody(req, res);
   if (!body) return;

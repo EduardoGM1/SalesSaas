@@ -11,6 +11,7 @@ import {
   ASSIGNABLE_ADMIN_PERMISSIONS,
   DELEGATABLE_ADMIN_PERMISSIONS,
   EXPORT_ADMIN_PERMISSIONS,
+  SENSITIVE_USER_ADMIN_PERMISSIONS,
   expandAdminPermissionSet,
   isSuperAdmin,
 } from "@/lib/auth/permissions";
@@ -370,6 +371,19 @@ function PermissionsModal({ user, onClose, onDone }) {
                 </label>
               ))}
             </div>
+            <p className="admin-confirm-body" style={{ marginTop: 12 }}>{t("admin.users.perms.sensitiveHint")}</p>
+            <div className="admin-perms-grid">
+              {SENSITIVE_USER_ADMIN_PERMISSIONS.map((p) => (
+                <label key={p.key} className="admin-perm-item">
+                  <input
+                    type="checkbox"
+                    checked={checked.has(p.key)}
+                    onChange={() => toggle(p.key)}
+                  />
+                  <span>{t(p.labelKey)}</span>
+                </label>
+              ))}
+            </div>
             <div className="btn-row">
               <button type="button" className="btn btn-ghost" onClick={onClose}>{t("common.cancel")}</button>
               <button type="submit" className="btn btn-primary" disabled={pending}>{pending ? t("admin.users.confirm.saving") : t("admin.users.perms.save")}</button>
@@ -406,12 +420,15 @@ export function AdminUsersPage() {
   const permSet = expandAdminPermissionSet(session?.permissions || profile?.admin_permissions || []);
   const canManageUsers = viewerIsSuper || adminPermissionSetHas(permSet, "gestionar_usuarios");
   const canExportUsers = viewerIsSuper || adminPermissionSetHas(permSet, "usuarios.export_csv");
+  const canChangePlan = viewerIsSuper || adminPermissionSetHas(permSet, "usuarios.cambiar_plan");
+  const canToggleAccount = viewerIsSuper || adminPermissionSetHas(permSet, "usuarios.desactivar_cuenta");
   const { data: rolesData } = useAdminFetch(canManageUsers ? "roles" : null, canManageUsers ? `?_=${reloadKey}` : "");
 
   const caps = {
     canRole: canManageUsers,
-    canDeactivate: canManageUsers,
-    canActivate: canManageUsers,
+    canChangePlan,
+    canDeactivate: canToggleAccount,
+    canActivate: canToggleAccount,
     canPermissions: canManageUsers,
   };
 
@@ -458,7 +475,7 @@ export function AdminUsersPage() {
     setReloadKey((k) => k + 1);
   };
 
-  const hasActions = caps.canRole || caps.canDeactivate || caps.canActivate || caps.canPermissions;
+  const hasActions = caps.canRole || caps.canChangePlan || caps.canDeactivate || caps.canActivate || caps.canPermissions;
   const userActions = (user) => {
     const isSelf = user.id === session?.userId;
     const roleReadOnly = !caps.canRole || user.is_super_admin || isSelf;
@@ -470,7 +487,7 @@ export function AdminUsersPage() {
         disabled: !user.is_active || assignableRoles.length === 0,
         href: userAdminUrl(filters, { editRole: user.id }),
       },
-      caps.canRole && (!user.is_super_admin || isSelf) && {
+      caps.canChangePlan && (!user.is_super_admin || isSelf) && {
         id: "change-plan",
         label: t("admin.users.action.changePlan"),
         icon: <CreditCard size={15} />,
@@ -564,7 +581,17 @@ export function AdminUsersPage() {
           onContinue={(roleId) => navigate(userAdminUrl(filters, { confirm: "role", userId: rolePickerUser.id, newRoleId: roleId }))}
         />
       ) : null}
-      {confirmUser && ["role", "deactivate", "activate"].includes(confirmKind) && !confirmUser.is_super_admin && (
+      {confirmUser && confirmKind === "role" && caps.canRole && !confirmUser.is_super_admin && (
+        <ConfirmModal
+          kind={confirmKind}
+          user={confirmUser}
+          newRoleId={newRoleId ?? confirmUser.role_id}
+          newRoleLabel={newRoleLabel}
+          onClose={() => navigate(returnTo, { replace: true })}
+          onDone={(err) => refresh(err)}
+        />
+      )}
+      {confirmUser && ["deactivate", "activate"].includes(confirmKind) && (caps.canDeactivate || caps.canActivate) && !confirmUser.is_super_admin && (
         <ConfirmModal
           kind={confirmKind}
           user={confirmUser}
@@ -588,7 +615,7 @@ export function AdminUsersPage() {
           onDone={(err) => refresh(err)}
         />
       )}
-      {membershipUser && caps.canRole && (!membershipUser.is_super_admin || membershipUser.id === session?.userId) && (
+      {membershipUser && caps.canChangePlan && (!membershipUser.is_super_admin || membershipUser.id === session?.userId) && (
         <MembershipModal
           user={membershipUser}
           onClose={() => navigate(returnTo, { replace: true })}

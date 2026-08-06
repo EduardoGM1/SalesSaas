@@ -21,10 +21,17 @@ const EXPORT_ADMIN_PERMISSIONS = [
   { key: "soporte.export_csv", label: "Exportar soporte (CSV)" },
 ];
 
-/** Claves asignables en el modal de permisos admin (secciones + exports). */
+/** Acciones sensibles de cuenta — solo Superadmin puede asignarlas a admins. */
+const SENSITIVE_USER_ADMIN_PERMISSIONS = [
+  { key: "usuarios.cambiar_plan", label: "Cambiar plan de usuario" },
+  { key: "usuarios.desactivar_cuenta", label: "Desactivar / activar cuentas" },
+];
+
+/** Claves asignables en el modal de permisos admin (secciones + exports + sensibles). */
 const ASSIGNABLE_ADMIN_PERMISSIONS = [
   ...DELEGATABLE_ADMIN_PERMISSIONS,
   ...EXPORT_ADMIN_PERMISSIONS,
+  ...SENSITIVE_USER_ADMIN_PERMISSIONS,
 ];
 
 const SUPER_ADMIN_ONLY_PERMISSIONS = [
@@ -41,12 +48,11 @@ const PERMISSION_EQUIVALENCE_GROUPS = [
   [
     "gestionar_usuarios",
     "users:read",
-    "users:deactivate",
-    "users:activate",
     "users:export",
     "users:role",
     "users:permissions",
   ],
+  ["usuarios.desactivar_cuenta", "users:deactivate", "users:activate"],
   ["ver_logs", "ver_logs_administracion"],
   ["gestionar_metas", "goals:read"],
   ["ver_metricas", "tools:analytics", "worksheets:read"],
@@ -88,8 +94,8 @@ const LEGACY_PERMISSION_MAP = {
   "support:read": "gestionar_soporte",
   "dashboard:read": "ver_resumen",
   "users:read": "gestionar_usuarios",
-  "users:deactivate": "gestionar_usuarios",
-  "users:activate": "gestionar_usuarios",
+  "users:deactivate": "usuarios.desactivar_cuenta",
+  "users:activate": "usuarios.desactivar_cuenta",
   "users:export": "gestionar_usuarios",
   "users:role": "gestionar_usuarios",
   "users:permissions": "gestionar_usuarios",
@@ -226,6 +232,7 @@ export {
   ASSIGNABLE_ADMIN_PERMISSIONS,
   DELEGATABLE_ADMIN_PERMISSIONS,
   EXPORT_ADMIN_PERMISSIONS,
+  SENSITIVE_USER_ADMIN_PERMISSIONS,
   PERMISSION_EQUIVALENCE_GROUPS,
   SUPER_ADMIN_ONLY_PERMISSIONS,
   USER_FINANCIAL_METRICS_PERMISSION,
