@@ -1,0 +1,308 @@
+[
+  {
+    "id": "b76adf52-723a-4d5d-a88a-760147d50c2f",
+    "full_name": "Vendedor Demo 07",
+    "email": "vendedor07@test.saletse.com",
+    "profiles_role": "vendedor",
+    "profiles_role_id": "a0000000-0000-4000-8000-000000000003",
+    "memberships": [
+      {
+        "sala": "Vendedor Demo 07",
+        "tipo": "personal",
+        "empresa": null,
+        "empresa_id": null,
+        "rol_en_workspace": "vendedor",
+        "role_id": null
+      }
+    ]
+  },
+  {
+    "id": "be9880d3-86f0-4a27-b028-a9079379a517",
+    "full_name": "Vendedor Demo 09",
+    "email": "vendedor09@test.saletse.com",
+    "profiles_role": "vendedor",
+    "profiles_role_id": "a0000000-0000-4000-8000-000000000003",
+    "memberships": [
+      {
+        "sala": "Vendedor Demo 09",
+        "tipo": "personal",
+        "empresa": null,
+        "empresa_id": null,
+        "rol_en_workspace": "vendedor",
+        "role_id": null
+      }
+    ]
+  },
+  {
+    "id": "bea4dd56-95c5-448d-84f6-09e6bc3e49d1",
+    "full_name": "eduardo",
+    "email": "prueba@hola.com",
+    "profiles_role": "vendedor",
+    "profiles_role_id": "a0000000-0000-4000-8000-000000000003",
+    "memberships": [
+      {
+        "sala": "eduardo",
+        "tipo": "personal",
+        "empresa": null,
+        "empresa_id": null,
+        "rol_en_workspace": "vendedor",
+        "role_id": null
+      }
+    ]
+  },
+  {
+    "id": "d8c3856f-19bf-44cb-910e-52c0117f2ee5",
+    "full_name": "Vendedor Demo 03",
+    "email": "vendedor03@test.saletse.com",
+    "profiles_role": "vendedor",
+    "profiles_role_id": "a0000000-0000-4000-8000-000000000003",
+    "memberships": [
+      {
+        "sala": "Vendedor Demo 03",
+        "tipo": "personal",
+        "empresa": null,
+        "empresa_id": null,
+        "rol_en_workspace": "vendedor",
+        "role_id": null
+      }
+    ]
+  },
+  {
+    "id": "e11d3a90-ae1a-46d9-9c4f-199c5f95548b",
+    "full_name": "Vendedor Demo 01",
+    "email": "vendedor01@test.saletse.com",
+    "profiles_role": "vendedor",
+    "profiles_role_id": "a0000000-0000-4000-8000-000000000003",
+    "memberships": [
+      {
+        "sala": "Vendedor Demo 01",
+        "tipo": "personal",
+        "empresa": null,
+        "empresa_id": null,
+        "rol_en_workspace": "vendedor",
+        "role_id": null
+      }
+    ]
+  },
+  {
+    "id": "fad1879a-7063-4236-9ef5-be358c6492b5",
+    "full_name": "Gerente Demo Norte",
+    "email": "gerente01@test.saletse.com",
+    "profiles_role": "vendedor",
+    "profiles_role_id": "a0000000-0000-4000-8000-000000000003",
+    "memberships": [
+      {
+        "sala": "Gerente Demo Norte",
+        "tipo": "personal",
+        "empresa": null,
+        "empresa_id": null,
+        "rol_en_workspace": "vendedor",
+        "role_id": null
+      }
+    ]
+  },
+  {
+    "id": "fe92d2b3-cb9d-491c-a0c6-0009579954b6",
+    "full_name": "Carlos López",
+    "email": "carlos.lopez@demo.salesapp.test",
+    "profiles_role": "vendedor",
+    "profiles_role_id": "a0000000-0000-4000-8000-000000000003",
+    "memberships": [
+      {
+        "sala": "Carlos López",
+        "tipo": "personal",
+        "empresa": null,
+        "empresa_id": null,
+        "rol_en_workspace": "vendedor",
+        "role_id": null
+      }
+    ]
+  },
+  {
+    "id": "0c003d3b-6fdd-4c39-9840-a16374bd90a6",
+    "full_name": "María García",
+    "email": "maria.garcia@demo.salesapp.test",
+    "profiles_role": "vendedor",
+    "profiles_role_id": "a0000000-0000-4000-8000-000000000003",
+    "memberships": [
+      {
+        "sala": "María García",
+        "tipo": "personal",
+        "empresa": null,
+        "empresa_id": null,
+        "rol_en_workspace": "vendedor",
+        "role_id": null
+      }
+    ]
+  },
+  {
+    "id": "673658c3-73ae-4afb-93b8-4df57de20d98",
+    "full_name": "Vendedor Demo 04",
+    "email": "vendedor04@test.saletse.com",
+    "profiles_role": "vendedor",
+    "profiles_role_id": "a0000000-0000-4000-8000-000000000003",
+    "memberships": [
+      {
+        "sala": "Vendedor Demo 04",
+        "tipo": "personal",
+        "empresa": null,
+        "empresa_id": null,
+        "rol_en_workspace": "vendedor",
+        "role_id": null
+      }
+    ]
+  },
+  {
+    "id": "72b10ac7-5e61-4f2e-9423-7ec10efa133c",
+    "full_name": "Ana Martínez",
+    "email": "ana.martinez@demo.salesapp.test",
+    "profiles_role": "vendedor",
+    "profiles_role_id": "a0000000-0000-4000-8000-000000000003",
+    "memberships": [
+      {
+        "sala": "Ana Martínez",
+        "tipo": "personal",
+        "empresa": null,
+        "empresa_id": null,
+        "rol_en_workspace": "vendedor",
+        "role_id": null
+      }
+    ]
+  },
+  {
+    "id": "9d9c7c60-54b7-43a5-8ffe-f066b1e581d1",
+    "full_name": "Vendedor Demo 02",
+    "email": "vendedor02@test.saletse.com",
+    "profiles_role": "vendedor",
+    "profiles_role_id": "a0000000-0000-4000-8000-000000000003",
+    "memberships": [
+      {
+        "sala": "Vendedor Demo 02",
+        "tipo": "personal",
+        "empresa": null,
+        "empresa_id": null,
+        "rol_en_workspace": "vendedor",
+        "role_id": null
+      }
+    ]
+  },
+  {
+    "id": "a4bb3d06-cc5c-480c-b8d3-0cbb016fa6ac",
+    "full_name": "Vendedor Demo 10",
+    "email": "vendedor10@test.saletse.com",
+    "profiles_role": "vendedor",
+    "profiles_role_id": "a0000000-0000-4000-8000-000000000003",
+    "memberships": [
+      {
+        "sala": "Vendedor Demo 10",
+        "tipo": "personal",
+        "empresa": null,
+        "empresa_id": null,
+        "rol_en_workspace": "vendedor",
+        "role_id": null
+      }
+    ]
+  },
+  {
+    "id": "b75a228b-6710-47ca-ae47-72f433e4e12d",
+    "full_name": "Vendedor Demo 08",
+    "email": "vendedor08@test.saletse.com",
+    "profiles_role": "vendedor",
+    "profiles_role_id": "a0000000-0000-4000-8000-000000000003",
+    "memberships": [
+      {
+        "sala": "Vendedor Demo 08",
+        "tipo": "personal",
+        "empresa": null,
+        "empresa_id": null,
+        "rol_en_workspace": "vendedor",
+        "role_id": null
+      }
+    ]
+  },
+  {
+    "id": "010b76be-d639-497c-9b35-dc93d72c4a92",
+    "full_name": "azahel alcocer",
+    "email": "azaheljared@hotmail.com",
+    "profiles_role": "vendedor",
+    "profiles_role_id": "a0000000-0000-4000-8000-000000000003",
+    "memberships": [
+      {
+        "sala": "azahel alcocer",
+        "tipo": "personal",
+        "empresa": null,
+        "empresa_id": null,
+        "rol_en_workspace": "vendedor",
+        "role_id": null
+      }
+    ]
+  },
+  {
+    "id": "000910a6-f5c4-46fa-9b2e-6171cf487132",
+    "full_name": "Vendedor Demo 05",
+    "email": "vendedor05@test.saletse.com",
+    "profiles_role": "vendedor",
+    "profiles_role_id": "a0000000-0000-4000-8000-000000000003",
+    "memberships": [
+      {
+        "sala": "Vendedor Demo 05",
+        "tipo": "personal",
+        "empresa": null,
+        "empresa_id": null,
+        "rol_en_workspace": "vendedor",
+        "role_id": null
+      }
+    ]
+  },
+  {
+    "id": "b4171918-8ba7-431e-8dda-03a089a767bf",
+    "full_name": "Vendedor Demo 06",
+    "email": "vendedor06@test.saletse.com",
+    "profiles_role": "vendedor",
+    "profiles_role_id": "a0000000-0000-4000-8000-000000000003",
+    "memberships": [
+      {
+        "sala": "Vendedor Demo 06",
+        "tipo": "personal",
+        "empresa": null,
+        "empresa_id": null,
+        "rol_en_workspace": "vendedor",
+        "role_id": null
+      }
+    ]
+  },
+  {
+    "id": "4132b3c4-c003-4d35-8868-324bd78a8d24",
+    "full_name": "Ela RM",
+    "email": "ela.ruizm@gmail.com",
+    "profiles_role": "vendedor",
+    "profiles_role_id": "a0000000-0000-4000-8000-000000000003",
+    "memberships": [
+      {
+        "sala": "Ela RM",
+        "tipo": "personal",
+        "empresa": null,
+        "empresa_id": null,
+        "rol_en_workspace": "vendedor",
+        "role_id": null
+      }
+    ]
+  },
+  {
+    "id": "4b48e210-203a-4e15-9690-310d7f0b6341",
+    "full_name": "Michell Ruiz",
+    "email": "michell.ruiz.t@gmail.com",
+    "profiles_role": "vendedor",
+    "profiles_role_id": "a0000000-0000-4000-8000-000000000003",
+    "memberships": [
+      {
+        "sala": "Michell Ruiz",
+        "tipo": "personal",
+        "empresa": null,
+        "empresa_id": null,
+        "rol_en_workspace": "vendedor",
+        "role_id": null
+      }
+    ]
+  }
+]

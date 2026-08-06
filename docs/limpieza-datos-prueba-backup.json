@@ -1,0 +1,211 @@
+{
+  "at": "2026-08-06T01:42:53.510Z",
+  "test_users": [
+    {
+      "id": "b76adf52-723a-4d5d-a88a-760147d50c2f",
+      "email": "vendedor07@test.saletse.com",
+      "full_name": "Vendedor Demo 07",
+      "is_super_admin": false
+    },
+    {
+      "id": "be9880d3-86f0-4a27-b028-a9079379a517",
+      "email": "vendedor09@test.saletse.com",
+      "full_name": "Vendedor Demo 09",
+      "is_super_admin": false
+    },
+    {
+      "id": "d8c3856f-19bf-44cb-910e-52c0117f2ee5",
+      "email": "vendedor03@test.saletse.com",
+      "full_name": "Vendedor Demo 03",
+      "is_super_admin": false
+    },
+    {
+      "id": "e11d3a90-ae1a-46d9-9c4f-199c5f95548b",
+      "email": "vendedor01@test.saletse.com",
+      "full_name": "Vendedor Demo 01",
+      "is_super_admin": false
+    },
+    {
+      "id": "fad1879a-7063-4236-9ef5-be358c6492b5",
+      "email": "gerente01@test.saletse.com",
+      "full_name": "Gerente Demo Norte",
+      "is_super_admin": false
+    },
+    {
+      "id": "fe92d2b3-cb9d-491c-a0c6-0009579954b6",
+      "email": "carlos.lopez@demo.salesapp.test",
+      "full_name": "Carlos López",
+      "is_super_admin": false
+    },
+    {
+      "id": "0c003d3b-6fdd-4c39-9840-a16374bd90a6",
+      "email": "maria.garcia@demo.salesapp.test",
+      "full_name": "María García",
+      "is_super_admin": false
+    },
+    {
+      "id": "673658c3-73ae-4afb-93b8-4df57de20d98",
+      "email": "vendedor04@test.saletse.com",
+      "full_name": "Vendedor Demo 04",
+      "is_super_admin": false
+    },
+    {
+      "id": "72b10ac7-5e61-4f2e-9423-7ec10efa133c",
+      "email": "ana.martinez@demo.salesapp.test",
+      "full_name": "Ana Martínez",
+      "is_super_admin": false
+    },
+    {
+      "id": "9d9c7c60-54b7-43a5-8ffe-f066b1e581d1",
+      "email": "vendedor02@test.saletse.com",
+      "full_name": "Vendedor Demo 02",
+      "is_super_admin": false
+    },
+    {
+      "id": "a4bb3d06-cc5c-480c-b8d3-0cbb016fa6ac",
+      "email": "vendedor10@test.saletse.com",
+      "full_name": "Vendedor Demo 10",
+      "is_super_admin": false
+    },
+    {
+      "id": "b75a228b-6710-47ca-ae47-72f433e4e12d",
+      "email": "vendedor08@test.saletse.com",
+      "full_name": "Vendedor Demo 08",
+      "is_super_admin": false
+    },
+    {
+      "id": "000910a6-f5c4-46fa-9b2e-6171cf487132",
+      "email": "vendedor05@test.saletse.com",
+      "full_name": "Vendedor Demo 05",
+      "is_super_admin": false
+    },
+    {
+      "id": "b4171918-8ba7-431e-8dda-03a089a767bf",
+      "email": "vendedor06@test.saletse.com",
+      "full_name": "Vendedor Demo 06",
+      "is_super_admin": false
+    },
+    {
+      "id": "adb3bebb-0367-4527-8641-c39d43ac9740",
+      "email": "qa.representante@salesapp.test",
+      "full_name": "QA Representante",
+      "is_super_admin": false
+    },
+    {
+      "id": "21a9d45f-eae1-43a6-9225-9c6e9fa306d1",
+      "email": "qa.vendedor@salesapp.test",
+      "full_name": "QA Vendedor",
+      "is_super_admin": false
+    },
+    {
+      "id": "9e8390f8-1ae0-4d7f-b5a0-33198bd95a6a",
+      "email": "qa.cerrador@salesapp.test",
+      "full_name": "QA Cerrador",
+      "is_super_admin": false
+    },
+    {
+      "id": "424b3d3c-e241-4a55-bb12-18cffed1b04b",
+      "email": "qa.supervisor@salesapp.test",
+      "full_name": "QA Supervisor",
+      "is_super_admin": false
+    },
+    {
+      "id": "2a3a9682-d396-4b42-9425-252dc1c2821d",
+      "email": "qa.recepcion@salesapp.test",
+      "full_name": "QA Recepción",
+      "is_super_admin": false
+    }
+  ],
+  "keep_users": [
+    {
+      "id": "bea4dd56-95c5-448d-84f6-09e6bc3e49d1",
+      "email": "prueba@hola.com",
+      "full_name": "eduardo",
+      "is_super_admin": false
+    },
+    {
+      "id": "2be8c539-4e3c-4aef-bc9e-615d38a3a3c2",
+      "email": "santvalero8@gmail.com",
+      "full_name": "Santiago Valero",
+      "is_super_admin": false
+    },
+    {
+      "id": "010b76be-d639-497c-9b35-dc93d72c4a92",
+      "email": "azaheljared@hotmail.com",
+      "full_name": "azahel alcocer",
+      "is_super_admin": false
+    },
+    {
+      "id": "5719b210-70c1-4c55-b650-31f19f505307",
+      "email": "eduardolalito99@hotmail.com",
+      "full_name": "Eduardo",
+      "is_super_admin": true
+    },
+    {
+      "id": "b5a5235e-0570-43ac-a997-f606d9695482",
+      "email": "chriissua@gmail.com",
+      "full_name": "Christian suarez gaona",
+      "is_super_admin": false
+    },
+    {
+      "id": "4132b3c4-c003-4d35-8868-324bd78a8d24",
+      "email": "ela.ruizm@gmail.com",
+      "full_name": "Ela RM",
+      "is_super_admin": false
+    },
+    {
+      "id": "d3148015-a42f-418a-aa4c-29dba6f5e261",
+      "email": "cuentapremium4minecrafted@gmail.com",
+      "full_name": "Agustin alberto abinadi",
+      "is_super_admin": false
+    },
+    {
+      "id": "4b48e210-203a-4e15-9690-310d7f0b6341",
+      "email": "michell.ruiz.t@gmail.com",
+      "full_name": "Michell Ruiz",
+      "is_super_admin": false
+    }
+  ],
+  "test_empresas": [
+    {
+      "id": "1896b5c9-0bae-460a-a807-69fcadcb6d14",
+      "nombre": "saletse test",
+      "estado": "activa",
+      "created_at": "2026-07-27T23:49:48.435182+00:00"
+    },
+    {
+      "id": "9731d875-f302-4f05-9ec6-ef417e642c33",
+      "nombre": "Empresa QA Workflow",
+      "estado": "activa",
+      "created_at": "2026-07-28T22:30:10.223057+00:00"
+    }
+  ],
+  "keep_empresas": [
+    {
+      "id": "ebb430c9-1565-4534-b70c-99f561b8c564",
+      "nombre": "salesgroup",
+      "estado": "activa",
+      "created_at": "2026-07-28T23:50:12.919137+00:00"
+    }
+  ],
+  "test_salas": [
+    {
+      "id": "090aa626-32ea-43bf-96c3-ff5dad04cdfb",
+      "nombre": "sala 1",
+      "tipo": "sala_de_venta",
+      "empresa_id": "1896b5c9-0bae-460a-a807-69fcadcb6d14",
+      "empresas": {
+        "nombre": "saletse test"
+      }
+    },
+    {
+      "id": "63d0915b-7687-4cfa-a415-9953a36997d6",
+      "nombre": "Sala QA Norte",
+      "tipo": "sala_de_venta",
+      "empresa_id": "9731d875-f302-4f05-9ec6-ef417e642c33",
+      "empresas": {
+        "nombre": "Empresa QA Workflow"
+      }
+    }
+  ]
+}

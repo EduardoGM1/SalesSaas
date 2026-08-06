@@ -1,0 +1,53 @@
+{
+  "deleted_auth_users": 19,
+  "auth_errors": [],
+  "remaining_test_emails": [],
+  "remaining_profiles": [
+    {
+      "email": "prueba@hola.com",
+      "name": "eduardo"
+    },
+    {
+      "email": "santvalero8@gmail.com",
+      "name": "Santiago Valero"
+    },
+    {
+      "email": "azaheljared@hotmail.com",
+      "name": "azahel alcocer"
+    },
+    {
+      "email": "eduardolalito99@hotmail.com",
+      "name": "Eduardo"
+    },
+    {
+      "email": "chriissua@gmail.com",
+      "name": "Christian suarez gaona"
+    },
+    {
+      "email": "cuentapremium4minecrafted@gmail.com",
+      "name": "Agustin alberto abinadi"
+    },
+    {
+      "email": "ela.ruizm@gmail.com",
+      "name": "Ela RM"
+    },
+    {
+      "email": "michell.ruiz.t@gmail.com",
+      "name": "Michell Ruiz"
+    }
+  ],
+  "remaining_empresas": [
+    {
+      "id": "ebb430c9-1565-4534-b70c-99f561b8c564",
+      "nombre": "salesgroup"
+    }
+  ],
+  "remaining_salas": [
+    {
+      "id": "cdb9c9d3-e401-4113-854d-a378cda0548d",
+      "nombre": "salesroom1",
+      "tipo": "sala_de_venta",
+      "empresa_id": "ebb430c9-1565-4534-b70c-99f561b8c564"
+    }
+  ]
+}

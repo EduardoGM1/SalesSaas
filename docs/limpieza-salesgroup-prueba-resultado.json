@@ -1,0 +1,43 @@
+{
+  "deleted_auth_users": 1,
+  "auth_errors": [],
+  "remaining_profiles": [
+    {
+      "email": "santvalero8@gmail.com",
+      "full_name": "Santiago Valero",
+      "is_super_admin": false
+    },
+    {
+      "email": "azaheljared@hotmail.com",
+      "full_name": "azahel alcocer",
+      "is_super_admin": false
+    },
+    {
+      "email": "eduardolalito99@hotmail.com",
+      "full_name": "Eduardo",
+      "is_super_admin": true
+    },
+    {
+      "email": "chriissua@gmail.com",
+      "full_name": "Christian suarez gaona",
+      "is_super_admin": false
+    },
+    {
+      "email": "cuentapremium4minecrafted@gmail.com",
+      "full_name": "Agustin alberto abinadi",
+      "is_super_admin": false
+    },
+    {
+      "email": "ela.ruizm@gmail.com",
+      "full_name": "Ela RM",
+      "is_super_admin": false
+    },
+    {
+      "email": "michell.ruiz.t@gmail.com",
+      "full_name": "Michell Ruiz",
+      "is_super_admin": false
+    }
+  ],
+  "remaining_empresas": [],
+  "remaining_salas": []
+}
