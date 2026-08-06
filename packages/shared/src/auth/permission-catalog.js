@@ -61,6 +61,13 @@ export const PERMISSION_CATALOG = [
   { clave: "config:propia", nombre_visible: "Configuración propia", modulo: "config", capa: "app" },
   // Admin (secciones)
   ...ADMIN_SECTION_PERMISSIONS,
+  // Exportaciones (acciones sensibles — independientes del acceso al módulo)
+  { clave: "usuarios.export_csv", nombre_visible: "Exportar usuarios (CSV)", modulo: "admin", capa: "admin" },
+  { clave: "logs.export_csv", nombre_visible: "Exportar logs (CSV)", modulo: "admin", capa: "admin" },
+  { clave: "metas.export_csv", nombre_visible: "Exportar metas (CSV)", modulo: "admin", capa: "admin" },
+  { clave: "metricas.export_csv", nombre_visible: "Exportar métricas (CSV)", modulo: "admin", capa: "admin" },
+  { clave: "ventas.export_csv", nombre_visible: "Exportar ventas (CSV)", modulo: "admin", capa: "admin" },
+  { clave: "soporte.export_csv", nombre_visible: "Exportar soporte (CSV)", modulo: "admin", capa: "admin" },
   // Excepción: métricas financieras por usuario (no es pestaña)
   {
     clave: "ver_metricas_financieras_usuarios",

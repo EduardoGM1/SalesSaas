@@ -109,6 +109,12 @@ router.get("/me", async (req, res) => {
       "gestionar_soporte",
       "gestionar_roles_permisos",
       "ver_metricas_financieras_usuarios",
+      "usuarios.export_csv",
+      "logs.export_csv",
+      "metas.export_csv",
+      "metricas.export_csv",
+      "ventas.export_csv",
+      "soporte.export_csv",
     ]) {
       if (!permissionKeys.includes(k)) permissionKeys = [...permissionKeys, k];
     }
@@ -660,7 +666,7 @@ router.get("/logs", async (req, res) => {
 });
 
 router.get("/export/logs", async (req, res) => {
-  const a = await adminAuth(req, res, "ver_logs");
+  const a = await adminAuth(req, res, "logs.export_csv");
   if (!a) return;
   try {
     const filters = {
@@ -747,7 +753,7 @@ router.get("/tools-usage", async (req, res) => {
 });
 
 router.get("/export/users", async (req, res) => {
-  const a = await adminAuth(req, res, "gestionar_usuarios");
+  const a = await adminAuth(req, res, "usuarios.export_csv");
   if (!a) return;
   try {
     const filters = parseUserAdminFilters(req.query);

@@ -9,7 +9,22 @@ export const DELEGATABLE_ADMIN_PERMISSIONS = [
   { key: "gestionar_soporte", labelKey: "admin.perm.gestionarSoporte" },
 ] as const;
 
-export type DelegatablePermission = (typeof DELEGATABLE_ADMIN_PERMISSIONS)[number]["key"];
+/** Exportaciones — independientes del acceso al módulo. */
+export const EXPORT_ADMIN_PERMISSIONS = [
+  { key: "usuarios.export_csv", labelKey: "admin.perm.exportUsersCsv" },
+  { key: "logs.export_csv", labelKey: "admin.perm.exportLogsCsv" },
+  { key: "metas.export_csv", labelKey: "admin.perm.exportMetasCsv" },
+  { key: "metricas.export_csv", labelKey: "admin.perm.exportMetricasCsv" },
+  { key: "ventas.export_csv", labelKey: "admin.perm.exportVentasCsv" },
+  { key: "soporte.export_csv", labelKey: "admin.perm.exportSoporteCsv" },
+] as const;
+
+export const ASSIGNABLE_ADMIN_PERMISSIONS = [
+  ...DELEGATABLE_ADMIN_PERMISSIONS,
+  ...EXPORT_ADMIN_PERMISSIONS,
+] as const;
+
+export type DelegatablePermission = (typeof ASSIGNABLE_ADMIN_PERMISSIONS)[number]["key"];
 
 export const SUPER_ADMIN_ONLY_PERMISSIONS = [
   "ver_logs",
@@ -65,7 +80,7 @@ export interface AdminAccessProfile {
   admin_permissions: string[];
 }
 
-const DELEGATABLE_KEYS = new Set<string>(DELEGATABLE_ADMIN_PERMISSIONS.map((p) => p.key));
+const DELEGATABLE_KEYS = new Set<string>(ASSIGNABLE_ADMIN_PERMISSIONS.map((p) => p.key));
 const ALL_KNOWN_ADMIN_KEYS = new Set<string>([
   ...DELEGATABLE_KEYS,
   ...(SUPER_ADMIN_ONLY_PERMISSIONS as readonly string[]),
@@ -141,13 +156,13 @@ export function effectivePermissions(profile: AdminAccessProfile): string[] {
   if (profile?.role !== "admin") return [];
   if (isSuperAdmin(profile)) {
     return [
-      ...DELEGATABLE_ADMIN_PERMISSIONS.map((p) => p.key),
+      ...ASSIGNABLE_ADMIN_PERMISSIONS.map((p) => p.key),
       ...SUPER_ADMIN_ONLY_PERMISSIONS,
     ];
   }
   const expanded = expandAdminPermissionSet(profile.admin_permissions || []);
   const out = new Set<string>();
-  for (const p of DELEGATABLE_ADMIN_PERMISSIONS) {
+  for (const p of ASSIGNABLE_ADMIN_PERMISSIONS) {
     if (adminPermissionSetHas(expanded, p.key)) out.add(p.key);
   }
   for (const p of SUPER_ADMIN_ONLY_PERMISSIONS) {
@@ -157,7 +172,7 @@ export function effectivePermissions(profile: AdminAccessProfile): string[] {
 }
 
 export function permissionLabel(key: string): string {
-  const perm = DELEGATABLE_ADMIN_PERMISSIONS.find((p) => p.key === key);
+  const perm = ASSIGNABLE_ADMIN_PERMISSIONS.find((p) => p.key === key);
   return perm ? translate(perm.labelKey) : key;
 }
 
@@ -212,8 +227,12 @@ export function canAccessAdminPathByPermissions(
   if (pathname.startsWith("/admin/users/") && pathname.includes("/permissions")) {
     return adminPermissionSetHas(set, "gestionar_usuarios");
   }
-  if (pathname.startsWith("/admin/export/users")) return adminPermissionSetHas(set, "gestionar_usuarios");
-  if (pathname.startsWith("/admin/export/logs")) return adminPermissionSetHas(set, "ver_logs");
+  if (pathname.startsWith("/admin/export/users")) return adminPermissionSetHas(set, "usuarios.export_csv");
+  if (pathname.startsWith("/admin/export/logs")) return adminPermissionSetHas(set, "logs.export_csv");
+  if (pathname.startsWith("/admin/export/sales")) return adminPermissionSetHas(set, "ventas.export_csv");
+  if (pathname.startsWith("/admin/export/goals") || pathname.startsWith("/admin/export/metas")) {
+    return adminPermissionSetHas(set, "metas.export_csv");
+  }
   if (pathname.startsWith("/admin/users")) return adminPermissionSetHas(set, "gestionar_usuarios");
   if (pathname.startsWith("/admin/tools")) return adminPermissionSetHas(set, "ver_metricas");
   if (pathname.startsWith("/admin/support")) return adminPermissionSetHas(set, "gestionar_soporte");

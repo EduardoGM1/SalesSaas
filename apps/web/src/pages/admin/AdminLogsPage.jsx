@@ -2,7 +2,7 @@ import { useMemo, useState, useEffect } from "react";
 import { Link, useOutletContext, useSearchParams } from "react-router-dom";
 import { AdminDataView, AdminFilterBar, AdminPageHeader, AdminPageState } from "@/components/admin/admin-ui.jsx";
 import { useAdminFetch } from "@/hooks/use-admin-session.js";
-import { hasPermission } from "@/lib/auth/permissions";
+import { adminPermissionSetHas, expandAdminPermissionSet, hasPermission, isSuperAdmin } from "@/lib/auth/permissions";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { longDate } from "@/lib/format/dates";
 import { narrateAdminLogDetalle, narrateAdminLogSummary } from "@/lib/admin/log-narrative.js";
@@ -78,6 +78,12 @@ export function AdminLogsPage() {
   const total = Number(data?.total) || items.length;
   const pageCount = Math.max(1, Math.ceil(total / LOGS_PAGE_SIZE));
   const exportHref = `/api/v1/admin/export/logs${qs}`;
+  const permSet = expandAdminPermissionSet(session?.permissions || session?.profile?.admin_permissions || []);
+  const canExportLogs = Boolean(
+    session?.isSuperAdmin
+    || (session?.profile && isSuperAdmin(session.profile))
+    || adminPermissionSetHas(permSet, "logs.export_csv"),
+  );
   const actionLabel = (accion) => {
     const opt = ACTION_OPTIONS.find((o) => o.value === accion);
     return opt ? t(opt.key) : accion;
@@ -87,7 +93,7 @@ export function AdminLogsPage() {
     <div className="admin-page admin-system-page">
       <AdminPageHeader eyebrow="Auditoría" title={t("admin.logs.title")} subtitle={t("admin.logs.sub")} meta={<span>{total} eventos · página {page + 1} de {pageCount}</span>} />
       <form method="GET" action="/admin/logs">
-        <AdminFilterBar actions={<><button type="submit" className="btn btn-primary">{t("admin.filters.apply")}</button>{qs && <Link to="/admin/logs" className="btn btn-ghost">{t("common.clear")}</Link>}<a href={exportHref} className="btn btn-ghost">{t("admin.filters.exportCsv")}</a></>}>
+        <AdminFilterBar actions={<><button type="submit" className="btn btn-primary">{t("admin.filters.apply")}</button>{qs && <Link to="/admin/logs" className="btn btn-ghost">{t("common.clear")}</Link>}{canExportLogs ? <a href={exportHref} className="btn btn-ghost">{t("admin.filters.exportCsv")}</a> : null}</>}>
           <div className="admin-filter-field">
             <label htmlFor="logs-from">{t("admin.logs.filter.from")}</label>
             <input id="logs-from" type="date" name="from" defaultValue={filters.from} className="auth-input" />

@@ -8,7 +8,9 @@ import { CreditCard, Layers, Shield } from "lucide-react";
 import { useAdminFetch } from "@/hooks/use-admin-session.js";
 import {
   adminPermissionSetHas,
+  ASSIGNABLE_ADMIN_PERMISSIONS,
   DELEGATABLE_ADMIN_PERMISSIONS,
+  EXPORT_ADMIN_PERMISSIONS,
   expandAdminPermissionSet,
   isSuperAdmin,
 } from "@/lib/auth/permissions";
@@ -269,13 +271,52 @@ function VendorFeaturesModal({ user, onClose, onDone }) {
 function PermissionsModal({ user, onClose, onDone }) {
   const { t } = useI18n();
   const [pending, setPending] = useState(false);
-  const current = expandAdminPermissionSet(user.admin_permissions);
+  const [loading, setLoading] = useState(true);
+  const [checked, setChecked] = useState(() => new Set());
+
+  const toCanonicalSet = (perms) => {
+    const expanded = expandAdminPermissionSet(perms);
+    return new Set(
+      ASSIGNABLE_ADMIN_PERMISSIONS.map((p) => p.key).filter((key) => adminPermissionSetHas(expanded, key)),
+    );
+  };
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    fetch(`/api/v1/admin/users/${user.id}/permission-context`, { credentials: "include" })
+      .then(async (res) => {
+        const body = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(body.error || "Error");
+        const stored = Array.isArray(body.data?.profile?.admin_permissions)
+          ? body.data.profile.admin_permissions
+          : (user.admin_permissions || []);
+        if (!cancelled) setChecked(toCanonicalSet(stored));
+      })
+      .catch(() => {
+        if (!cancelled) setChecked(toCanonicalSet(user.admin_permissions));
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [user.id, user.admin_permissions]);
+
+  const toggle = (key) => {
+    setChecked((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
 
   const submit = async (e) => {
     e.preventDefault();
     setPending(true);
-    const fd = new FormData(e.currentTarget);
-    const permissions = fd.getAll("permissions").map(String);
+    const permissions = ASSIGNABLE_ADMIN_PERMISSIONS
+      .map((p) => p.key)
+      .filter((key) => checked.has(key));
     try {
       await patchAdmin(`users/${user.id}/permissions`, { permissions });
       try {
@@ -299,25 +340,42 @@ function PermissionsModal({ user, onClose, onDone }) {
           <span className="admin-confirm-title">{t("admin.users.perms.title")}</span>
           <span className="admin-confirm-sub">{user.name}</span>
         </div>
-        <form onSubmit={submit}>
-          <div className="admin-perms-grid">
-            {DELEGATABLE_ADMIN_PERMISSIONS.map((p) => (
-              <label key={p.key} className="admin-perm-item">
-                <input
-                  type="checkbox"
-                  name="permissions"
-                  value={p.key}
-                  defaultChecked={adminPermissionSetHas(current, p.key)}
-                />
-                <span>{t(p.labelKey)}</span>
-              </label>
-            ))}
-          </div>
-          <div className="btn-row">
-            <button type="button" className="btn btn-ghost" onClick={onClose}>{t("common.cancel")}</button>
-            <button type="submit" className="btn btn-primary" disabled={pending}>{pending ? t("admin.users.confirm.saving") : t("admin.users.perms.save")}</button>
-          </div>
-        </form>
+        {loading ? (
+          <p className="admin-confirm-body">{t("admin.users.confirm.saving")}</p>
+        ) : (
+          <form onSubmit={submit}>
+            <p className="admin-confirm-body">{t("admin.users.perms.sectionsHint")}</p>
+            <div className="admin-perms-grid">
+              {DELEGATABLE_ADMIN_PERMISSIONS.map((p) => (
+                <label key={p.key} className="admin-perm-item">
+                  <input
+                    type="checkbox"
+                    checked={checked.has(p.key)}
+                    onChange={() => toggle(p.key)}
+                  />
+                  <span>{t(p.labelKey)}</span>
+                </label>
+              ))}
+            </div>
+            <p className="admin-confirm-body" style={{ marginTop: 12 }}>{t("admin.users.perms.exportsHint")}</p>
+            <div className="admin-perms-grid">
+              {EXPORT_ADMIN_PERMISSIONS.map((p) => (
+                <label key={p.key} className="admin-perm-item">
+                  <input
+                    type="checkbox"
+                    checked={checked.has(p.key)}
+                    onChange={() => toggle(p.key)}
+                  />
+                  <span>{t(p.labelKey)}</span>
+                </label>
+              ))}
+            </div>
+            <div className="btn-row">
+              <button type="button" className="btn btn-ghost" onClick={onClose}>{t("common.cancel")}</button>
+              <button type="submit" className="btn btn-primary" disabled={pending}>{pending ? t("admin.users.confirm.saving") : t("admin.users.perms.save")}</button>
+            </div>
+          </form>
+        )}
       </div>
     </>
   );
@@ -347,6 +405,7 @@ export function AdminUsersPage() {
   const profile = session?.profile;
   const permSet = expandAdminPermissionSet(session?.permissions || profile?.admin_permissions || []);
   const canManageUsers = viewerIsSuper || adminPermissionSetHas(permSet, "gestionar_usuarios");
+  const canExportUsers = viewerIsSuper || adminPermissionSetHas(permSet, "usuarios.export_csv");
   const { data: rolesData } = useAdminFetch(canManageUsers ? "roles" : null, canManageUsers ? `?_=${reloadKey}` : "");
 
   const caps = {
@@ -455,7 +514,7 @@ export function AdminUsersPage() {
         meta={<><span>{fmtN(users.length)} resultados</span><span>{fmtN(users.filter((user) => user.is_active).length)} activos</span><span>{fmtN(users.filter((user) => user.plan === "pro").length)} PRO</span></>}
       />
       {errorCode && <div className="auth-error" style={{ marginBottom: 16 }}>{t(ERROR_KEYS[errorCode] ?? "admin.users.error.generic")}</div>}
-      <AdminUsersFilters filters={filters} exportHref={exportHref} showExport={canManageUsers} />
+      <AdminUsersFilters filters={filters} exportHref={exportHref} showExport={canExportUsers} />
       <AdminPageState loading={loading} error={error}>
         <AdminDataView empty={!users.length} emptyTitle={t("admin.users.empty")} emptyBody="Prueba limpiando o modificando los filtros activos.">
           <div className="admin-users-data-card">

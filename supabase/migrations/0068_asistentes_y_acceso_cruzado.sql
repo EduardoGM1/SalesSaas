@@ -53,19 +53,15 @@ comment on table public.permisos_delegados is
   'Permisos delegados a Asistente de Empresa (empresa_id) o Asistente de Sala (sala_id). Techo = permisos del delegante.';
 
 -- ---------- 2) Acceso cruzado Gerente ----------
+-- Nota: la validación de tipo=sala_de_venta va en el trigger (PG no permite
+-- subqueries en CHECK constraints).
 create table if not exists public.gerente_acceso_cruzado (
   id uuid primary key default gen_random_uuid(),
   gerente_id uuid not null references auth.users(id) on delete cascade,
   sala_adicional_id uuid not null references public.workspaces(id) on delete cascade,
   otorgado_por uuid not null references auth.users(id) on delete cascade,
   fecha_otorgado timestamptz not null default now(),
-  estado text not null default 'activo' check (estado in ('activo', 'revocado')),
-  constraint gerente_acceso_cruzado_sala_tipo check (
-    exists (
-      select 1 from public.workspaces w
-      where w.id = sala_adicional_id and w.tipo = 'sala_de_venta'
-    )
-  )
+  estado text not null default 'activo' check (estado in ('activo', 'revocado'))
 );
 
 create unique index if not exists gerente_acceso_cruzado_activo_uidx
@@ -122,10 +118,14 @@ as $$
 declare
   v_emp uuid;
   v_home_emp uuid;
+  v_tipo text;
 begin
-  select empresa_id into v_emp from public.workspaces where id = new.sala_adicional_id;
+  select empresa_id, tipo into v_emp, v_tipo from public.workspaces where id = new.sala_adicional_id;
   if v_emp is null then
     raise exception 'La sala adicional debe pertenecer a una empresa';
+  end if;
+  if v_tipo is distinct from 'sala_de_venta' then
+    raise exception 'El acceso cruzado solo aplica a salas de venta';
   end if;
 
   select w.empresa_id into v_home_emp

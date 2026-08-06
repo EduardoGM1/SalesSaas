@@ -1,8 +1,9 @@
 import { useMemo } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useOutletContext, useSearchParams } from "react-router-dom";
 import { AdminFiltersBar } from "@/components/admin/admin-filters-bar.jsx";
 import { useAdminFetch } from "@/hooks/use-admin-session.js";
 import { parseAdminFilters, filtersToSearchParams } from "@/lib/admin/filters";
+import { adminPermissionSetHas, expandAdminPermissionSet, isSuperAdmin } from "@/lib/auth/permissions";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { useMoney } from "@/hooks/use-money.js";
 import { longDate } from "@/lib/format/dates";
@@ -16,6 +17,7 @@ function prospectName(p, t) {
 export function AdminSalesPage() {
   const { t, lang } = useI18n();
   const { fmt, fmtN } = useMoney();
+  const session = useOutletContext();
   const [searchParams] = useSearchParams();
   const filters = useMemo(() => parseAdminFilters(Object.fromEntries(searchParams.entries())), [searchParams]);
   const qs = searchParams.toString();
@@ -31,6 +33,12 @@ export function AdminSalesPage() {
   const sellers = sellersState.data ?? [];
   const total = sales.reduce((acc, s) => acc + s.vol, 0);
   const exportHref = `/api/v1/admin/export/sales${filtersToSearchParams(filters)}`;
+  const permSet = expandAdminPermissionSet(session?.permissions || session?.profile?.admin_permissions || []);
+  const canExportSales = Boolean(
+    session?.isSuperAdmin
+    || (session?.profile && isSuperAdmin(session.profile))
+    || adminPermissionSetHas(permSet, "ventas.export_csv"),
+  );
 
   return (
     <div className="admin-page">
@@ -38,7 +46,7 @@ export function AdminSalesPage() {
         <h1 className="admin-h1">{t("admin.sales.title")}</h1>
         <p className="admin-sub">{t("admin.sales.sub", { count: fmtN(sales.length), volume: fmt(total) })}</p>
       </div>
-      <AdminFiltersBar filters={filters} sellers={sellers} showStatus exportHref={exportHref} />
+      <AdminFiltersBar filters={filters} sellers={sellers} showStatus exportHref={canExportSales ? exportHref : undefined} />
       <div className="client-table-card">
         {sales.length === 0 ? (
           <div className="admin-empty">{t("admin.sales.emptyFiltered")}</div>

@@ -11,6 +11,22 @@ const DELEGATABLE_ADMIN_PERMISSIONS = [
   { key: "gestionar_soporte", label: "Gestionar Soporte" },
 ];
 
+/** Acciones de exportación — independientes del acceso al módulo. */
+const EXPORT_ADMIN_PERMISSIONS = [
+  { key: "usuarios.export_csv", label: "Exportar usuarios (CSV)" },
+  { key: "logs.export_csv", label: "Exportar logs (CSV)" },
+  { key: "metas.export_csv", label: "Exportar metas (CSV)" },
+  { key: "metricas.export_csv", label: "Exportar métricas (CSV)" },
+  { key: "ventas.export_csv", label: "Exportar ventas (CSV)" },
+  { key: "soporte.export_csv", label: "Exportar soporte (CSV)" },
+];
+
+/** Claves asignables en el modal de permisos admin (secciones + exports). */
+const ASSIGNABLE_ADMIN_PERMISSIONS = [
+  ...DELEGATABLE_ADMIN_PERMISSIONS,
+  ...EXPORT_ADMIN_PERMISSIONS,
+];
+
 const SUPER_ADMIN_ONLY_PERMISSIONS = [
   "ver_logs",
   "gestionar_roles_permisos",
@@ -54,8 +70,10 @@ function canViewUserFinancialMetrics({ isSuperAdmin = false, permissions = [] } 
 }
 
 const DELEGATABLE_KEYS = new Set(DELEGATABLE_ADMIN_PERMISSIONS.map((p) => p.key));
+const EXPORT_KEYS = new Set(EXPORT_ADMIN_PERMISSIONS.map((p) => p.key));
+const ASSIGNABLE_KEYS = new Set(ASSIGNABLE_ADMIN_PERMISSIONS.map((p) => p.key));
 const ALL_KNOWN_ADMIN_KEYS = new Set([
-  ...DELEGATABLE_KEYS,
+  ...ASSIGNABLE_KEYS,
   ...SUPER_ADMIN_ONLY_PERMISSIONS,
   ...PERMISSION_EQUIVALENCE_GROUPS.flat(),
 ]);
@@ -130,13 +148,13 @@ function effectivePermissions(profile) {
   if (profile?.role !== "admin") return [];
   if (isSuperAdmin(profile)) {
     return [
-      ...DELEGATABLE_ADMIN_PERMISSIONS.map((p) => p.key),
+      ...ASSIGNABLE_ADMIN_PERMISSIONS.map((p) => p.key),
       ...SUPER_ADMIN_ONLY_PERMISSIONS,
     ];
   }
   const expanded = expandAdminPermissionSet(profile.admin_permissions || []);
   const out = new Set();
-  for (const p of DELEGATABLE_ADMIN_PERMISSIONS) {
+  for (const p of ASSIGNABLE_ADMIN_PERMISSIONS) {
     if (adminPermissionSetHas(expanded, p.key)) out.add(p.key);
   }
   for (const p of SUPER_ADMIN_ONLY_PERMISSIONS) {
@@ -146,7 +164,7 @@ function effectivePermissions(profile) {
 }
 
 function permissionLabel(key) {
-  return DELEGATABLE_ADMIN_PERMISSIONS.find((p) => p.key === key)?.label ?? key;
+  return ASSIGNABLE_ADMIN_PERMISSIONS.find((p) => p.key === key)?.label ?? key;
 }
 
 const ADMIN_NAV_PERMISSIONS = {
@@ -170,8 +188,12 @@ function canAccessAdminPath(profile, pathname) {
   if (pathname.startsWith("/admin/users/") && pathname.includes("/permissions")) {
     return hasPermission(profile, "gestionar_usuarios");
   }
-  if (pathname.startsWith("/admin/export/users")) return hasPermission(profile, "gestionar_usuarios");
-  if (pathname.startsWith("/admin/export/logs")) return hasPermission(profile, "ver_logs");
+  if (pathname.startsWith("/admin/export/users")) return hasPermission(profile, "usuarios.export_csv");
+  if (pathname.startsWith("/admin/export/logs")) return hasPermission(profile, "logs.export_csv");
+  if (pathname.startsWith("/admin/export/sales")) return hasPermission(profile, "ventas.export_csv");
+  if (pathname.startsWith("/admin/export/goals") || pathname.startsWith("/admin/export/metas")) {
+    return hasPermission(profile, "metas.export_csv");
+  }
   if (pathname.startsWith("/admin/users")) return hasPermission(profile, "gestionar_usuarios");
   if (pathname.startsWith("/admin/tools")) return hasPermission(profile, "ver_metricas");
   if (pathname.startsWith("/admin/support")) return hasPermission(profile, "gestionar_soporte");
@@ -187,13 +209,13 @@ function canAccessAdminPath(profile, pathname) {
 function sanitizeDelegatedPermissions(perms) {
   const out = new Set();
   for (const raw of perms) {
-    if (DELEGATABLE_KEYS.has(raw)) {
+    if (ASSIGNABLE_KEYS.has(raw)) {
       out.add(raw);
       continue;
     }
     if (Object.prototype.hasOwnProperty.call(LEGACY_PERMISSION_MAP, raw)) {
       const mapped = LEGACY_PERMISSION_MAP[raw];
-      if (mapped && DELEGATABLE_KEYS.has(mapped)) out.add(mapped);
+      if (mapped && ASSIGNABLE_KEYS.has(mapped)) out.add(mapped);
     }
   }
   return [...out];
@@ -201,7 +223,9 @@ function sanitizeDelegatedPermissions(perms) {
 
 export {
   ADMIN_NAV_PERMISSIONS,
+  ASSIGNABLE_ADMIN_PERMISSIONS,
   DELEGATABLE_ADMIN_PERMISSIONS,
+  EXPORT_ADMIN_PERMISSIONS,
   PERMISSION_EQUIVALENCE_GROUPS,
   SUPER_ADMIN_ONLY_PERMISSIONS,
   USER_FINANCIAL_METRICS_PERMISSION,

@@ -7,7 +7,7 @@ import {
 
 /**
  * Resuelve permisos efectivos (modelo aditivo):
- * efectivo = permisos(rol) ∪ overrides con otorgado=true
+ * efectivo = permisos(rol) ∪ overrides(otorgado=true) ∪ admin_permissions (legacy/delegación)
  *
  * Los overrides NUNCA restan. Para quitar acceso: cambiar rol o suspender.
  * Superadmin → todos.
@@ -39,6 +39,14 @@ export function resolveUserPermissions(input = {}) {
     if (!key) continue;
     // Solo aditivo: ignorar otorgado=false (deny deprecado).
     if (ov.otorgado === true) granted.add(key);
+  }
+
+  // Delegación admin (profiles.admin_permissions): suma sobre el rol.
+  if (input.role === "admin") {
+    for (const p of input.admin_permissions || []) {
+      const key = String(p || "").trim();
+      if (key) granted.add(key);
+    }
   }
 
   // Compat legacy: user_permissions solo puede SUMAR features, nunca restar del rol.
