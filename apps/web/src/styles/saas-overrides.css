@@ -2869,7 +2869,15 @@ button.tool-card {
   outline: 3px solid color-mix(in srgb, var(--ws-brand-primary, #1e5eff) 58%, white);
   outline-offset: 2px;
 }
-.ws-rail-trigger:disabled { cursor: wait; opacity: .78; }
+.ws-rail-trigger:disabled {
+  cursor: not-allowed;
+  opacity: .78;
+}
+/* Solo durante el cambio real de workspace (no cuando no hay otra sala). */
+.ws-rail-trigger.is-switching,
+.ws-rail-trigger.is-switching:disabled {
+  cursor: wait;
+}
 .ws-rail-trigger-avatar {
   display: grid;
   place-items: center;

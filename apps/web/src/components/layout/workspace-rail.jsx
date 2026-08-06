@@ -205,6 +205,9 @@ export function WorkspaceRail({ className }) {
   const activeName = workspaceLabel(active, t);
   const activeType = workspaceType(active, t);
   const canOpen = options.length > 0 || active.tipo === "sala_de_venta";
+  const triggerTitle = canOpen
+    ? `${activeName} · ${activeType}`
+    : `${activeName} · ${activeType}. ${t("workspace.noOtherWorkspace")}`;
 
   const closeMenu = () => {
     setOpen(false);
@@ -217,8 +220,8 @@ export function WorkspaceRail({ className }) {
         ref={triggerRef}
         type="button"
         className={cn("ws-rail-trigger", switching && "is-switching")}
-        title={`${activeName} · ${activeType}`}
-        aria-label={`${activeName}, ${activeType}. ${t("workspace.switchTitle")}`}
+        title={triggerTitle}
+        aria-label={`${activeName}, ${activeType}. ${canOpen ? t("workspace.switchTitle") : t("workspace.noOtherWorkspace")}`}
         aria-haspopup="dialog"
         aria-expanded={open}
         disabled={switching || !canOpen}
