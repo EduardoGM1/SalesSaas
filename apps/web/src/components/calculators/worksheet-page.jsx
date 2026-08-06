@@ -1,4 +1,3 @@
-
 import { Link } from "react-router-dom";
 import { Settings } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -7,6 +6,7 @@ import { SaveToolModal } from "@/components/calculators/save-tool-modal";
 import { Topbar } from "@/components/layout/topbar";
 import { PageBack } from "@/components/layout/page-back.jsx";
 import { SharedToolBanner } from "@/components/calculators/shared-tool-banner.jsx";
+import { WorksheetRoyalHolidayPage } from "@/components/calculators/worksheet-royal-holiday-page.jsx";
 import { WS_CONFIG_IDS, WS_DEFAULTS } from "@/lib/constants";
 import { computeWorksheet, ensureWSConfig } from "@/lib/calculations/worksheet";
 import { buildOperationalFields, WORKSHEET_MONEY_FIELDS } from "@/lib/currency/moneda-service";
@@ -16,6 +16,8 @@ import { useI18n } from "@/hooks/use-i18n.js";
 import { useMonedaToolBucket } from "@/hooks/use-moneda-tool.js";
 import { useToolSession } from "@/hooks/use-tool-session.js";
 import { useFlushLibreToolOnLeave } from "@/hooks/use-flush-libre-tool-on-leave.js";
+import { useFlag } from "@/hooks/use-flag.js";
+import { WORKSHEET_ROYAL_HOLIDAY_FLAG } from "@/lib/auth/tool-flags.js";
 import { CollabField, collabFieldId } from "@/components/clients/collab-field.jsx";
 import { SelectorMoneda } from "@/components/currency/selector-moneda.jsx";
 import { CampoMonedaCaptura } from "@/components/currency/campo-moneda-captura.jsx";
@@ -25,12 +27,18 @@ import { shallow } from "zustand/shallow";
 
 const EMPTY_FIELDS = { wv: "", we: "", wcc: "", wob: "" };
 
-interface WorksheetPageProps {
-  clientId?;
-  shared?;
+export function WorksheetPage({ clientId, shared }) {
+  const rhFlag = useFlag(WORKSHEET_ROYAL_HOLIDAY_FLAG);
+  if (rhFlag.loading) {
+    return <div className="page">Cargando…</div>;
+  }
+  if (rhFlag.enabled) {
+    return <WorksheetRoyalHolidayPage clientId={clientId} shared={shared} />;
+  }
+  return <WorksheetStandardPage clientId={clientId} shared={shared} />;
 }
 
-export function WorksheetPage({ clientId, shared }: WorksheetPageProps) {
+function WorksheetStandardPage({ clientId, shared }) {
   const { t } = useI18n();
   const session = useToolSession({ clientId, shared, section: "worksheet" });
   const { ready, readOnly, backHref, getBucket, saveBucket, isFileMode, isShared, peers, lockedBy, toolsRevision, collab } = session;

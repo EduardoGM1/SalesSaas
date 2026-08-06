@@ -14,10 +14,18 @@ sigue funcionando con almacenamiento local (sin login ni nube).
 Opción A — **SQL Editor** (más rápido):
 
 1. Supabase → **SQL Editor** → **New query**.
-2. Pega el contenido de [`migrations/0001_initial_schema.sql`](./migrations/0001_initial_schema.sql).
+2. Pega el contenido de [`migrations/0001_initial_schema.sql`](./migrations/0001_initial_schema.sql) (o la migración puntual).
 3. **Run**.
 
-Opción B — **Supabase CLI**:
+Opción B — **Script del monorepo** (requiere `DATABASE_URL` en `.env` / `.env.local`):
+
+```bash
+npm run db:migrate -- 0075
+# o
+node scripts/apply-migration.mjs supabase/migrations/0075_superadmin_features_on_admins.sql
+```
+
+Opción C — **Supabase CLI**:
 
 ```bash
 npx supabase link --project-ref <project-ref>

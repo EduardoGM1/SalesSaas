@@ -26,6 +26,7 @@ const TABS = [
   { id: "roles", label: "Puestos", icon: UsersRound },
   { id: "packages", label: "Paquetes", icon: Boxes },
   { id: "modules", label: "Módulos custom", icon: Puzzle },
+  { id: "catalogo-rh", label: "Catálogo RH", icon: Boxes },
   { id: "branding", label: "Branding y plan", icon: Building2 },
 ];
 
@@ -802,6 +803,10 @@ export function TenantCompanyAdministration({
           </div>
         ) : null}
 
+        {tab === "catalogo-rh" ? (
+          <RoyalHolidayCatalogPanel companyId={companyId} companyName={selectedCompany?.nombre} />
+        ) : null}
+
         {tab === "branding" ? (
           <AdminCard title={`Branding y plan · ${selectedCompany?.nombre || ""}`} subtitle="La configuración se aplica únicamente a esta empresa.">
             <form className="admin-brand-form" onSubmit={(event) => {
@@ -911,6 +916,127 @@ export function TenantCompanyAdministration({
     <div className="admin-page admin-companies-enterprise admin-tenant-company">
       <AdminPageHeader eyebrow="Administración tenant" title="Mi empresa" subtitle="Usuarios, salas, puestos, permisos, módulos, marca y plan dentro de tu alcance." />
       {options.length ? content : <AdminEmptyState title="Sin empresa asignada" />}
+    </div>
+  );
+}
+
+function RoyalHolidayCatalogPanel({ companyId, companyName }) {
+  const [cat, setCat] = useState(null);
+  const [err, setErr] = useState("");
+  const [pending, setPending] = useState(false);
+  const [maxDp, setMaxDp] = useState(6);
+  const [maxCc, setMaxCc] = useState(6);
+
+  const reload = async () => {
+    if (!companyId) return;
+    setErr("");
+    try {
+      const data = await adminJson(`tenant/empresas/${companyId}/catalogo-rh`);
+      setCat(data);
+      setMaxDp(data?.parametros?.max_extra_dp ?? 6);
+      setMaxCc(data?.parametros?.max_extra_cc ?? 6);
+    } catch (e) {
+      setCat(null);
+      setErr(e.message || "Sin catálogo RH");
+    }
+  };
+
+  useEffect(() => { void reload(); }, [companyId]);
+
+  const publish = async () => {
+    setPending(true);
+    try {
+      await adminJson(`tenant/empresas/${companyId}/catalogo-rh/publish`, {
+        method: "POST",
+        body: {
+          notas: "Ajuste parámetros generales",
+          parametros: {
+            ...(cat?.parametros || {}),
+            max_extra_dp: Number(maxDp),
+            max_extra_cc: Number(maxCc),
+            notas_pendientes:
+              "Corte costo admin intermedio y comisiones OPC/X pendientes de dueño de producto.",
+          },
+        },
+      });
+      toast.success("Nueva versión de catálogo publicada");
+      await reload();
+    } catch (e) {
+      toast.error(e.message);
+    } finally {
+      setPending(false);
+    }
+  };
+
+  if (!companyId) return <AdminEmptyState title="Selecciona una empresa" />;
+  if (err) {
+    return (
+      <AdminCard title="Catálogo Worksheet Royal Holiday" subtitle={companyName}>
+        <p className="muted">{err}</p>
+        <p className="muted">Solo aplica a empresas con Worksheet RH sembrado (p. ej. Royal Holiday).</p>
+      </AdminCard>
+    );
+  }
+  if (!cat) return <AdminCard title="Catálogo RH"><p>Cargando…</p></AdminCard>;
+
+  return (
+    <div className="admin-company-layout">
+      <AdminCard
+        title={`Catálogo RH v${cat.catalogo?.version}`}
+        subtitle="Versionado: publicar crea una versión nueva. Ventas ya guardadas conservan su catálogo_id."
+      >
+        <p>
+          Bottom line: {cat.bottom_line?.length || 0} · Financiamiento: {cat.financiamiento?.length || 0} ·
+          Comisiones: {cat.comisiones?.length || 0} · Regalos: {cat.regalos?.length || 0}
+        </p>
+        <p className="muted" style={{ fontSize: 13 }}>
+          Costo admin seed: 15%→750 USD, 27.5%+→950 USD. Rango intermedio pendiente de producto.
+          Posiciones OPC/X: agregar filas en comisiones cuando existan % reales.
+        </p>
+        <div className="admin-inline-form" style={{ marginTop: 12 }}>
+          <label>
+            Max Extra DP
+            <input className="auth-input" type="number" value={maxDp} onChange={(e) => setMaxDp(e.target.value)} />
+          </label>
+          <label>
+            Max Extra CC
+            <input className="auth-input" type="number" value={maxCc} onChange={(e) => setMaxCc(e.target.value)} />
+          </label>
+          <button type="button" className="btn btn-primary" disabled={pending} onClick={publish}>
+            Publicar nueva versión
+          </button>
+        </div>
+      </AdminCard>
+      <AdminCard title="Bottom line (muestra)">
+        <div className="admin-users-table-wrap">
+          <table className="client-table">
+            <thead><tr><th>Programa</th><th>HC</th><th>Min c/IVA</th><th>M.Fee</th></tr></thead>
+            <tbody>
+              {(cat.bottom_line || []).slice(0, 8).map((r) => (
+                <tr key={r.id}>
+                  <td>{r.programa}</td><td>{r.holiday_credits}</td>
+                  <td>{r.precio_minimo_con_iva}</td><td>{r.cuota_anual_mfee}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </AdminCard>
+      <AdminCard title="Comisiones (muestra)">
+        <div className="admin-users-table-wrap">
+          <table className="client-table">
+            <thead><tr><th>DP%</th><th>HC min</th><th>HC max</th><th>Pos</th><th>%</th></tr></thead>
+            <tbody>
+              {(cat.comisiones || []).slice(0, 12).map((r) => (
+                <tr key={r.id}>
+                  <td>{r.down_payment_pct}</td><td>{r.hc_rango_min}</td><td>{r.hc_rango_max}</td>
+                  <td>{r.posicion}</td><td>{r.porcentaje_comision}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </AdminCard>
     </div>
   );
 }

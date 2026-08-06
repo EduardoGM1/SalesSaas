@@ -1,10 +1,11 @@
 # Salètse — Información técnica del sistema
 
-Documento de referencia general: tecnologías, arquitectura, estructura del monorepo, modelo de datos y relaciones principales.
+Documento maestro de referencia: producto, stack, arquitectura, modelo de datos, RBAC, flujos y operaciones.
 
 > Producto: plataforma SaaS de ventas para timeshare / clubes vacacionales (agenda, expedientes, herramientas comerciales, metas, red, workspaces personal/sala).  
 > Repositorio: monorepo `sales-app` (npm workspaces).  
-> Producción típica: [saletse.vercel.app](https://saletse.vercel.app).
+> Producción: [saletse.vercel.app](https://saletse.vercel.app).  
+> Migraciones SQL: `0001` … `0075` (gap histórico `0024`).
 
 ---
 
@@ -13,12 +14,25 @@ Documento de referencia general: tecnologías, arquitectura, estructura del mono
 | Aspecto | Detalle |
 |--------|---------|
 | Tipo | SaaS multi-workspace (empresa → sala de ventas → datos operativos) |
-| Frontend | Vite + React 19 + React Router 7 |
-| Backend | Express (Node.js, JavaScript) |
+| Frontend | Vite 6 + React 19 + React Router 7 + PWA |
+| Backend | Express 4 (Node.js, ESM/JavaScript) |
 | Datos / Auth | Supabase (PostgreSQL + Auth + Realtime + Storage + RLS) |
 | Estado cliente | Zustand + persistencia local (offline-first) + sync a nube |
-| Deploy | Vercel (web + API serverless/Node) |
-| Idiomas UI | ES / EN (catálogos i18n) |
+| Shared | `@salesapp/shared` — permisos, mappers, validators, sync |
+| Deploy | Vercel (SPA + API serverless `api/index.mjs`) |
+| Idiomas UI | ES / EN |
+| Calidad | Playwright e2e + scripts `verify*` |
+
+### Actores principales
+
+| Actor | Qué hace |
+|-------|----------|
+| **Superadmin** | Único administrador principal; panel completo; otorga permisos sensibles; puede mutar a otros Admins |
+| **Admin** | Panel de plataforma (secciones delegadas); **no** puede modificar a otros Admins |
+| **Gerente** (tenant/sala) | Equipo, asignación, `*:ver_equipo`, acceso cruzado opcional |
+| **Liner** | Rol operativo de apertura (Survey + proyección; por paquete) |
+| **Cerrador** | Rol de cierre con módulos comerciales completos |
+| **Soporte** | Tickets de ayuda |
 
 ---
 
@@ -51,7 +65,7 @@ Documento de referencia general: tecnologías, arquitectura, estructura del mono
 | Resend | Email (soporte) |
 | dotenv | Variables de entorno |
 
-**Estilo de arquitectura API:** *thin router + fat service* (rutas en `routes/`, lógica en `services/`, sin capa Controllers formal todavía).
+**Estilo:** thin router + fat service (`routes/` → `services/` → Supabase/RPC).
 
 ### 2.3 Datos e infraestructura
 
@@ -62,23 +76,24 @@ Documento de referencia general: tecnologías, arquitectura, estructura del mono
 | Supabase Realtime | Presencia, chat, sync reactivo |
 | Supabase Storage | Logos, adjuntos soporte, archivos de expediente |
 | Row Level Security (RLS) | Aislamiento por workspace / permisos |
-| Migraciones SQL | `supabase/migrations/` (0001 → 0066+) |
+| Migraciones SQL | `supabase/migrations/` (`0001` → `0075`) |
 
 ### 2.4 Calidad y tooling
 
 | Herramienta | Uso |
 |-------------|-----|
 | Playwright | E2E |
-| Scripts `verify*` | Smoke tests API / flags / workspaces |
-| TypeScript (dev) | Tipado parcial en shared / algunos módulos web |
+| `npm run verify` | Smoke general |
+| `npm run db:migrate -- NNNN` | Aplicar migración SQL vía `DATABASE_URL` |
+| TypeScript (dev) | Tipado parcial en web / shared |
 | npm workspaces | Monorepo |
 
 ### 2.5 Integraciones externas
 
-- **OneSignal** — push
-- **Resend** — correo de soporte
-- **Sentry** — errores (opcional)
-- **Vercel Cron** — jobs programados (`CRON_SECRET`)
+- **OneSignal** — push  
+- **Resend** — correo de soporte  
+- **Sentry** — errores (opcional)  
+- **Vercel Cron** — jobs (`CRON_SECRET`)
 
 ---
 
@@ -89,29 +104,29 @@ sales-app/
 ├── apps/
 │   ├── web/                 # SPA Vite + React
 │   │   └── src/
-│   │       ├── components/  # UI por dominio (clients, calculators, admin…)
-│   │       ├── pages/       # Páginas de ruta
-│   │       ├── layouts/     # DashboardLayout, AuthLayout, AdminSection
-│   │       ├── hooks/       # useFlag, useAppNav, useToolSession…
-│   │       ├── stores/      # Zustand (db-store, sync-store…)
-│   │       ├── lib/         # Utilidades, i18n, auth, sync, currency…
-│   │       ├── routes/      # Árbol React Router
-│   │       └── styles/      # CSS / overrides
+│   │       ├── components/  # UI por dominio
+│   │       ├── pages/       # Páginas de ruta (app + admin activas)
+│   │       ├── layouts/
+│   │       ├── hooks/
+│   │       ├── stores/      # Zustand
+│   │       ├── lib/         # i18n, auth, sync, currency…
+│   │       ├── routes/
+│   │       └── styles/
 │   └── api/                 # Express
 │       └── src/
 │           ├── routes/      # v1.js, admin.js, auth.js
-│           ├── services/    # Dominio (prospects, sales, flags, tenant…)
+│           ├── services/
 │           ├── middleware/  # auth, admin-auth, rate-limit
-│           └── lib/         # supabase, workspace-scope, http helpers
-├── packages/
-│   └── shared/              # Auth catalog, validators, mappers, sync types
-├── supabase/
-│   ├── migrations/          # Schema versionado
-│   └── README.md            # Auth / Redirect URLs
-├── docs/                    # Documentación técnica
-├── scripts/                 # Seed, migrate, verify, diagnose
+│           ├── controllers/ # algunos dominios (custom modules, delegación)
+│           └── lib/
+├── packages/shared/         # Auth catalog, validators, mappers, sync
+├── supabase/migrations/     # Schema versionado
+├── docs/                    # Documentación (este archivo = maestro)
+├── scripts/                 # Seed, migrate genérico, verify, ops Vercel
+│   └── _archive/            # One-shots históricos (no usar en día a día)
 ├── e2e/                     # Playwright
-└── public/                  # Assets estáticos (Vite publicDir)
+├── api/index.mjs            # Entrada serverless Vercel
+└── public/                  # Assets estáticos
 ```
 
 ### Comandos habituales
@@ -122,33 +137,27 @@ npm run dev:api          # API ~:4000
 npm run dev:web          # Web ~:5173 (proxy /api, /auth)
 npm run build            # Build web → apps/web/dist
 npm run start:prod       # Sirve build + API
+npm run db:migrate -- 0075
 npm run verify           # Smoke
 npm run test:e2e         # Playwright
+node scripts/promote-saletse-alias.mjs   # Alias producción saletse.vercel.app
 ```
 
 ---
 
 ## 4. Arquitectura lógica
 
-```
-┌─────────────┐     HTTPS      ┌──────────────┐
-│  Browser    │───────────────▶│  Vite SPA    │
-│  (PWA)      │◀───────────────│  apps/web    │
-└─────────────┘   JSON/JWT     └──────┬───────┘
-                                      │ /api/v1, /auth
-                                      ▼
-                               ┌──────────────┐
-                               │  Express API │
-                               │  apps/api    │
-                               └──────┬───────┘
-                                      │ service role / user JWT
-                                      ▼
-                               ┌──────────────┐
-                               │  Supabase    │
-                               │  PG + Auth   │
-                               │  Realtime    │
-                               │  Storage     │
-                               └──────────────┘
+```mermaid
+flowchart TB
+  Browser[Browser_PWA] -->|HTTPS_JSON| Web[Vite_SPA_apps_web]
+  Web -->|slash_api_v1_auth| API[Express_API_apps_api]
+  Web -->|Auth_Realtime_directo| SB[Supabase]
+  API -->|JWT_usuario_RLS| SB
+  API -->|service_role_acotado| SB
+  SB --> PG[(PostgreSQL)]
+  SB --> Auth[Supabase_Auth]
+  SB --> RT[Realtime]
+  SB --> ST[Storage]
 ```
 
 ### Capas de responsabilidad
@@ -156,7 +165,7 @@ npm run test:e2e         # Playwright
 | Capa | Responsabilidad |
 |------|-----------------|
 | UI | Captura, calculadoras, listados, admin |
-| Store local | Caché offline (clientes, tools) + dirty sync |
+| Store local | Caché offline + dirty sync |
 | API | Autorización, validación, operaciones sensibles |
 | PostgreSQL + RLS | Persistencia e aislamiento |
 | Shared | Catálogo de permisos, validadores, mappers |
@@ -172,50 +181,89 @@ Sistema (global)
       └── Expedientes propios (pueden transferirse a sala)
 ```
 
-- **`user_id`**: actor / creador.
-- **`workspace_id`**: frontera de aislamiento operativo (RLS + API).
-- La empresa se obtiene vía `workspaces.empresa_id` (las tablas CRM no llevan `empresa_id` denormalizado).
+- **`user_id`**: actor / creador.  
+- **`workspace_id`**: frontera de aislamiento operativo (RLS + API).  
+- La empresa se obtiene vía `workspaces.empresa_id`.
 
 ---
 
 ## 5. Autenticación y autorización
 
-### 5.1 Autenticación
+### 5.1 Flujo de autenticación / sesión
 
-1. Usuario inicia sesión con **Supabase Auth**.
-2. Se crea/actualiza fila en `profiles` (trigger `handle_new_user`).
-3. Se asegura un **workspace personal**.
-4. La sesión API valida JWT (cookie o `Authorization: Bearer`).
-5. `profiles.workspace_activo_id` define el contexto activo (personal o sala).
+```mermaid
+sequenceDiagram
+  participant U as Usuario
+  participant W as Web
+  participant A as API
+  participant S as SupabaseAuth
+  participant DB as Postgres
 
-### 5.2 Autorización (capas)
+  U->>W: Login
+  W->>S: Auth email/OAuth
+  S-->>W: Session JWT cookies
+  W->>A: GET /api/v1/auth/session
+  A->>DB: profiles + role + workspace + permissions + flags
+  A-->>W: SessionContext
+  U->>W: Switch sala
+  W->>A: POST /api/v1/auth/workspace
+  A->>DB: profiles.workspace_activo_id
+  A-->>W: Sesión recalculada
+```
+
+1. Login con **Supabase Auth**.  
+2. Trigger `handle_new_user` asegura `profiles` + workspace personal.  
+3. API valida JWT (`authenticateApi`) y respeta `auth_revoked_at`.  
+4. Sesión arma: profile, membresía, workspaces, `permission_keys`, flags tenant-aware, workspace activo.
+
+### 5.2 Capas de autorización
 
 | Capa | Qué controla |
 |------|----------------|
-| Rol de plataforma | `profiles.role` / `role_id` → Superadmin, Admin, Vendedor, Soporte |
+| Rol de plataforma | `profiles.role` / `role_id` → Superadmin, Admin, Liner (legado `vendedor`), Soporte |
 | Membresía de empresa | `empresa_miembros` → Admin de empresa |
-| Membresía de sala | `workspace_miembros` + `role_id` (Gerente, Vendedor, Liner, Cerrador…) |
-| Permisos (`permission_keys`) | Catálogo `permisos` + `rol_permisos` + overrides aditivos |
-| Feature flags | `flags` / `flag_reglas` / paquetes (`paquete_flags`) → módulos UI |
-| Plan / membresía | `planes` + `membresias` (basico / pro) por usuario |
+| Membresía de sala | `workspace_miembros` + `role_id` (Gerente, Liner, Cerrador…) |
+| Permisos (`permission_keys`) | `permisos` + `rol_permisos` + overrides aditivos |
+| Feature flags | `flags` / `flag_reglas` / `paquete_flags` |
+| Plan / membresía | `planes` + `membresias` (basico / pro) |
 
-**Precedencia de flags:** usuario → rol → membresía (plan) → default global.  
-Si el flag padre está off, los hijos quedan off.
+**Resolución de permisos (aditiva):**
 
-**Overrides de permisos:** modelo aditivo (unión rol ∪ overrides con `otorgado=true`). Ver `docs/RBAC-ADDITIVE.md`.
+```
+efectivo = permisos(rol) ∪ overrides(otorgado=true) ∪ admin_permissions (si admin plataforma)
+```
 
-### 5.3 Roles típicos
+Deny deprecado. Detalle: [`RBAC-ADDITIVE.md`](./RBAC-ADDITIVE.md).
+
+**Precedencia de flags:** usuario → rol → membresía (plan) → default global (y resolvers tenant-aware). Si el flag padre está off, los hijos quedan off.
+
+### 5.3 Panel admin — permisos y aislamiento
+
+| Permiso | Quién lo otorga | Efecto |
+|---------|-----------------|--------|
+| Secciones (`ver_resumen`, `gestionar_usuarios`, …) | Superadmin → Admin | Acceso a pestañas del panel |
+| Exports CSV (`*.export_csv`) | Superadmin → Admin | Export independiente del módulo |
+| `usuarios.cambiar_plan` | Solo Superadmin asigna | Cambiar plan basico/pro |
+| `usuarios.desactivar_cuenta` | Solo Superadmin asigna | Activar/desactivar cuentas |
+| `usuarios.gestionar_permisos` | Solo Superadmin asigna | Gestionar **funciones** de app de no-admins |
+
+**Reglas de peer (migraciones 0074 / 0075):**
+
+- Un Admin **no** puede cambiar rol, plan, permisos, funciones ni activar/desactivar a **otro Admin**.  
+- Solo el **Superadmin** puede mutar a Admins y editar permisos del panel.  
+- Quien tenga `usuarios.gestionar_permisos` puede editar funciones de usuarios no-admin (Liner, etc.).
+
+### 5.4 Roles típicos
 
 | Rol | Ámbito | Notas |
 |-----|--------|-------|
-| Superadmin | Plataforma | Configuración global; sin lectura CRM fila a fila |
-| Admin | Plataforma | Panel de sistema |
-| Soporte | Plataforma | Tickets de ayuda |
-| Vendedor | Plataforma (+ copia tenant) | Default histórico / personal |
+| Superadmin | Plataforma | `is_super_admin`; bypass; un solo registro |
+| Admin | Plataforma | Panel; sin mutar peers |
+| Soporte | Plataforma | Tickets |
+| Liner | Plataforma / tenant | Rol operativo actual (ex-vendedor) |
 | Gerente | Sala (tenant) | Equipo, asignación |
-| Liner | Sala (tenant) | Survey + Proyección (por paquete) |
-| Cerrador | Sala (tenant) | Módulos completos + cierre |
-| Admin empresa | `empresa_miembros.es_admin` | Gestión de salas / puestos / branding |
+| Cerrador | Sala (tenant) | Cierre + módulos |
+| Admin empresa | `empresa_miembros` | Salas / puestos / branding |
 
 ---
 
@@ -225,153 +273,137 @@ Si el flag padre está off, los hijos quedan off.
 |--------|-------------|------------------------|
 | Agenda | Calendario de citas / seguimiento | `calendar_entries` |
 | Clientes / Expedientes | CRM del prospecto | `prospects` + relacionados |
-| Survey | Discovery / motivaciones / timeshare / gastos | `tool_calculations` (tool=survey) |
+| Survey | Discovery / motivaciones / timeshare | `tool_calculations` |
 | Proyección de Vacaciones | Calculadora vacacional | `tool_calculations` |
 | Worksheet | Hoja financiera | `tool_calculations` |
-| Money Box | Escenarios (submódulo Worksheet) | Derivado + flag `worksheet.money_box` |
+| Money Box | Escenarios (submódulo Worksheet) | Flag `worksheet.money_box` |
 | Analysis | Análisis auxiliar | `tool_calculations` / flags |
 | Ventas | Registro de ventas | `sales` |
-| Metas / Dashboard | Objetivos y métricas | `goals` + agregados |
+| Metas / Dashboard | Objetivos y métricas | `goals` |
 | Red / Mensajes | Contactos y chat | network + messages |
 | Mi equipo | Miembros de sala | `workspace_miembros` |
-| Admin | Panel sistema / empresa | rutas `/admin` |
+| Admin | Panel sistema / empresa | `/admin/*` |
 | Soporte | Tickets | `support_requests` |
+| Módulos custom | Metafields por tenant | `modulo_custom_datos` + flags |
 
-Herramientas en expediente:  
-`/clients/:id/{survey|vacaciones|worksheet|money-box|analysis}`  
-Modo libre: `/tools/...` (sin expediente).
+Herramientas en expediente: `/clients/:id/{survey|vacaciones|worksheet|money-box|analysis}`  
+Modo libre: `/tools/...`
+
+**Admin activo en router:** overview, users, roles, modules, empresas, logs, goals, tools, support.  
+Rutas legacy (`sales`, `agenda`, `prospects`, …) redirigen con `AdminLegacyRedirect`.
 
 ---
 
 ## 7. Base de datos — modelo relacional
 
-### 7.1 Diagrama conceptual (núcleo)
+### 7.1 Diagrama ER simplificado
 
-```
-auth.users 1──1 profiles
-                 │
-                 ├── workspace_activo_id ──▶ workspaces
-                 │                              │
-                 │                              ├── tipo: personal | sala_de_venta
-                 │                              ├── empresa_id ──▶ empresas (solo salas)
-                 │                              │
-                 │                              ├──◀── workspace_miembros ──▶ profiles
-                 │                              │         (+ role_id ──▶ roles)
-                 │                              │
-                 │                              ├──◀── prospects (workspace_id)
-                 │                              ├──◀── sales
-                 │                              ├──◀── activities
-                 │                              ├──◀── calendar_entries
-                 │                              └──◀── tool_calculations
-                 │
-empresas ◀── empresa_miembros ──▶ profiles
-    │
-    ├── paquetes_acceso ── paquete_flags ──▶ flags
-    └── roles (scope empresa|workspace, empresa_id)
-
-roles (plataforma: empresa_id NULL)
-  └── rol_permisos ──▶ permisos
-
-flags ── flag_reglas (alcance: rol | usuario | membresia)
-planes ── membresias ──▶ profiles
-
-prospects ── prospect_workflows (participantes: rep / gerente / cerrador)
-          ── prospect_shares
-          ── tool_calculations
-          ── sales (opcional)
+```mermaid
+erDiagram
+  AUTH_USERS ||--|| PROFILES : has
+  PROFILES }o--|| ROLES : role_id
+  PROFILES }o--o| WORKSPACES : workspace_activo
+  EMPRESAS ||--o{ WORKSPACES : salas
+  EMPRESAS ||--o{ EMPRESA_MIEMBROS : members
+  WORKSPACES ||--o{ WORKSPACE_MIEMBROS : members
+  WORKSPACE_MIEMBROS }o--|| ROLES : role_id
+  ROLES ||--o{ ROL_PERMISOS : grants
+  PERMISOS ||--o{ ROL_PERMISOS : granted_by
+  PROFILES ||--o{ USUARIO_PERMISOS_OVERRIDE : overrides
+  WORKSPACES ||--o{ PROSPECTS : owns
+  WORKSPACES ||--o{ SALES : owns
+  WORKSPACES ||--o{ CALENDAR_ENTRIES : owns
+  PROSPECTS ||--o{ TOOL_CALCULATIONS : tools
+  PLANES ||--o{ MEMBRESIAS : plans
+  PROFILES ||--o{ MEMBRESIAS : subscribed
+  FLAGS ||--o{ FLAG_REGLAS : rules
 ```
 
 ### 7.2 Entidades principales
 
 #### Identidad y acceso
 
-| Tabla | Descripción | Claves / FKs |
-|-------|-------------|--------------|
-| `auth.users` | Usuario Supabase Auth | PK `id` |
-| `profiles` | Perfil app | PK = `auth.users.id`; FK `role_id`, `workspace_activo_id` |
-| `roles` | Roles plataforma o tenant | PK `id`; `empresa_id` NULL = plataforma |
-| `permisos` | Catálogo de permisos | PK `id`; `clave` UNIQUE |
-| `rol_permisos` | Permisos por rol | FK `rol_id`, `permiso_id` |
-| `usuario_permisos_override` | Overrides aditivos por usuario | FK usuario, permiso |
+| Tabla | Descripción |
+|-------|-------------|
+| `auth.users` | Usuario Supabase Auth |
+| `profiles` | Perfil app (`role`, `role_id`, `is_super_admin`, `admin_permissions`, `user_permissions`, `workspace_activo_id`, `is_active`) |
+| `roles` | Roles plataforma o tenant (`scope`, `empresa_id`) |
+| `permisos` | Catálogo (`clave`, `capa` app\|admin) |
+| `rol_permisos` | N:M rol↔permiso |
+| `usuario_permisos_override` | Overrides aditivos globales |
+| `workspace_usuario_permisos_override` | Overrides por sala |
+| `permisos_delegados` | Asistentes |
+| `gerente_acceso_cruzado` | Gerente con salas adicionales |
 
-#### Organización multi-workspace
+#### Organización
 
-| Tabla | Descripción | Claves / FKs |
-|-------|-------------|--------------|
-| `empresas` | Tenant comercial | PK `id` |
-| `workspaces` | Personal o sala | PK `id`; FK `empresa_id` (salas) |
-| `workspace_miembros` | Miembro de sala/personal | UNIQUE (`usuario_id`,`workspace_id`); FK `role_id` |
-| `empresa_miembros` | Admin / miembro de empresa | UNIQUE (`empresa_id`,`usuario_id`) |
-| `paquetes_acceso` | Paquete de módulos por empresa | FK `empresa_id` |
-| `paquete_flags` | Flags activos del paquete | FK `paquete_id`, `flag_id` |
+| Tabla | Descripción |
+|-------|-------------|
+| `empresas` | Tenant comercial |
+| `workspaces` | `personal` \| `sala_de_venta` |
+| `workspace_miembros` | Membresía + rol en sala |
+| `empresa_miembros` | Admin / miembro de empresa |
+| `paquetes_acceso` / `paquete_flags` | Paquetes de módulos |
 
 #### CRM operativo
 
-| Tabla | Descripción | Claves / FKs |
-|-------|-------------|--------------|
-| `prospects` | Expediente | PK `id`; FK `user_id`, `workspace_id` **NOT NULL** |
-| `prospect_workflows` | Participantes comerciales | FK `prospect_id`; rep / gerente / cerrador |
-| `prospect_workflow_events` | Historial de eventos workflow | FK prospect |
-| `prospect_shares` | Compartidos con contactos de red | FK prospect, usuarios |
-| `sales` | Ventas | FK `user_id`, `workspace_id`, opcional `prospect_id` |
-| `activities` | Actividades | FK workspace / user |
-| `calendar_entries` | Agenda | FK `workspace_id`, `user_id` |
-| `goals` | Metas | FK user / workspace |
-| `tool_calculations` | Snapshot JSON por herramienta | UNIQUE (`user_id`,`prospect_id`,`tool`) |
+| Tabla | Descripción |
+|-------|-------------|
+| `prospects` | Expediente (`workspace_id` NOT NULL) |
+| `prospect_workflows` | Participantes (rep / gerente / cerrador) |
+| `prospect_shares` | Compartidos de red |
+| `sales`, `activities`, `calendar_entries`, `goals` | Operación diaria |
+| `tool_calculations` | Snapshot JSON por herramienta |
 
-#### Módulos y monetización
+#### Monetización / flags / custom
 
 | Tabla | Descripción |
 |-------|-------------|
-| `flags` | Catálogo de módulos / sub-flags (árbol `flag_padre`) |
-| `flag_reglas` | Excepciones por rol, usuario o membresía (plan) |
-| `planes` | Planes `basico` / `pro` |
-| `membresias` | Suscripción del usuario a un plan |
-| `funciones_premium` | Catálogo legacy de features premium |
+| `planes`, `membresias`, `funciones_premium` | Plan y premium |
+| `flags`, `flag_reglas` | Feature flags |
+| `modulo_custom_datos` | Datos de módulos custom tenant |
 
-#### Colaboración y plataforma
+#### Plataforma
 
-| Tabla | Descripción |
-|-------|-------------|
-| Mensajes / red | Contactos, chats, presencia (`user_presence`, etc.) |
-| `support_requests` | Tickets de soporte |
-| Logs admin | Auditoría de acciones de panel |
-| Push | Suscripciones / jobs programados |
+`support_requests`, `logs_administracion`, `platform_sessions`, surveys, push, red (`user_connections`, `direct_messages`).
 
-### 7.3 Relaciones críticas (reglas de negocio en datos)
+### 7.3 Reglas críticas
 
-| Regla | Cómo se expresa |
-|-------|-----------------|
-| Una sala pertenece a una empresa | `workspaces.empresa_id` en `tipo = sala_de_venta` |
-| Un expediente pertenece a un workspace | `prospects.workspace_id NOT NULL` |
-| Un usuario puede tener varios workspaces | `workspace_miembros` (producto: 1 sala a la vez + personal) |
-| Transfer personal → sala | RPC `transfer_prospect_to_sala` (mueve el mismo `prospect.id`) |
-| No cruzar empresas al compartir | `assertWorkspaceBoundary` / `workspace_boundary_ok` |
-| Un solo gerente por sala | Índice único parcial sobre `rol_en_workspace = 'gerente'` |
+| Regla | Expresión |
+|-------|-----------|
+| Sala → empresa | `workspaces.empresa_id` si `tipo = sala_de_venta` |
+| Expediente → workspace | `prospects.workspace_id NOT NULL` |
+| Transfer personal → sala | RPC `transfer_prospect_to_sala` |
+| Un solo Superadmin | Índice `profiles_one_super_admin` |
+| Admin no muta Admin | RPCs `admin_set_user_*` (0074/0075) |
 | Roles plataforma vs tenant | `roles.empresa_id IS NULL` vs NOT NULL |
 
 ### 7.4 Seguridad a nivel BD
 
-- **RLS** habilitado en tablas sensibles.
-- Helpers típicos: `user_in_workspace`, `workspace_has_permission`, `user_in_empresa`, `is_super_admin`.
-- Operaciones privilegiadas usan **service role** en API tras validar al actor.
-- Superadmin / Admin de plataforma: agregados y configuración; **sin** lectura CRM global fila a fila (política de privacidad).
+- RLS en tablas sensibles.  
+- Helpers: `user_in_workspace`, `has_admin_permission`, `is_super_admin`, …  
+- API usa JWT del usuario (RLS); `service_role` solo en caminos acotados.  
+- Superadmin/Admin de plataforma: agregados y configuración; sin lectura CRM global fila a fila.
 
-### 7.5 Migraciones
-
-Las migraciones viven en `supabase/migrations/` numeradas (`0001_…` … `0066_…`).  
-Temas relevantes por bloque:
+### 7.5 Migraciones (mapa)
 
 | Rango | Temas |
 |-------|--------|
-| 0001–0010 | Schema inicial CRM, admin, features |
-| 0011–0021 | Sharing, red, presencia, push, tipo tour |
+| 0001–0010 | Schema CRM, admin, features |
+| 0011–0021 | Sharing, red, presencia, push |
 | 0022–0036 | Privacidad admin, soporte, sales status |
-| 0037–0042 | Membresías, roles/permisos, logs, soporte |
+| 0037–0042 | Membresías, roles/permisos, logs |
 | 0043–0051 | Survey config, feature flags |
-| 0052–0056 | Multi-workspace, tenant RBAC, workflow, backfill |
-| 0057–0064 | Transfer, participantes, RLS, limpieza pipeline |
-| 0065–0066 | Flags membresía, Liner, listado roles plataforma |
+| 0052–0056 | Multi-workspace, tenant RBAC, workflow |
+| 0057–0064 | Transfer, RLS, permisos aditivos |
+| 0065–0069 | Flags membresía, Liner, asistentes, migración vendedor→liner |
+| 0070–0075 | Permisos admin/exports, módulos custom, peer isolation, `gestionar_permisos` |
+
+Aplicar una migración:
+
+```bash
+npm run db:migrate -- 0075
+```
 
 ---
 
@@ -380,85 +412,100 @@ Temas relevantes por bloque:
 Base: **`/api/v1`**  
 Auth: cookie de sesión o `Authorization: Bearer <access_token>`.
 
-### Convenciones
-
-- Éxito: `{ "data": ... }`
-- Error: `{ "error": "mensaje" }`
-- Índice vivo: `GET /api/v1/`
-
-### Módulos de endpoints (resumen)
-
-| Dominio | Prefijo / recursos |
-|---------|-------------------|
-| Sesión | `/auth/session`, perfil |
+| Dominio | Recursos |
+|---------|----------|
+| Sesión | `/auth/session`, switch workspace |
 | Expedientes | `/prospects` |
-| Ventas | `/sales` |
-| Agenda | `/calendar-entries` |
-| Metas | `/goals` |
-| Actividades | `/activities` |
-| Herramientas | `/tool-calculations` |
-| Survey config | `/survey/questions-config` |
+| Ventas / agenda / metas / activities | `/sales`, `/calendar-entries`, `/goals`, `/activities` |
+| Herramientas | `/tool-calculations`, survey config |
 | Sync | `/sync` |
-| Red / mensajes | `/network/*`, `/messages/*` |
-| Notificaciones | `/notifications/*` |
-| Workspace | invite, switch, team |
-| Admin plataforma | `/admin/*` |
-| Admin tenant | `/admin/tenant/empresas/...` |
+| Red / mensajes / notificaciones | `/network/*`, `/messages/*`, `/notifications/*` |
+| Admin plataforma | `/admin/*` (users, roles, flags, logs, support, export…) |
+| Admin tenant | `/admin/tenant/…`, custom modules, delegación |
 
-Detalle: `apps/api/API.md`.
+Detalle vivo: [`apps/api/API.md`](../apps/api/API.md).
 
 ---
 
-## 9. Frontend — navegación principal
+## 9. Frontend — navegación
 
 | Ruta | Módulo |
 |------|--------|
 | `/` | Agenda |
 | `/clients`, `/clients/:id` | Expedientes |
 | `/clients/:id/survey` (etc.) | Herramientas en expediente |
-| `/tools` | Hub de herramientas (modo libre) |
+| `/tools` | Hub herramientas (modo libre) |
 | `/sales` | Historial de ventas |
 | `/metas`, `/goals` | Metas / dashboard |
 | `/network`, `/messages` | Red y chat |
 | `/team` | Mi equipo (gerente) |
-| `/admin/*` | Panel de administración (embebido en el shell) |
+| `/admin/*` | Panel administración |
 
-Layouts:
-
-- `AuthLayout` — login / registro  
-- `DashboardLayout` — app principal (sidebar + workspace rail)  
-- `AdminSection` — panel admin dentro del mismo shell SPA  
+Layouts: `AuthLayout`, `DashboardLayout`, `AdminSection` (admin embebido en el shell SPA).
 
 ---
 
 ## 10. Flujos de datos destacados
 
-### 10.1 Offline → nube (PWA y Desktop = misma SPA)
+### 10.1 Offline → nube (PWA = Desktop = misma SPA)
 
-1. UI escribe en Zustand (`db-store`) → `localStorage` key `sts4_v1`.  
-2. Outbox durable `sts4_outbound_v1` marca dirty hasta ACK del PUT.  
-3. Debounce ~1.2s o flush inmediato → `PUT /api/v1/sync` (upsert + `pendingDeletes`).  
-4. Altas de expediente: además `POST /api/v1/prospects` cuando hay red.  
-5. Init / online / foreground: realinea `workspace_activo_id`, recovery de blob local, pull + merge LWW.  
-6. Realtime (prospects, sales, goals, calendar_entries, tool_calculations, activities) invalida → force pull.  
-7. Service Worker: `/api/v1/sync` y `/api/v1/prospects` son **NetworkOnly** (no cache stale).  
+1. UI escribe en Zustand (`db-store`) → `localStorage` `sts4_v1`.  
+2. Outbox `sts4_outbound_v1` hasta ACK del PUT.  
+3. Debounce ~1.2s → `PUT /api/v1/sync`.  
+4. Altas: además `POST /api/v1/prospects` con red.  
+5. Init / online / foreground: realinea workspace, recovery, pull LWW.  
+6. Realtime invalida → force pull.  
+7. SW: sync/prospects en **NetworkOnly**.
 
-Detalle y checklist: `docs/INFORME-SYNC-PWA-DESKTOP.md`, `docs/TEST-SYNC-PWA-DESKTOP.md`.
+Detalle: [`INFORME-SYNC-PWA-DESKTOP.md`](./INFORME-SYNC-PWA-DESKTOP.md).
 
 ### 10.2 Expediente en sala
 
-1. Alta de `prospects` con `workspace_id` de la sala.  
-2. Upsert de `prospect_workflows` (representante, gerente; cerrador opcional).  
-3. Tools se guardan en `tool_calculations` ligadas a `prospect_id`.  
-4. Venta se registra en `sales` (mismo workspace).
+Alta con `workspace_id` de sala → workflow (rep/gerente/cerrador) → tools en `tool_calculations` → venta en `sales`.
 
 ### 10.3 Transfer personal → sala
 
-RPC `transfer_prospect_to_sala`: mueve el expediente y datos hijos al workspace sala; reasigna participantes (representante = actor, cerrador limpio).
+RPC `transfer_prospect_to_sala` mueve expediente e hijos; reasigna participantes.
+
+### 10.4 Gestión de usuarios (Admin)
+
+```mermaid
+flowchart LR
+  Super[Superadmin] -->|permisos_panel| AdminUser[Admin]
+  Super -->|features| AnyUser[Cualquier_no_super]
+  AdminUser -->|features_si_gestionar_permisos| NonAdmin[Liner_etc]
+  AdminUser -.->|bloqueado| AdminPeer[Otro_Admin]
+```
 
 ---
 
-## 11. Variables de entorno (nombres)
+## 11. Feature flags, paquetes y membresías
+
+Tres capas de gating (pueden combinarse):
+
+1. **Permiso** (`permission_keys`) — ¿puede la acción?  
+2. **Flag** — ¿está el módulo visible/habilitado?  
+3. **Plan / paquete** — membresía basico/pro o paquete de empresa para puestos de sala.
+
+Resolver de flags tenant-aware: migraciones `0072+` + servicios `flags-service` / sesión.
+
+---
+
+## 12. Deploy y operaciones
+
+| Tema | Práctica |
+|------|----------|
+| Hosting | Vercel proyecto `saletse` |
+| Alias público | `saletse.vercel.app` vía `node scripts/promote-saletse-alias.mjs` |
+| Build id | `https://saletse.vercel.app/build-id.txt` (commit SHA) |
+| Migraciones | `npm run db:migrate -- NNNN` o SQL Editor |
+| Env | `.env.example` → `.env.local` (nunca versionar secretos) |
+| Scripts diarios | `scripts/` raíz |
+| Scripts históricos | `scripts/_archive/` |
+
+---
+
+## 13. Variables de entorno (nombres)
 
 | Variable | Ámbito |
 |----------|--------|
@@ -473,29 +520,44 @@ RPC `transfer_prospect_to_sala`: mueve el expediente y datos hijos al workspace 
 | `CRON_SECRET` | Cron Vercel |
 | `DATABASE_URL` | Migraciones / scripts |
 
-Plantilla: `.env.example` (nunca versionar `.env` / `.env.local`).
+Compat: prefijos `NEXT_PUBLIC_*` aún aceptados como fallback (legado Next→Vite). Plantilla: `.env.example`.
 
 ---
 
-## 12. Documentación relacionada
+## 14. Deuda técnica conocida (no resuelta en esta pasada)
+
+1. **Permisos duales legacy** — Conviven `admin_permissions[]`, `user_permissions[]`, catálogo `roles/permisos/overrides` y mapas de equivalencia.  
+2. **Enum `user_role` vs catálogo** — Enum histórico (`vendedor`/`gerente`/`admin`) vs `roles.slug` (liner/cerrador).  
+3. **Dos modelos de gerente** — `workspace_rol` enum vs rol tenant + `role_id`.  
+4. **Tres capas de gating** — permiso + flag + plan/paquete; posible inconsistencia.  
+5. **Fallbacks de sesión** — si fallan RPCs, degradación a defaults puede ocultar fallos de schema.
+
+---
+
+## 15. Mapa de documentación
 
 | Archivo | Contenido |
 |---------|-----------|
-| `README.md` | Setup rápido |
-| `apps/api/API.md` | Endpoints REST |
-| `supabase/README.md` | Auth, Redirect URLs, Realtime |
-| `docs/RBAC-ADDITIVE.md` | Modelo de permisos aditivos |
-| `MIGRATION.md` | Notas de migración |
-| `docs/` | Arquitectura, performance, etc. |
+| **Este documento** | Fuente de verdad técnica general |
+| [`README.md`](../README.md) | Setup rápido |
+| [`apps/api/API.md`](../apps/api/API.md) | Endpoints REST |
+| [`supabase/README.md`](../supabase/README.md) | Auth, Redirect URLs, Realtime, migraciones |
+| [`RBAC-ADDITIVE.md`](./RBAC-ADDITIVE.md) | Modelo de permisos aditivos |
+| [`SHARING-ARCHITECTURE.md`](./SHARING-ARCHITECTURE.md) | Sharing de expedientes |
+| [`PERFORMANCE.md`](./PERFORMANCE.md) | Rendimiento |
+| [`JERARQUIA-WORKSPACES-ENTREGABLE.md`](./JERARQUIA-WORKSPACES-ENTREGABLE.md) | Jerarquía workspaces |
+| Sync / PWA | `INFORME-SYNC-PWA-DESKTOP.md`, `DIAGNOSTICO-SYNC-PERSISTENCIA.md`, … |
+| [`MIGRATION.md`](../MIGRATION.md) | Port Next → Vite/Express (histórico) |
+| `docs/_archive/` | Dumps JSON de auditorías/limpiezas |
 
 ---
 
-## 13. Glosario
+## 16. Glosario
 
 | Término | Significado en Salètse |
 |---------|------------------------|
 | Empresa | Tenant comercial (`empresas`) |
-| Sala / Workspace sala | Unidad operativa de ventas (`workspaces.tipo = sala_de_venta`) |
+| Sala / Workspace sala | Unidad operativa (`workspaces.tipo = sala_de_venta`) |
 | Personal | Workspace individual del usuario |
 | Expediente / Prospect / Cliente (UI) | Caso comercial (`prospects`) |
 | Tool / Herramienta | Survey, Vacaciones, Worksheet, Money Box, Analysis |
@@ -503,7 +565,8 @@ Plantilla: `.env.example` (nunca versionar `.env` / `.env.local`).
 | Cerrador | Rol de cierre (módulos completos) |
 | Flag | Feature flag de módulo |
 | Paquete | Conjunto de flags ligado a un puesto de sala |
+| Peer isolation | Admins no se modifican entre sí; solo Superadmin |
 
 ---
 
-*Documento generado como referencia técnica general del sistema. Actualizar cuando cambien migraciones mayores o el stack.*
+*Actualizado tras limpieza de scripts/páginas huérfanas y migraciones hasta 0075. Revisar al añadir migraciones mayores o cambios de stack.*

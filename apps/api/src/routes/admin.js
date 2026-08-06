@@ -32,6 +32,7 @@ import * as modulosCustomController from "../controllers/modulos-custom-controll
 import * as delegacionController from "../controllers/delegacion-controller.js";
 import * as tenantRbacService from "../services/tenant-rbac-service.js";
 import * as tenantAdminService from "../services/tenant-admin-service.js";
+import * as royalHolidayService from "../services/royal-holiday-service.js";
 
 const router = Router();
 
@@ -417,6 +418,23 @@ router.get("/tenant/empresas/:empresaId/flags", async (req, res) => {
     res,
     () => tenantRbacService.listTenantFlagCatalog(a.userId, req.params.empresaId),
     { wrap: "data" },
+  );
+});
+
+router.get("/tenant/empresas/:empresaId/catalogo-rh", async (req, res) => {
+  const a = await tenantActor(req, res);
+  if (!a) return;
+  await runService(res, () => royalHolidayService.getCatalogoVigente(req.params.empresaId), { wrap: "data" });
+});
+
+router.post("/tenant/empresas/:empresaId/catalogo-rh/publish", async (req, res) => {
+  const a = await tenantActor(req, res);
+  if (!a) return;
+  const body = parseJsonBody(req, res) || {};
+  await runService(
+    res,
+    () => royalHolidayService.publishNuevaVersion(req.params.empresaId, a.userId, body),
+    { wrap: "data", successStatus: 201 },
   );
 });
 

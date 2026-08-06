@@ -56,7 +56,16 @@ export async function updateSale(supabase, userId, id, body) {
   q = scopeByWorkspace(q, workspaceId);
   const { data, error } = await q.select().maybeSingle();
   if (error) throw new ServiceError(error.message, 400);
-  return assertFound(data, "Venta no encontrada.");
+  const sale = assertFound(data, "Venta no encontrada.");
+  if (String(patch.status || "").toLowerCase() === "cancelada") {
+    try {
+      const { handleCancelacionVenta } = await import("./royal-holiday-service.js");
+      await handleCancelacionVenta(id);
+    } catch (err) {
+      console.warn("[rh] cancelacion comisión:", err instanceof Error ? err.message : err);
+    }
+  }
+  return sale;
 }
 
 export async function deleteSale(supabase, userId, id) {

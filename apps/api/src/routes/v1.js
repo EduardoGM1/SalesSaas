@@ -28,6 +28,7 @@ import * as workflowService from "../services/workflow-service.js";
 import * as prospectParticipantsService from "../services/prospect-participants-service.js";
 import * as chatService from "../services/chat-service.js";
 import * as modulosCustomController from "../controllers/modulos-custom-controller.js";
+import * as royalHolidayService from "../services/royal-holiday-service.js";
 import { ServiceError } from "../lib/service-error.js";
 
 const router = Router();
@@ -969,6 +970,42 @@ router.post("/cron/cleanup-support-attachments", async (req, res) => {
 router.get("/cron/cleanup-support-attachments", async (req, res) => {
   if (!authorizeCron(req)) return apiError(res, "Unauthorized", 401);
   await runService(res, () => supportService.cleanupExpiredSupportAttachments({ limit: 80 }), { wrap: "data" });
+});
+
+/** Cron diario: Extra DP cumplidos → recálculo comisión RH. */
+router.post("/cron/rh-extra-dp", async (req, res) => {
+  if (!authorizeCron(req)) return apiError(res, "Unauthorized", 401);
+  await runService(res, () => royalHolidayService.processDueExtraPagos({ limit: 200 }), { wrap: "data" });
+});
+router.get("/cron/rh-extra-dp", async (req, res) => {
+  if (!authorizeCron(req)) return apiError(res, "Unauthorized", 401);
+  await runService(res, () => royalHolidayService.processDueExtraPagos({ limit: 200 }), { wrap: "data" });
+});
+
+router.get("/royal-holiday/:empresaId/catalogo", async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  await runService(res, () => royalHolidayService.getCatalogoVigente(req.params.empresaId), { wrap: "data" });
+});
+
+router.post("/royal-holiday/:empresaId/preview", async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  const body = parseJsonBody(req, res);
+  if (!body) return;
+  await runService(res, () => royalHolidayService.previewCalculo(req.params.empresaId, body), { wrap: "data" });
+});
+
+router.post("/royal-holiday/:empresaId/ventas", async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  const body = parseJsonBody(req, res);
+  if (!body) return;
+  await runService(
+    res,
+    () => royalHolidayService.saveVenta(a.userId, { ...body, empresa_id: req.params.empresaId }),
+    { wrap: "data", successStatus: 201 },
+  );
 });
 
 router.post("/support/requests", async (req, res) => {

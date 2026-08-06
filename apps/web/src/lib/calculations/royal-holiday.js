@@ -1,0 +1,18 @@
+export {
+  calcularFechaPagoComision,
+  toDateStr,
+  lookupBottomLine,
+  lookupCostoAdministrativo,
+  lookupComision,
+  plazosDisponibles,
+  calcularMensualidad,
+  calcularTotalesWorksheet,
+  regalosDisponibles,
+  diferenciaComisionPct,
+  montoComision,
+  membresiaDebeActivarse,
+  dentroVentanaCancelacion,
+  normalizeEnganchePct,
+  RH_MEMBRESIA_ENGANCHE_PCT,
+  RH_VENTANA_CANCELACION_DIAS,
+} from "@salesapp/shared/calculations/royal-holiday.js";

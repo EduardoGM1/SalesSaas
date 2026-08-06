@@ -28,7 +28,7 @@ FROM public.usuario_permisos_override;
 | Momento | Fecha (UTC) | adds | denies | Notas |
 |---------|-------------|------|--------|-------|
 | Pre-migración (SQL Editor, usuario) | 2026-08-02 ~21:00 local | **0** | **1** | Verificado manualmente en Dashboard |
-| Post-migración (aplicación remota) | 2026-08-02 | **0** | **0** | Tras `scripts/apply-migration-0063.mjs` |
+| Post-migración (aplicación remota) | 2026-08-02 | **0** | **0** | Tras aplicar migración `0063` |
 | Re-verificación formal | **2026-08-03T06:05:53.532Z** | **0** | **0** | `scripts/verify-rbac-additive.mjs` |
 
 Misma consulta sobre `workspace_usuario_permisos_override` (re-verificación):
@@ -86,7 +86,7 @@ WHERE o.otorgado = false;
 ## Migración 0063
 
 Archivo: `supabase/migrations/0063_rbac_additive_overrides.sql`  
-Script: `scripts/apply-migration-0063.mjs`  
+Script: `npm run db:migrate -- 0063` (o `node scripts/apply-migration.mjs 0063`)  
 Verificación: `node scripts/verify-rbac-additive.mjs` (requiere `DATABASE_URL` en `.env.local`)
 
 **Estado producción: APLICADA** (2026-08-02). Re-verificación 2026-08-03 confirma `denies = 0` y funciones sin semántica deny.

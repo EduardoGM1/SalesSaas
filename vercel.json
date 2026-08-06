@@ -23,6 +23,10 @@
     {
       "path": "/api/v1/cron/cleanup-support-attachments",
       "schedule": "0 10 * * *"
+    },
+    {
+      "path": "/api/v1/cron/rh-extra-dp",
+      "schedule": "15 8 * * *"
     }
   ],
   "redirects": [

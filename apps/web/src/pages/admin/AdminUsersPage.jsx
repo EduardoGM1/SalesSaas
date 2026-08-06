@@ -531,7 +531,7 @@ export function AdminUsersPage() {
         icon: <Layers size={15} />,
         href: userAdminUrl(filters, { editFeatures: user.id }),
       },
-    ];
+    ].filter(Boolean);
   };
   const pageUrl = (page) => userAdminUrl({ ...filters, page: page > 1 ? page : undefined });
 

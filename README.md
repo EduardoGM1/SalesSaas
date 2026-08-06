@@ -88,13 +88,18 @@ e2e/            Playwright
 - Objetivo MVC incremental: extraer controllers por módulo sin romper rutas existentes; limpiar dead code al migrar cada dominio.
 - Detalle de endpoints: `apps/api/API.md`.
 
-## Documentación relacionada
+## Documentación
 
-- `MIGRATION.md` — notas de migración
-- `supabase/README.md` — Auth, Redirect URLs, Realtime
-- `docs/RBAC-ADDITIVE.md` — permisos aditivos (rol ∪ overrides); aplicar migración `0063`
-- `docs/` — arquitectura y performance
-- `apps/api/API.md` — API
+- **[`docs/INFORMACION-TECNICA-SISTEMA.md`](docs/INFORMACION-TECNICA-SISTEMA.md)** — documento maestro (producto, stack, DB, RBAC, flujos, ops)
+- `apps/api/API.md` — endpoints REST
+- `supabase/README.md` — Auth, Redirect URLs, Realtime, migraciones
+- `docs/RBAC-ADDITIVE.md` — permisos aditivos
+- `MIGRATION.md` — port histórico Next → Vite/Express
+
+```bash
+# Aplicar una migración SQL (requiere DATABASE_URL)
+npm run db:migrate -- 0075
+```
 
 ## Licencia
 

@@ -8,6 +8,9 @@ export const TOOL_FLAG_KEYS = {
 
 export const MONEY_BOX_FLAG = "worksheet.money_box";
 
+/** Variante Worksheet Royal Holiday (custom por empresa). */
+export const WORKSHEET_ROYAL_HOLIDAY_FLAG = "worksheet.royal_holiday";
+
 export const SURVEY_TAB_FLAGS = {
   motivaciones: "survey.tab.motivaciones",
   timeshare: "survey.tab.timeshare_information",
