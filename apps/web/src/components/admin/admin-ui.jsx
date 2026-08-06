@@ -1,4 +1,4 @@
-import { useId } from "react";
+import { useEffect, useId, useRef } from "react";
 import { Link } from "react-router-dom";
 import { AlertCircle, Inbox } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -131,6 +131,13 @@ export function AdminPageState({ loading, error, skeleton = "table", children })
   return children ?? null;
 }
 
+/**
+ * Diálogo modal reutilizable del Panel Admin.
+ * - ESC / clic en backdrop (configurable) / botón cerrar
+ * - Bloqueo de scroll del body
+ * - Foco inicial en el botón cerrar
+ * - Cuerpo con scroll interno (la tarjeta de página no cambia de tamaño)
+ */
 export function AdminDialog({
   open,
   onClose,
@@ -140,14 +147,50 @@ export function AdminDialog({
   footer,
   size = "default",
   destructive = false,
+  closeOnBackdrop = true,
+  className,
+  bodyClassName,
 }) {
   const titleId = useId();
+  const closeRef = useRef(null);
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKey = (e) => {
+      if (e.key === "Escape") {
+        e.stopPropagation();
+        onClose?.();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    const t = window.setTimeout(() => closeRef.current?.focus?.(), 0);
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener("keydown", onKey);
+      window.clearTimeout(t);
+    };
+  }, [open, onClose]);
+
   if (!open) return null;
+
   return (
-    <>
-      <button type="button" className="modal-backdrop" aria-label="Cerrar" onClick={onClose} />
+    <div className="admin-dialog-root" role="presentation">
+      <button
+        type="button"
+        className="admin-dialog-backdrop"
+        aria-label="Cerrar"
+        onClick={closeOnBackdrop ? onClose : undefined}
+        tabIndex={closeOnBackdrop ? 0 : -1}
+      />
       <section
-        className={cn("admin-dialog", `admin-dialog--${size}`, destructive && "admin-dialog--destructive")}
+        className={cn(
+          "admin-dialog",
+          `admin-dialog--${size}`,
+          destructive && "admin-dialog--destructive",
+          className,
+        )}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
@@ -157,12 +200,20 @@ export function AdminDialog({
             <h2 id={titleId} className="admin-dialog-title">{title}</h2>
             {subtitle ? <p className="admin-dialog-subtitle">{subtitle}</p> : null}
           </div>
-          <button type="button" className="admin-dialog-close" aria-label="Cerrar" onClick={onClose}>×</button>
+          <button
+            ref={closeRef}
+            type="button"
+            className="admin-dialog-close"
+            aria-label="Cerrar"
+            onClick={onClose}
+          >
+            ×
+          </button>
         </header>
-        <div className="admin-dialog-body">{children}</div>
+        <div className={cn("admin-dialog-body", bodyClassName)}>{children}</div>
         {footer ? <footer className="admin-dialog-footer">{footer}</footer> : null}
       </section>
-    </>
+    </div>
   );
 }
 

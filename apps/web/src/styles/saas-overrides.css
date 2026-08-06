@@ -877,12 +877,18 @@
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 14px;
+  align-items: start;
 }
 .admin-module-card {
   border: 1px solid var(--border2, #e2e8f0);
   border-radius: 14px;
   background: var(--white, #fff);
   padding: 14px 16px;
+  /* Altura estable: el detalle vive en modal, no en la tarjeta */
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  min-height: 0;
 }
 .admin-module-card-head {
   display: flex;
@@ -929,10 +935,14 @@
   font-weight: 600;
   color: var(--text, #0f172a);
   cursor: pointer;
+  transition: background .15s ease;
+}
+.admin-module-rules-toggle:hover {
+  background: #f1f5f9;
 }
 .admin-module-rules-toggle .is-open,
 .admin-module-rules-toggle svg.is-open {
-  transform: rotate(180deg);
+  transform: rotate(90deg);
 }
 .admin-module-rules,
 .admin-module-children {
@@ -947,6 +957,21 @@
   flex-wrap: wrap;
   gap: 6px;
   margin-bottom: 10px;
+}
+.admin-module-subfeatures-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.admin-module-subfeature {
+  border: 1px solid var(--border2, #e2e8f0);
+  border-radius: 12px;
+  background: #f8fafc;
+  padding: 12px 14px;
+}
+.admin-module-exceptions-table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 .admin-embedded > .admin-main {
   flex: 1;
@@ -5155,19 +5180,39 @@ body,
 
 .admin-dialog {
   position: fixed; z-index: 1001; top: 50%; left: 50%; width: min(calc(100vw - 32px), 560px);
-  max-height: min(84vh, 760px); overflow: auto; transform: translate(-50%, -50%);
+  max-height: min(84vh, 760px); display: flex; flex-direction: column; overflow: hidden;
+  transform: translate(-50%, -50%);
   border: 1px solid var(--border); border-radius: 18px; background: var(--surface);
   box-shadow: 0 28px 80px rgba(15, 32, 68, .22);
+  animation: admin-dialog-in .18s ease-out;
 }
 .admin-dialog--wide { width: min(calc(100vw - 32px), 820px); }
-.admin-dialog-header { display: flex; justify-content: space-between; gap: 16px; padding: 20px; border-bottom: 1px solid var(--border); }
+.admin-dialog--modules { width: min(calc(100vw - 32px), 832px); max-height: min(90vh, 832px); }
+.admin-dialog-root { position: fixed; inset: 0; z-index: 1000; }
+.admin-dialog-backdrop {
+  position: fixed; inset: 0; z-index: 1000; border: 0; padding: 0; margin: 0;
+  background: rgba(15, 32, 68, 0.5); backdrop-filter: blur(6px);
+  cursor: pointer; animation: admin-dialog-backdrop-in .16s ease-out;
+}
+.admin-dialog-header { display: flex; justify-content: space-between; gap: 16px; padding: 20px; border-bottom: 1px solid var(--border); flex: 0 0 auto; }
 .admin-dialog-title { margin: 0; color: var(--text); font-size: 18px; letter-spacing: -.02em; }
 .admin-dialog-subtitle { margin: 5px 0 0; color: var(--muted); font-size: 12px; line-height: 1.45; }
 .admin-dialog-close { display: grid; place-items: center; width: 34px; height: 34px; border: 0; border-radius: 10px; background: var(--bg2); color: var(--muted); font-size: 22px; cursor: pointer; }
 .admin-dialog-close:hover { color: var(--text); }
 .admin-dialog-close:focus-visible { outline: 3px solid color-mix(in srgb, var(--blue) 30%, transparent); }
-.admin-dialog-body { padding: 20px; }
-.admin-dialog-footer { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 8px; padding: 16px 20px; border-top: 1px solid var(--border); }
+.admin-dialog-body { padding: 20px; overflow: auto; flex: 1 1 auto; min-height: 0; -webkit-overflow-scrolling: touch; }
+.admin-dialog-footer { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 8px; padding: 16px 20px; border-top: 1px solid var(--border); flex: 0 0 auto; background: var(--surface); }
+@keyframes admin-dialog-in {
+  from { opacity: 0; transform: translate(-50%, -48%) scale(.98); }
+  to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+@keyframes admin-dialog-backdrop-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .admin-dialog, .admin-dialog-backdrop { animation: none; }
+}
 
 .admin-kpi-card {
   min-width: 0; min-height: 132px; padding: 18px; border: 1px solid var(--border);
@@ -5202,10 +5247,14 @@ body,
   .admin-card-header, .admin-card-body { padding-left: 16px; padding-right: 16px; }
   .admin-skeleton-view--overview { grid-template-columns: 1fr; }
   .admin-skeleton-view--overview .admin-skeleton-block:nth-child(n + 5) { grid-column: auto; min-height: 180px; }
-  .admin-dialog { top: auto; bottom: 0; left: 0; width: 100%; max-height: 90dvh; transform: none; border-radius: 20px 20px 0 0; padding-bottom: env(safe-area-inset-bottom); }
+  .admin-dialog { top: auto; bottom: 0; left: 0; width: 100%; max-height: 90dvh; transform: none; border-radius: 20px 20px 0 0; padding-bottom: env(safe-area-inset-bottom); animation: admin-dialog-sheet-in .2s ease-out; }
   .admin-dialog-header, .admin-dialog-body { padding: 16px; }
   .admin-dialog-footer { position: sticky; bottom: 0; padding: 12px 16px; background: var(--surface); }
   .admin-kpi-card { min-height: 116px; }
+}
+@keyframes admin-dialog-sheet-in {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 /* Admin overview narrative */
