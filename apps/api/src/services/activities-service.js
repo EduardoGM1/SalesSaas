@@ -9,7 +9,8 @@ import {
 
 export async function listActivities(supabase, userId, { limit, offset, prospect_id }) {
   const ctx = await getRequestWorkspaceContext(supabase, userId);
-  await requireWorkspacePermission(supabase, userId, "expedientes:ver_propios", ctx.workspaceId);
+  const required = ctx.teamScope ? "expedientes:ver_equipo" : "expedientes:ver_propios";
+  await requireWorkspacePermission(supabase, userId, required, ctx.workspaceId);
   let q = supabase
     .from("activities")
     .select("*", { count: "exact" })
@@ -35,7 +36,8 @@ export async function createActivity(supabase, userId, body) {
 export async function getActivity(supabase, userId, id) {
   if (!isUuid(id)) throw new ServiceError("ID inválido.");
   const ctx = await getRequestWorkspaceContext(supabase, userId);
-  await requireWorkspacePermission(supabase, userId, "expedientes:ver_propios", ctx.workspaceId);
+  const required = ctx.teamScope ? "expedientes:ver_equipo" : "expedientes:ver_propios";
+  await requireWorkspacePermission(supabase, userId, required, ctx.workspaceId);
   let q = supabase.from("activities").select("*").eq("id", id);
   q = scopeByWorkspace(q, ctx.workspaceId);
   if (!ctx.teamScope) q = q.eq("user_id", userId);

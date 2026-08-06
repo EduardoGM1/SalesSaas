@@ -11,6 +11,11 @@ import { canEditProspectRecord } from "../lib/prospect-edit-access.js";
 
 export async function listProspects(supabase, userId, { limit, offset, status }) {
   const ctx = await getRequestWorkspaceContext(supabase, userId);
+  // Gerente / alcance de equipo: autorizar con ver_equipo (no exigir ver_propios).
+  if (ctx.teamScope) {
+    await requireWorkspacePermission(supabase, userId, "expedientes:ver_equipo", ctx.workspaceId);
+  }
+
   const { data: assignments } = !ctx.teamScope
     ? await supabase
       .from("prospect_workflows")
@@ -20,7 +25,7 @@ export async function listProspects(supabase, userId, { limit, offset, status })
       .neq("estado", "cancelado")
     : { data: [] };
   const assignedIds = (assignments ?? []).map((row) => row.prospect_id);
-  if (!assignedIds.length) {
+  if (!ctx.teamScope && !assignedIds.length) {
     await requireWorkspacePermission(supabase, userId, "expedientes:ver_propios", ctx.workspaceId);
   }
   let q = supabase
@@ -95,7 +100,8 @@ export async function getProspect(supabase, userId, id) {
     .eq("cerrador_id", userId)
     .maybeSingle();
   if (!assignment) {
-    await requireWorkspacePermission(supabase, userId, "expedientes:ver_propios", ctx.workspaceId);
+    const required = ctx.teamScope ? "expedientes:ver_equipo" : "expedientes:ver_propios";
+    await requireWorkspacePermission(supabase, userId, required, ctx.workspaceId);
   }
   let q = supabase.from("prospects").select("*").eq("id", id);
   q = scopeByWorkspace(q, ctx.workspaceId);

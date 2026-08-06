@@ -141,10 +141,19 @@ export async function ensureEmpresaOperationalRoles(admin, empresaId) {
       .eq("rol_id", roleId);
     const have = new Set((existingPerms ?? []).map((r) => r.permiso_id));
 
+    // Base operativa = permisos del Liner de plataforma (expedientes, ventas, agenda…).
     const { data: basePerms } = await admin
       .from("rol_permisos")
       .select("permiso_id")
       .eq("rol_id", LINER_PLATFORM_ROLE_ID);
+
+    // Si el puesto existe pero quedó sin permisos (seed incompleto), forzar reconciliación.
+    if ((existingPerms ?? []).length === 0 && (basePerms ?? []).length === 0) {
+      throw new ServiceError(
+        "El rol Liner de plataforma no tiene permisos; no se pueden sembrar puestos de empresa.",
+        500,
+      );
+    }
 
     const workflowKeys = spec.slug === "cerrador"
       ? ["workflow:ver", "workflow:avanzar", "workflow:cerrar"]
@@ -156,6 +165,7 @@ export async function ensureEmpresaOperationalRoles(admin, empresaId) {
           "expedientes:ver_equipo",
           "ventas:ver_equipo",
           "dashboard:ver_equipo",
+          "metas:ver_equipo",
         ]
         : ["workflow:ver", "workflow:avanzar"];
 
@@ -164,16 +174,40 @@ export async function ensureEmpresaOperationalRoles(admin, empresaId) {
       .select("id")
       .in("clave", workflowKeys);
 
-    const toInsert = [
+    const toInsert = [];
+    const seen = new Set(have);
+    for (const id of [
       ...(basePerms ?? []).map((row) => row.permiso_id),
       ...(wfPerms ?? []).map((p) => p.id),
-    ]
-      .filter((id) => id && !have.has(id))
-      .map((permiso_id) => ({ rol_id: roleId, permiso_id }));
+    ]) {
+      if (!id || seen.has(id)) continue;
+      seen.add(id);
+      toInsert.push({ rol_id: roleId, permiso_id: id });
+    }
 
     if (toInsert.length) {
       const { error: permErr } = await admin.from("rol_permisos").insert(toInsert);
       if (permErr && permErr.code !== "23505") throw new ServiceError(permErr.message, 400);
+      if (permErr?.code === "23505") {
+        // Fallback fila a fila si el batch choca (no dejar el puesto en 0).
+        for (const row of toInsert) {
+          const { error: oneErr } = await admin.from("rol_permisos").insert(row);
+          if (oneErr && oneErr.code !== "23505") throw new ServiceError(oneErr.message, 400);
+        }
+      }
+    }
+
+    // Verificación: Gerente/Liner/Cerrador nunca deben quedar en 0 permisos.
+    const { count: permCount, error: countErr } = await admin
+      .from("rol_permisos")
+      .select("permiso_id", { count: "exact", head: true })
+      .eq("rol_id", roleId);
+    if (countErr) throw new ServiceError(countErr.message, 500);
+    if ((permCount ?? 0) === 0) {
+      throw new ServiceError(
+        `El puesto ${spec.slug} quedó sin permisos tras el seed; revisar rol_permisos.`,
+        500,
+      );
     }
   }
 
