@@ -920,12 +920,23 @@ export function TenantCompanyAdministration({
   );
 }
 
+function editCell(rows, idx, key, value) {
+  const next = rows.map((r, i) => (i === idx ? { ...r, [key]: value } : r));
+  return next;
+}
+
 function RoyalHolidayCatalogPanel({ companyId, companyName }) {
   const [cat, setCat] = useState(null);
   const [err, setErr] = useState("");
   const [pending, setPending] = useState(false);
+  const [sub, setSub] = useState("parametros");
   const [maxDp, setMaxDp] = useState(6);
   const [maxCc, setMaxCc] = useState(6);
+  const [bottomLine, setBottomLine] = useState([]);
+  const [financiamiento, setFinanciamiento] = useState([]);
+  const [comisiones, setComisiones] = useState([]);
+  const [regalos, setRegalos] = useState([]);
+  const [costoAdmin, setCostoAdmin] = useState([]);
 
   const reload = async () => {
     if (!companyId) return;
@@ -935,6 +946,11 @@ function RoyalHolidayCatalogPanel({ companyId, companyName }) {
       setCat(data);
       setMaxDp(data?.parametros?.max_extra_dp ?? 6);
       setMaxCc(data?.parametros?.max_extra_cc ?? 6);
+      setBottomLine(data?.bottom_line || []);
+      setFinanciamiento(data?.financiamiento || []);
+      setComisiones(data?.comisiones || []);
+      setRegalos(data?.regalos || []);
+      setCostoAdmin(data?.costo_administrativo || []);
     } catch (e) {
       setCat(null);
       setErr(e.message || "Sin catálogo RH");
@@ -949,14 +965,17 @@ function RoyalHolidayCatalogPanel({ companyId, companyName }) {
       await adminJson(`tenant/empresas/${companyId}/catalogo-rh/publish`, {
         method: "POST",
         body: {
-          notas: "Ajuste parámetros generales",
+          notas: "Publicación desde Configuraciones Catálogo RH",
           parametros: {
             ...(cat?.parametros || {}),
             max_extra_dp: Number(maxDp),
             max_extra_cc: Number(maxCc),
-            notas_pendientes:
-              "Corte costo admin intermedio y comisiones OPC/X pendientes de dueño de producto.",
           },
+          bottom_line: bottomLine,
+          financiamiento,
+          comisiones,
+          regalos,
+          costo_administrativo: costoAdmin,
         },
       });
       toast.success("Nueva versión de catálogo publicada");
@@ -979,62 +998,222 @@ function RoyalHolidayCatalogPanel({ companyId, companyName }) {
   }
   if (!cat) return <AdminCard title="Catálogo RH"><p>Cargando…</p></AdminCard>;
 
+  const subs = [
+    { id: "parametros", label: "Parámetros" },
+    { id: "bottom_line", label: "Bottom line" },
+    { id: "financiamiento", label: "Financiamiento" },
+    { id: "comisiones", label: "Comisiones" },
+    { id: "regalos", label: "Regalos" },
+    { id: "costo", label: "Costo admin" },
+  ];
+
   return (
     <div className="admin-company-layout">
       <AdminCard
-        title={`Catálogo RH v${cat.catalogo?.version}`}
-        subtitle="Versionado: publicar crea una versión nueva. Ventas ya guardadas conservan su catálogo_id."
+        title={`Configuraciones · Catálogo RH v${cat.catalogo?.version}`}
+        subtitle="Edita tablas y publica una versión nueva. Ventas previas conservan su catálogo_id."
       >
-        <p>
-          Bottom line: {cat.bottom_line?.length || 0} · Financiamiento: {cat.financiamiento?.length || 0} ·
-          Comisiones: {cat.comisiones?.length || 0} · Regalos: {cat.regalos?.length || 0}
-        </p>
-        <p className="muted" style={{ fontSize: 13 }}>
-          Costo admin seed: 15%→750 USD, 27.5%+→950 USD. Rango intermedio pendiente de producto.
-          Posiciones OPC/X: agregar filas en comisiones cuando existan % reales.
-        </p>
-        <div className="admin-inline-form" style={{ marginTop: 12 }}>
-          <label>
-            Max Extra DP
-            <input className="auth-input" type="number" value={maxDp} onChange={(e) => setMaxDp(e.target.value)} />
-          </label>
-          <label>
-            Max Extra CC
-            <input className="auth-input" type="number" value={maxCc} onChange={(e) => setMaxCc(e.target.value)} />
-          </label>
+        <nav className="admin-subnav" style={{ marginBottom: 12 }}>
+          {subs.map((s) => (
+            <button
+              key={s.id}
+              type="button"
+              className={`admin-subnav-item${sub === s.id ? " active" : ""}`}
+              onClick={() => setSub(s.id)}
+            >
+              {s.label}
+            </button>
+          ))}
+        </nav>
+
+        {sub === "parametros" && (
+          <div className="admin-inline-form">
+            <label>
+              Max Extra DP
+              <input className="auth-input" type="number" value={maxDp} onChange={(e) => setMaxDp(e.target.value)} />
+            </label>
+            <label>
+              Max Extra CC
+              <input className="auth-input" type="number" value={maxCc} onChange={(e) => setMaxCc(e.target.value)} />
+            </label>
+            <p className="muted" style={{ fontSize: 13, width: "100%" }}>
+              Bottom line: {bottomLine.length} · Financiamiento: {financiamiento.length} ·
+              Comisiones: {comisiones.length} · Regalos: {regalos.length}
+            </p>
+          </div>
+        )}
+
+        {sub === "bottom_line" && (
+          <div className="admin-users-table-wrap">
+            <table className="client-table">
+              <thead><tr><th>Programa</th><th>HC</th><th>Mín s/IVA</th><th>Mín c/IVA</th><th>M.Fee</th></tr></thead>
+              <tbody>
+                {bottomLine.map((r, idx) => (
+                  <tr key={r.id || idx}>
+                    {["programa", "holiday_credits", "precio_minimo_sin_iva", "precio_minimo_con_iva", "cuota_anual_mfee"].map((k) => (
+                      <td key={k}>
+                        <input
+                          className="auth-input"
+                          value={r[k] ?? ""}
+                          onChange={(e) => setBottomLine(editCell(bottomLine, idx, k, e.target.value))}
+                        />
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm"
+              style={{ marginTop: 8 }}
+              onClick={() => setBottomLine([...bottomLine, {
+                programa: "", holiday_credits: 0, precio_minimo_sin_iva: 0, precio_minimo_con_iva: 0, cuota_anual_mfee: 0,
+              }])}
+            >
+              + Fila
+            </button>
+          </div>
+        )}
+
+        {sub === "financiamiento" && (
+          <div className="admin-users-table-wrap">
+            <table className="client-table">
+              <thead><tr><th>Enganche %</th><th>Plazo</th><th>Nac.</th><th>Tasa</th><th>Factor</th></tr></thead>
+              <tbody>
+                {financiamiento.map((r, idx) => (
+                  <tr key={r.id || idx}>
+                    {["enganche_pct", "plazo_meses", "nacionalidad", "tasa_interes", "factor_mensual"].map((k) => (
+                      <td key={k}>
+                        <input
+                          className="auth-input"
+                          value={r[k] ?? ""}
+                          onChange={(e) => setFinanciamiento(editCell(financiamiento, idx, k, e.target.value))}
+                        />
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm"
+              style={{ marginTop: 8 }}
+              onClick={() => setFinanciamiento([...financiamiento, {
+                enganche_pct: 15, plazo_meses: 60, nacionalidad: "mexicano", tasa_interes: 0, factor_mensual: 0,
+              }])}
+            >
+              + Fila
+            </button>
+          </div>
+        )}
+
+        {sub === "comisiones" && (
+          <div className="admin-users-table-wrap">
+            <table className="client-table">
+              <thead><tr><th>DP%</th><th>HC min</th><th>HC max</th><th>Pos</th><th>%</th></tr></thead>
+              <tbody>
+                {comisiones.map((r, idx) => (
+                  <tr key={r.id || idx}>
+                    {["down_payment_pct", "hc_rango_min", "hc_rango_max", "posicion", "porcentaje_comision"].map((k) => (
+                      <td key={k}>
+                        <input
+                          className="auth-input"
+                          value={r[k] ?? ""}
+                          onChange={(e) => setComisiones(editCell(comisiones, idx, k, e.target.value))}
+                        />
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm"
+              style={{ marginTop: 8 }}
+              onClick={() => setComisiones([...comisiones, {
+                down_payment_pct: 15, hc_rango_min: 0, hc_rango_max: 999999, posicion: "ftb", porcentaje_comision: 0,
+              }])}
+            >
+              + Fila
+            </button>
+          </div>
+        )}
+
+        {sub === "regalos" && (
+          <div className="admin-users-table-wrap">
+            <table className="client-table">
+              <thead><tr><th>Nombre</th><th>Costo</th><th>Cargas (csv)</th></tr></thead>
+              <tbody>
+                {regalos.map((r, idx) => (
+                  <tr key={r.id || idx}>
+                    <td>
+                      <input className="auth-input" value={r.nombre ?? ""} onChange={(e) => setRegalos(editCell(regalos, idx, "nombre", e.target.value))} />
+                    </td>
+                    <td>
+                      <input className="auth-input" value={r.costo ?? ""} onChange={(e) => setRegalos(editCell(regalos, idx, "costo", e.target.value))} />
+                    </td>
+                    <td>
+                      <input
+                        className="auth-input"
+                        value={Array.isArray(r.cargas_permitidas) ? r.cargas_permitidas.join(",") : (r.cargas_permitidas || "")}
+                        onChange={(e) => setRegalos(editCell(
+                          regalos,
+                          idx,
+                          "cargas_permitidas",
+                          e.target.value.split(",").map((x) => x.trim()).filter(Boolean),
+                        ))}
+                      />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm"
+              style={{ marginTop: 8 }}
+              onClick={() => setRegalos([...regalos, { nombre: "", costo: null, cargas_permitidas: [] }])}
+            >
+              + Fila
+            </button>
+          </div>
+        )}
+
+        {sub === "costo" && (
+          <div className="admin-users-table-wrap">
+            <table className="client-table">
+              <thead><tr><th>Enganche % mín</th><th>Monto USD</th></tr></thead>
+              <tbody>
+                {costoAdmin.map((r, idx) => (
+                  <tr key={r.id || idx}>
+                    <td>
+                      <input className="auth-input" value={r.enganche_pct_min ?? ""} onChange={(e) => setCostoAdmin(editCell(costoAdmin, idx, "enganche_pct_min", e.target.value))} />
+                    </td>
+                    <td>
+                      <input className="auth-input" value={r.monto_usd ?? ""} onChange={(e) => setCostoAdmin(editCell(costoAdmin, idx, "monto_usd", e.target.value))} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm"
+              style={{ marginTop: 8 }}
+              onClick={() => setCostoAdmin([...costoAdmin, { enganche_pct_min: 15, monto_usd: 750 }])}
+            >
+              + Fila
+            </button>
+          </div>
+        )}
+
+        <div className="btn-row" style={{ marginTop: 16 }}>
           <button type="button" className="btn btn-primary" disabled={pending} onClick={publish}>
-            Publicar nueva versión
+            {pending ? "Publicando…" : "Publicar nueva versión"}
           </button>
-        </div>
-      </AdminCard>
-      <AdminCard title="Bottom line (muestra)">
-        <div className="admin-users-table-wrap">
-          <table className="client-table">
-            <thead><tr><th>Programa</th><th>HC</th><th>Min c/IVA</th><th>M.Fee</th></tr></thead>
-            <tbody>
-              {(cat.bottom_line || []).slice(0, 8).map((r) => (
-                <tr key={r.id}>
-                  <td>{r.programa}</td><td>{r.holiday_credits}</td>
-                  <td>{r.precio_minimo_con_iva}</td><td>{r.cuota_anual_mfee}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </AdminCard>
-      <AdminCard title="Comisiones (muestra)">
-        <div className="admin-users-table-wrap">
-          <table className="client-table">
-            <thead><tr><th>DP%</th><th>HC min</th><th>HC max</th><th>Pos</th><th>%</th></tr></thead>
-            <tbody>
-              {(cat.comisiones || []).slice(0, 12).map((r) => (
-                <tr key={r.id}>
-                  <td>{r.down_payment_pct}</td><td>{r.hc_rango_min}</td><td>{r.hc_rango_max}</td>
-                  <td>{r.posicion}</td><td>{r.porcentaje_comision}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
         </div>
       </AdminCard>
     </div>

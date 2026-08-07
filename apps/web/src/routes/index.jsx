@@ -41,6 +41,19 @@ import {
   AdminEmpresasPage,
   AdminLogsPage,
   AdminLegacyRedirect,
+  RhBottomLinesPage,
+  RhComisionesPage,
+  RhCreditosPage,
+  RhCalendarioComisionesPage,
+  RhDiasDescansoPage,
+  RhOpsHubPage,
+  RhPremanifiestoPage,
+  RhLineaPage,
+  RhResumenOpsPage,
+  RhEstadisticosPage,
+  RhOkrPage,
+  RhCalendarioDescansosPage,
+  RhPropinasPage,
 } from "@/routes/lazy-pages.js";
 
 function Lazy({ children }) {
@@ -140,6 +153,19 @@ export function AppRoutes() {
         <Route path="tools/vacaciones" element={gatedTool("vacaciones", <Lazy><VacacionesPage /></Lazy>)} />
         <Route path="tools/worksheet" element={gatedTool("worksheet", <Lazy><WorksheetPage /></Lazy>)} />
         <Route path="tools/money-box" element={<Lazy><MoneyBoxPage /></Lazy>} />
+        <Route path="tools/rh/bottom-lines" element={<Lazy><RhBottomLinesPage /></Lazy>} />
+        <Route path="tools/rh/comisiones" element={<Lazy><RhComisionesPage /></Lazy>} />
+        <Route path="tools/rh/creditos" element={<Lazy><RhCreditosPage /></Lazy>} />
+        <Route path="tools/rh/calendario-comisiones" element={<Lazy><RhCalendarioComisionesPage /></Lazy>} />
+        <Route path="tools/rh/dias-descanso" element={<Lazy><RhDiasDescansoPage /></Lazy>} />
+        <Route path="ops/rh" element={<Lazy><RhOpsHubPage /></Lazy>} />
+        <Route path="ops/rh/premanifiesto" element={<Lazy><RhPremanifiestoPage /></Lazy>} />
+        <Route path="ops/rh/linea" element={<Lazy><RhLineaPage /></Lazy>} />
+        <Route path="ops/rh/resumen" element={<Lazy><RhResumenOpsPage /></Lazy>} />
+        <Route path="ops/rh/estadisticos" element={<Lazy><RhEstadisticosPage /></Lazy>} />
+        <Route path="ops/rh/okr" element={<Lazy><RhOkrPage /></Lazy>} />
+        <Route path="ops/rh/calendario-descansos" element={<Lazy><RhCalendarioDescansosPage /></Lazy>} />
+        <Route path="ops/rh/propinas" element={<Lazy><RhPropinasPage /></Lazy>} />
         <Route path="settings" element={<Lazy><SettingsPage /></Lazy>} />
         <Route path="admin" element={<AdminSection />}>
           <Route index element={<Lazy><AdminOverviewPage /></Lazy>} />

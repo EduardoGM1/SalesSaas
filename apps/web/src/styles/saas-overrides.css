@@ -9455,3 +9455,108 @@ body,
 .schema-form-empty { color: var(--muted2, #64748b); font-size: 0.9rem; padding: 8px 0; }
 .schema-form-actions { display: flex; justify-content: flex-end; margin-top: 4px; }
 .schema-form .input { width: 100%; }
+
+/* ===== Worksheet Royal Holiday ===== */
+.worksheet-rh-tabs { margin: 8px 0 16px; flex-wrap: wrap; gap: 6px; }
+.worksheet-rh .rh-hint { font-size: 12px; margin: 8px 0 0; }
+.worksheet-rh .rh-readonly { font-weight: 700; font-size: 15px; }
+.worksheet-rh-row3 {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.worksheet-rh-fin-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  gap: 12px;
+}
+.worksheet-rh-fin-right { display: grid; gap: 12px; align-content: start; }
+.worksheet-rh-roles-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+}
+.rh-credit-matrix th, .rh-credit-matrix td { text-align: center; padding: 4px; }
+.rh-credit-matrix th[scope="row"] { text-align: left; font-size: 12px; white-space: nowrap; }
+.rh-matrix-cell {
+  width: 100%;
+  min-height: 36px;
+  border: 1px solid var(--border);
+  background: var(--surface, #fff);
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  color: var(--text);
+}
+.rh-matrix-cell:disabled { opacity: 0.45; cursor: default; }
+.rh-matrix-cell.selected {
+  border-color: var(--blue, #1e5eff);
+  background: color-mix(in srgb, var(--blue, #1e5eff) 12%, transparent);
+  color: var(--blue, #1e5eff);
+}
+.rh-bl-box { padding: 8px 0; }
+.rh-bl-main { font-size: 16px; display: flex; align-items: center; gap: 8px; }
+.rh-bl-list { margin: 10px 0 0; padding-left: 18px; }
+.rh-ok { color: #16a34a; }
+.rh-warn { color: #dc2626; }
+.rh-warn-text { color: #dc2626; }
+.rh-extra-table { margin-top: 12px; }
+.rh-extra-table-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+.rh-mini-table { width: 100%; font-size: 13px; }
+.rh-mini-table .input-compact { min-width: 0; width: 100%; }
+.rh-plazo-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 10px;
+}
+.rh-plazo-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.rh-plazo-item.selected {
+  border-color: var(--blue, #1e5eff);
+  background: color-mix(in srgb, var(--blue, #1e5eff) 10%, transparent);
+}
+.rh-card-check {
+  display: grid;
+  grid-template-columns: auto 72px 1fr;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.rh-tools-section { margin-top: 8px; }
+.rh-tools-section-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin: 16px 0 8px;
+}
+.rh-ops-hub-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+}
+@media (max-width: 960px) {
+  .worksheet-rh-row3,
+  .worksheet-rh-fin-grid,
+  .worksheet-rh-roles-grid {
+    grid-template-columns: 1fr;
+  }
+  .rh-plazo-grid { grid-template-columns: 1fr; }
+}

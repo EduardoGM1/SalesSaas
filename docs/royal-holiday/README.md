@@ -7,11 +7,24 @@ Primer Worksheet custom por empresa. La variante se activa con el flag `workshee
 ```bash
 node scripts/bootstrap-royal-holiday.mjs
 node scripts/seed-royal-holiday-catalog.mjs
-# o aplicar schema:
+npm run rh:flags
+# schema:
 npm run db:migrate -- 0076
+npm run db:migrate -- 0077
 ```
 
 Empresa de prueba: **Royal Holiday** · Sala: **Sala Royal Holiday** · Gerente: `eduardolalito99@hotmail.com`.
+
+## Herramientas RH (Tools Hub)
+
+Con flag `worksheet.royal_holiday` activo, Tools muestra:
+
+- Worksheet (pestañas Datos Financiamiento / Datos Venta / Resumen / Pre VLO / Worksheet)
+- Calculadora B. Lines · Comisiones · Créditos
+- Calendario comisiones · Días de descanso
+- Administrativo operaciones (`/ops/rh/*`): Premanifiesto, Línea, Resumen, Estadísticos, OKR, Descansos, Propinas
+
+Flags hijos: `rh.tool.*` (semilla `npm run rh:flags`). Configuración de tablas: Admin → empresa → **Catálogo RH**.
 
 ## Cómo añadir otra empresa con Worksheet custom
 
@@ -34,6 +47,9 @@ Empresa de prueba: **Royal Holiday** · Sala: **Sala Royal Holiday** · Gerente:
 - `GET /api/v1/royal-holiday/:empresaId/catalogo`
 - `POST /api/v1/royal-holiday/:empresaId/preview`
 - `POST /api/v1/royal-holiday/:empresaId/ventas`
+- `GET .../comisiones-movimientos`, `.../dias-descanso`, `.../resumen`, `.../okr`, `.../propinas`
+- `GET/POST .../premanifiesto`, `.../linea/asignacion`, `.../linea/rotacion`
+- `GET/PUT .../ops-config`
 - `GET/POST /api/v1/admin/tenant/empresas/:id/catalogo-rh` (+ `/publish`)
 - Cron: `GET/POST /api/v1/cron/rh-extra-dp` (diario 08:15 UTC)
 

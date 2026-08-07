@@ -1008,6 +1008,204 @@ router.post("/royal-holiday/:empresaId/ventas", async (req, res) => {
   );
 });
 
+router.get("/royal-holiday/:empresaId/comisiones-movimientos", async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  const { workspaceId, from, to } = req.query || {};
+  await runService(
+    res,
+    () => royalHolidayService.listComisionMovimientos(req.params.empresaId, { workspaceId, from, to }),
+    { wrap: "data" },
+  );
+});
+
+router.get("/royal-holiday/:empresaId/dias-descanso", async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  const { workspaceId, from, to } = req.query || {};
+  await runService(
+    res,
+    () => royalHolidayService.listDiasDescanso(req.params.empresaId, { workspaceId, from, to }),
+    { wrap: "data" },
+  );
+});
+
+router.post("/royal-holiday/:empresaId/dias-descanso", async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  const body = parseJsonBody(req, res);
+  if (!body) return;
+  await runService(
+    res,
+    () => royalHolidayService.upsertDiaDescanso(a.userId, { ...body, empresa_id: req.params.empresaId }),
+    { wrap: "data", successStatus: 201 },
+  );
+});
+
+router.delete("/royal-holiday/:empresaId/dias-descanso/:id", async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  await runService(res, () => royalHolidayService.deleteDiaDescanso(req.params.id), { wrap: "data" });
+});
+
+router.get("/royal-holiday/:empresaId/ops-config", async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  await runService(res, () => royalHolidayService.getOpsConfig(req.params.empresaId), { wrap: "data" });
+});
+
+router.put("/royal-holiday/:empresaId/ops-config", async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  const body = parseJsonBody(req, res);
+  if (!body) return;
+  await runService(
+    res,
+    () => royalHolidayService.saveOpsConfig(a.userId, req.params.empresaId, body.config || body),
+    { wrap: "data" },
+  );
+});
+
+router.get("/royal-holiday/:empresaId/premanifiesto", async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  await runService(
+    res,
+    () => royalHolidayService.listPremanifiesto(req.params.empresaId, {
+      workspaceId: req.query.workspaceId,
+      fecha: req.query.fecha,
+    }),
+    { wrap: "data" },
+  );
+});
+
+router.post("/royal-holiday/:empresaId/premanifiesto", async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  const body = parseJsonBody(req, res);
+  if (!body) return;
+  await runService(
+    res,
+    () => royalHolidayService.upsertPremanifiesto(a.userId, { ...body, empresa_id: req.params.empresaId }),
+    { wrap: "data", successStatus: 201 },
+  );
+});
+
+router.get("/royal-holiday/:empresaId/linea/asignacion", async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  await runService(
+    res,
+    () => royalHolidayService.listLineaAsignacion(req.params.empresaId, {
+      workspaceId: req.query.workspaceId,
+      fecha: req.query.fecha,
+    }),
+    { wrap: "data" },
+  );
+});
+
+router.post("/royal-holiday/:empresaId/linea/asignacion", async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  const body = parseJsonBody(req, res);
+  if (!body) return;
+  await runService(
+    res,
+    () => royalHolidayService.upsertLineaAsignacion(a.userId, { ...body, empresa_id: req.params.empresaId }),
+    { wrap: "data", successStatus: 201 },
+  );
+});
+
+router.get("/royal-holiday/:empresaId/linea/rotacion", async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  await runService(
+    res,
+    () => royalHolidayService.listLineaRotacion(req.params.empresaId, {
+      workspaceId: req.query.workspaceId,
+      fecha: req.query.fecha,
+    }),
+    { wrap: "data" },
+  );
+});
+
+router.post("/royal-holiday/:empresaId/linea/rotacion", async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  const body = parseJsonBody(req, res);
+  if (!body) return;
+  await runService(
+    res,
+    () => royalHolidayService.upsertLineaRotacion(a.userId, { ...body, empresa_id: req.params.empresaId }),
+    { wrap: "data", successStatus: 201 },
+  );
+});
+
+router.get("/royal-holiday/:empresaId/propinas", async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  await runService(
+    res,
+    () => royalHolidayService.listPropinas(req.params.empresaId, {
+      workspaceId: req.query.workspaceId,
+      from: req.query.from,
+      to: req.query.to,
+    }),
+    { wrap: "data" },
+  );
+});
+
+router.post("/royal-holiday/:empresaId/propinas", async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  const body = parseJsonBody(req, res);
+  if (!body) return;
+  await runService(
+    res,
+    () => royalHolidayService.upsertPropina(a.userId, { ...body, empresa_id: req.params.empresaId }),
+    { wrap: "data", successStatus: 201 },
+  );
+});
+
+router.get("/royal-holiday/:empresaId/okr", async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  await runService(
+    res,
+    () => royalHolidayService.listOkr(req.params.empresaId, {
+      workspaceId: req.query.workspaceId,
+      periodo: req.query.periodo,
+    }),
+    { wrap: "data" },
+  );
+});
+
+router.post("/royal-holiday/:empresaId/okr", async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  const body = parseJsonBody(req, res);
+  if (!body) return;
+  await runService(
+    res,
+    () => royalHolidayService.upsertOkr(a.userId, { ...body, empresa_id: req.params.empresaId }),
+    { wrap: "data", successStatus: 201 },
+  );
+});
+
+router.get("/royal-holiday/:empresaId/resumen", async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  await runService(
+    res,
+    () => royalHolidayService.resumenVentas(req.params.empresaId, {
+      workspaceId: req.query.workspaceId,
+      from: req.query.from,
+      to: req.query.to,
+    }),
+    { wrap: "data" },
+  );
+});
+
 router.post("/support/requests", async (req, res) => {
   const a = await requireAuth(req, res);
   if (!a) return;

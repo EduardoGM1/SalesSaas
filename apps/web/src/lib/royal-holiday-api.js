@@ -9,10 +9,52 @@ async function apiFetch(path, options = {}) {
   return json.data ?? json;
 }
 
+function qs(params = {}) {
+  const sp = new URLSearchParams();
+  Object.entries(params).forEach(([k, v]) => {
+    if (v != null && v !== "") sp.set(k, v);
+  });
+  const s = sp.toString();
+  return s ? `?${s}` : "";
+}
+
 export const royalHolidayApi = {
   getCatalogo: (empresaId) => apiFetch(`/royal-holiday/${empresaId}/catalogo`),
   preview: (empresaId, body) =>
     apiFetch(`/royal-holiday/${empresaId}/preview`, { method: "POST", body: JSON.stringify(body) }),
   saveVenta: (empresaId, body) =>
     apiFetch(`/royal-holiday/${empresaId}/ventas`, { method: "POST", body: JSON.stringify(body) }),
+  listComisiones: (empresaId, params) =>
+    apiFetch(`/royal-holiday/${empresaId}/comisiones-movimientos${qs(params)}`),
+  listDiasDescanso: (empresaId, params) =>
+    apiFetch(`/royal-holiday/${empresaId}/dias-descanso${qs(params)}`),
+  saveDiaDescanso: (empresaId, body) =>
+    apiFetch(`/royal-holiday/${empresaId}/dias-descanso`, { method: "POST", body: JSON.stringify(body) }),
+  deleteDiaDescanso: (empresaId, id) =>
+    apiFetch(`/royal-holiday/${empresaId}/dias-descanso/${id}`, { method: "DELETE" }),
+  getOpsConfig: (empresaId) => apiFetch(`/royal-holiday/${empresaId}/ops-config`),
+  saveOpsConfig: (empresaId, config) =>
+    apiFetch(`/royal-holiday/${empresaId}/ops-config`, { method: "PUT", body: JSON.stringify({ config }) }),
+  listPremanifiesto: (empresaId, params) =>
+    apiFetch(`/royal-holiday/${empresaId}/premanifiesto${qs(params)}`),
+  savePremanifiesto: (empresaId, body) =>
+    apiFetch(`/royal-holiday/${empresaId}/premanifiesto`, { method: "POST", body: JSON.stringify(body) }),
+  listAsignacion: (empresaId, params) =>
+    apiFetch(`/royal-holiday/${empresaId}/linea/asignacion${qs(params)}`),
+  saveAsignacion: (empresaId, body) =>
+    apiFetch(`/royal-holiday/${empresaId}/linea/asignacion`, { method: "POST", body: JSON.stringify(body) }),
+  listRotacion: (empresaId, params) =>
+    apiFetch(`/royal-holiday/${empresaId}/linea/rotacion${qs(params)}`),
+  saveRotacion: (empresaId, body) =>
+    apiFetch(`/royal-holiday/${empresaId}/linea/rotacion`, { method: "POST", body: JSON.stringify(body) }),
+  listPropinas: (empresaId, params) =>
+    apiFetch(`/royal-holiday/${empresaId}/propinas${qs(params)}`),
+  savePropina: (empresaId, body) =>
+    apiFetch(`/royal-holiday/${empresaId}/propinas`, { method: "POST", body: JSON.stringify(body) }),
+  listOkr: (empresaId, params) =>
+    apiFetch(`/royal-holiday/${empresaId}/okr${qs(params)}`),
+  saveOkr: (empresaId, body) =>
+    apiFetch(`/royal-holiday/${empresaId}/okr`, { method: "POST", body: JSON.stringify(body) }),
+  resumen: (empresaId, params) =>
+    apiFetch(`/royal-holiday/${empresaId}/resumen${qs(params)}`),
 };

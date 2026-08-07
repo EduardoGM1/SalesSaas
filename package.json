@@ -26,6 +26,7 @@
     "db:migrate": "node scripts/apply-migration.mjs",
     "rh:bootstrap": "node scripts/bootstrap-royal-holiday.mjs",
     "rh:seed": "node scripts/seed-royal-holiday-catalog.mjs",
+    "rh:flags": "node scripts/seed-rh-tool-flags.mjs",
     "rh:verify": "node scripts/verify-royal-holiday-case.mjs",
     "verify:flags": "node scripts/verify-flags-parity.mjs",
     "verify:workspaces": "node scripts/verify-workspaces.mjs",
