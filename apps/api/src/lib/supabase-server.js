@@ -1,11 +1,23 @@
 import dns from "node:dns";
 import { createServerClient, parseCookieHeader, serializeCookieHeader } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
+import ws from "ws";
 import { getSupabaseAnonKey, getSupabaseUrl } from "@salesapp/shared/supabase/config.js";
 
 dns.setDefaultResultOrder("ipv4first");
 
 const FETCH_TIMEOUT_MS = 15_000;
+
+/** Node < 22 no tiene WebSocket nativo; Supabase Realtime lo requiere al instanciar el cliente. */
+const REALTIME_OPTIONS = { transport: ws };
+
+function baseClientOptions(overrides = {}) {
+  return {
+    global: { fetch: fetchWithTimeout },
+    realtime: REALTIME_OPTIONS,
+    ...overrides,
+  };
+}
 
 function isProductionRuntime() {
   return process.env.NODE_ENV === "production" || Boolean(process.env.VERCEL);
@@ -51,7 +63,7 @@ export function createCookieSupabaseClient(req, res) {
     throw new Error("Supabase no configurado.");
   }
   return createServerClient(url, key, {
-    global: { fetch: fetchWithTimeout },
+    ...baseClientOptions(),
     cookieOptions: {
       path: "/",
       sameSite: "lax",
@@ -67,14 +79,13 @@ export function createAnonSupabaseClient() {
   if (!url || !key) {
     throw new Error("Supabase no configurado.");
   }
-  return createClient(url, key, {
+  return createClient(url, key, baseClientOptions({
     auth: {
       persistSession: false,
       autoRefreshToken: false,
       detectSessionInUrl: false,
     },
-    global: { fetch: fetchWithTimeout },
-  });
+  }));
 }
 
 /**
@@ -88,15 +99,14 @@ export function createRecoveryEmailClient() {
   if (!url || !key) {
     throw new Error("Supabase no configurado.");
   }
-  return createClient(url, key, {
+  return createClient(url, key, baseClientOptions({
     auth: {
       flowType: "implicit",
       persistSession: false,
       autoRefreshToken: false,
       detectSessionInUrl: false,
     },
-    global: { fetch: fetchWithTimeout },
-  });
+  }));
 }
 
 export function createBearerSupabaseClient(token) {
@@ -105,12 +115,12 @@ export function createBearerSupabaseClient(token) {
   if (!url || !key) {
     throw new Error("Supabase no configurado.");
   }
-  return createClient(url, key, {
+  return createClient(url, key, baseClientOptions({
     global: {
       fetch: fetchWithTimeout,
       headers: { Authorization: `Bearer ${token}` },
     },
-  });
+  }));
 }
 
 /** Cliente con service_role para tareas de servidor (p. ej. enviar push). */
@@ -120,14 +130,13 @@ export function createServiceSupabaseClient() {
   if (!url || !key) {
     return null;
   }
-  return createClient(url, key, {
+  return createClient(url, key, baseClientOptions({
     auth: {
       persistSession: false,
       autoRefreshToken: false,
       detectSessionInUrl: false,
     },
-    global: { fetch: fetchWithTimeout },
-  });
+  }));
 }
 
 export async function probeSupabaseAuth() {
