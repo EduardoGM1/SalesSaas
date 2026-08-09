@@ -32,6 +32,7 @@
     "verify:workspaces": "node scripts/verify-workspaces.mjs",
     "verify:tenant-workflow": "node scripts/verify-tenant-rbac-workflow.mjs",
     "verify": "node scripts/verify-smoke.mjs",
+    "verify:vps": "node scripts/verify-vps-mobile.mjs",
     "verify:api": "npm run verify -w @salesapp/api",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
