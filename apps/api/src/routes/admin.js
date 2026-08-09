@@ -33,6 +33,7 @@ import * as delegacionController from "../controllers/delegacion-controller.js";
 import * as tenantRbacService from "../services/tenant-rbac-service.js";
 import * as tenantAdminService from "../services/tenant-admin-service.js";
 import * as royalHolidayService from "../services/royal-holiday-service.js";
+import { requireEmpresaAdmin } from "../lib/tenant-access.js";
 
 const router = Router();
 
@@ -424,18 +425,20 @@ router.get("/tenant/empresas/:empresaId/flags", async (req, res) => {
 router.get("/tenant/empresas/:empresaId/catalogo-rh", async (req, res) => {
   const a = await tenantActor(req, res);
   if (!a) return;
-  await runService(res, () => royalHolidayService.getCatalogoVigente(req.params.empresaId), { wrap: "data" });
+  await runService(res, async () => {
+    const admin = await requireEmpresaAdmin(a.userId, req.params.empresaId);
+    return royalHolidayService.getCatalogoVigente(admin, req.params.empresaId);
+  }, { wrap: "data" });
 });
 
 router.post("/tenant/empresas/:empresaId/catalogo-rh/publish", async (req, res) => {
   const a = await tenantActor(req, res);
   if (!a) return;
   const body = parseJsonBody(req, res) || {};
-  await runService(
-    res,
-    () => royalHolidayService.publishNuevaVersion(req.params.empresaId, a.userId, body),
-    { wrap: "data", successStatus: 201 },
-  );
+  await runService(res, async () => {
+    const admin = await requireEmpresaAdmin(a.userId, req.params.empresaId);
+    return royalHolidayService.publishNuevaVersion(admin, req.params.empresaId, a.userId, body);
+  }, { wrap: "data", successStatus: 201 });
 });
 
 router.get("/tenant/empresas/:empresaId/modulos-custom", async (req, res) => {

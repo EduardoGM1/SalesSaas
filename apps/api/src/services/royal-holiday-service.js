@@ -17,7 +17,7 @@ import {
   normalizeEnganchePct,
 } from "@salesapp/shared/calculations/royal-holiday.js";
 
-async function loadCatalogBundle(admin, catalogoId) {
+async function loadCatalogBundle(client, catalogoId) {
   const [
     { data: catalogo },
     { data: bottom_line },
@@ -27,13 +27,13 @@ async function loadCatalogBundle(admin, catalogoId) {
     { data: costo_administrativo },
     { data: parametros },
   ] = await Promise.all([
-    admin.from("catalogo_configuracion").select("*").eq("id", catalogoId).single(),
-    admin.from("rh_bottom_line").select("*").eq("catalogo_configuracion_id", catalogoId).order("holiday_credits"),
-    admin.from("rh_financiamiento").select("*").eq("catalogo_configuracion_id", catalogoId),
-    admin.from("rh_comisiones").select("*").eq("catalogo_configuracion_id", catalogoId),
-    admin.from("rh_regalos").select("*").eq("catalogo_configuracion_id", catalogoId),
-    admin.from("rh_costo_administrativo").select("*").eq("catalogo_configuracion_id", catalogoId).order("enganche_pct_min"),
-    admin.from("rh_parametros_generales").select("*").eq("catalogo_configuracion_id", catalogoId).maybeSingle(),
+    client.from("catalogo_configuracion").select("*").eq("id", catalogoId).single(),
+    client.from("rh_bottom_line").select("*").eq("catalogo_configuracion_id", catalogoId).order("holiday_credits"),
+    client.from("rh_financiamiento").select("*").eq("catalogo_configuracion_id", catalogoId),
+    client.from("rh_comisiones").select("*").eq("catalogo_configuracion_id", catalogoId),
+    client.from("rh_regalos").select("*").eq("catalogo_configuracion_id", catalogoId),
+    client.from("rh_costo_administrativo").select("*").eq("catalogo_configuracion_id", catalogoId).order("enganche_pct_min"),
+    client.from("rh_parametros_generales").select("*").eq("catalogo_configuracion_id", catalogoId).maybeSingle(),
   ]);
   return {
     catalogo,
@@ -46,11 +46,10 @@ async function loadCatalogBundle(admin, catalogoId) {
   };
 }
 
-export async function getCatalogoVigente(empresaId) {
-  const admin = createServiceSupabaseClient();
-  if (!admin) throw new ServiceError("Service role no configurado.", 500);
+export async function getCatalogoVigente(client, empresaId) {
+  if (!client) throw new ServiceError("Cliente Supabase requerido.", 500);
   if (!empresaId) throw new ServiceError("empresa_id requerido.", 400);
-  const { data: cat, error } = await admin
+  const { data: cat, error } = await client
     .from("catalogo_configuracion")
     .select("*")
     .eq("empresa_id", empresaId)
@@ -58,11 +57,11 @@ export async function getCatalogoVigente(empresaId) {
     .maybeSingle();
   if (error) throw new ServiceError(error.message, 400);
   if (!cat) throw new ServiceError("No hay catálogo vigente para esta empresa.", 404);
-  return loadCatalogBundle(admin, cat.id);
+  return loadCatalogBundle(client, cat.id);
 }
 
-export async function previewCalculo(empresaId, body) {
-  const bundle = await getCatalogoVigente(empresaId);
+export async function previewCalculo(client, empresaId, body) {
+  const bundle = await getCatalogoVigente(client, empresaId);
   const hc = Number(body.holiday_credits) || 0;
   const monto = Number(body.monto_venta) || 0;
   const eng = normalizeEnganchePct(body.enganche_pct);
@@ -107,14 +106,13 @@ export async function previewCalculo(empresaId, body) {
   };
 }
 
-export async function saveVenta(userId, body) {
-  const admin = createServiceSupabaseClient();
-  if (!admin) throw new ServiceError("Service role no configurado.", 500);
+export async function saveVenta(client, userId, body) {
+  if (!client) throw new ServiceError("Cliente Supabase requerido.", 500);
   const empresaId = body.empresa_id;
   const workspaceId = body.workspace_id;
   if (!empresaId || !workspaceId) throw new ServiceError("empresa_id y workspace_id requeridos.", 400);
 
-  const preview = await previewCalculo(empresaId, body);
+  const preview = await previewCalculo(client, empresaId, body);
   if (preview.comision?.pendiente && !body.allow_pending_commission) {
     throw new ServiceError(preview.comision.mensaje, 400);
   }
@@ -125,7 +123,7 @@ export async function saveVenta(userId, body) {
   const engAcum = eng;
 
   const fechaEvento = body.fecha_evento ? new Date(body.fecha_evento) : new Date();
-  const { data: venta, error } = await admin
+  const { data: venta, error } = await client
     .from("rh_ventas")
     .insert({
       empresa_id: empresaId,
@@ -166,12 +164,12 @@ export async function saveVenta(userId, body) {
     });
   }
   if (extraRows.length) {
-    const { error: eErr } = await admin.from("rh_extra_pagos").insert(extraRows);
+    const { error: eErr } = await client.from("rh_extra_pagos").insert(extraRows);
     if (eErr) throw new ServiceError(eErr.message, 400);
 
     // Recordatorios en agenda del vendedor
     for (const ex of extraRows) {
-      const { error: calErr } = await admin.from("calendar_entries").insert({
+      const { error: calErr } = await client.from("calendar_entries").insert({
         user_id: userId,
         workspace_id: workspaceId,
         type: "follow",
@@ -185,7 +183,7 @@ export async function saveVenta(userId, body) {
 
   // Comisión inicial
   if (preview.comision && !preview.comision.pendiente) {
-    const { error: mErr } = await admin.from("rh_comision_movimientos").insert({
+    const { error: mErr } = await client.from("rh_comision_movimientos").insert({
       rh_venta_id: venta.id,
       tipo: "inicial",
       porcentaje: preview.comision.porcentaje,
@@ -199,10 +197,10 @@ export async function saveVenta(userId, body) {
     if (mErr) throw new ServiceError(mErr.message, 400);
   }
 
-  // Procesar extras ya vencidos de inmediato
+  // EXCEPCIÓN service-role: job interno post-insert (Extra DP vencidos); no es request de usuario directo.
   await processDueExtraPagos({ ventaId: venta.id });
 
-  const { data: full } = await admin
+  const { data: full } = await client
     .from("rh_ventas")
     .select("*, rh_extra_pagos(*), rh_comision_movimientos(*)")
     .eq("id", venta.id)
@@ -211,6 +209,7 @@ export async function saveVenta(userId, body) {
 }
 
 export async function processDueExtraPagos({ ventaId = null, limit = 100 } = {}) {
+  // EXCEPCIÓN service-role: cron / job programado sin sesión de usuario (CRON_SECRET en v1.js).
   const admin = createServiceSupabaseClient();
   if (!admin) throw new ServiceError("Service role no configurado.", 500);
   const today = toDateStr(new Date());
@@ -285,6 +284,7 @@ export async function processDueExtraPagos({ ventaId = null, limit = 100 } = {})
 }
 
 export async function handleCancelacionVenta(saleId) {
+  // EXCEPCIÓN service-role: side-effect desde sales-service tras validar permiso de venta; no expone endpoint directo.
   const admin = createServiceSupabaseClient();
   if (!admin) throw new ServiceError("Service role no configurado.", 500);
   const { data: venta } = await admin.from("rh_ventas").select("*").eq("sale_id", saleId).maybeSingle();
@@ -321,11 +321,10 @@ export async function handleCancelacionVenta(saleId) {
   return { sin_membresia: true };
 }
 
-/** Publica nueva versión clonando el catálogo vigente (copy-on-write). */
-export async function publishNuevaVersion(empresaId, actorId, patch = {}) {
-  const admin = createServiceSupabaseClient();
-  if (!admin) throw new ServiceError("Service role no configurado.", 500);
-  const vigente = await getCatalogoVigente(empresaId);
+/** Publica nueva versión clonando el catálogo vigente (copy-on-write). Requiere cliente admin (requireEmpresaAdmin). */
+export async function publishNuevaVersion(admin, empresaId, actorId, patch = {}) {
+  if (!admin) throw new ServiceError("Cliente admin requerido.", 500);
+  const vigente = await getCatalogoVigente(admin, empresaId);
   const now = new Date().toISOString();
   await admin
     .from("catalogo_configuracion")
@@ -383,10 +382,9 @@ export async function publishNuevaVersion(empresaId, actorId, patch = {}) {
   return loadCatalogBundle(admin, cid);
 }
 
-export async function listComisionMovimientos(empresaId, { workspaceId, from, to, limit = 200 } = {}) {
-  const admin = createServiceSupabaseClient();
-  if (!admin) throw new ServiceError("Service role no configurado.", 500);
-  let q = admin
+export async function listComisionMovimientos(client, empresaId, { workspaceId, from, to, limit = 200 } = {}) {
+  if (!client) throw new ServiceError("Cliente Supabase requerido.", 500);
+  let q = client
     .from("rh_comision_movimientos")
     .select("*, rh_ventas!inner(id, empresa_id, workspace_id, holiday_credits, monto_venta, posicion, enganche_pct)")
     .eq("rh_ventas.empresa_id", empresaId)
@@ -400,10 +398,9 @@ export async function listComisionMovimientos(empresaId, { workspaceId, from, to
   return data || [];
 }
 
-export async function listDiasDescanso(empresaId, { workspaceId, from, to } = {}) {
-  const admin = createServiceSupabaseClient();
-  if (!admin) throw new ServiceError("Service role no configurado.", 500);
-  let q = admin.from("rh_dias_descanso").select("*").eq("empresa_id", empresaId).order("fecha");
+export async function listDiasDescanso(client, empresaId, { workspaceId, from, to } = {}) {
+  if (!client) throw new ServiceError("Cliente Supabase requerido.", 500);
+  let q = client.from("rh_dias_descanso").select("*").eq("empresa_id", empresaId).order("fecha");
   if (workspaceId) q = q.eq("workspace_id", workspaceId);
   if (from) q = q.gte("fecha", from);
   if (to) q = q.lte("fecha", to);
@@ -412,14 +409,13 @@ export async function listDiasDescanso(empresaId, { workspaceId, from, to } = {}
   return data || [];
 }
 
-export async function upsertDiaDescanso(userId, body) {
-  const admin = createServiceSupabaseClient();
-  if (!admin) throw new ServiceError("Service role no configurado.", 500);
+export async function upsertDiaDescanso(client, userId, body) {
+  if (!client) throw new ServiceError("Cliente Supabase requerido.", 500);
   const { empresa_id, workspace_id, usuario_id, fecha, tipo, notas } = body || {};
   if (!empresa_id || !workspace_id || !usuario_id || !fecha) {
     throw new ServiceError("empresa_id, workspace_id, usuario_id y fecha requeridos.", 400);
   }
-  const { data, error } = await admin
+  const { data, error } = await client
     .from("rh_dias_descanso")
     .upsert(
       {
@@ -439,26 +435,30 @@ export async function upsertDiaDescanso(userId, body) {
   return data;
 }
 
-export async function deleteDiaDescanso(id) {
-  const admin = createServiceSupabaseClient();
-  if (!admin) throw new ServiceError("Service role no configurado.", 500);
-  const { error } = await admin.from("rh_dias_descanso").delete().eq("id", id);
+export async function deleteDiaDescanso(client, empresaId, id) {
+  if (!client) throw new ServiceError("Cliente Supabase requerido.", 500);
+  const { data, error } = await client
+    .from("rh_dias_descanso")
+    .delete()
+    .eq("id", id)
+    .eq("empresa_id", empresaId)
+    .select("id")
+    .maybeSingle();
   if (error) throw new ServiceError(error.message, 400);
+  if (!data) throw new ServiceError("No autorizado.", 403);
   return { ok: true };
 }
 
-export async function getOpsConfig(empresaId) {
-  const admin = createServiceSupabaseClient();
-  if (!admin) throw new ServiceError("Service role no configurado.", 500);
-  const { data, error } = await admin.from("rh_ops_config").select("*").eq("empresa_id", empresaId).maybeSingle();
+export async function getOpsConfig(client, empresaId) {
+  if (!client) throw new ServiceError("Cliente Supabase requerido.", 500);
+  const { data, error } = await client.from("rh_ops_config").select("*").eq("empresa_id", empresaId).maybeSingle();
   if (error) throw new ServiceError(error.message, 400);
   return data || { empresa_id: empresaId, config: {} };
 }
 
-export async function saveOpsConfig(userId, empresaId, config) {
-  const admin = createServiceSupabaseClient();
-  if (!admin) throw new ServiceError("Service role no configurado.", 500);
-  const { data, error } = await admin
+export async function saveOpsConfig(client, userId, empresaId, config) {
+  if (!client) throw new ServiceError("Cliente Supabase requerido.", 500);
+  const { data, error } = await client
     .from("rh_ops_config")
     .upsert(
       { empresa_id: empresaId, config: config || {}, updated_at: new Date().toISOString(), updated_by: userId },
@@ -470,10 +470,9 @@ export async function saveOpsConfig(userId, empresaId, config) {
   return data;
 }
 
-async function listByFecha(table, empresaId, workspaceId, fecha) {
-  const admin = createServiceSupabaseClient();
-  if (!admin) throw new ServiceError("Service role no configurado.", 500);
-  let q = admin.from(table).select("*").eq("empresa_id", empresaId).order("created_at", { ascending: false });
+async function listByFecha(client, table, empresaId, workspaceId, fecha) {
+  if (!client) throw new ServiceError("Cliente Supabase requerido.", 500);
+  let q = client.from(table).select("*").eq("empresa_id", empresaId).order("created_at", { ascending: false });
   if (workspaceId) q = q.eq("workspace_id", workspaceId);
   if (fecha) q = q.eq("fecha", fecha);
   const { data, error } = await q;
@@ -481,13 +480,12 @@ async function listByFecha(table, empresaId, workspaceId, fecha) {
   return data || [];
 }
 
-export async function listPremanifiesto(empresaId, opts) {
-  return listByFecha("rh_premanifiesto", empresaId, opts?.workspaceId, opts?.fecha);
+export async function listPremanifiesto(client, empresaId, opts) {
+  return listByFecha(client, "rh_premanifiesto", empresaId, opts?.workspaceId, opts?.fecha);
 }
 
-export async function upsertPremanifiesto(userId, body) {
-  const admin = createServiceSupabaseClient();
-  if (!admin) throw new ServiceError("Service role no configurado.", 500);
+export async function upsertPremanifiesto(client, userId, body) {
+  if (!client) throw new ServiceError("Cliente Supabase requerido.", 500);
   const row = {
     empresa_id: body.empresa_id,
     workspace_id: body.workspace_id,
@@ -500,22 +498,28 @@ export async function upsertPremanifiesto(userId, body) {
     created_by: userId,
   };
   if (body.id) {
-    const { data, error } = await admin.from("rh_premanifiesto").update(row).eq("id", body.id).select().single();
+    const { data, error } = await client
+      .from("rh_premanifiesto")
+      .update(row)
+      .eq("id", body.id)
+      .eq("empresa_id", body.empresa_id)
+      .select()
+      .maybeSingle();
     if (error) throw new ServiceError(error.message, 400);
+    if (!data) throw new ServiceError("No autorizado.", 403);
     return data;
   }
-  const { data, error } = await admin.from("rh_premanifiesto").insert(row).select().single();
+  const { data, error } = await client.from("rh_premanifiesto").insert(row).select().single();
   if (error) throw new ServiceError(error.message, 400);
   return data;
 }
 
-export async function listLineaAsignacion(empresaId, opts) {
-  return listByFecha("rh_linea_asignacion", empresaId, opts?.workspaceId, opts?.fecha);
+export async function listLineaAsignacion(client, empresaId, opts) {
+  return listByFecha(client, "rh_linea_asignacion", empresaId, opts?.workspaceId, opts?.fecha);
 }
 
-export async function upsertLineaAsignacion(userId, body) {
-  const admin = createServiceSupabaseClient();
-  if (!admin) throw new ServiceError("Service role no configurado.", 500);
+export async function upsertLineaAsignacion(client, userId, body) {
+  if (!client) throw new ServiceError("Cliente Supabase requerido.", 500);
   const row = {
     empresa_id: body.empresa_id,
     workspace_id: body.workspace_id,
@@ -526,22 +530,28 @@ export async function upsertLineaAsignacion(userId, body) {
     notas: body.notas || null,
   };
   if (body.id) {
-    const { data, error } = await admin.from("rh_linea_asignacion").update(row).eq("id", body.id).select().single();
+    const { data, error } = await client
+      .from("rh_linea_asignacion")
+      .update(row)
+      .eq("id", body.id)
+      .eq("empresa_id", body.empresa_id)
+      .select()
+      .maybeSingle();
     if (error) throw new ServiceError(error.message, 400);
+    if (!data) throw new ServiceError("No autorizado.", 403);
     return data;
   }
-  const { data, error } = await admin.from("rh_linea_asignacion").insert(row).select().single();
+  const { data, error } = await client.from("rh_linea_asignacion").insert(row).select().single();
   if (error) throw new ServiceError(error.message, 400);
   return data;
 }
 
-export async function listLineaRotacion(empresaId, opts) {
-  return listByFecha("rh_linea_rotacion", empresaId, opts?.workspaceId, opts?.fecha);
+export async function listLineaRotacion(client, empresaId, opts) {
+  return listByFecha(client, "rh_linea_rotacion", empresaId, opts?.workspaceId, opts?.fecha);
 }
 
-export async function upsertLineaRotacion(_userId, body) {
-  const admin = createServiceSupabaseClient();
-  if (!admin) throw new ServiceError("Service role no configurado.", 500);
+export async function upsertLineaRotacion(client, userId, body) {
+  if (!client) throw new ServiceError("Cliente Supabase requerido.", 500);
   const row = {
     empresa_id: body.empresa_id,
     workspace_id: body.workspace_id,
@@ -552,19 +562,25 @@ export async function upsertLineaRotacion(_userId, body) {
     notas: body.notas || null,
   };
   if (body.id) {
-    const { data, error } = await admin.from("rh_linea_rotacion").update(row).eq("id", body.id).select().single();
+    const { data, error } = await client
+      .from("rh_linea_rotacion")
+      .update(row)
+      .eq("id", body.id)
+      .eq("empresa_id", body.empresa_id)
+      .select()
+      .maybeSingle();
     if (error) throw new ServiceError(error.message, 400);
+    if (!data) throw new ServiceError("No autorizado.", 403);
     return data;
   }
-  const { data, error } = await admin.from("rh_linea_rotacion").insert(row).select().single();
+  const { data, error } = await client.from("rh_linea_rotacion").insert(row).select().single();
   if (error) throw new ServiceError(error.message, 400);
   return data;
 }
 
-export async function listPropinas(empresaId, { workspaceId, from, to } = {}) {
-  const admin = createServiceSupabaseClient();
-  if (!admin) throw new ServiceError("Service role no configurado.", 500);
-  let q = admin.from("rh_propinas").select("*").eq("empresa_id", empresaId).order("fecha", { ascending: false });
+export async function listPropinas(client, empresaId, { workspaceId, from, to } = {}) {
+  if (!client) throw new ServiceError("Cliente Supabase requerido.", 500);
+  let q = client.from("rh_propinas").select("*").eq("empresa_id", empresaId).order("fecha", { ascending: false });
   if (workspaceId) q = q.eq("workspace_id", workspaceId);
   if (from) q = q.gte("fecha", from);
   if (to) q = q.lte("fecha", to);
@@ -573,9 +589,8 @@ export async function listPropinas(empresaId, { workspaceId, from, to } = {}) {
   return data || [];
 }
 
-export async function upsertPropina(userId, body) {
-  const admin = createServiceSupabaseClient();
-  if (!admin) throw new ServiceError("Service role no configurado.", 500);
+export async function upsertPropina(client, userId, body) {
+  if (!client) throw new ServiceError("Cliente Supabase requerido.", 500);
   const row = {
     empresa_id: body.empresa_id,
     workspace_id: body.workspace_id,
@@ -587,19 +602,25 @@ export async function upsertPropina(userId, body) {
     created_by: userId,
   };
   if (body.id) {
-    const { data, error } = await admin.from("rh_propinas").update(row).eq("id", body.id).select().single();
+    const { data, error } = await client
+      .from("rh_propinas")
+      .update(row)
+      .eq("id", body.id)
+      .eq("empresa_id", body.empresa_id)
+      .select()
+      .maybeSingle();
     if (error) throw new ServiceError(error.message, 400);
+    if (!data) throw new ServiceError("No autorizado.", 403);
     return data;
   }
-  const { data, error } = await admin.from("rh_propinas").insert(row).select().single();
+  const { data, error } = await client.from("rh_propinas").insert(row).select().single();
   if (error) throw new ServiceError(error.message, 400);
   return data;
 }
 
-export async function listOkr(empresaId, { workspaceId, periodo } = {}) {
-  const admin = createServiceSupabaseClient();
-  if (!admin) throw new ServiceError("Service role no configurado.", 500);
-  let q = admin.from("rh_okr").select("*").eq("empresa_id", empresaId);
+export async function listOkr(client, empresaId, { workspaceId, periodo } = {}) {
+  if (!client) throw new ServiceError("Cliente Supabase requerido.", 500);
+  let q = client.from("rh_okr").select("*").eq("empresa_id", empresaId);
   if (workspaceId) q = q.eq("workspace_id", workspaceId);
   if (periodo) q = q.eq("periodo", periodo);
   const { data, error } = await q;
@@ -607,10 +628,9 @@ export async function listOkr(empresaId, { workspaceId, periodo } = {}) {
   return data || [];
 }
 
-export async function upsertOkr(_userId, body) {
-  const admin = createServiceSupabaseClient();
-  if (!admin) throw new ServiceError("Service role no configurado.", 500);
-  const { data, error } = await admin
+export async function upsertOkr(client, _userId, body) {
+  if (!client) throw new ServiceError("Cliente Supabase requerido.", 500);
+  const { data, error } = await client
     .from("rh_okr")
     .upsert(
       {
@@ -631,10 +651,9 @@ export async function upsertOkr(_userId, body) {
   return data;
 }
 
-export async function resumenVentas(empresaId, { workspaceId, from, to } = {}) {
-  const admin = createServiceSupabaseClient();
-  if (!admin) throw new ServiceError("Service role no configurado.", 500);
-  let q = admin.from("rh_ventas").select("id, monto_venta, holiday_credits, posicion, enganche_pct, created_at, workspace_id").eq("empresa_id", empresaId);
+export async function resumenVentas(client, empresaId, { workspaceId, from, to } = {}) {
+  if (!client) throw new ServiceError("Cliente Supabase requerido.", 500);
+  let q = client.from("rh_ventas").select("id, monto_venta, holiday_credits, posicion, enganche_pct, created_at, workspace_id").eq("empresa_id", empresaId);
   if (workspaceId) q = q.eq("workspace_id", workspaceId);
   if (from) q = q.gte("created_at", from);
   if (to) q = q.lte("created_at", to);

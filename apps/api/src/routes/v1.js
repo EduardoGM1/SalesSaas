@@ -29,7 +29,18 @@ import * as prospectParticipantsService from "../services/prospect-participants-
 import * as chatService from "../services/chat-service.js";
 import * as modulosCustomController from "../controllers/modulos-custom-controller.js";
 import * as royalHolidayService from "../services/royal-holiday-service.js";
+import {
+  assertEmpresaIdMatch,
+  guardRhRequest,
+  RH_CATALOG_FLAGS,
+  RH_FLAGS,
+} from "../services/rh-access.js";
 import { ServiceError } from "../lib/service-error.js";
+
+/** Query opcional workspaceId → string | undefined */
+function rhWorkspaceQuery(query) {
+  return query?.workspaceId ? String(query.workspaceId) : undefined;
+}
 
 const router = Router();
 
@@ -982,10 +993,15 @@ router.get("/cron/rh-extra-dp", async (req, res) => {
   await runService(res, () => royalHolidayService.processDueExtraPagos({ limit: 200 }), { wrap: "data" });
 });
 
+// Royal Holiday — API consumida por worksheet y rutas SPA /tools/rh/*, /ops/rh/*
 router.get("/royal-holiday/:empresaId/catalogo", async (req, res) => {
   const a = await requireAuth(req, res);
   if (!a) return;
-  await runService(res, () => royalHolidayService.getCatalogoVigente(req.params.empresaId), { wrap: "data" });
+  const empresaId = req.params.empresaId;
+  await runService(res, async () => {
+    await guardRhRequest(a.supabase, a.userId, empresaId, { flags: RH_CATALOG_FLAGS });
+    return royalHolidayService.getCatalogoVigente(a.supabase, empresaId);
+  }, { wrap: "data" });
 });
 
 router.post("/royal-holiday/:empresaId/preview", async (req, res) => {
@@ -993,7 +1009,11 @@ router.post("/royal-holiday/:empresaId/preview", async (req, res) => {
   if (!a) return;
   const body = parseJsonBody(req, res);
   if (!body) return;
-  await runService(res, () => royalHolidayService.previewCalculo(req.params.empresaId, body), { wrap: "data" });
+  const empresaId = req.params.empresaId;
+  await runService(res, async () => {
+    await guardRhRequest(a.supabase, a.userId, empresaId, { flags: RH_CATALOG_FLAGS });
+    return royalHolidayService.previewCalculo(a.supabase, empresaId, body);
+  }, { wrap: "data" });
 });
 
 router.post("/royal-holiday/:empresaId/ventas", async (req, res) => {
@@ -1001,33 +1021,45 @@ router.post("/royal-holiday/:empresaId/ventas", async (req, res) => {
   if (!a) return;
   const body = parseJsonBody(req, res);
   if (!body) return;
-  await runService(
-    res,
-    () => royalHolidayService.saveVenta(a.userId, { ...body, empresa_id: req.params.empresaId }),
-    { wrap: "data", successStatus: 201 },
-  );
+  const empresaId = req.params.empresaId;
+  assertEmpresaIdMatch(body.empresa_id, empresaId);
+  await runService(res, async () => {
+    await guardRhRequest(a.supabase, a.userId, empresaId, {
+      flag: RH_FLAGS.worksheet,
+      workspaceId: body.workspace_id,
+    });
+    return royalHolidayService.saveVenta(a.supabase, a.userId, { ...body, empresa_id: empresaId });
+  }, { wrap: "data", successStatus: 201 });
 });
 
 router.get("/royal-holiday/:empresaId/comisiones-movimientos", async (req, res) => {
   const a = await requireAuth(req, res);
   if (!a) return;
-  const { workspaceId, from, to } = req.query || {};
-  await runService(
-    res,
-    () => royalHolidayService.listComisionMovimientos(req.params.empresaId, { workspaceId, from, to }),
-    { wrap: "data" },
-  );
+  const { from, to } = req.query || {};
+  const empresaId = req.params.empresaId;
+  const workspaceId = rhWorkspaceQuery(req.query);
+  await runService(res, async () => {
+    await guardRhRequest(a.supabase, a.userId, empresaId, {
+      flags: [RH_FLAGS.calendarioComisiones, RH_FLAGS.comisiones],
+      workspaceId,
+    });
+    return royalHolidayService.listComisionMovimientos(a.supabase, empresaId, { workspaceId, from, to });
+  }, { wrap: "data" });
 });
 
 router.get("/royal-holiday/:empresaId/dias-descanso", async (req, res) => {
   const a = await requireAuth(req, res);
   if (!a) return;
-  const { workspaceId, from, to } = req.query || {};
-  await runService(
-    res,
-    () => royalHolidayService.listDiasDescanso(req.params.empresaId, { workspaceId, from, to }),
-    { wrap: "data" },
-  );
+  const { from, to } = req.query || {};
+  const empresaId = req.params.empresaId;
+  const workspaceId = rhWorkspaceQuery(req.query);
+  await runService(res, async () => {
+    await guardRhRequest(a.supabase, a.userId, empresaId, {
+      flags: [RH_FLAGS.diasDescanso, RH_FLAGS.ops],
+      workspaceId,
+    });
+    return royalHolidayService.listDiasDescanso(a.supabase, empresaId, { workspaceId, from, to });
+  }, { wrap: "data" });
 });
 
 router.post("/royal-holiday/:empresaId/dias-descanso", async (req, res) => {
@@ -1035,23 +1067,35 @@ router.post("/royal-holiday/:empresaId/dias-descanso", async (req, res) => {
   if (!a) return;
   const body = parseJsonBody(req, res);
   if (!body) return;
-  await runService(
-    res,
-    () => royalHolidayService.upsertDiaDescanso(a.userId, { ...body, empresa_id: req.params.empresaId }),
-    { wrap: "data", successStatus: 201 },
-  );
+  const empresaId = req.params.empresaId;
+  assertEmpresaIdMatch(body.empresa_id, empresaId);
+  await runService(res, async () => {
+    await guardRhRequest(a.supabase, a.userId, empresaId, {
+      flag: RH_FLAGS.diasDescanso,
+      workspaceId: body.workspace_id,
+    });
+    return royalHolidayService.upsertDiaDescanso(a.supabase, a.userId, { ...body, empresa_id: empresaId });
+  }, { wrap: "data", successStatus: 201 });
 });
 
 router.delete("/royal-holiday/:empresaId/dias-descanso/:id", async (req, res) => {
   const a = await requireAuth(req, res);
   if (!a) return;
-  await runService(res, () => royalHolidayService.deleteDiaDescanso(req.params.id), { wrap: "data" });
+  const empresaId = req.params.empresaId;
+  await runService(res, async () => {
+    await guardRhRequest(a.supabase, a.userId, empresaId, { flag: RH_FLAGS.diasDescanso });
+    return royalHolidayService.deleteDiaDescanso(a.supabase, empresaId, req.params.id);
+  }, { wrap: "data" });
 });
 
 router.get("/royal-holiday/:empresaId/ops-config", async (req, res) => {
   const a = await requireAuth(req, res);
   if (!a) return;
-  await runService(res, () => royalHolidayService.getOpsConfig(req.params.empresaId), { wrap: "data" });
+  const empresaId = req.params.empresaId;
+  await runService(res, async () => {
+    await guardRhRequest(a.supabase, a.userId, empresaId, { flag: RH_FLAGS.ops });
+    return royalHolidayService.getOpsConfig(a.supabase, empresaId);
+  }, { wrap: "data" });
 });
 
 router.put("/royal-holiday/:empresaId/ops-config", async (req, res) => {
@@ -1059,24 +1103,25 @@ router.put("/royal-holiday/:empresaId/ops-config", async (req, res) => {
   if (!a) return;
   const body = parseJsonBody(req, res);
   if (!body) return;
-  await runService(
-    res,
-    () => royalHolidayService.saveOpsConfig(a.userId, req.params.empresaId, body.config || body),
-    { wrap: "data" },
-  );
+  const empresaId = req.params.empresaId;
+  await runService(res, async () => {
+    await guardRhRequest(a.supabase, a.userId, empresaId, { flag: RH_FLAGS.ops });
+    return royalHolidayService.saveOpsConfig(a.supabase, a.userId, empresaId, body.config || body);
+  }, { wrap: "data" });
 });
 
 router.get("/royal-holiday/:empresaId/premanifiesto", async (req, res) => {
   const a = await requireAuth(req, res);
   if (!a) return;
-  await runService(
-    res,
-    () => royalHolidayService.listPremanifiesto(req.params.empresaId, {
-      workspaceId: req.query.workspaceId,
+  const empresaId = req.params.empresaId;
+  const workspaceId = rhWorkspaceQuery(req.query);
+  await runService(res, async () => {
+    await guardRhRequest(a.supabase, a.userId, empresaId, { flag: RH_FLAGS.ops, workspaceId });
+    return royalHolidayService.listPremanifiesto(a.supabase, empresaId, {
+      workspaceId,
       fecha: req.query.fecha,
-    }),
-    { wrap: "data" },
-  );
+    });
+  }, { wrap: "data" });
 });
 
 router.post("/royal-holiday/:empresaId/premanifiesto", async (req, res) => {
@@ -1084,24 +1129,29 @@ router.post("/royal-holiday/:empresaId/premanifiesto", async (req, res) => {
   if (!a) return;
   const body = parseJsonBody(req, res);
   if (!body) return;
-  await runService(
-    res,
-    () => royalHolidayService.upsertPremanifiesto(a.userId, { ...body, empresa_id: req.params.empresaId }),
-    { wrap: "data", successStatus: 201 },
-  );
+  const empresaId = req.params.empresaId;
+  assertEmpresaIdMatch(body.empresa_id, empresaId);
+  await runService(res, async () => {
+    await guardRhRequest(a.supabase, a.userId, empresaId, {
+      flag: RH_FLAGS.ops,
+      workspaceId: body.workspace_id,
+    });
+    return royalHolidayService.upsertPremanifiesto(a.supabase, a.userId, { ...body, empresa_id: empresaId });
+  }, { wrap: "data", successStatus: 201 });
 });
 
 router.get("/royal-holiday/:empresaId/linea/asignacion", async (req, res) => {
   const a = await requireAuth(req, res);
   if (!a) return;
-  await runService(
-    res,
-    () => royalHolidayService.listLineaAsignacion(req.params.empresaId, {
-      workspaceId: req.query.workspaceId,
+  const empresaId = req.params.empresaId;
+  const workspaceId = rhWorkspaceQuery(req.query);
+  await runService(res, async () => {
+    await guardRhRequest(a.supabase, a.userId, empresaId, { flag: RH_FLAGS.ops, workspaceId });
+    return royalHolidayService.listLineaAsignacion(a.supabase, empresaId, {
+      workspaceId,
       fecha: req.query.fecha,
-    }),
-    { wrap: "data" },
-  );
+    });
+  }, { wrap: "data" });
 });
 
 router.post("/royal-holiday/:empresaId/linea/asignacion", async (req, res) => {
@@ -1109,24 +1159,29 @@ router.post("/royal-holiday/:empresaId/linea/asignacion", async (req, res) => {
   if (!a) return;
   const body = parseJsonBody(req, res);
   if (!body) return;
-  await runService(
-    res,
-    () => royalHolidayService.upsertLineaAsignacion(a.userId, { ...body, empresa_id: req.params.empresaId }),
-    { wrap: "data", successStatus: 201 },
-  );
+  const empresaId = req.params.empresaId;
+  assertEmpresaIdMatch(body.empresa_id, empresaId);
+  await runService(res, async () => {
+    await guardRhRequest(a.supabase, a.userId, empresaId, {
+      flag: RH_FLAGS.ops,
+      workspaceId: body.workspace_id,
+    });
+    return royalHolidayService.upsertLineaAsignacion(a.supabase, a.userId, { ...body, empresa_id: empresaId });
+  }, { wrap: "data", successStatus: 201 });
 });
 
 router.get("/royal-holiday/:empresaId/linea/rotacion", async (req, res) => {
   const a = await requireAuth(req, res);
   if (!a) return;
-  await runService(
-    res,
-    () => royalHolidayService.listLineaRotacion(req.params.empresaId, {
-      workspaceId: req.query.workspaceId,
+  const empresaId = req.params.empresaId;
+  const workspaceId = rhWorkspaceQuery(req.query);
+  await runService(res, async () => {
+    await guardRhRequest(a.supabase, a.userId, empresaId, { flag: RH_FLAGS.ops, workspaceId });
+    return royalHolidayService.listLineaRotacion(a.supabase, empresaId, {
+      workspaceId,
       fecha: req.query.fecha,
-    }),
-    { wrap: "data" },
-  );
+    });
+  }, { wrap: "data" });
 });
 
 router.post("/royal-holiday/:empresaId/linea/rotacion", async (req, res) => {
@@ -1134,25 +1189,30 @@ router.post("/royal-holiday/:empresaId/linea/rotacion", async (req, res) => {
   if (!a) return;
   const body = parseJsonBody(req, res);
   if (!body) return;
-  await runService(
-    res,
-    () => royalHolidayService.upsertLineaRotacion(a.userId, { ...body, empresa_id: req.params.empresaId }),
-    { wrap: "data", successStatus: 201 },
-  );
+  const empresaId = req.params.empresaId;
+  assertEmpresaIdMatch(body.empresa_id, empresaId);
+  await runService(res, async () => {
+    await guardRhRequest(a.supabase, a.userId, empresaId, {
+      flag: RH_FLAGS.ops,
+      workspaceId: body.workspace_id,
+    });
+    return royalHolidayService.upsertLineaRotacion(a.supabase, a.userId, { ...body, empresa_id: empresaId });
+  }, { wrap: "data", successStatus: 201 });
 });
 
 router.get("/royal-holiday/:empresaId/propinas", async (req, res) => {
   const a = await requireAuth(req, res);
   if (!a) return;
-  await runService(
-    res,
-    () => royalHolidayService.listPropinas(req.params.empresaId, {
-      workspaceId: req.query.workspaceId,
+  const empresaId = req.params.empresaId;
+  const workspaceId = rhWorkspaceQuery(req.query);
+  await runService(res, async () => {
+    await guardRhRequest(a.supabase, a.userId, empresaId, { flag: RH_FLAGS.ops, workspaceId });
+    return royalHolidayService.listPropinas(a.supabase, empresaId, {
+      workspaceId,
       from: req.query.from,
       to: req.query.to,
-    }),
-    { wrap: "data" },
-  );
+    });
+  }, { wrap: "data" });
 });
 
 router.post("/royal-holiday/:empresaId/propinas", async (req, res) => {
@@ -1160,24 +1220,29 @@ router.post("/royal-holiday/:empresaId/propinas", async (req, res) => {
   if (!a) return;
   const body = parseJsonBody(req, res);
   if (!body) return;
-  await runService(
-    res,
-    () => royalHolidayService.upsertPropina(a.userId, { ...body, empresa_id: req.params.empresaId }),
-    { wrap: "data", successStatus: 201 },
-  );
+  const empresaId = req.params.empresaId;
+  assertEmpresaIdMatch(body.empresa_id, empresaId);
+  await runService(res, async () => {
+    await guardRhRequest(a.supabase, a.userId, empresaId, {
+      flag: RH_FLAGS.ops,
+      workspaceId: body.workspace_id,
+    });
+    return royalHolidayService.upsertPropina(a.supabase, a.userId, { ...body, empresa_id: empresaId });
+  }, { wrap: "data", successStatus: 201 });
 });
 
 router.get("/royal-holiday/:empresaId/okr", async (req, res) => {
   const a = await requireAuth(req, res);
   if (!a) return;
-  await runService(
-    res,
-    () => royalHolidayService.listOkr(req.params.empresaId, {
-      workspaceId: req.query.workspaceId,
+  const empresaId = req.params.empresaId;
+  const workspaceId = rhWorkspaceQuery(req.query);
+  await runService(res, async () => {
+    await guardRhRequest(a.supabase, a.userId, empresaId, { flag: RH_FLAGS.ops, workspaceId });
+    return royalHolidayService.listOkr(a.supabase, empresaId, {
+      workspaceId,
       periodo: req.query.periodo,
-    }),
-    { wrap: "data" },
-  );
+    });
+  }, { wrap: "data" });
 });
 
 router.post("/royal-holiday/:empresaId/okr", async (req, res) => {
@@ -1185,25 +1250,30 @@ router.post("/royal-holiday/:empresaId/okr", async (req, res) => {
   if (!a) return;
   const body = parseJsonBody(req, res);
   if (!body) return;
-  await runService(
-    res,
-    () => royalHolidayService.upsertOkr(a.userId, { ...body, empresa_id: req.params.empresaId }),
-    { wrap: "data", successStatus: 201 },
-  );
+  const empresaId = req.params.empresaId;
+  assertEmpresaIdMatch(body.empresa_id, empresaId);
+  await runService(res, async () => {
+    await guardRhRequest(a.supabase, a.userId, empresaId, {
+      flag: RH_FLAGS.ops,
+      workspaceId: body.workspace_id,
+    });
+    return royalHolidayService.upsertOkr(a.supabase, a.userId, { ...body, empresa_id: empresaId });
+  }, { wrap: "data", successStatus: 201 });
 });
 
 router.get("/royal-holiday/:empresaId/resumen", async (req, res) => {
   const a = await requireAuth(req, res);
   if (!a) return;
-  await runService(
-    res,
-    () => royalHolidayService.resumenVentas(req.params.empresaId, {
-      workspaceId: req.query.workspaceId,
+  const empresaId = req.params.empresaId;
+  const workspaceId = rhWorkspaceQuery(req.query);
+  await runService(res, async () => {
+    await guardRhRequest(a.supabase, a.userId, empresaId, { flag: RH_FLAGS.ops, workspaceId });
+    return royalHolidayService.resumenVentas(a.supabase, empresaId, {
+      workspaceId,
       from: req.query.from,
       to: req.query.to,
-    }),
-    { wrap: "data" },
-  );
+    });
+  }, { wrap: "data" });
 });
 
 router.post("/support/requests", async (req, res) => {
