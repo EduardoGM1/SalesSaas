@@ -122,7 +122,10 @@ router.post("/forgot-password", async (req, res) => {
     // createCookieSupabaseClient usa PKCE y exige code_verifier → "invalid flow state".
     const sb = createRecoveryEmailClient();
     const redirectOrigin = resolveWebOrigin(req, req.body?.redirectOrigin);
-    const secure = process.env.NODE_ENV === "production" || Boolean(process.env.VERCEL);
+    const origin = String(process.env.WEB_ORIGIN ?? "");
+    const secure = (process.env.NODE_ENV === "production" || Boolean(process.env.VERCEL))
+      && process.env.COOKIE_SECURE !== "false"
+      && !origin.startsWith("http://");
     res.append(
       "Set-Cookie",
       `saletse_auth_intent=recovery; Path=/; Max-Age=3600; SameSite=Lax${secure ? "; Secure" : ""}`,

@@ -11,6 +11,14 @@ function isProductionRuntime() {
   return process.env.NODE_ENV === "production" || Boolean(process.env.VERCEL);
 }
 
+/** Cookies Secure solo con HTTPS; en VPS por IP (http://) deben ir sin Secure. */
+function cookieSecure() {
+  if (process.env.COOKIE_SECURE === "false") return false;
+  const origin = String(process.env.WEB_ORIGIN ?? "");
+  if (origin.startsWith("http://")) return false;
+  return isProductionRuntime();
+}
+
 export function fetchWithTimeout(url, options = {}) {
   const { signal: _ignored, ...rest } = options;
   return fetch(url, {
@@ -47,7 +55,7 @@ export function createCookieSupabaseClient(req, res) {
     cookieOptions: {
       path: "/",
       sameSite: "lax",
-      secure: isProductionRuntime(),
+      secure: cookieSecure(),
     },
     cookies: createCookieHandlers(req, res),
   });
