@@ -17,14 +17,13 @@
   </head>
   <body>
     <div id="root"></div>
-    <!-- Solo dominio canónico en producción; redirige URLs Vercel legacy. -->
+    <!-- Solo redirige dominios Vercel legacy; IP y dominio propio quedan en el host actual. -->
     <script>
       (function () {
-        var canonical = "saletse.vercel.app";
         var host = location.hostname;
-        if (host !== canonical && host !== "localhost" && host !== "127.0.0.1") {
-          location.replace("https://" + canonical + location.pathname + location.search + location.hash);
-        }
+        if (host === "localhost" || host === "127.0.0.1") return;
+        if (!/\.vercel\.app$/i.test(host) || host === "saletse.vercel.app") return;
+        location.replace("https://saletse.vercel.app" + location.pathname + location.search + location.hash);
       })();
     </script>
     <!-- Recupera shells PWA obsoletos (HTML/SW cacheados con chunks 404 tras deploy). -->
