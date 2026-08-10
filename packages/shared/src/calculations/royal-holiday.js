@@ -69,12 +69,46 @@ export function lookupComision(rows, { downPaymentPct, holidayCredits, posicion 
 }
 
 export function plazosDisponibles(financiamientoRows, { enganchePct, nacionalidad }) {
+  return resolveFinanciamientoEngancheTier(financiamientoRows, { enganchePct, nacionalidad }).rows;
+}
+
+/**
+ * Resuelve el tier de enganche del catálogo aplicable a la venta.
+ * 1) Coincidencia exacta con % enganche capturado.
+ * 2) Tier más alto del catálogo que el cliente ya cumple (enganche >= tier).
+ * 3) Tier mínimo del catálogo para la nacionalidad (p. ej. cotizar con 25% mientras captura 15%).
+ */
+export function resolveFinanciamientoEngancheTier(financiamientoRows, { enganchePct, nacionalidad }) {
   const eng = normalizeEnganchePct(enganchePct);
   const nat = String(nacionalidad || "").toLowerCase();
-  return (financiamientoRows || []).filter((r) => {
-    const rEng = normalizeEnganchePct(r.enganche_pct);
-    return rEng === eng && String(r.nacionalidad).toLowerCase() === nat;
-  });
+  const rows = (financiamientoRows || []).filter(
+    (r) => String(r.nacionalidad).toLowerCase() === nat,
+  );
+  if (!rows.length) {
+    return { tier: null, exact: false, rows: [] };
+  }
+
+  const tiers = [...new Set(rows.map((r) => normalizeEnganchePct(r.enganche_pct)))].sort((a, b) => a - b);
+
+  if (tiers.includes(eng)) {
+    return {
+      tier: eng,
+      exact: true,
+      rows: rows
+        .filter((r) => normalizeEnganchePct(r.enganche_pct) === eng)
+        .sort((a, b) => Number(a.plazo_meses) - Number(b.plazo_meses)),
+    };
+  }
+
+  const qualified = tiers.filter((t) => eng >= t);
+  const tier = qualified.length ? Math.max(...qualified) : tiers[0];
+  return {
+    tier,
+    exact: false,
+    rows: rows
+      .filter((r) => normalizeEnganchePct(r.enganche_pct) === tier)
+      .sort((a, b) => Number(a.plazo_meses) - Number(b.plazo_meses)),
+  };
 }
 
 export function calcularMensualidad(montoVenta, factorMensual) {

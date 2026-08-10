@@ -4,6 +4,7 @@ import { useMoney } from "@/hooks/use-money.js";
 import {
   RH_EXTRA_DP_PLAZO_DIAS,
   calcularMensualidad,
+  resolveFinanciamientoEngancheTier,
   toDateStr,
   fechaLimiteExtraDp,
 } from "@/lib/calculations/royal-holiday.js";
@@ -326,12 +327,33 @@ export function WorksheetRhFinancingPanel({
     });
   }, [saldoGasto, form.gasto_num_pagos, setForm]);
 
+  const finTier = useMemo(() => {
+    if (preview?.plazos?.length) {
+      return {
+        rows: preview.plazos,
+        tier: preview.financiamiento_enganche_tier,
+        exact: preview.financiamiento_enganche_exacto !== false,
+      };
+    }
+    return resolveFinanciamientoEngancheTier(catalogo?.financiamiento, {
+      enganchePct: form.enganche_pct,
+      nacionalidad: form.nacionalidad,
+    });
+  }, [
+    preview?.plazos,
+    preview?.financiamiento_enganche_tier,
+    preview?.financiamiento_enganche_exacto,
+    catalogo?.financiamiento,
+    form.enganche_pct,
+    form.nacionalidad,
+  ]);
+
   const plazoCards = useMemo(() => {
-    return (preview?.plazos || []).map((p) => ({
+    return (finTier.rows || []).map((p) => ({
       ...p,
       mensualidad: calcularMensualidad(balanceFinanciar, p.factor_mensual),
     }));
-  }, [preview?.plazos, balanceFinanciar]);
+  }, [finTier.rows, balanceFinanciar]);
 
   const tcLabel = settings.currency === "MXN"
     ? `Tipo de cambio 1 USD = ${Number(settings.exchangeRate || 1).toFixed(2)} MXN`
@@ -478,6 +500,11 @@ export function WorksheetRhFinancingPanel({
             <p className="rh-fin-options-banner">
               Selecciona una opción de financiamiento. La opción elegida quedará guardada en esta venta.
             </p>
+            {!finTier.exact && finTier.tier != null && (
+              <p className="muted rh-hint rh-fin-tier-hint">
+                Mostrando plazos del catálogo para enganche {finTier.tier}%. Ajusta % Enganche si necesitas otro tier.
+              </p>
+            )}
 
             <div className="rh-fin-plazo-list">
               {plazoCards.map((p) => {

@@ -6,7 +6,7 @@ import {
   lookupBottomLine,
   lookupCostoAdministrativo,
   lookupComision,
-  plazosDisponibles,
+  resolveFinanciamientoEngancheTier,
   calcularMensualidad,
   calcularTotalesWorksheet,
   regalosDisponibles,
@@ -102,7 +102,8 @@ export async function previewCalculo(client, empresaId, body) {
   const bl = lookupBottomLine(bundle.bottom_line, hc);
   const ca = lookupCostoAdministrativo(bundle.costo_administrativo, eng);
   const com = lookupComision(bundle.comisiones, { downPaymentPct: eng, holidayCredits: hc, posicion });
-  const plazos = plazosDisponibles(bundle.financiamiento, { enganchePct: eng, nacionalidad });
+  const finTier = resolveFinanciamientoEngancheTier(bundle.financiamiento, { enganchePct: eng, nacionalidad });
+  const plazos = finTier.rows;
   const plazo = Number(body.plazo_meses);
   const finRow = plazos.find((p) => Number(p.plazo_meses) === plazo) || null;
   const costoAdmin = body.costo_administrativo_usd != null
@@ -130,6 +131,8 @@ export async function previewCalculo(client, empresaId, body) {
         }
       : { pendiente: true, mensaje: "Comisión pendiente de configurar para esta posición/franja." },
     plazos,
+    financiamiento_enganche_tier: finTier.tier,
+    financiamiento_enganche_exacto: finTier.exact,
     financiamiento_seleccionado: finRow,
     mensualidad: finRow ? calcularMensualidad(monto, finRow.factor_mensual) : null,
     totales,

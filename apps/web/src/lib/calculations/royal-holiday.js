@@ -5,6 +5,7 @@ export {
   lookupCostoAdministrativo,
   lookupComision,
   plazosDisponibles,
+  resolveFinanciamientoEngancheTier,
   calcularMensualidad,
   calcularTotalesWorksheet,
   regalosDisponibles,

@@ -9614,6 +9614,7 @@ body,
   background: color-mix(in srgb, var(--blue, #1e5eff) 10%, transparent);
   color: var(--text);
 }
+.rh-fin-tier-hint { margin: 0 0 10px; }
 .rh-fin-plazo-list { display: grid; gap: 8px; }
 .rh-fin-plazo-card {
   display: grid;
