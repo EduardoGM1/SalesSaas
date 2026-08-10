@@ -77,6 +77,14 @@ extract_pdf.py
 *_old.jsx
 *.zip
 
+# Debug / auditoría local (scratch — no subir a git)
+scripts/_*
+scripts/_archive/
+scripts/audit-rh-excel-fidelity.mjs
+scripts/cleanup-keep-*.mjs
+docs/*-backup.json
+docs/limpieza-*.json
+
 # PEM / keys locales
 *.pem
 *.p12
