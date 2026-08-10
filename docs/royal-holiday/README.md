@@ -38,8 +38,10 @@ Flags hijos: `rh.tool.*` (semilla `npm run rh:flags`). Configuración de tablas:
 
 | Tema | Estado |
 |------|--------|
-| Comisiones OPC / posición "X" | Schema listo; sin filas hasta % reales |
-| Corte costo admin 15%–27.5% | Seed 15→750 y 27.5→950; UI advierte pendiente |
+| Comisiones OPC / posición "X" | Schema listo; sin filas hasta % en Excel |
+| Corte costo admin 15%–27.5% | **Confirmado:** 15%→750, 27.5%→950 (`rh_costo_administrativo`) |
+| Fuente Excel canonical | Hojas dedicadas — ver [CATALOGO-EXCEL-FUENTE.md](./CATALOGO-EXCEL-FUENTE.md) |
+| Extra DP 90 días | Implementado: validación fecha + forfeit (`RH_EXTRA_DP_PLAZO_DIAS`) |
 | Pestañas Resumen / Pre VLO | Placeholders "próxima iteración" |
 
 ## APIs

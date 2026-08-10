@@ -129,15 +129,15 @@ console.log("✓ financiamiento", finInserts.length);
 const comSheet = wb.Sheets["Comisiones"];
 const comRows = XLSX.utils.sheet_to_json(comSheet, { header: 1, defval: "" });
 const ranges = [
-  { min: 0, max: 14999, cols: [1, 2, 3] },
-  { min: 15000, max: 24999, cols: [4, 5, 6] },
-  { min: 25000, max: 999999999, cols: [7, 8, 9] },
+  { min: 0, max: 14999, cols: [2, 3, 4] },
+  { min: 15000, max: 24999, cols: [5, 6, 7] },
+  { min: 25000, max: 999999999, cols: [8, 9, 10] },
 ];
 const positions = ["liner", "closer", "ftb"];
 const comInserts = [];
-for (let i = 2; i < comRows.length; i++) {
+for (let i = 6; i < comRows.length; i++) {
   const row = comRows[i];
-  const dp = Number(row[0]);
+  const dp = Number(row[1]);
   if (!Number.isFinite(dp)) continue;
   for (const rg of ranges) {
     for (let p = 0; p < 3; p++) {
@@ -164,18 +164,18 @@ console.log("✓ comisiones", comInserts.length);
 const blSheet = wb.Sheets["Botton lines"];
 const blRows = XLSX.utils.sheet_to_json(blSheet, { header: 1, defval: "" });
 const blInserts = [];
-for (let i = 2; i < blRows.length; i++) {
+for (let i = 5; i < blRows.length; i++) {
   const row = blRows[i];
-  const programa = String(row[0] || "").trim();
-  const hc = Number(row[1]);
+  const programa = String(row[1] || "").trim();
+  const hc = Number(row[2]);
   if (!programa || !Number.isFinite(hc)) continue;
   blInserts.push({
     catalogo_configuracion_id: cid,
     programa,
     holiday_credits: hc,
-    precio_minimo_sin_iva: Number(row[3]) || 0,
-    precio_minimo_con_iva: Number(row[4]) || 0,
-    cuota_anual_mfee: Number(row[6]) || 0,
+    precio_minimo_sin_iva: Number(row[4]) || 0,
+    precio_minimo_con_iva: Number(row[5]) || 0,
+    cuota_anual_mfee: Number(row[7]) || 0,
   });
 }
 if (blInserts.length) {
@@ -188,15 +188,24 @@ console.log("✓ bottom_line", blInserts.length);
 const regSheet = wb.Sheets["Regalos "] || wb.Sheets["Regalos"];
 const regRows = XLSX.utils.sheet_to_json(regSheet, { header: 1, defval: "" });
 const regInserts = [];
-for (let i = 1; i < regRows.length; i++) {
+for (let i = 4; i < regRows.length; i++) {
   const row = regRows[i];
-  const nombre = String(row[0] || "").trim();
+  const nombre = String(row[1] || "").trim();
   if (!nombre || nombre.toLowerCase() === "tours") continue;
   const cargas = [];
-  const closing = row[1];
-  const venta = row[2];
-  const sin = row[3];
+  const closing = row[2];
+  const venta = row[3];
+  const sin = row[4];
   let costo = null;
+  const restricciones = {};
+  const parseUsdRange = (raw) => {
+    const m = String(raw || "").match(/([\d.]+)\s*-\s*([\d.]+)/);
+    if (!m) return null;
+    const a = Number(m[1]);
+    const b = Number(m[2]);
+    if (!Number.isFinite(a) || !Number.isFinite(b)) return null;
+    return { min: Math.min(a, b), max: Math.max(a, b) };
+  };
   if (closing !== "" && closing != null && String(closing).toLowerCase() !== "x") {
     const n = Number(String(closing).split("-")[0]);
     if (Number.isFinite(n)) {
@@ -205,10 +214,17 @@ for (let i = 1; i < regRows.length; i++) {
     }
   } else if (String(closing).toLowerCase() === "x") cargas.push("closing_cost");
   if (venta !== "" && venta != null && String(venta).toLowerCase() !== "x") {
-    const n = Number(String(venta).split("-")[0]);
-    if (Number.isFinite(n)) {
-      if (costo == null) costo = n;
+    const range = parseUsdRange(venta);
+    if (range) {
+      restricciones.venta_min_usd = range.min;
+      restricciones.venta_max_usd = range.max;
       if (!cargas.includes("venta")) cargas.push("venta");
+    } else {
+      const n = Number(String(venta).split("-")[0]);
+      if (Number.isFinite(n)) {
+        if (costo == null) costo = n;
+        if (!cargas.includes("venta")) cargas.push("venta");
+      }
     }
   } else if (String(venta).toLowerCase() === "x") {
     if (!cargas.includes("venta")) cargas.push("venta");
@@ -218,17 +234,20 @@ for (let i = 1; i < regRows.length; i++) {
     if (costo == null && Number.isFinite(Number(sin))) costo = Number(sin);
   }
   if (!cargas.length) cargas.push("sin_costo");
-  const restText = [row[6], row[7], row[8]].filter(Boolean).join(" ");
-  const restricciones = {};
+  const restText = [row[7], row[8], row[9]].filter(Boolean).join(" ");
   const mHc = /venta minima\s*(\d+)\s*hc/i.exec(restText);
-  if (mHc) restricciones.venta_minima_hc = Number(mHc[1]) * 1000; // "15 HC" → 15000 en práctica del Excel
-  const mUsd = /\$?\s*([\d,.]+)/.exec(String(row[7] || row[6] || ""));
+  if (mHc) restricciones.venta_minima_hc = Number(mHc[1]) * 1000;
+  const mUsd = /\$?\s*([\d,.]+)/.exec(String(row[8] || row[7] || ""));
   if (/venta minima\s*\$/i.test(restText) && mUsd) {
     restricciones.venta_minima_usd = Number(String(mUsd[1]).replace(/,/g, ""));
   }
-  // Flyback: Venta minima $19,167.58
   if (/flyback/i.test(nombre)) restricciones.venta_minima_usd = 19167.58;
   if (/prevelige|privilege/i.test(nombre)) restricciones.venta_minima_hc = 15000;
+  if (/move in/i.test(nombre)) restricciones.moneda_costo = "MXN";
+  if (/bono de creditos/i.test(nombre)) {
+    restricciones.vigencia_meses = 18;
+    restricciones.hc_tiers = [10000, 15000, 30000];
+  }
 
   regInserts.push({
     catalogo_configuracion_id: cid,
@@ -260,7 +279,7 @@ const { error: pgErr } = await admin.from("rh_parametros_generales").insert({
   moneda: "USD",
   impuestos: {},
   notas_pendientes:
-    "Corte exacto costo admin entre 15% y 27.5% pendiente de dueño de producto. Posiciones OPC/X sin comisiones aún.",
+    "Corte costo admin: 15%→750 USD, 27.5%→950 USD (confirmado). Posiciones OPC/X sin comisiones hasta definir en Excel.",
 });
 if (pgErr) throw new Error(pgErr.message);
 

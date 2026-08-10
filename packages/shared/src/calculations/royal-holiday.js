@@ -102,6 +102,7 @@ export function regalosDisponibles(regalos, { holidayCredits, montoVenta }) {
     const r = g.restricciones || {};
     if (r.venta_minima_hc != null && hc < Number(r.venta_minima_hc)) return false;
     if (r.venta_minima_usd != null && mv < Number(r.venta_minima_usd)) return false;
+    if (r.venta_max_usd != null && mv > Number(r.venta_max_usd)) return false;
     return true;
   });
 }
@@ -120,7 +121,44 @@ export function montoComision(montoVenta, porcentaje) {
 
 /** Membresía se activa al llegar a 25% enganche acumulado. */
 export const RH_MEMBRESIA_ENGANCHE_PCT = 25;
+
+/** Plazo máximo para cobrar Extra DP y su diferencial de comisión (Excel Comisiones). */
+export const RH_EXTRA_DP_PLAZO_DIAS = 90;
+
+/** Ventana post-activación para cancelación con descuento de comisión (~3 meses). Regla distinta a Extra DP. */
 export const RH_VENTANA_CANCELACION_DIAS = 90;
+
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+function parseDateOnly(value) {
+  if (value instanceof Date) return new Date(Date.UTC(value.getUTCFullYear(), value.getUTCMonth(), value.getUTCDate()));
+  const s = String(value || "").slice(0, 10);
+  const [y, m, d] = s.split("-").map(Number);
+  if (!y || !m || !d) return null;
+  return new Date(Date.UTC(y, m - 1, d));
+}
+
+/** Último día (inclusive) en que aplica el plazo Extra DP desde la fecha de venta. */
+export function fechaLimiteExtraDp(fechaVenta, plazoDias = RH_EXTRA_DP_PLAZO_DIAS) {
+  const base = parseDateOnly(fechaVenta);
+  if (!base) return null;
+  return new Date(base.getTime() + plazoDias * MS_PER_DAY);
+}
+
+export function extraDpFechaDentroPlazo(fechaProgramada, fechaVenta, plazoDias = RH_EXTRA_DP_PLAZO_DIAS) {
+  const prog = parseDateOnly(fechaProgramada);
+  const venta = parseDateOnly(fechaVenta);
+  if (!prog || !venta) return false;
+  const limite = fechaLimiteExtraDp(venta, plazoDias);
+  return prog.getTime() <= limite.getTime() && prog.getTime() >= venta.getTime();
+}
+
+export function plazoExtraDpVencido(fechaVenta, ahora = new Date(), plazoDias = RH_EXTRA_DP_PLAZO_DIAS) {
+  const limite = fechaLimiteExtraDp(fechaVenta, plazoDias);
+  if (!limite) return false;
+  const hoy = parseDateOnly(ahora);
+  return hoy.getTime() > limite.getTime();
+}
 
 export function membresiaDebeActivarse(engancheAcumuladoPct) {
   return normalizeEnganchePct(engancheAcumuladoPct) >= RH_MEMBRESIA_ENGANCHE_PCT;
@@ -129,6 +167,42 @@ export function membresiaDebeActivarse(engancheAcumuladoPct) {
 export function dentroVentanaCancelacion(activadaAt, ahora = new Date()) {
   if (!activadaAt) return false;
   const start = new Date(activadaAt);
-  const end = new Date(start.getTime() + RH_VENTANA_CANCELACION_DIAS * 24 * 60 * 60 * 1000);
+  const end = new Date(start.getTime() + RH_VENTANA_CANCELACION_DIAS * MS_PER_DAY);
   return ahora < end;
+}
+
+/** Valida FTB = liner + closer en cada franja (%DP × rango HC). */
+export function validarComisionesFtb(comisiones, tolerancia = 0.001) {
+  const rows = comisiones || [];
+  const errors = [];
+  const ftbRows = rows.filter((r) => String(r.posicion).toLowerCase() === "ftb");
+  for (const ftb of ftbRows) {
+    const liner = rows.find(
+      (r) =>
+        String(r.posicion).toLowerCase() === "liner"
+        && normalizeEnganchePct(r.down_payment_pct) === normalizeEnganchePct(ftb.down_payment_pct)
+        && Number(r.hc_rango_min) === Number(ftb.hc_rango_min)
+        && Number(r.hc_rango_max) === Number(ftb.hc_rango_max),
+    );
+    const closer = rows.find(
+      (r) =>
+        String(r.posicion).toLowerCase() === "closer"
+        && normalizeEnganchePct(r.down_payment_pct) === normalizeEnganchePct(ftb.down_payment_pct)
+        && Number(r.hc_rango_min) === Number(ftb.hc_rango_min)
+        && Number(r.hc_rango_max) === Number(ftb.hc_rango_max),
+    );
+    if (!liner || !closer) continue;
+    const sum = Number(liner.porcentaje_comision) + Number(closer.porcentaje_comision);
+    const ftbPct = Number(ftb.porcentaje_comision);
+    if (Math.abs(sum - ftbPct) > tolerancia) {
+      errors.push({
+        down_payment_pct: ftb.down_payment_pct,
+        hc_rango_min: ftb.hc_rango_min,
+        hc_rango_max: ftb.hc_rango_max,
+        ftb: ftbPct,
+        liner_closer: sum,
+      });
+    }
+  }
+  return errors;
 }

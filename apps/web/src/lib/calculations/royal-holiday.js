@@ -13,6 +13,11 @@ export {
   membresiaDebeActivarse,
   dentroVentanaCancelacion,
   normalizeEnganchePct,
+  fechaLimiteExtraDp,
+  extraDpFechaDentroPlazo,
+  plazoExtraDpVencido,
+  validarComisionesFtb,
   RH_MEMBRESIA_ENGANCHE_PCT,
+  RH_EXTRA_DP_PLAZO_DIAS,
   RH_VENTANA_CANCELACION_DIAS,
 } from "@salesapp/shared/calculations/royal-holiday.js";

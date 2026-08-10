@@ -986,11 +986,11 @@ router.get("/cron/cleanup-support-attachments", async (req, res) => {
 /** Cron diario: Extra DP cumplidos → recálculo comisión RH. */
 router.post("/cron/rh-extra-dp", async (req, res) => {
   if (!authorizeCron(req)) return apiError(res, "Unauthorized", 401);
-  await runService(res, () => royalHolidayService.processDueExtraPagos({ limit: 200 }), { wrap: "data" });
+  await runService(res, () => royalHolidayService.processExtraDpJobs({ limit: 200 }), { wrap: "data" });
 });
 router.get("/cron/rh-extra-dp", async (req, res) => {
   if (!authorizeCron(req)) return apiError(res, "Unauthorized", 401);
-  await runService(res, () => royalHolidayService.processDueExtraPagos({ limit: 200 }), { wrap: "data" });
+  await runService(res, () => royalHolidayService.processExtraDpJobs({ limit: 200 }), { wrap: "data" });
 });
 
 // Royal Holiday — API consumida por worksheet y rutas SPA /tools/rh/*, /ops/rh/*

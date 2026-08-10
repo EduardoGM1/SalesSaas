@@ -15,6 +15,10 @@ import {
   membresiaDebeActivarse,
   dentroVentanaCancelacion,
   normalizeEnganchePct,
+  extraDpFechaDentroPlazo,
+  plazoExtraDpVencido,
+  validarComisionesFtb,
+  RH_EXTRA_DP_PLAZO_DIAS,
 } from "@salesapp/shared/calculations/royal-holiday.js";
 
 async function loadCatalogBundle(client, catalogoId) {
@@ -58,6 +62,34 @@ export async function getCatalogoVigente(client, empresaId) {
   if (error) throw new ServiceError(error.message, 400);
   if (!cat) throw new ServiceError("No hay catálogo vigente para esta empresa.", 404);
   return loadCatalogBundle(client, cat.id);
+}
+
+function assertComisionesFtb(comisiones) {
+  const errors = validarComisionesFtb(comisiones);
+  if (errors.length) {
+    const e = errors[0];
+    throw new ServiceError(
+      `FTB debe ser liner+closer (${e.down_payment_pct}% HC ${e.hc_rango_min}-${e.hc_rango_max}: FTB=${e.ftb}, liner+closer=${e.liner_closer}).`,
+      400,
+    );
+  }
+}
+
+function assertExtrasExtraDp(extras, fechaVenta, maxExtraDp) {
+  const dpExtras = (extras || []).filter((e) => e.tipo !== "extra_cc");
+  if (dpExtras.length > maxExtraDp) {
+    throw new ServiceError(`Máximo ${maxExtraDp} Extra DP permitidos.`, 400);
+  }
+  const fechaVentaStr = toDateStr(fechaVenta);
+  for (const ex of dpExtras) {
+    const fecha = String(ex.fecha || "").slice(0, 10);
+    if (!extraDpFechaDentroPlazo(fecha, fechaVentaStr)) {
+      throw new ServiceError(
+        `Extra DP debe programarse entre la fecha de venta y ${RH_EXTRA_DP_PLAZO_DIAS} días después (fecha ${fecha} inválida).`,
+        400,
+      );
+    }
+  }
 }
 
 export async function previewCalculo(client, empresaId, body) {
@@ -123,6 +155,10 @@ export async function saveVenta(client, userId, body) {
   const engAcum = eng;
 
   const fechaEvento = body.fecha_evento ? new Date(body.fecha_evento) : new Date();
+  const fechaVentaStr = toDateStr(fechaEvento);
+  const maxExtraDp = Number(preview.parametros?.max_extra_dp) || 6;
+  assertExtrasExtraDp(extras, fechaVentaStr, maxExtraDp);
+
   const { data: venta, error } = await client
     .from("rh_ventas")
     .insert({
@@ -144,6 +180,7 @@ export async function saveVenta(client, userId, body) {
       mensualidad: preview.mensualidad,
       board_online: preview.board_online,
       regalos: body.regalos || [],
+      fecha_venta: fechaVentaStr,
       payload: { preview_totales: preview.totales, raw: body },
       membresia_activada_at: membresiaDebeActivarse(engAcum) ? fechaEvento.toISOString() : null,
     })
@@ -197,8 +234,8 @@ export async function saveVenta(client, userId, body) {
     if (mErr) throw new ServiceError(mErr.message, 400);
   }
 
-  // EXCEPCIÓN service-role: job interno post-insert (Extra DP vencidos); no es request de usuario directo.
-  await processDueExtraPagos({ ventaId: venta.id });
+  // EXCEPCIÓN service-role: job interno post-insert (Extra DP vencidos / forfeit); no es request de usuario directo.
+  await processExtraDpJobs({ ventaId: venta.id });
 
   const { data: full } = await client
     .from("rh_ventas")
@@ -206,6 +243,37 @@ export async function saveVenta(client, userId, body) {
     .eq("id", venta.id)
     .single();
   return full;
+}
+
+export async function processForfeitExpiredExtraPagos({ ventaId = null, limit = 100 } = {}) {
+  const admin = createServiceSupabaseClient();
+  if (!admin) throw new ServiceError("Service role no configurado.", 500);
+  let q = admin
+    .from("rh_extra_pagos")
+    .select("*, rh_ventas(*)")
+    .eq("cumplido", false)
+    .eq("forfeit", false)
+    .eq("tipo", "extra_dp")
+    .limit(limit);
+  if (ventaId) q = q.eq("rh_venta_id", ventaId);
+  const { data: pendientes, error } = await q;
+  if (error) throw new ServiceError(error.message, 400);
+
+  const results = [];
+  const today = new Date();
+  for (const extra of pendientes || []) {
+    const venta = extra.rh_ventas;
+    if (!venta || venta.comision_firme) continue;
+    const fechaVenta = venta.fecha_venta || toDateStr(venta.created_at);
+    if (!plazoExtraDpVencido(fechaVenta, today)) continue;
+
+    await admin
+      .from("rh_extra_pagos")
+      .update({ forfeit: true, forfeit_at: new Date().toISOString() })
+      .eq("id", extra.id);
+    results.push({ extra_id: extra.id, venta_id: venta.id, action: "forfeit" });
+  }
+  return { forfeited: results.length, results };
 }
 
 export async function processDueExtraPagos({ ventaId = null, limit = 100 } = {}) {
@@ -217,6 +285,7 @@ export async function processDueExtraPagos({ ventaId = null, limit = 100 } = {})
     .from("rh_extra_pagos")
     .select("*, rh_ventas(*)")
     .eq("cumplido", false)
+    .eq("forfeit", false)
     .eq("tipo", "extra_dp")
     .lte("fecha_programada", today)
     .limit(limit);
@@ -228,6 +297,16 @@ export async function processDueExtraPagos({ ventaId = null, limit = 100 } = {})
   for (const extra of pendientes || []) {
     const venta = extra.rh_ventas;
     if (!venta || venta.comision_firme) continue;
+
+    const fechaVenta = venta.fecha_venta || toDateStr(venta.created_at);
+    if (plazoExtraDpVencido(fechaVenta)) {
+      await admin
+        .from("rh_extra_pagos")
+        .update({ forfeit: true, forfeit_at: new Date().toISOString() })
+        .eq("id", extra.id);
+      results.push({ extra_id: extra.id, venta_id: venta.id, action: "forfeit" });
+      continue;
+    }
 
     const bundle = await loadCatalogBundle(admin, venta.catalogo_configuracion_id);
     const nuevoEng = normalizeEnganchePct(venta.enganche_acumulado_pct) + normalizeEnganchePct(extra.porcentaje);
@@ -278,9 +357,21 @@ export async function processDueExtraPagos({ ventaId = null, limit = 100 } = {})
         });
       }
     }
-    results.push({ extra_id: extra.id, venta_id: venta.id, nuevo_enganche: nuevoEng });
+    results.push({ extra_id: extra.id, venta_id: venta.id, nuevo_enganche: nuevoEng, action: "cumplido" });
   }
   return { processed: results.length, results };
+}
+
+/** Forfeit por plazo vencido, luego Extra DP con fecha programada cumplida (dentro de 90 días). */
+export async function processExtraDpJobs(opts = {}) {
+  const forfeit = await processForfeitExpiredExtraPagos(opts);
+  const due = await processDueExtraPagos(opts);
+  return {
+    forfeited: forfeit.forfeited,
+    processed: due.processed,
+    forfeit_results: forfeit.results,
+    due_results: due.results,
+  };
 }
 
 export async function handleCancelacionVenta(saleId) {
@@ -368,6 +459,7 @@ export async function publishNuevaVersion(admin, empresaId, actorId, patch = {})
   const com = mapRows(patch.comisiones || vigente.comisiones);
   const reg = mapRows(patch.regalos || vigente.regalos);
   const ca = mapRows(patch.costo_administrativo || vigente.costo_administrativo);
+  assertComisionesFtb(com);
   if (bl.length) await admin.from("rh_bottom_line").insert(bl);
   if (fin.length) await admin.from("rh_financiamiento").insert(fin);
   if (com.length) await admin.from("rh_comisiones").insert(com);

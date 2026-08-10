@@ -7,6 +7,12 @@ import { useToolSession } from "@/hooks/use-tool-session.js";
 import { fetchSession } from "@/lib/session-api.js";
 import { royalHolidayApi } from "@/lib/royal-holiday-api.js";
 import { toast } from "@/lib/toast";
+import {
+  RH_EXTRA_DP_PLAZO_DIAS,
+  extraDpFechaDentroPlazo,
+  toDateStr,
+  fechaLimiteExtraDp,
+} from "@/lib/calculations/royal-holiday.js";
 
 const TABS = [
   { id: "financiamiento", label: "Datos Financiamiento" },
@@ -218,9 +224,23 @@ export function WorksheetRoyalHolidayPage({ clientId, shared }) {
   const maxCc = catalogo?.parametros?.max_extra_cc ?? 6;
   const adminOptions = (catalogo?.costo_administrativo || []).map((c) => c.monto_usd);
   const tarjetas = catalogo?.parametros?.tarjetas_internas || ["Invex", "RCI"];
+  const fechaVentaRef = toDateStr(new Date());
+  const extraDpLimite = fechaLimiteExtraDp(fechaVentaRef);
 
   const save = async () => {
     if (!empresaId || !workspaceId || readOnly) return;
+    if (form.extrasDp.length > maxDp) {
+      toast.error(`Máximo ${maxDp} Extra DP permitidos.`);
+      return;
+    }
+    for (const ex of form.extrasDp) {
+      if (!extraDpFechaDentroPlazo(ex.fecha, fechaVentaRef)) {
+        toast.error(
+          `Extra DP: la fecha debe estar dentro de ${RH_EXTRA_DP_PLAZO_DIAS} días desde hoy (límite ${extraDpLimite ? toDateStr(extraDpLimite) : "—"}).`,
+        );
+        return;
+      }
+    }
     setSaving(true);
     try {
       const regalos = Object.entries(form.regalosElegidos)
@@ -537,6 +557,10 @@ export function WorksheetRoyalHolidayPage({ clientId, shared }) {
                   onChange={(rows) => set("extrasDp", rows)}
                   onAdd={() => set("extrasDp", [...form.extrasDp, { porcentaje: "10", fecha: new Date().toISOString().slice(0, 10) }])}
                 />
+                <p className="muted rh-hint">
+                  Extra DP: máximo {maxDp} y fecha dentro de {RH_EXTRA_DP_PLAZO_DIAS} días desde la venta
+                  {extraDpLimite ? ` (hasta ${toDateStr(extraDpLimite)})` : ""}. Pasado ese plazo sin cobrar, no aplica diferencial de comisión.
+                </p>
                 <div className="tool-calc-fields" style={{ marginTop: 12 }}>
                   <div className="frow tool-frow">
                     <div className="flabel">Gasto Adm.</div>
@@ -576,7 +600,7 @@ export function WorksheetRoyalHolidayPage({ clientId, shared }) {
                     <div className="vbox-label">Balance</div>
                   </div>
                 </div>
-                <p className="muted rh-hint">Rango intermedio costo admin (15%–27.5%) pendiente de producto.</p>
+                <p className="muted rh-hint">Costo admin: 750 USD (enganche ≥15%), 950 USD (enganche ≥27.5%).</p>
               </div>
 
               <div className="worksheet-rh-fin-right">
