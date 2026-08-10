@@ -544,7 +544,7 @@ export function TenantCompanyAdministration({
           <div className="admin-company-layout">
             <AdminCard
               title={editingRole ? `Editar: ${editingRole.slug}` : "Crear puesto"}
-              subtitle="Marca los módulos existentes. Los puestos de sistema (Liner, Cerrador…) se pueden renombrar y ajustar módulos, pero no eliminar."
+              subtitle="Marca los módulos existentes. Los puestos de sistema se pueden renombrar y ajustar módulos, pero no eliminar."
             >
               <form className="admin-inline-form" onSubmit={(event) => {
                 event.preventDefault();

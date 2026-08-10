@@ -88,7 +88,7 @@ export async function updateTenantRole(actorId, empresaId, roleId, body) {
 
   const currentFlagKeys = await loadRoleFlagKeys(admin, role.paquete_id);
 
-  // Sistema: renombrar siempre; módulos solo Liner/Cerrador (paquetes dedicados).
+  // Sistema: renombrar siempre; módulos editables por Admin de Empresa (requireEmpresaAdmin arriba).
   if (role.es_sistema) {
     const patch = {};
     if (body?.nombre !== undefined) {
@@ -100,11 +100,7 @@ export async function updateTenantRole(actorId, empresaId, roleId, body) {
       const { error } = await admin.from("roles").update(patch).eq("id", roleId);
       if (error) throw new ServiceError(error.message, 400);
     }
-    // Solo tocar módulos si el cliente envió flag_keys Y cambiaron de verdad.
     if (Array.isArray(body?.flag_keys) && !sameFlagKeySet(currentFlagKeys, body.flag_keys)) {
-      if (!["liner", "cerrador"].includes(role.slug)) {
-        throw new ServiceError("Solo Liner y Cerrador permiten ajustar módulos de sistema.", 403);
-      }
       const nextKeys = normalizeFlagKeys(body.flag_keys);
       if (nextKeys.length === 0) {
         throw new ServiceError(
@@ -112,6 +108,11 @@ export async function updateTenantRole(actorId, empresaId, roleId, body) {
           400,
         );
       }
+      const systemSlug = role.slug === "liner"
+        ? "liner"
+        : role.slug === "cerrador"
+          ? "cierre"
+          : undefined;
       const packageId = await ensureRolePackageFromFlags(admin, {
         empresaId,
         actorId,
@@ -119,7 +120,7 @@ export async function updateTenantRole(actorId, empresaId, roleId, body) {
         slug: role.slug,
         flagKeys: nextKeys,
         existingPackageId: role.paquete_id,
-        systemSlug: role.slug === "liner" ? "liner" : "cierre",
+        systemSlug,
       });
       if (packageId && packageId !== role.paquete_id) {
         await admin.from("roles").update({ paquete_id: packageId }).eq("id", roleId);
