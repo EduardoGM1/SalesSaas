@@ -56,6 +56,28 @@ function plazoSubtitle(tasa) {
   return t === 0 ? "Sin intereses" : "Tasa fija anual";
 }
 
+function VentaResumenReadonly({ montoFmt, enganchePct, gastoFmt }) {
+  const engLabel = enganchePct !== "" && enganchePct != null && String(enganchePct).trim() !== ""
+    ? `${enganchePct}%`
+    : "—";
+  return (
+    <div className="rh-fin-venta-resumen" aria-label="Resumen de venta">
+      <div className="frow tool-frow">
+        <div className="flabel">Monto venta</div>
+        <div className="rh-readonly">{montoFmt}</div>
+      </div>
+      <div className="frow tool-frow">
+        <div className="flabel">% Enganche</div>
+        <div className="rh-readonly">{engLabel}</div>
+      </div>
+      <div className="frow tool-frow">
+        <div className="flabel">Gasto administrativo</div>
+        <div className="rh-readonly">{gastoFmt}</div>
+      </div>
+    </div>
+  );
+}
+
 function ExtraCollapsible({ title, rows, max, readOnly, onChange, onAdd, hint }) {
   return (
     <CollapsibleSection
@@ -423,6 +445,12 @@ export function WorksheetRhFinancingPanel({
               </div>
             </div>
           </div>
+
+          <VentaResumenReadonly
+            montoFmt={montoCapture ? fmtCaptureResult(montoCapture) : "—"}
+            enganchePct={form.enganche_pct}
+            gastoFmt={fmtCaptureResult(gastoTotalCapture)}
+          />
 
           <PaymentCaptureBlock
             title="Datos de enganche"

@@ -9972,6 +9972,18 @@ body,
 .rh-fin-pago-num { width: 28px; font-weight: 700; color: var(--muted); }
 .rh-fin-extra-add { margin-top: 8px; }
 .rh-fin-gasto-select { margin-bottom: 0; }
+.rh-fin-venta-resumen {
+  margin-top: 2px;
+  padding-top: 4px;
+  border-top: 1px solid var(--border, #e8ecf1);
+}
+.rh-fin-venta-resumen .frow {
+  padding: 10px 0;
+}
+.rh-fin-venta-resumen .rh-readonly {
+  text-align: right;
+  min-width: 0;
+}
 .rh-fin-totales { margin-top: 14px; }
 .rh-fin-options-banner {
   margin: 10px 0 12px;
