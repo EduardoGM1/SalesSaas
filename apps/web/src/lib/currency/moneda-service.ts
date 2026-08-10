@@ -30,12 +30,23 @@ export interface MonedaSettingsLike {
   usdToMxnRate?: number;
 }
 
+/** 1 USD = X MXN — nunca usar exchangeRate=1 de salas en USD como TC MXN. */
+export function resolveUsdToMxnRate(settings?: MonedaSettingsLike | null): number {
+  const dedicated = Number(settings?.usdToMxnRate);
+  if (Number.isFinite(dedicated) && dedicated > 0) return dedicated;
+  if (settings?.currency === "MXN") {
+    const er = Number(settings?.exchangeRate);
+    if (Number.isFinite(er) && er > 0) return er;
+  }
+  return 18;
+}
+
 export function getMonedaContext(settings?: MonedaSettingsLike | null): MonedaContext {
   const monedaOperativa = settings?.currency ?? "USD";
-  const operationalFromUsd = monedaOperativa === "USD" ? 1 : Number(settings?.exchangeRate || 1);
-  const usdToMxn = monedaOperativa === "MXN"
-    ? Number(settings?.exchangeRate || settings?.usdToMxnRate || 18)
-    : Number(settings?.usdToMxnRate || settings?.exchangeRate || 18);
+  const usdToMxn = resolveUsdToMxnRate(settings);
+  const operationalFromUsd = monedaOperativa === "USD"
+    ? 1
+    : Number(settings?.exchangeRate || usdToMxn);
   return { monedaOperativa, usdToMxn, operationalFromUsd };
 }
 
@@ -205,8 +216,13 @@ export function convertCaptureMoneyFields<T extends Record<string, unknown>>(
   return { fields, meta };
 }
 
-/** Normaliza la tasa manual a "1 USD = X MXN". */
-export function resolveUsdToMxnRate(baseCurrency: CaptureCurrency, quoteCurrency: CaptureCurrency, baseAmount: number, quoteAmount: number): number {
+/** Normaliza la tasa manual a "1 USD = X MXN" a partir de montos capturados. */
+export function resolveUsdToMxnRateFromAmounts(
+  baseCurrency: CaptureCurrency,
+  quoteCurrency: CaptureCurrency,
+  baseAmount: number,
+  quoteAmount: number,
+): number {
   const base = Number(baseAmount);
   const quote = Number(quoteAmount);
   if (!Number.isFinite(base) || !Number.isFinite(quote) || base <= 0 || quote <= 0) return 18;

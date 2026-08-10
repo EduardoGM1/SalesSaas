@@ -65,6 +65,7 @@ export function WorksheetRoyalHolidayPage({ clientId, shared }) {
     moneda,
     recordMoneyCapture,
     applyCaptureCurrency,
+    refreshCurrencyMeta,
   } = useMonedaToolBucket({ getBucket, toolKey: "worksheet", ready, toolsRevision });
   const { fmtResult } = moneda;
   const [tab, setTab] = useState("financiamiento");
@@ -211,6 +212,10 @@ export function WorksheetRoyalHolidayPage({ clientId, shared }) {
     applyCaptureCurrency(next, meta);
   };
 
+  const handleExchangeRateSaved = () => {
+    refreshCurrencyMeta(form, moneda.ctx);
+  };
+
   const bl = ws.bottom_line;
   const boardOnline = ws.board_online;
   const montoCapture = montoVentaWorksheet(form);
@@ -324,6 +329,7 @@ export function WorksheetRoyalHolidayPage({ clientId, shared }) {
         <SelectorMoneda
           value={captureCurrency}
           onChange={handleCaptureCurrencyChange}
+          onRateSaved={handleExchangeRateSaved}
           disabled={readOnly}
           className="tool-moneda-selector"
         />
@@ -563,6 +569,7 @@ export function WorksheetRoyalHolidayPage({ clientId, shared }) {
             catalogo={catalogo}
             readOnly={readOnly}
             captureCurrency={captureCurrency}
+            montoOperational={montoOperational}
             moneda={moneda}
             onMoneyBlur={handleMoneyBlur}
             stacked={tab === "worksheet"}

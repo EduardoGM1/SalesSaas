@@ -3,7 +3,11 @@ import { Pencil } from "lucide-react";
 import { saveSettingsPatchRemote } from "@/actions/settings.js";
 import { useDbStore } from "@/stores/db-store";
 import { shallow } from "zustand/shallow";
-import { CAPTURE_CURRENCIES, normalizeCaptureCurrency } from "@/lib/currency/moneda-service";
+import {
+  CAPTURE_CURRENCIES,
+  normalizeCaptureCurrency,
+  resolveUsdToMxnRate,
+} from "@/lib/currency/moneda-service";
 import { selectOnFocus } from "@/lib/focus-select.js";
 import { toast } from "@/lib/toast";
 
@@ -20,6 +24,7 @@ const CURRENCY_OPTIONS = [
 export function SelectorMoneda({
   value = "USD",
   onChange,
+  onRateSaved,
   disabled = false,
   className = "",
 }) {
@@ -30,7 +35,7 @@ export function SelectorMoneda({
   const [saving, setSaving] = useState(false);
   const rootRef = useRef(null);
 
-  const savedRate = Number(settings?.usdToMxnRate || settings?.exchangeRate || 18);
+  const savedRate = resolveUsdToMxnRate(settings);
   const language = settings?.language === "en" ? "en" : "es";
 
   useEffect(() => {
@@ -75,6 +80,7 @@ export function SelectorMoneda({
         exchangeRate: settings?.currency === "MXN" ? usdToMxnRate : (settings?.exchangeRate || 1),
         exchangeRateUpdatedAt: new Date().toISOString(),
       });
+      onRateSaved?.(usdToMxnRate);
       setRateOpen(false);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "No se pudo guardar el tipo de cambio.");

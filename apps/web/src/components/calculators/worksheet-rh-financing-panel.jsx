@@ -308,20 +308,22 @@ export function WorksheetRhFinancingPanel({
   catalogo,
   readOnly,
   captureCurrency = "USD",
+  montoOperational = 0,
   moneda,
   onMoneyBlur,
   stacked,
 }) {
   const { fmtResult, fmtCaptureResult, formatCapture, toCaptureDisplay } = moneda || {};
   const ws = worksheetState || {};
-  const monto = montoVentaWorksheet(form);
+  const montoCapture = montoVentaWorksheet(form);
+  const engPct = Number(form.enganche_pct || 0);
   const engancheTotalCapture = ws.totales?.enganche != null
     ? toCaptureDisplay(ws.totales.enganche)
-    : (monto * Number(form.enganche_pct || 0)) / 100;
+    : (montoCapture * engPct) / 100;
   const engancheHoy = Number(form.enganche_hoy || 0);
   const saldoEnganche = Math.max(0, engancheTotalCapture - engancheHoy);
-  const pctEngancheHoy = monto > 0 ? (engancheHoy / monto) * 100 : 0;
-  const pctSaldoEnganche = monto > 0 ? (saldoEnganche / monto) * 100 : 0;
+  const pctEngancheHoy = montoCapture > 0 ? (engancheHoy / montoCapture) * 100 : 0;
+  const pctSaldoEnganche = montoCapture > 0 ? (saldoEnganche / montoCapture) * 100 : 0;
 
   const gastoTotalCapture = form.costo_administrativo_usd !== "" && form.costo_administrativo_usd != null
     ? toCaptureDisplay(Number(form.costo_administrativo_usd))
@@ -338,7 +340,12 @@ export function WorksheetRhFinancingPanel({
   const fechaVentaRef = toDateStr(new Date());
   const extraDpLimite = fechaLimiteExtraDp(fechaVentaRef);
 
-  const balanceFinanciarUsd = Number(ws.totales?.balanceAFinanciar ?? Math.max(0, monto - engancheTotalCapture));
+  const balanceFinanciarOperational = ws.totales?.balanceAFinanciar != null
+    ? Number(ws.totales.balanceAFinanciar)
+    : Math.max(
+      0,
+      Number(montoOperational || 0) - (ws.totales?.enganche ?? (Number(montoOperational || 0) * engPct) / 100),
+    );
 
   const finTier = useMemo(() => ({
     rows: ws.plazos || [],
@@ -369,9 +376,9 @@ export function WorksheetRhFinancingPanel({
   const plazoCards = useMemo(() => {
     return (finTier.rows || []).map((p) => ({
       ...p,
-      mensualidad: calcularMensualidad(balanceFinanciarUsd, p.factor_mensual),
+      mensualidad: calcularMensualidad(balanceFinanciarOperational, p.factor_mensual),
     }));
-  }, [finTier.rows, balanceFinanciarUsd]);
+  }, [finTier.rows, balanceFinanciarOperational]);
 
   const fmtSaldo = (amount) => fmtCaptureResult(roundMoney(amount));
 

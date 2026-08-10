@@ -8,6 +8,7 @@ import {
   parseCurrencyMeta,
   serializeCurrencyMeta,
 } from "@/lib/currency/moneda-service";
+import { refreshRhCurrencyMeta } from "@/lib/currency/rh-form-currency.js";
 
 /**
  * Moneda de captura por herramienta, sincronizada con preferencia GLOBAL
@@ -109,6 +110,10 @@ export function useMonedaToolBucket({ getBucket, toolKey, ready, toolsRevision }
     ).catch(() => {});
   };
 
+  const refreshCurrencyMeta = useCallback((fields, ctx) => {
+    setCurrencyMeta((prev) => refreshRhCurrencyMeta(fields, prev, captureCurrency, ctx));
+  }, [captureCurrency]);
+
   return {
     captureCurrency,
     setCaptureCurrency,
@@ -121,5 +126,6 @@ export function useMonedaToolBucket({ getBucket, toolKey, ready, toolsRevision }
     appendMonedaPayload,
     resetMoneda,
     recordMoneyCapture,
+    refreshCurrencyMeta,
   };
 }

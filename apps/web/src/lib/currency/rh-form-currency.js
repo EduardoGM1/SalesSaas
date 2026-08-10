@@ -119,3 +119,26 @@ export function rhFormToOperational(form, captureCurrency, currencyMeta, ctx) {
 export function rhMontoVentaCapture(form) {
   return montoVentaWorksheet(form);
 }
+
+/** Recalcula snapshots USD al cambiar TC manual; conserva montos visibles en captura. */
+export function refreshRhCurrencyMeta(form, prevMeta, captureCurrency, ctx) {
+  const meta = { ...(prevMeta || {}) };
+  for (const key of RH_WORKSHEET_MONEY_FIELDS) {
+    const raw = form[key];
+    if (String(raw ?? "").trim() === "") continue;
+    meta[key] = buildAmountRecord(raw, captureCurrency, ctx);
+  }
+  (form.valores || []).forEach((v, i) => {
+    if (String(v ?? "").trim() === "") return;
+    meta[`valores_${i}`] = buildAmountRecord(v, captureCurrency, ctx);
+  });
+  (form.enganche_pagos || []).forEach((p, i) => {
+    if (String(p.monto ?? "").trim() === "") return;
+    meta[`enganche_pago_${i}`] = buildAmountRecord(p.monto, captureCurrency, ctx);
+  });
+  (form.gasto_pagos || []).forEach((p, i) => {
+    if (String(p.monto ?? "").trim() === "") return;
+    meta[`gasto_pago_${i}`] = buildAmountRecord(p.monto, captureCurrency, ctx);
+  });
+  return meta;
+}
