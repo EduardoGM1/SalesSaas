@@ -236,7 +236,7 @@ export async function listCrossAccessSalasForUser(userId) {
   if (!admin) return [];
   const { data, error } = await admin
     .from("gerente_acceso_cruzado")
-    .select("sala_adicional_id, workspaces(id, tipo, nombre, logo_url, colores_marca, empresa_id, estado, empresas(id, nombre, logo_url, colores_marca))")
+    .select("sala_adicional_id, workspaces(id, tipo, nombre, logo_url, logo_icono_url, colores_marca, empresa_id, estado, empresas(id, nombre, logo_url, logo_icono_url, colores_marca))")
     .eq("gerente_id", userId)
     .eq("estado", "activo");
   if (error) return [];

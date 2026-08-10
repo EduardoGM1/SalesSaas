@@ -2,6 +2,7 @@ import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { ChevronDown, LoaderCircle, LogOut } from "lucide-react";
 import { WorkspaceBrandMark } from "@/components/layout/workspace-brand-mark.jsx";
 import { publishWorkspaceTransition, useWorkspace } from "@/hooks/use-workspace.js";
+import { workspaceIconUrl } from "@/lib/workspace-logo.js";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { cn } from "@/lib/utils";
 import { confirmDialog } from "@/lib/confirm";
@@ -125,7 +126,7 @@ export function WorkspaceSheet({ open, onClose }) {
         <header className="ws-sheet-active">
           <span className="ws-switcher-avatar" aria-hidden>
             <WorkspaceBrandMark
-              src={active.logo_url}
+              src={workspaceIconUrl(active)}
               name={activeName}
               imgClassName="ws-switcher-avatar-img"
               initialsClassName="ws-switcher-avatar-initials"
@@ -155,7 +156,7 @@ export function WorkspaceSheet({ open, onClose }) {
                     >
                       <span className="ws-switcher-avatar" aria-hidden>
                         <WorkspaceBrandMark
-                          src={workspace.logo_url}
+                          src={workspaceIconUrl(workspace)}
                           name={name}
                           imgClassName="ws-switcher-avatar-img"
                           initialsClassName="ws-switcher-avatar-initials"
@@ -232,7 +233,7 @@ export function WorkspaceRail({ className }) {
             <LoaderCircle size={17} className="ws-rail-spinner" />
           ) : (
             <WorkspaceBrandMark
-              src={active.logo_url}
+              src={workspaceIconUrl(active)}
               name={activeName}
               imgClassName="ws-rail-img"
               initialsClassName="ws-rail-initials"

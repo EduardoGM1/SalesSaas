@@ -24,7 +24,7 @@ export async function getHierarchicalAdminContext(userId) {
   const [{ data: empresas }, { data: salas }] = await Promise.all([
     admin
       .from("empresa_miembros")
-      .select("empresa_id, role_id, es_admin, empresas(nombre, logo_url, colores_marca, plan_paquete)")
+      .select("empresa_id, role_id, es_admin, empresas(nombre, logo_url, logo_icono_url, colores_marca, plan_paquete)")
       .eq("usuario_id", userId)
       .eq("estado", "activo")
       .eq("es_admin", true),
@@ -230,7 +230,7 @@ export async function listScopedSalas(actorId, empresaId) {
   const admin = await requireEmpresaAdmin(actorId, empresaId);
   const { data, error } = await admin
     .from("workspaces")
-    .select("id, empresa_id, nombre, logo_url, colores_marca, estado, created_at, workspace_miembros(usuario_id, role_id, rol_en_workspace, profiles(full_name, email), roles(nombre, slug))")
+    .select("id, empresa_id, nombre, logo_url, logo_icono_url, colores_marca, estado, created_at, workspace_miembros(usuario_id, role_id, rol_en_workspace, profiles(full_name, email), roles(nombre, slug))")
     .eq("empresa_id", empresaId)
     .eq("tipo", "sala_de_venta")
     .order("nombre");
@@ -247,6 +247,15 @@ export async function updateScopedEmpresa(actorId, empresaId, body) {
       tipo: "empresa",
       id: empresaId,
       logoUrl: body.logo_url,
+      slot: "principal",
+    });
+  }
+  if (body?.logo_icono_url !== undefined) {
+    patch.logo_icono_url = await persistBrandingLogo(admin, {
+      tipo: "empresa",
+      id: empresaId,
+      logoUrl: body.logo_icono_url,
+      slot: "icon",
     });
   }
   if (body?.colores_marca !== undefined) patch.colores_marca = body.colores_marca || {};
@@ -255,27 +264,33 @@ export async function updateScopedEmpresa(actorId, empresaId, body) {
     .from("empresas")
     .update(patch)
     .eq("id", empresaId)
-    .select("id, nombre, logo_url, colores_marca, plan_paquete, estado")
+    .select("id, nombre, logo_url, logo_icono_url, colores_marca, plan_paquete, estado")
     .maybeSingle();
   if (error) throw new ServiceError(error.message, 400);
   if (!data) throw new ServiceError("Empresa no encontrada.", 404);
   return data;
 }
 
-/** Sube logo de empresa (Admin empresa o Superadmin) desde data URL. */
-export async function uploadScopedEmpresaLogo(actorId, empresaId, dataUrl) {
+/** Sube logo de empresa (Admin empresa o Superadmin) desde data URL. slot: icon | principal */
+export async function uploadScopedEmpresaLogo(actorId, empresaId, dataUrl, slot = "principal") {
   const admin = await requireEmpresaAdmin(actorId, empresaId);
   if (!dataUrl) throw new ServiceError("data_url requerido.", 400);
+  const normalizedSlot = String(slot || "principal").toLowerCase() === "icon" ? "icon" : "principal";
   const logoUrl = await persistBrandingLogo(admin, {
     tipo: "empresa",
     id: empresaId,
     logoUrl: dataUrl,
+    slot: normalizedSlot,
   });
+  const patch = {
+    updated_at: new Date().toISOString(),
+    ...(normalizedSlot === "icon" ? { logo_icono_url: logoUrl } : { logo_url: logoUrl }),
+  };
   const { data, error } = await admin
     .from("empresas")
-    .update({ logo_url: logoUrl, updated_at: new Date().toISOString() })
+    .update(patch)
     .eq("id", empresaId)
-    .select("id, nombre, logo_url, colores_marca, plan_paquete, estado")
+    .select("id, nombre, logo_url, logo_icono_url, colores_marca, plan_paquete, estado")
     .maybeSingle();
   if (error) throw new ServiceError(error.message, 400);
   if (!data) throw new ServiceError("Empresa no encontrada.", 404);

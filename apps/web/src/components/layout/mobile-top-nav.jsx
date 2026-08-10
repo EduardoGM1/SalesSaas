@@ -9,6 +9,7 @@ import { useAppNav } from "@/hooks/use-app-nav.js";
 import { useWorkspace } from "@/hooks/use-workspace.js";
 import { WorkspaceBrandMark } from "@/components/layout/workspace-brand-mark.jsx";
 import { WorkspaceSheet } from "@/components/layout/workspace-rail.jsx";
+import { workspaceIconUrl } from "@/lib/workspace-logo.js";
 
 function HeaderNavLinks({ className }) {
   const { pathname, search } = useLocation();
@@ -102,7 +103,7 @@ export function MobileTopAvatar() {
                 style={{ zIndex: stack.length - index }}
               >
                 <WorkspaceBrandMark
-                  src={workspace.logo_url}
+                  src={workspaceIconUrl(workspace)}
                   name={workspace.nombre || (workspace.tipo === "personal" ? t("workspace.personal") : t("workspace.sala"))}
                   imgClassName="mobile-ws-stack-img"
                   initialsClassName="mobile-ws-stack-initials"

@@ -18,7 +18,7 @@ import { useAdminFetch } from "@/hooks/use-admin-session.js";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { adminJson } from "@/lib/admin/api.js";
 import { narrateAdminLogSummary } from "@/lib/admin/log-narrative.js";
-import { compressSupportScreenshot } from "@/lib/support-image.js";
+import { BRAND_ICON_PRESET, BRAND_PRINCIPAL_PRESET, processBrandingImage } from "@/lib/branding-image.js";
 import { toast } from "@/lib/toast";
 
 const SECTIONS = ["summary", "rooms", "members", "access", "branding", "settings", "plans", "logs"];
@@ -47,15 +47,15 @@ export function AdminEmpresasPage() {
   const [reloadKey, setReloadKey] = useState(0);
   const [empresaNombre, setEmpresaNombre] = useState("");
   const [salaForm, setSalaForm] = useState({ empresa_id: "", nombre: "", gerente: null });
-  const [brandForm, setBrandForm] = useState({ id: "", tipo: "empresa", primary: "#1e5eff", accent: "#0f2044", logo_url: "" });
+  const [brandForm, setBrandForm] = useState({ id: "", tipo: "empresa", primary: "#1e5eff", accent: "#0f2044", logo_url: "", logo_icono_url: "" });
   const [membersSalaId, setMembersSalaId] = useState("");
   const [addMemberUser, setAddMemberUser] = useState(null);
   const [members, setMembers] = useState([]);
   const [membersLoading, setMembersLoading] = useState(false);
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
-  const [logoPending, setLogoPending] = useState(false);
-  const [logoPreviewBroken, setLogoPreviewBroken] = useState(false);
+  const [logoPending, setLogoPending] = useState({ icon: false, principal: false });
+  const [logoPreviewBroken, setLogoPreviewBroken] = useState({ icon: false, principal: false });
 
   const { loading, data: empresas, error: loadErr } = useAdminFetch(session?.isSuperAdmin ? "empresas" : "", `?_=${reloadKey}`);
   const { data: salas } = useAdminFetch(session?.isSuperAdmin ? "salas" : "", `?_=${reloadKey}`);
@@ -129,13 +129,14 @@ export function AdminEmpresasPage() {
   const chooseBrandTarget = (id) => {
     const source = (brandForm.tipo === "sala" ? salasList : list).find((item) => item.id === id);
     const colors = entityColors(source);
-    setLogoPreviewBroken(false);
+    setLogoPreviewBroken({ icon: false, principal: false });
     setBrandForm((current) => ({
       ...current,
       id,
       primary: colors.primary,
       accent: colors.accent,
       logo_url: source?.logo_url || "",
+      logo_icono_url: source?.logo_icono_url || "",
     }));
   };
 
@@ -147,33 +148,40 @@ export function AdminEmpresasPage() {
         method: "PATCH",
         body: {
           logo_url: brandForm.logo_url || null,
+          logo_icono_url: brandForm.logo_icono_url || null,
           colores_marca: { primary: brandForm.primary, accent: brandForm.accent },
         },
       });
-      setBrandForm((current) => ({ ...current, logo_url: updated?.logo_url || current.logo_url }));
-      setLogoPreviewBroken(false);
+      setBrandForm((current) => ({
+        ...current,
+        logo_url: updated?.logo_url || current.logo_url,
+        logo_icono_url: updated?.logo_icono_url || current.logo_icono_url,
+      }));
+      setLogoPreviewBroken({ icon: false, principal: false });
       toast.success(t("common.save"));
     });
   };
 
-  const uploadLogo = async (file) => {
+  const uploadLogo = async (file, slot) => {
     if (!file || !brandForm.id) return;
-    setLogoPending(true);
+    const preset = slot === "icon" ? BRAND_ICON_PRESET : BRAND_PRINCIPAL_PRESET;
+    setLogoPending((current) => ({ ...current, [slot]: true }));
     setError("");
     try {
-      const compressed = await compressSupportScreenshot(file);
+      const processed = await processBrandingImage(file, preset);
       const updated = await adminJson("branding/logo", {
         method: "POST",
-        body: { tipo: brandForm.tipo, id: brandForm.id, data_url: compressed.dataUrl },
+        body: { tipo: brandForm.tipo, id: brandForm.id, data_url: processed.dataUrl, slot },
       });
-      setBrandForm((current) => ({ ...current, logo_url: updated?.logo_url || current.logo_url }));
-      setLogoPreviewBroken(false);
+      const field = slot === "icon" ? "logo_icono_url" : "logo_url";
+      setBrandForm((current) => ({ ...current, [field]: updated?.[field] || current[field] }));
+      setLogoPreviewBroken((current) => ({ ...current, [slot]: false }));
       refresh();
       toast.success(t("admin.empresas.logoUpload"));
     } catch (err) {
       setError(err instanceof Error ? err.message : t("admin.empresas.error"));
     } finally {
-      setLogoPending(false);
+      setLogoPending((current) => ({ ...current, [slot]: false }));
     }
   };
 
@@ -234,8 +242,8 @@ export function AdminEmpresasPage() {
   const selectBrand = (type, id) => {
     const source = (type === "sala" ? salasList : list).find((item) => item.id === id);
     const colors = entityColors(source);
-    setBrandForm({ id, tipo: type, primary: colors.primary, accent: colors.accent, logo_url: source?.logo_url || "" });
-    setLogoPreviewBroken(false);
+    setBrandForm({ id, tipo: type, primary: colors.primary, accent: colors.accent, logo_url: source?.logo_url || "", logo_icono_url: source?.logo_icono_url || "" });
+    setLogoPreviewBroken({ icon: false, principal: false });
     selectSection("branding");
   };
   const navItems = [
@@ -422,32 +430,52 @@ export function AdminEmpresasPage() {
           <div className="admin-branding-layout">
             <AdminCard title={t("admin.empresas.brandTitle")} subtitle="Configura una identidad por empresa o un override por sala.">
               <form className="admin-brand-form" onSubmit={saveBrand}>
-                <label className="admin-form-field"><span>Tipo</span><select className="auth-input" value={brandForm.tipo} onChange={(event) => setBrandForm((current) => ({ ...current, tipo: event.target.value, id: "", logo_url: "" }))}><option value="empresa">{t("admin.empresas.brandEmpresa")}</option><option value="sala">{t("admin.empresas.brandSala")}</option></select></label>
+                <label className="admin-form-field"><span>Tipo</span><select className="auth-input" value={brandForm.tipo} onChange={(event) => setBrandForm((current) => ({ ...current, tipo: event.target.value, id: "", logo_url: "", logo_icono_url: "" }))}><option value="empresa">{t("admin.empresas.brandEmpresa")}</option><option value="sala">{t("admin.empresas.brandSala")}</option></select></label>
                 <label className="admin-form-field"><span>Destino</span><select className="auth-input" value={brandForm.id} onChange={(event) => chooseBrandTarget(event.target.value)} required><option value="">{t("admin.empresas.pickTarget")}</option>{(brandForm.tipo === "sala" ? salasList : list).map((item) => <option key={item.id} value={item.id}>{item.nombre}</option>)}</select></label>
                 <div className="admin-color-fields">
                   <label><span>{t("admin.empresas.primary")}</span><input type="color" value={brandForm.primary} onChange={(event) => setBrandForm((current) => ({ ...current, primary: event.target.value }))} /></label>
                   <label><span>{t("admin.empresas.accent")}</span><input type="color" value={brandForm.accent} onChange={(event) => setBrandForm((current) => ({ ...current, accent: event.target.value }))} /></label>
                 </div>
-                <label className="admin-form-field"><span>Logo por URL</span><input className="auth-input" value={brandForm.logo_url} onChange={(event) => { setLogoPreviewBroken(false); setBrandForm((current) => ({ ...current, logo_url: event.target.value })); }} placeholder={t("admin.empresas.logoUrl")} /></label>
-                <p className="admin-card-muted">{t("admin.empresas.logoHint")}</p>
-                <div className="admin-brand-actions">
+                <fieldset className="admin-brand-slot">
+                  <legend>Ícono de workspace</legend>
+                  <p className="admin-card-muted">{BRAND_ICON_PRESET.hint}</p>
+                  <label className="admin-form-field"><span>URL del ícono</span><input className="auth-input" value={brandForm.logo_icono_url} onChange={(event) => { setLogoPreviewBroken((current) => ({ ...current, icon: false })); setBrandForm((current) => ({ ...current, logo_icono_url: event.target.value })); }} placeholder={t("admin.empresas.logoUrl")} /></label>
                   <label className="btn btn-ghost">
-                    {logoPending ? t("admin.empresas.logoUploading") : t("admin.empresas.logoUpload")}
-                    <input type="file" accept="image/png,image/jpeg,image/webp" hidden disabled={logoPending || !brandForm.id} onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ""; if (file) void uploadLogo(file); }} />
+                    {logoPending.icon ? t("admin.empresas.logoUploading") : "Subir ícono"}
+                    <input type="file" accept="image/png,image/jpeg,image/webp" hidden disabled={logoPending.icon || !brandForm.id} onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ""; if (file) void uploadLogo(file, "icon"); }} />
                   </label>
-                  <button type="submit" className="btn btn-primary" disabled={pending || !brandForm.id}>{t("common.save")}</button>
+                </fieldset>
+                <fieldset className="admin-brand-slot">
+                  <legend>Logo principal</legend>
+                  <p className="admin-card-muted">{BRAND_PRINCIPAL_PRESET.hint}</p>
+                  <label className="admin-form-field"><span>URL del logo principal</span><input className="auth-input" value={brandForm.logo_url} onChange={(event) => { setLogoPreviewBroken((current) => ({ ...current, principal: false })); setBrandForm((current) => ({ ...current, logo_url: event.target.value })); }} placeholder={t("admin.empresas.logoUrl")} /></label>
+                  <label className="btn btn-ghost">
+                    {logoPending.principal ? t("admin.empresas.logoUploading") : "Subir logo principal"}
+                    <input type="file" accept="image/png,image/jpeg,image/webp" hidden disabled={logoPending.principal || !brandForm.id} onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ""; if (file) void uploadLogo(file, "principal"); }} />
+                  </label>
+                </fieldset>
+                <div className="admin-brand-actions">
+                  <button type="submit" className="btn btn-primary" disabled={pending || !brandForm.id || logoPending.icon || logoPending.principal}>{t("common.save")}</button>
                 </div>
               </form>
             </AdminCard>
             <AdminCard title="Vista previa" subtitle="Representación aproximada de la marca en el workspace.">
               <div className="admin-brand-preview" style={{ "--brand-preview-primary": brandForm.primary, "--brand-preview-accent": brandForm.accent }}>
                 <div className="admin-brand-preview-sidebar">
-                  <div className="admin-brand-preview-logo">{brandForm.logo_url && !logoPreviewBroken ? <img src={brandForm.logo_url} alt="Vista previa del logo" referrerPolicy="no-referrer" onError={() => setLogoPreviewBroken(true)} /> : <span>SA</span>}</div>
+                  <div className="admin-brand-preview-logo">{(brandForm.logo_icono_url || brandForm.logo_url) && !logoPreviewBroken.icon ? <img src={brandForm.logo_icono_url || brandForm.logo_url} alt="Ícono de workspace" referrerPolicy="no-referrer" onError={() => setLogoPreviewBroken((current) => ({ ...current, icon: true }))} /> : <span>SA</span>}</div>
                   <span /><span /><span />
                 </div>
-                <div className="admin-brand-preview-main"><div className="admin-brand-preview-bar" /><div className="admin-brand-preview-copy"><strong>Panel de ventas</strong><span>Tu marca aplicada al espacio de trabajo</span><button type="button">Acción principal</button></div></div>
+                <div className="admin-brand-preview-main">
+                  <div className="admin-brand-preview-bar">
+                    <div className="admin-brand-preview-header-logo">
+                      {brandForm.logo_url && !logoPreviewBroken.principal ? <img src={brandForm.logo_url} alt="Logo principal" referrerPolicy="no-referrer" onError={() => setLogoPreviewBroken((current) => ({ ...current, principal: true }))} /> : <span>SA</span>}
+                    </div>
+                  </div>
+                  <div className="admin-brand-preview-copy"><strong>Panel de ventas</strong><span>Ícono cuadrado (izquierda) · logo horizontal (header derecho)</span><button type="button">Acción principal</button></div>
+                </div>
               </div>
-              {brandForm.logo_url && logoPreviewBroken ? <p className="auth-error">{t("admin.empresas.logoBroken")}</p> : null}
+              {(brandForm.logo_icono_url || brandForm.logo_url) && logoPreviewBroken.icon ? <p className="auth-error">{t("admin.empresas.logoBroken")}</p> : null}
+              {brandForm.logo_url && logoPreviewBroken.principal ? <p className="auth-error">{t("admin.empresas.logoBroken")}</p> : null}
             </AdminCard>
           </div>
         ) : null}

@@ -5687,7 +5687,12 @@ body,
 .admin-brand-preview-logo { display: grid; place-items: center; width: 40px; height: 40px; overflow: hidden; border-radius: 11px; color: var(--brand-preview-accent); background: #fff; font-size: 11px; font-weight: 900; }
 .admin-brand-preview-logo img { width: 100%; height: 100%; object-fit: contain; }
 .admin-brand-preview-main { min-width: 0; }
-.admin-brand-preview-bar { height: 48px; border-bottom: 1px solid #e6eaf0; background: #fff; }
+.admin-brand-slot { display: grid; gap: 10px; margin: 0; padding: 14px; border: 1px solid var(--border); border-radius: 12px; }
+.admin-brand-slot legend { padding: 0 4px; font-size: 12px; font-weight: 800; color: var(--text); }
+.admin-brand-preview-bar { display: flex; align-items: center; justify-content: flex-end; gap: 8px; height: 48px; padding: 0 14px; border-bottom: 1px solid #e6eaf0; background: #fff; }
+.admin-brand-preview-header-logo { display: inline-flex; align-items: center; justify-content: center; min-width: 96px; max-width: 160px; height: 30px; padding: 0 8px; border-radius: 8px; background: #f7f9fc; overflow: hidden; }
+.admin-brand-preview-header-logo img { display: block; max-width: 100%; max-height: 30px; object-fit: contain; }
+.admin-brand-preview-header-logo span { font-size: 11px; font-weight: 800; color: var(--brand-preview-accent); }
 .admin-brand-preview-copy { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; padding: 34px 26px; }
 .admin-brand-preview-copy strong { color: #15213a; font-size: 20px; }
 .admin-brand-preview-copy span { color: #6e788d; font-size: 11px; }

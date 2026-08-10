@@ -219,6 +219,7 @@ router.post("/tenant/empresas/:empresaId/branding/logo", async (req, res) => {
       a.userId,
       req.params.empresaId,
       body.data_url || body.dataUrl,
+      body.slot,
     ),
     { wrap: "data" },
   );
@@ -1116,6 +1117,7 @@ router.post("/branding/logo", async (req, res) => {
       tipo: body.tipo,
       id: body.id,
       dataUrl: body.data_url || body.dataUrl,
+      slot: body.slot,
     }),
     { wrap: "data" },
   );

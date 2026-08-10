@@ -11,8 +11,17 @@ const SALETSE_DEFAULT_BRAND = {
   primary: "#1e5eff",
   accent: "#0f2044",
   logo_url: null,
+  logo_icono_url: null,
   nombre: "Saletse",
 };
+
+function resolveWorkspaceLogoPrincipal(workspace, empresa) {
+  return workspace?.logo_url || empresa?.logo_url || null;
+}
+
+function resolveWorkspaceLogoIcon(workspace, empresa) {
+  return workspace?.logo_icono_url || empresa?.logo_icono_url || null;
+}
 
 function flagsMissing(error) {
   if (!error) return false;
@@ -35,10 +44,13 @@ function resolveBrand(workspace, empresa) {
   const wsColors = workspace.colores_marca && typeof workspace.colores_marca === "object"
     ? workspace.colores_marca
     : {};
+  const logo_url = resolveWorkspaceLogoPrincipal(workspace, empresa);
+  const logo_icono_url = resolveWorkspaceLogoIcon(workspace, empresa) || logo_url;
   return {
     primary: wsColors.primary || empColors.primary || SALETSE_DEFAULT_BRAND.primary,
     accent: wsColors.accent || empColors.accent || SALETSE_DEFAULT_BRAND.accent,
-    logo_url: workspace.logo_url || empresa?.logo_url || null,
+    logo_url,
+    logo_icono_url,
     nombre: workspace.nombre || empresa?.nombre || SALETSE_DEFAULT_BRAND.nombre,
     colores_marca: { ...empColors, ...wsColors },
   };
@@ -64,7 +76,7 @@ export async function listUserWorkspaces(supabase, userId) {
 
   const { data: memberships, error } = await supabase
     .from("workspace_miembros")
-    .select("rol_en_workspace, fecha_union, workspace_id, workspaces(id, tipo, nombre, logo_url, colores_marca, empresa_id, estado, empresas(id, nombre, logo_url, colores_marca))")
+    .select("rol_en_workspace, fecha_union, workspace_id, workspaces(id, tipo, nombre, logo_url, logo_icono_url, colores_marca, empresa_id, estado, empresas(id, nombre, logo_url, logo_icono_url, colores_marca))")
     .eq("usuario_id", userId);
   if (error) {
     if (flagsMissing(error)) return [];
@@ -82,6 +94,7 @@ export async function listUserWorkspaces(supabase, userId) {
         tipo: w.tipo,
         nombre: w.nombre,
         logo_url: brand.logo_url,
+        logo_icono_url: brand.logo_icono_url,
         empresa_id: w.empresa_id,
         empresa_nombre: emp?.nombre ?? null,
         rol_en_workspace: m.rol_en_workspace,
@@ -108,6 +121,7 @@ export async function listUserWorkspaces(supabase, userId) {
           tipo: w.tipo,
           nombre: w.nombre,
           logo_url: brand.logo_url,
+          logo_icono_url: brand.logo_icono_url,
           empresa_id: w.empresa_id,
           empresa_nombre: emp?.nombre ?? null,
           rol_en_workspace: "gerente",
@@ -203,7 +217,7 @@ export async function listEmpresas(adminProfile) {
   if (!admin) throw new ServiceError("Service role no configurado.", 500);
   const { data, error } = await admin
     .from("empresas")
-    .select("id, nombre, logo_url, colores_marca, plan_paquete, estado, created_at")
+    .select("id, nombre, logo_url, logo_icono_url, colores_marca, plan_paquete, estado, created_at")
     .order("nombre");
   if (error) throw new ServiceError(error.message, 500);
   return data ?? [];
@@ -243,6 +257,15 @@ export async function updateEmpresa(adminProfile, id, body) {
       tipo: "empresa",
       id,
       logoUrl: body.logo_url,
+      slot: "principal",
+    });
+  }
+  if (body.logo_icono_url !== undefined) {
+    patch.logo_icono_url = await resolvePersistedLogoUrl(admin, {
+      tipo: "empresa",
+      id,
+      logoUrl: body.logo_icono_url,
+      slot: "icon",
     });
   }
   if (body.colores_marca !== undefined) patch.colores_marca = body.colores_marca || {};
@@ -311,6 +334,15 @@ export async function updateSala(adminProfile, id, body) {
       tipo: "sala",
       id,
       logoUrl: body.logo_url,
+      slot: "principal",
+    });
+  }
+  if (body.logo_icono_url !== undefined) {
+    patch.logo_icono_url = await resolvePersistedLogoUrl(admin, {
+      tipo: "sala",
+      id,
+      logoUrl: body.logo_icono_url,
+      slot: "icon",
     });
   }
   if (body.colores_marca !== undefined) patch.colores_marca = body.colores_marca || {};
@@ -332,7 +364,7 @@ export async function listSalas(adminProfile, empresaId = null) {
   if (!admin) throw new ServiceError("Service role no configurado.", 500);
   let q = admin
     .from("workspaces")
-    .select("id, tipo, nombre, logo_url, colores_marca, empresa_id, estado, created_at, workspace_miembros(usuario_id, rol_en_workspace)")
+    .select("id, tipo, nombre, logo_url, logo_icono_url, colores_marca, empresa_id, estado, created_at, workspace_miembros(usuario_id, rol_en_workspace)")
     .eq("tipo", "sala_de_venta")
     .order("nombre");
   if (empresaId) q = q.eq("empresa_id", empresaId);
@@ -868,7 +900,12 @@ function isOurBrandingUrl(url) {
   return /\/storage\/v1\/object\/public\/workspace-branding\//i.test(String(url || ""));
 }
 
-async function uploadLogoBuffer(admin, { tipo, id, buffer, mime }) {
+function normalizeLogoSlot(slot) {
+  const s = String(slot || "principal").toLowerCase();
+  return s === "icon" || s === "icono" ? "icon" : "principal";
+}
+
+async function uploadLogoBuffer(admin, { tipo, id, buffer, mime, slot = "principal" }) {
   const contentType = normalizeLogoMime(mime);
   if (!LOGO_MIME.has(contentType)) {
     throw new ServiceError("Formato de logo no soportado. Usa PNG, JPG o WEBP.", 400);
@@ -877,7 +914,7 @@ async function uploadLogoBuffer(admin, { tipo, id, buffer, mime }) {
     throw new ServiceError("El logo supera el máximo de 2 MB.", 400);
   }
   const ext = logoExtForMime(contentType);
-  const path = `${tipo}/${id}/${Date.now()}.${ext}`;
+  const path = `${tipo}/${id}/${normalizeLogoSlot(slot)}-${Date.now()}.${ext}`;
   const { error: upErr } = await admin.storage
     .from("workspace-branding")
     .upload(path, buffer, { contentType, upsert: true });
@@ -901,7 +938,7 @@ async function uploadLogoBuffer(admin, { tipo, id, buffer, mime }) {
  * Persiste logo: null limpia; URL propia se deja; URL externa se descarga y se re-hospeda
  * en Storage (evita hotlink / URLs no directas rotas en el rail).
  */
-async function resolvePersistedLogoUrl(admin, { tipo, id, logoUrl }) {
+async function resolvePersistedLogoUrl(admin, { tipo, id, logoUrl, slot = "principal" }) {
   if (logoUrl == null || logoUrl === "") return null;
   const url = String(logoUrl).trim();
   if (!url) return null;
@@ -912,7 +949,7 @@ async function resolvePersistedLogoUrl(admin, { tipo, id, logoUrl }) {
     if (!match) throw new ServiceError("Imagen inválida. Usa PNG, JPG o WEBP.", 400);
     const mime = normalizeLogoMime(match[1]);
     const buffer = Buffer.from(match[2], "base64");
-    return uploadLogoBuffer(admin, { tipo, id, buffer, mime });
+    return uploadLogoBuffer(admin, { tipo, id, buffer, mime, slot });
   }
 
   if (!/^https?:\/\//i.test(url)) {
@@ -958,29 +995,34 @@ async function resolvePersistedLogoUrl(admin, { tipo, id, logoUrl }) {
       );
     }
     const buffer = Buffer.from(await res.arrayBuffer());
-    return uploadLogoBuffer(admin, { tipo, id, buffer, mime: byExt });
+    return uploadLogoBuffer(admin, { tipo, id, buffer, mime: byExt, slot });
   }
   const buffer = Buffer.from(await res.arrayBuffer());
-  return uploadLogoBuffer(admin, { tipo, id, buffer, mime });
+  return uploadLogoBuffer(admin, { tipo, id, buffer, mime, slot });
 }
 
 /** Persiste logo (data URL o URL externa) en Storage y devuelve la URL pública. */
-export async function persistBrandingLogo(admin, { tipo, id, logoUrl }) {
-  return resolvePersistedLogoUrl(admin, { tipo, id, logoUrl });
+export async function persistBrandingLogo(admin, { tipo, id, logoUrl, slot = "principal" }) {
+  return resolvePersistedLogoUrl(admin, { tipo, id, logoUrl, slot });
 }
 
-export async function uploadWorkspaceLogo(adminProfile, { tipo, id, dataUrl }) {
+export async function uploadWorkspaceLogo(adminProfile, { tipo, id, dataUrl, slot = "principal" }) {
   if (!isSuperAdmin(adminProfile)) throw new ServiceError("Solo Superadmin.", 403);
   const admin = createServiceSupabaseClient();
   if (!admin) throw new ServiceError("Service role no configurado.", 500);
   if (!id || (tipo !== "empresa" && tipo !== "sala")) {
     throw new ServiceError("tipo y id requeridos.");
   }
-  const logoUrl = await resolvePersistedLogoUrl(admin, { tipo, id, logoUrl: dataUrl });
+  const normalizedSlot = normalizeLogoSlot(slot);
+  const logoUrl = await resolvePersistedLogoUrl(admin, { tipo, id, logoUrl: dataUrl, slot: normalizedSlot });
+  const patch = {
+    updated_at: new Date().toISOString(),
+    ...(normalizedSlot === "icon" ? { logo_icono_url: logoUrl } : { logo_url: logoUrl }),
+  };
   if (tipo === "sala") {
     const { data, error } = await admin
       .from("workspaces")
-      .update({ logo_url: logoUrl, updated_at: new Date().toISOString() })
+      .update(patch)
       .eq("id", id)
       .eq("tipo", "sala_de_venta")
       .select()
@@ -990,7 +1032,7 @@ export async function uploadWorkspaceLogo(adminProfile, { tipo, id, dataUrl }) {
   }
   const { data, error } = await admin
     .from("empresas")
-    .update({ logo_url: logoUrl, updated_at: new Date().toISOString() })
+    .update(patch)
     .eq("id", id)
     .select()
     .maybeSingle();

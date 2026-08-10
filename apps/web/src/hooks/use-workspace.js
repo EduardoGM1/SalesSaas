@@ -13,6 +13,7 @@ const SALETSE_BRAND = {
   primary: "#1e5eff",
   accent: "#0f2044",
   logo_url: null,
+  logo_icono_url: null,
   nombre: "Saletse",
 };
 

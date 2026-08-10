@@ -7,6 +7,7 @@ import { AdminTopbarTabs } from "@/components/layout/admin-topbar-tabs.jsx";
 import { MobileTopAvatar, MobileTopNavActions, DesktopTopNavActions } from "@/components/layout/mobile-top-nav.jsx";
 import { WorkspaceBrandMark } from "@/components/layout/workspace-brand-mark.jsx";
 import { useWorkspace } from "@/hooks/use-workspace.js";
+import { workspacePrincipalLogoUrl } from "@/lib/workspace-logo.js";
 import { useSyncStore } from "@/stores/sync-store";
 
 export function Topbar({ title, subtitle, showMonthNav, admin }) {
@@ -57,7 +58,7 @@ export function Topbar({ title, subtitle, showMonthNav, admin }) {
   }
 
   const brandName = brand?.nombre || "Saletse";
-  const brandLogo = brand?.logo_url;
+  const brandLogo = workspacePrincipalLogoUrl(brand);
   const saletseLogo = (
     <div className="topbar-brand" title={brandName} aria-label={brandName}>
       {brandLogo && active?.tipo === "sala_de_venta" ? (
