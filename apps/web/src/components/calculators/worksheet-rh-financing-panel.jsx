@@ -56,19 +56,12 @@ function plazoSubtitle(tasa) {
   return t === 0 ? "Sin intereses" : "Tasa fija anual";
 }
 
-function VentaResumenReadonly({ montoFmt, enganchePct, gastoFmt }) {
-  const engLabel = enganchePct !== "" && enganchePct != null && String(enganchePct).trim() !== ""
-    ? `${enganchePct}%`
-    : "—";
+function VentaResumenReadonly({ montoFmt, gastoFmt }) {
   return (
     <div className="rh-fin-venta-resumen" aria-label="Resumen de venta">
       <div className="frow tool-frow">
         <div className="flabel">Monto venta</div>
         <div className="rh-readonly">{montoFmt}</div>
-      </div>
-      <div className="frow tool-frow">
-        <div className="flabel">% Enganche</div>
-        <div className="rh-readonly">{engLabel}</div>
       </div>
       <div className="frow tool-frow">
         <div className="flabel">Gasto administrativo</div>
@@ -448,7 +441,6 @@ export function WorksheetRhFinancingPanel({
 
           <VentaResumenReadonly
             montoFmt={montoCapture ? fmtCaptureResult(montoCapture) : "—"}
-            enganchePct={form.enganche_pct}
             gastoFmt={fmtCaptureResult(gastoTotalCapture)}
           />
 
