@@ -144,6 +144,14 @@ export function fmtWithCurrencyCode(
 export const SURVEY_MONEY_FIELDS = ["total", "sh1a", "sh2a", "sh3a", "sf1a", "sf2a", "sf3a"] as const;
 export const VACACIONES_MONEY_FIELDS = ["vc"] as const;
 export const WORKSHEET_MONEY_FIELDS = ["wv", "wcc", "wob"] as const;
+export const RH_WORKSHEET_MONEY_FIELDS = [
+  "monto_venta",
+  "valor",
+  "enganche_hoy",
+  "gasto_adm_hoy",
+  "tarjeta_inmex",
+  "tarjeta_rci",
+] as const;
 
 export function buildOperationalFields<T extends Record<string, unknown>>(
   data: T,

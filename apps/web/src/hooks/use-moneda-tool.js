@@ -96,10 +96,24 @@ export function useMonedaToolBucket({ getBucket, toolKey, ready, toolsRevision }
     ).catch(() => {});
   };
 
+  const applyCaptureCurrency = (next, metaPatch = {}) => {
+    const nextCurrency = normalizeCaptureCurrency(next);
+    if (nextCurrency === captureCurrency) return;
+    if (metaPatch && Object.keys(metaPatch).length) {
+      setCurrencyMeta((prev) => ({ ...prev, ...metaPatch }));
+    }
+    setCaptureCurrency(nextCurrency);
+    void saveSettingsPatchRemote(
+      { activeCaptureCurrency: nextCurrency, exchangeMode: "manual" },
+      { silent: true },
+    ).catch(() => {});
+  };
+
   return {
     captureCurrency,
     setCaptureCurrency,
     switchCaptureCurrency,
+    applyCaptureCurrency,
     alignLoadedFields,
     currencyMeta,
     currencyMetaSerialized: serializeCurrencyMeta(currencyMeta),
