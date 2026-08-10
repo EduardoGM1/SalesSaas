@@ -9977,6 +9977,11 @@ body,
   gap: 0;
   margin-top: 4px;
 }
+.rh-fin-left > .tool-calc-fields .rh-fin-field-val {
+  text-align: right;
+  flex: 1;
+  min-width: 0;
+}
 .rh-fin-totales { margin-top: 14px; }
 .rh-fin-options-banner {
   margin: 10px 0 12px;

@@ -383,8 +383,6 @@ export function WorksheetRhFinancingPanel({
 
   const fmtSaldo = (amount) => fmtCaptureResult(roundMoney(amount));
   const montoPendienteCapture = roundMoney(saldoEnganche + saldoGasto);
-  const gastoDisplay = gastoTotalCapture > 0 ? formatCapture(String(roundMoney(gastoTotalCapture))) : "";
-  const pendienteDisplay = montoPendienteCapture > 0 ? formatCapture(String(montoPendienteCapture)) : "";
 
   const handlePagoBlur = (planKey, index, rawValue) => {
     const formatted = formatCapture(rawValue);
@@ -427,19 +425,11 @@ export function WorksheetRhFinancingPanel({
             </div>
             <div className="frow tool-frow">
               <div className="flabel">Gastos administrativos</div>
-              <CampoMonedaCaptura
-                currency={captureCurrency}
-                value={gastoDisplay}
-                readOnly
-              />
+              <div className="rh-readonly rh-fin-field-val">{fmtCaptureResult(gastoTotalCapture)}</div>
             </div>
             <div className="frow tool-frow">
               <div className="flabel">Monto pendiente</div>
-              <CampoMonedaCaptura
-                currency={captureCurrency}
-                value={pendienteDisplay}
-                readOnly
-              />
+              <div className="rh-readonly rh-fin-field-val">{fmtCaptureResult(montoPendienteCapture)}</div>
             </div>
           </div>
 
