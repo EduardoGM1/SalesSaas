@@ -193,8 +193,20 @@ export function regalosParaWorksheet(regalos, { holidayCredits, montoVenta }) {
   return regalosDisponibles(list, { holidayCredits: hc, montoVenta: mv });
 }
 
+function parseMoneyScalar(v) {
+  const n = parseFloat(String(v ?? "").replace(/[^0-9.\-]/g, ""));
+  return Number.isFinite(n) ? n : 0;
+}
+
 export function montoVentaWorksheet(fields) {
-  return Number(fields?.monto_venta || fields?.valor || fields?.valores?.find(Boolean) || 0);
+  if (String(fields?.monto_venta ?? "").trim() !== "") {
+    return parseMoneyScalar(fields.monto_venta);
+  }
+  if (String(fields?.valor ?? "").trim() !== "") {
+    return parseMoneyScalar(fields.valor);
+  }
+  const raw = (fields?.valores || []).find((v) => String(v ?? "").trim() !== "");
+  return raw != null ? parseMoneyScalar(raw) : 0;
 }
 
 /**

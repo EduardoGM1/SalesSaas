@@ -8,6 +8,7 @@ import {
   toDateStr,
   fechaLimiteExtraDp,
 } from "@/lib/calculations/royal-holiday.js";
+import { parseMoney } from "@/lib/format/money";
 
 const PAGO_OPTS = [1, 2, 3, 4, 5, 6, 8, 10, 12];
 
@@ -320,7 +321,7 @@ export function WorksheetRhFinancingPanel({
   const engancheTotalCapture = ws.totales?.enganche != null
     ? toCaptureDisplay(ws.totales.enganche)
     : (montoCapture * engPct) / 100;
-  const engancheHoy = Number(form.enganche_hoy || 0);
+  const engancheHoy = parseMoney(form.enganche_hoy);
   const saldoEnganche = Math.max(0, engancheTotalCapture - engancheHoy);
   const pctEngancheHoy = montoCapture > 0 ? (engancheHoy / montoCapture) * 100 : 0;
   const pctSaldoEnganche = montoCapture > 0 ? (saldoEnganche / montoCapture) * 100 : 0;
@@ -328,7 +329,7 @@ export function WorksheetRhFinancingPanel({
   const gastoTotalCapture = form.costo_administrativo_usd !== "" && form.costo_administrativo_usd != null
     ? toCaptureDisplay(Number(form.costo_administrativo_usd))
     : toCaptureDisplay(Number(ws.costo_administrativo_usd || 0));
-  const gastoHoy = Number(form.gasto_adm_hoy || 0);
+  const gastoHoy = parseMoney(form.gasto_adm_hoy);
   const saldoGasto = Math.max(0, gastoTotalCapture - gastoHoy);
   const pctGastoHoy = gastoTotalCapture > 0 ? (gastoHoy / gastoTotalCapture) * 100 : 0;
   const pctSaldoGasto = gastoTotalCapture > 0 ? (saldoGasto / gastoTotalCapture) * 100 : 0;
