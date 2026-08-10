@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AlertTriangle, CheckCircle2 } from "lucide-react";
 import { Topbar } from "@/components/layout/topbar";
 import { PageBack } from "@/components/layout/page-back.jsx";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { useToolSession } from "@/hooks/use-tool-session.js";
 import { useMonedaToolBucket } from "@/hooks/use-moneda-tool.js";
+import { useFlushLibreToolOnLeave } from "@/hooks/use-flush-libre-tool-on-leave.js";
 import { fetchSession } from "@/lib/session-api.js";
 import { royalHolidayApi } from "@/lib/royal-holiday-api.js";
 import { toast } from "@/lib/toast";
@@ -17,6 +18,12 @@ import {
 import { WorksheetRhFinancingPanel } from "@/components/calculators/worksheet-rh-financing-panel.jsx";
 import { buildRhWorksheetState } from "@/lib/calculations/worksheet-rh-preview.js";
 import { montoVentaWorksheet } from "@/lib/calculations/royal-holiday.js";
+import {
+  DEFAULT_RH_FORM,
+  rhFormFromBucket,
+  rhFormToBucket,
+} from "@/lib/calculations/worksheet-rh-bucket.js";
+import { markFieldsDirty } from "@/lib/collab-form-merge.js";
 import { SelectorMoneda } from "@/components/currency/selector-moneda.jsx";
 import { CampoMonedaCaptura } from "@/components/currency/campo-moneda-captura.jsx";
 import {
@@ -58,11 +65,13 @@ function buildCreditMatrix(bottomLine) {
 export function WorksheetRoyalHolidayPage({ clientId, shared }) {
   const { t } = useI18n();
   const session = useToolSession({ clientId, shared, section: "worksheet" });
-  const { ready, backHref, readOnly, getBucket, toolsRevision } = session;
+  const { ready, backHref, readOnly, getBucket, saveBucket, isFileMode, toolsRevision } = session;
   const {
     captureCurrency,
     currencyMeta,
+    currencyMetaSerialized,
     moneda,
+    appendMonedaPayload,
     recordMoneyCapture,
     applyCaptureCurrency,
     refreshCurrencyMeta,
@@ -74,36 +83,51 @@ export function WorksheetRoyalHolidayPage({ clientId, shared }) {
   const [catalogo, setCatalogo] = useState(null);
   const [preview, setPreview] = useState(null);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({
-    holiday_credits: "10000",
-    valor: "",
-    valores: ["", "", "", ""],
-    epvFvi: ["", "", "", "", ""],
-    posicion: "ftb",
-    monto_venta: "",
-    enganche_pct: "25",
-    enganche_hoy: "",
-    gasto_adm_hoy: "",
-    nacionalidad: "mexicano",
-    plazo_meses: "",
-    costo_administrativo_usd: "",
-    regalosElegidos: {},
-    extrasDp: [],
-    extrasCc: [],
-    enganche_num_pagos: "3",
-    enganche_pagos: [],
-    gasto_num_pagos: "2",
-    gasto_pagos: [],
-    opc: "",
-    liner: "",
-    closer1: "",
-    closer2: "",
-    exit: "",
-    tarjeta_inmex: "",
-    tarjeta_rci: "",
-    tarjeta_inmex_on: false,
-    tarjeta_rci_on: false,
+  const [form, setForm] = useState({ ...DEFAULT_RH_FORM });
+  const dirtyKeysRef = useRef(new Set());
+  const hydratedRef = useRef(false);
+  const skipAutosaveRef = useRef(true);
+
+  const persistRhBucket = async () => {
+    await saveBucket("worksheet", appendMonedaPayload(rhFormToBucket(form, tab)));
+  };
+
+  useFlushLibreToolOnLeave({
+    enabled: ready && !isFileMode,
+    tool: "worksheet",
+    getSnapshot: () => appendMonedaPayload(rhFormToBucket(form, tab)),
+    hasChanges: () => dirtyKeysRef.current.size > 0,
   });
+
+  useEffect(() => {
+    if (!ready) return;
+    const restored = rhFormFromBucket(getBucket("worksheet"));
+    if (restored) {
+      if (!hydratedRef.current) {
+        hydratedRef.current = true;
+        setForm(restored.form);
+        setTab(restored.tab);
+      } else if (dirtyKeysRef.current.size === 0) {
+        setForm(restored.form);
+        setTab(restored.tab);
+      }
+    } else if (!hydratedRef.current) {
+      hydratedRef.current = true;
+    }
+    skipAutosaveRef.current = true;
+  }, [ready, clientId, getBucket, shared?.prospectId, toolsRevision]);
+
+  useEffect(() => {
+    if (!ready || readOnly) return;
+    if (skipAutosaveRef.current) {
+      skipAutosaveRef.current = false;
+      return;
+    }
+    const timer = setTimeout(() => {
+      void persistRhBucket();
+    }, 700);
+    return () => clearTimeout(timer);
+  }, [form, tab, captureCurrency, currencyMetaSerialized, ready, readOnly]);
 
   useEffect(() => {
     let cancelled = false;
@@ -183,7 +207,20 @@ export function WorksheetRoyalHolidayPage({ clientId, shared }) {
     () => buildRhWorksheetState(catalogo, preview, operationalForm),
     [catalogo, preview, operationalForm],
   );
-  const set = (key, value) => setForm((f) => ({ ...f, [key]: value }));
+  const set = (key, value) => {
+    markFieldsDirty(dirtyKeysRef, key);
+    setForm((f) => ({ ...f, [key]: value }));
+  };
+
+  const patchForm = (updater) => {
+    markFieldsDirty(dirtyKeysRef, "__form");
+    setForm(updater);
+  };
+
+  const setTabPersisted = (nextTab) => {
+    markFieldsDirty(dirtyKeysRef, "__tab");
+    setTab(nextTab);
+  };
 
   const handleMoneyBlur = (key, formattedValue) => {
     set(key, formattedValue);
@@ -191,7 +228,8 @@ export function WorksheetRoyalHolidayPage({ clientId, shared }) {
   };
 
   const handleValoresBlur = (index, formattedValue) => {
-    setForm((f) => {
+    markFieldsDirty(dirtyKeysRef, `valores_${index}`);
+    patchForm((f) => {
       const next = [...f.valores];
       next[index] = formattedValue;
       return { ...f, valores: next, valor: index === 0 ? formattedValue : f.valor };
@@ -201,6 +239,7 @@ export function WorksheetRoyalHolidayPage({ clientId, shared }) {
   };
 
   const handleCaptureCurrencyChange = (next) => {
+    markFieldsDirty(dirtyKeysRef, "__captureCurrency");
     const { form: converted, meta } = switchRhFormCaptureCurrency(
       form,
       captureCurrency,
@@ -208,7 +247,7 @@ export function WorksheetRoyalHolidayPage({ clientId, shared }) {
       moneda.ctx,
       moneda.language,
     );
-    setForm(converted);
+    patchForm(() => converted);
     applyCaptureCurrency(next, meta);
   };
 
@@ -251,6 +290,7 @@ export function WorksheetRoyalHolidayPage({ clientId, shared }) {
         ...form.extrasDp.map((e) => ({ tipo: "extra_dp", porcentaje: e.porcentaje, fecha: e.fecha })),
         ...form.extrasCc.map((e) => ({ tipo: "extra_cc", porcentaje: e.porcentaje, fecha: e.fecha })),
       ];
+      await persistRhBucket();
       await royalHolidayApi.saveVenta(empresaId, {
         empresa_id: empresaId,
         workspace_id: workspaceId,
@@ -305,7 +345,7 @@ export function WorksheetRoyalHolidayPage({ clientId, shared }) {
       <Topbar title="Worksheet · Royal Holiday" subtitle="Sala Royal Holiday" />
       <div className={`sales-page tool-calc-page worksheet-rh${!readOnly ? " tool-calc-page--with-save" : ""}`}>
         <div className="page-toolbar page-toolbar--between">
-          <PageBack inline href={backHref} />
+          <PageBack inline href={backHref} hasUnsavedChanges={() => dirtyKeysRef.current.size > 0} />
         </div>
 
         <nav className="admin-subnav worksheet-rh-tabs" aria-label="Pestañas worksheet">
@@ -314,7 +354,7 @@ export function WorksheetRoyalHolidayPage({ clientId, shared }) {
               key={tb.id}
               type="button"
               className={`admin-subnav-item${tab === tb.id ? " active" : ""}`}
-              onClick={() => setTab(tb.id)}
+              onClick={() => setTabPersisted(tb.id)}
             >
               {tb.label}
             </button>
@@ -482,9 +522,12 @@ export function WorksheetRoyalHolidayPage({ clientId, shared }) {
                         value={v}
                         readOnly={readOnly}
                         onChange={(value) => {
-                          const next = [...form.valores];
-                          next[i] = value;
-                          setForm((f) => ({ ...f, valores: next, valor: i === 0 ? value : f.valor }));
+                          markFieldsDirty(dirtyKeysRef, `valores_${i}`);
+                          patchForm((f) => {
+                            const next = [...f.valores];
+                            next[i] = value;
+                            return { ...f, valores: next, valor: i === 0 ? value : f.valor };
+                          });
                         }}
                         onBlurCapture={() => handleValoresBlur(i, moneda.formatCapture(form.valores[i]))}
                       />
@@ -516,7 +559,7 @@ export function WorksheetRoyalHolidayPage({ clientId, shared }) {
                             className="input input-compact"
                             disabled={readOnly}
                             value={form.regalosElegidos[g.id] || ""}
-                            onChange={(e) => setForm((f) => ({
+                            onChange={(e) => patchForm((f) => ({
                               ...f,
                               regalosElegidos: { ...f.regalosElegidos, [g.id]: e.target.value },
                             }))}
@@ -564,7 +607,7 @@ export function WorksheetRoyalHolidayPage({ clientId, shared }) {
           <WorksheetRhFinancingPanel
             form={form}
             set={set}
-            setForm={setForm}
+            setForm={patchForm}
             worksheetState={ws}
             catalogo={catalogo}
             readOnly={readOnly}
