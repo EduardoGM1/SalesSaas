@@ -9634,8 +9634,11 @@ body,
 .rh-fin-plazo-check {
   width: 18px;
   height: 18px;
+  margin: 0;
+  flex-shrink: 0;
   accent-color: var(--blue, #1e5eff);
   cursor: pointer;
+  border-radius: 50%;
 }
 .rh-fin-plazo-title { font-size: 14px; font-weight: 700; }
 .rh-fin-plazo-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }

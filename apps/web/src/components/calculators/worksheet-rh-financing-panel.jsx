@@ -501,13 +501,12 @@ export function WorksheetRhFinancingPanel({
                     className={`rh-fin-plazo-card${selected ? " is-selected" : ""}`}
                   >
                     <input
-                      type="checkbox"
+                      type="radio"
+                      name="rh-plazo-fin"
                       className="rh-fin-plazo-check"
                       disabled={readOnly}
                       checked={selected}
-                      onChange={(e) => {
-                        if (e.target.checked) set("plazo_meses", String(p.plazo_meses));
-                      }}
+                      onChange={() => set("plazo_meses", String(p.plazo_meses))}
                     />
                     <div className="rh-fin-plazo-body">
                       <div className="rh-fin-plazo-title">{fmtPlazoTasa(p.plazo_meses, p.tasa_interes)}</div>
