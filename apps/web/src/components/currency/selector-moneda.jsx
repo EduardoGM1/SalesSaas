@@ -16,6 +16,21 @@ const CURRENCY_OPTIONS = [
   { id: "MXN", flag: "🇲🇽", label: "MXN" },
 ];
 
+/** Emojis de bandera en táctil/PWA; solo código ISO en desktop (Windows no renderiza flags en select nativo). */
+function prefersCurrencyFlagLabels() {
+  if (typeof window === "undefined") return false;
+  const fineDesktop = window.matchMedia("(hover: hover) and (pointer: fine)").matches
+    && window.matchMedia("(min-width: 769px)").matches;
+  if (fineDesktop) return false;
+  return window.matchMedia("(pointer: coarse)").matches
+    || window.matchMedia("(max-width: 768px)").matches
+    || window.matchMedia("(display-mode: standalone)").matches;
+}
+
+function currencyOptionLabel(opt, showFlags) {
+  return showFlags ? `${opt.flag} ${opt.label}` : opt.label;
+}
+
 /**
  * Selector unificado de moneda: dropdown USD/MXN + edición inline del TC manual.
  * La moneda activa es GLOBAL (profiles.settings.activeCaptureCurrency).
@@ -33,7 +48,25 @@ export function SelectorMoneda({
   const [rateOpen, setRateOpen] = useState(false);
   const [rateDraft, setRateDraft] = useState("18");
   const [saving, setSaving] = useState(false);
+  const [showFlags, setShowFlags] = useState(prefersCurrencyFlagLabels);
   const rootRef = useRef(null);
+
+  useEffect(() => {
+    const update = () => setShowFlags(prefersCurrencyFlagLabels());
+    update();
+    const mqs = [
+      window.matchMedia("(hover: hover) and (pointer: fine)"),
+      window.matchMedia("(pointer: coarse)"),
+      window.matchMedia("(max-width: 768px)"),
+      window.matchMedia("(display-mode: standalone)"),
+    ];
+    mqs.forEach((mq) => mq.addEventListener("change", update));
+    window.addEventListener("resize", update);
+    return () => {
+      mqs.forEach((mq) => mq.removeEventListener("change", update));
+      window.removeEventListener("resize", update);
+    };
+  }, []);
 
   const savedRate = resolveUsdToMxnRate(settings);
   const language = settings?.language === "en" ? "en" : "es";
@@ -92,7 +125,7 @@ export function SelectorMoneda({
   return (
     <div
       ref={rootRef}
-      className={`selector-moneda${className ? ` ${className}` : ""}`}
+      className={`selector-moneda${showFlags ? " selector-moneda--flags" : " selector-moneda--codes"}${className ? ` ${className}` : ""}`}
     >
       <div className="selector-moneda-row">
         <label className="selector-moneda-select-wrap">
@@ -106,7 +139,7 @@ export function SelectorMoneda({
           >
             {CURRENCY_OPTIONS.filter((opt) => CAPTURE_CURRENCIES.includes(opt.id)).map((opt) => (
               <option key={opt.id} value={opt.id}>
-                {opt.flag} {opt.label}
+                {currencyOptionLabel(opt, showFlags)}
               </option>
             ))}
           </select>

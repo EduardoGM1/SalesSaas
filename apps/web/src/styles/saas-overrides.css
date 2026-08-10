@@ -9469,6 +9469,10 @@ body,
   opacity: 0.6;
   cursor: not-allowed;
 }
+.selector-moneda--codes .selector-moneda-select {
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
 .selector-moneda-rate-btn {
   flex: 0 0 auto;
   display: inline-flex;
