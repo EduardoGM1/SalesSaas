@@ -4,7 +4,7 @@ import { useMoney } from "@/hooks/use-money.js";
 import {
   RH_EXTRA_DP_PLAZO_DIAS,
   calcularMensualidad,
-  resolveFinanciamientoEngancheTier,
+  montoVentaWorksheet,
   toDateStr,
   fechaLimiteExtraDp,
 } from "@/lib/calculations/royal-holiday.js";
@@ -278,21 +278,22 @@ export function WorksheetRhFinancingPanel({
   form,
   set,
   setForm,
-  preview,
+  worksheetState,
   catalogo,
   readOnly,
   fmtNum,
   stacked,
 }) {
   const { settings, fmtN2 } = useMoney();
-  const monto = Number(form.monto_venta || form.valor || 0);
-  const engancheTotal = Number(preview?.totales?.enganche ?? (monto * Number(form.enganche_pct || 0)) / 100);
+  const ws = worksheetState || {};
+  const monto = montoVentaWorksheet(form);
+  const engancheTotal = Number(ws.totales?.enganche ?? (monto * Number(form.enganche_pct || 0)) / 100);
   const engancheHoy = Number(form.enganche_hoy || 0);
   const saldoEnganche = Math.max(0, engancheTotal - engancheHoy);
   const pctEngancheHoy = monto > 0 ? (engancheHoy / monto) * 100 : 0;
   const pctSaldoEnganche = monto > 0 ? (saldoEnganche / monto) * 100 : 0;
 
-  const gastoTotal = Number(form.costo_administrativo_usd || preview?.costo_administrativo_usd || 0);
+  const gastoTotal = Number(form.costo_administrativo_usd || ws.costo_administrativo_usd || 0);
   const gastoHoy = Number(form.gasto_adm_hoy || 0);
   const saldoGasto = Math.max(0, gastoTotal - gastoHoy);
   const pctGastoHoy = gastoTotal > 0 ? (gastoHoy / gastoTotal) * 100 : 0;
@@ -305,7 +306,13 @@ export function WorksheetRhFinancingPanel({
   const fechaVentaRef = toDateStr(new Date());
   const extraDpLimite = fechaLimiteExtraDp(fechaVentaRef);
 
-  const balanceFinanciar = Number(preview?.totales?.balanceAFinanciar ?? Math.max(0, monto - engancheTotal));
+  const balanceFinanciar = Number(ws.totales?.balanceAFinanciar ?? Math.max(0, monto - engancheTotal));
+
+  const finTier = useMemo(() => ({
+    rows: ws.plazos || [],
+    tier: ws.financiamiento_enganche_tier,
+    exact: ws.financiamiento_enganche_exacto !== false,
+  }), [ws.plazos, ws.financiamiento_enganche_tier, ws.financiamiento_enganche_exacto]);
 
   useEffect(() => {
     const n = Number(form.enganche_num_pagos) || 0;
@@ -326,27 +333,6 @@ export function WorksheetRhFinancingPanel({
       return same ? f : { ...f, gasto_pagos: next };
     });
   }, [saldoGasto, form.gasto_num_pagos, setForm]);
-
-  const finTier = useMemo(() => {
-    if (preview?.plazos?.length) {
-      return {
-        rows: preview.plazos,
-        tier: preview.financiamiento_enganche_tier,
-        exact: preview.financiamiento_enganche_exacto !== false,
-      };
-    }
-    return resolveFinanciamientoEngancheTier(catalogo?.financiamiento, {
-      enganchePct: form.enganche_pct,
-      nacionalidad: form.nacionalidad,
-    });
-  }, [
-    preview?.plazos,
-    preview?.financiamiento_enganche_tier,
-    preview?.financiamiento_enganche_exacto,
-    catalogo?.financiamiento,
-    form.enganche_pct,
-    form.nacionalidad,
-  ]);
 
   const plazoCards = useMemo(() => {
     return (finTier.rows || []).map((p) => ({
@@ -467,15 +453,15 @@ export function WorksheetRhFinancingPanel({
 
           <div className="g2 survey-result-pair rh-fin-totales">
             <div className="vbox blue">
-              <div className="vbox-val">{fmtNum(preview?.totales?.enganche)}</div>
+              <div className="vbox-val">{fmtNum(ws.totales?.enganche)}</div>
               <div className="vbox-label">Enganche</div>
             </div>
             <div className="vbox green">
-              <div className="vbox-val">{fmtNum(preview?.totales?.engancheMasAdmin)}</div>
+              <div className="vbox-val">{fmtNum(ws.totales?.engancheMasAdmin)}</div>
               <div className="vbox-label">Enganche + Gast</div>
             </div>
             <div className="vbox yellow span2">
-              <div className="vbox-val">{fmtNum(preview?.totales?.balanceAFinanciar)}</div>
+              <div className="vbox-val">{fmtNum(ws.totales?.balanceAFinanciar)}</div>
               <div className="vbox-label">Balance</div>
             </div>
           </div>
@@ -538,11 +524,14 @@ export function WorksheetRhFinancingPanel({
               )}
             </div>
 
-            {preview?.comision?.pendiente ? (
-              <p className="rh-warn-text">{preview.comision.mensaje}</p>
-            ) : preview?.comision ? (
+            {ws.comision?.pendiente ? (
+              <p className="rh-warn-text">{ws.comision.mensaje}</p>
+            ) : ws.comision ? (
               <p className="muted rh-hint">
-                Comisión {preview.comision.porcentaje}% → {fmtNum(preview.comision.monto)} · pago {preview.comision.fecha_pago}
+                Comisión {ws.comision.porcentaje}% → {fmtNum(ws.comision.monto)} · pago {ws.comision.fecha_pago}
+                {!ws.comision_enganche_exacto && ws.comision_enganche_tier != null
+                  ? ` (tier enganche ${ws.comision_enganche_tier}%)`
+                  : ""}
               </p>
             ) : null}
           </div>

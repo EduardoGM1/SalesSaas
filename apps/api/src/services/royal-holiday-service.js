@@ -6,10 +6,11 @@ import {
   lookupBottomLine,
   lookupCostoAdministrativo,
   lookupComision,
+  resolveComisionTier,
   resolveFinanciamientoEngancheTier,
   calcularMensualidad,
   calcularTotalesWorksheet,
-  regalosDisponibles,
+  regalosParaWorksheet,
   diferenciaComisionPct,
   montoComision,
   membresiaDebeActivarse,
@@ -101,7 +102,8 @@ export async function previewCalculo(client, empresaId, body) {
   const nacionalidad = String(body.nacionalidad || "mexicano").toLowerCase();
   const bl = lookupBottomLine(bundle.bottom_line, hc);
   const ca = lookupCostoAdministrativo(bundle.costo_administrativo, eng);
-  const com = lookupComision(bundle.comisiones, { downPaymentPct: eng, holidayCredits: hc, posicion });
+  const comTier = resolveComisionTier(bundle.comisiones, { downPaymentPct: eng, holidayCredits: hc, posicion });
+  const com = comTier.row;
   const finTier = resolveFinanciamientoEngancheTier(bundle.financiamiento, { enganchePct: eng, nacionalidad });
   const plazos = finTier.rows;
   const plazo = Number(body.plazo_meses);
@@ -130,13 +132,15 @@ export async function previewCalculo(client, empresaId, body) {
           fecha_pago: toDateStr(calcularFechaPagoComision(body.fecha_evento || new Date())),
         }
       : { pendiente: true, mensaje: "Comisión pendiente de configurar para esta posición/franja." },
+    comision_enganche_tier: comTier.tier,
+    comision_enganche_exacto: comTier.exact,
     plazos,
     financiamiento_enganche_tier: finTier.tier,
     financiamiento_enganche_exacto: finTier.exact,
     financiamiento_seleccionado: finRow,
     mensualidad: finRow ? calcularMensualidad(monto, finRow.factor_mensual) : null,
     totales,
-    regalos: regalosDisponibles(bundle.regalos, { holidayCredits: hc, montoVenta: monto }),
+    regalos: regalosParaWorksheet(bundle.regalos, { holidayCredits: hc, montoVenta: monto }),
     parametros: bundle.parametros,
   };
 }

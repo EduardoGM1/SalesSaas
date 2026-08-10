@@ -14,6 +14,8 @@ import {
   fechaLimiteExtraDp,
 } from "@/lib/calculations/royal-holiday.js";
 import { WorksheetRhFinancingPanel } from "@/components/calculators/worksheet-rh-financing-panel.jsx";
+import { buildRhWorksheetState } from "@/lib/calculations/worksheet-rh-preview.js";
+import { montoVentaWorksheet } from "@/lib/calculations/royal-holiday.js";
 
 const TABS = [
   { id: "financiamiento", label: "Datos Financiamiento" },
@@ -114,7 +116,7 @@ export function WorksheetRoyalHolidayPage({ clientId, shared }) {
       try {
         const p = await royalHolidayApi.preview(empresaId, {
           holiday_credits: form.holiday_credits,
-          monto_venta: form.monto_venta || form.valor || form.valores.find(Boolean),
+          monto_venta: form.monto_venta || form.valor || form.valores.find(Boolean) || undefined,
           enganche_pct: form.enganche_pct,
           posicion: form.posicion,
           nacionalidad: form.nacionalidad,
@@ -125,8 +127,9 @@ export function WorksheetRoyalHolidayPage({ clientId, shared }) {
         if (!form.costo_administrativo_usd && p.costo_administrativo_usd != null) {
           setForm((f) => ({ ...f, costo_administrativo_usd: String(p.costo_administrativo_usd) }));
         }
-      } catch {
+      } catch (err) {
         setPreview(null);
+        if (import.meta.env.DEV) console.warn("[worksheet-rh] preview:", err?.message);
       }
     }, 280);
     return () => clearTimeout(tmr);
@@ -150,14 +153,16 @@ export function WorksheetRoyalHolidayPage({ clientId, shared }) {
   }, [catalogo]);
 
   const creditMatrix = useMemo(() => buildCreditMatrix(catalogo?.bottom_line), [catalogo]);
+  const ws = useMemo(() => buildRhWorksheetState(catalogo, preview, form), [catalogo, preview, form]);
   const set = (key, value) => setForm((f) => ({ ...f, [key]: value }));
 
-  const bl = preview?.bottom_line;
-  const boardOnline = preview?.board_online;
-  const monto = Number(form.monto_venta || form.valor || 0);
+  const bl = ws.bottom_line;
+  const boardOnline = ws.board_online;
+  const monto = montoVentaWorksheet(form);
   const blMonto = Number(bl?.precio_minimo_con_iva || boardOnline || 0);
   const blDifer = monto && blMonto ? monto - blMonto : null;
-  const boardOk = preview?.precio_ok;
+  const boardOk = ws.precio_ok;
+  const regalosLista = ws.regalos;
   const maxDp = catalogo?.parametros?.max_extra_dp ?? 6;
   const fechaVentaRef = toDateStr(new Date());
   const extraDpLimite = fechaLimiteExtraDp(fechaVentaRef);
@@ -339,8 +344,21 @@ export function WorksheetRoyalHolidayPage({ clientId, shared }) {
                   <ul className="rh-bl-list">
                     <li>Monto = <strong>{fmtNum(monto || null)}</strong></li>
                     <li>Difer = <strong className={blDifer != null && blDifer < 0 ? "rh-warn-text" : ""}>{fmtNum(blDifer)}</strong></li>
+                    {bl?.precio_minimo_sin_iva != null && (
+                      <li>BL sin IVA = <strong>{fmtNum(bl.precio_minimo_sin_iva)}</strong></li>
+                    )}
                   </ul>
                 </div>
+                {ws.comision?.pendiente ? (
+                  <p className="rh-warn-text rh-hint">{ws.comision.mensaje}</p>
+                ) : ws.comision ? (
+                  <p className="muted rh-hint">
+                    Comisión {ws.comision.porcentaje}% → {fmtNum(ws.comision.monto)} · pago {ws.comision.fecha_pago}
+                    {!ws.comision_enganche_exacto && ws.comision_enganche_tier != null
+                      ? ` (tier enganche ${ws.comision_enganche_tier}%)`
+                      : ""}
+                  </p>
+                ) : null}
                 <div className="frow tool-frow" style={{ marginTop: 10 }}>
                   <div className="flabel">Posición</div>
                   <select className="input" disabled={readOnly} value={form.posicion} onChange={(e) => set("posicion", e.target.value)}>
@@ -406,15 +424,18 @@ export function WorksheetRoyalHolidayPage({ clientId, shared }) {
 
               <div className="card tool-calc-card">
                 <div className="card-heading">Regalos</div>
+                {!ws.regalos_filtrados_por_monto && regalosLista.length > 0 && (
+                  <p className="muted rh-hint">Captura monto de venta para filtrar regalos por rango USD del catálogo.</p>
+                )}
                 <table className="client-table rh-mini-table">
                   <thead>
                     <tr><th>Venta</th><th>Closing/Sim</th></tr>
                   </thead>
                   <tbody>
-                    {(preview?.regalos || catalogo?.regalos || []).length === 0 && (
-                      <tr><td colSpan={2} className="muted">Sin regalos en catálogo</td></tr>
+                    {regalosLista.length === 0 && (
+                      <tr><td colSpan={2} className="muted">Sin regalos en catálogo para esta venta</td></tr>
                     )}
-                    {(preview?.regalos || catalogo?.regalos || []).map((g) => (
+                    {regalosLista.map((g) => (
                       <tr key={g.id}>
                         <td>
                           <span>{g.nombre}{g.costo != null ? ` ($${g.costo})` : ""}</span>
@@ -473,7 +494,7 @@ export function WorksheetRoyalHolidayPage({ clientId, shared }) {
             form={form}
             set={set}
             setForm={setForm}
-            preview={preview}
+            worksheetState={ws}
             catalogo={catalogo}
             readOnly={readOnly}
             fmtNum={fmtNum}

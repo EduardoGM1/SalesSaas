@@ -56,16 +56,36 @@ export function normalizeEnganchePct(value) {
 }
 
 export function lookupComision(rows, { downPaymentPct, holidayCredits, posicion }) {
+  return resolveComisionTier(rows, { downPaymentPct, holidayCredits, posicion }).row;
+}
+
+/**
+ * Resuelve comisión por posición/HC y tier de enganche (misma lógica que financiamiento).
+ */
+export function resolveComisionTier(rows, { downPaymentPct, holidayCredits, posicion }) {
   const dp = normalizeEnganchePct(downPaymentPct);
   const hc = Number(holidayCredits) || 0;
   const pos = String(posicion || "").toLowerCase().trim();
-  const match = (rows || []).find((r) => {
-    const rDp = normalizeEnganchePct(r.down_payment_pct);
+  const candidates = (rows || []).filter((r) => {
     const min = Number(r.hc_rango_min);
     const max = Number(r.hc_rango_max);
-    return rDp === dp && hc >= min && hc <= max && String(r.posicion).toLowerCase() === pos;
+    return hc >= min && hc <= max && String(r.posicion).toLowerCase() === pos;
   });
-  return match || null;
+  if (!candidates.length) {
+    return { row: null, tier: null, exact: false };
+  }
+
+  const tiers = [...new Set(candidates.map((r) => normalizeEnganchePct(r.down_payment_pct)))].sort((a, b) => a - b);
+
+  if (tiers.includes(dp)) {
+    const row = candidates.find((r) => normalizeEnganchePct(r.down_payment_pct) === dp) || null;
+    return { row, tier: dp, exact: true };
+  }
+
+  const qualified = tiers.filter((t) => dp >= t);
+  const tier = qualified.length ? Math.max(...qualified) : tiers[0];
+  const row = candidates.find((r) => normalizeEnganchePct(r.down_payment_pct) === tier) || null;
+  return { row, tier, exact: false };
 }
 
 export function plazosDisponibles(financiamientoRows, { enganchePct, nacionalidad }) {
@@ -139,6 +159,25 @@ export function regalosDisponibles(regalos, { holidayCredits, montoVenta }) {
     if (r.venta_max_usd != null && mv > Number(r.venta_max_usd)) return false;
     return true;
   });
+}
+
+/** Regalos visibles en worksheet: sin monto aún, filtra solo por HC; con monto, aplica restricciones USD. */
+export function regalosParaWorksheet(regalos, { holidayCredits, montoVenta }) {
+  const hc = Number(holidayCredits) || 0;
+  const mv = Number(montoVenta) || 0;
+  const list = regalos || [];
+  if (mv <= 0) {
+    return list.filter((g) => {
+      const r = g.restricciones || {};
+      if (r.venta_minima_hc != null && hc < Number(r.venta_minima_hc)) return false;
+      return true;
+    });
+  }
+  return regalosDisponibles(list, { holidayCredits: hc, montoVenta: mv });
+}
+
+export function montoVentaWorksheet(fields) {
+  return Number(fields?.monto_venta || fields?.valor || fields?.valores?.find(Boolean) || 0);
 }
 
 /**
