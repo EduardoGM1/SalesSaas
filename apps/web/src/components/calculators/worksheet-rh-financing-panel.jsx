@@ -164,9 +164,9 @@ function PaymentCaptureBlock({
     >
       <div className="rh-fin-block-inner">
         {topContent}
-        <div className="frow tool-frow rh-fin-hoy-row">
-          <div className="flabel">{hoyLabel}</div>
-          <div className="rh-fin-hoy-inputs">
+        <div className="rh-fin-hoy-block">
+          <div className="rh-fin-hoy-block-label">{hoyLabel}</div>
+          <div className="rh-fin-hoy-block-inputs">
             <CampoMonedaCaptura
               currency={captureCurrency}
               value={hoyValue}
@@ -177,7 +177,9 @@ function PaymentCaptureBlock({
             />
             <span className={`rh-fin-pct-badge rh-fin-pct-badge--${tone}`}>{fmtPct(pctHoy)}</span>
           </div>
-          {pctHoyLabel ? <p className="muted rh-hint rh-fin-hoy-hint">{pctHoyLabel}</p> : null}
+          {pctHoyLabel ? (
+            <p className="muted rh-hint rh-fin-hoy-block-hint">{pctHoyLabel}</p>
+          ) : null}
         </div>
 
         <div className={`rh-fin-saldo rh-fin-saldo--${tone}`}>
