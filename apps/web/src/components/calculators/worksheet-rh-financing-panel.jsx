@@ -56,21 +56,6 @@ function plazoSubtitle(tasa) {
   return t === 0 ? "Sin intereses" : "Tasa fija anual";
 }
 
-function VentaResumenReadonly({ montoFmt, gastoFmt }) {
-  return (
-    <div className="rh-fin-venta-resumen" aria-label="Resumen de venta">
-      <div className="frow tool-frow">
-        <div className="flabel">Monto venta</div>
-        <div className="rh-readonly">{montoFmt}</div>
-      </div>
-      <div className="frow tool-frow">
-        <div className="flabel">Gasto administrativo</div>
-        <div className="rh-readonly">{gastoFmt}</div>
-      </div>
-    </div>
-  );
-}
-
 function ExtraCollapsible({ title, rows, max, readOnly, onChange, onAdd, hint }) {
   return (
     <CollapsibleSection
@@ -397,6 +382,9 @@ export function WorksheetRhFinancingPanel({
   }, [finTier.rows, balanceFinanciarOperational]);
 
   const fmtSaldo = (amount) => fmtCaptureResult(roundMoney(amount));
+  const montoPendienteCapture = roundMoney(saldoEnganche + saldoGasto);
+  const gastoDisplay = gastoTotalCapture > 0 ? formatCapture(String(roundMoney(gastoTotalCapture))) : "";
+  const pendienteDisplay = montoPendienteCapture > 0 ? formatCapture(String(montoPendienteCapture)) : "";
 
   const handlePagoBlur = (planKey, index, rawValue) => {
     const formatted = formatCapture(rawValue);
@@ -412,9 +400,9 @@ export function WorksheetRhFinancingPanel({
     <section className={`worksheet-rh-fin${stacked ? " worksheet-rh-fin--stacked" : ""}`}>
       <div className="worksheet-rh-fin-grid">
         <div className="card tool-calc-card rh-fin-left">
-          <div className="card-heading">Monto venta</div>
+          <div className="card-heading">Datos de la venta</div>
           <div className="tool-calc-fields">
-            <div className="frow tool-frow">
+            <div className="frow frow-first tool-frow">
               <div className="flabel">Monto de venta</div>
               <CampoMonedaCaptura
                 currency={captureCurrency}
@@ -437,13 +425,25 @@ export function WorksheetRhFinancingPanel({
                 <span className="frow-suffix">%</span>
               </div>
             </div>
+            <div className="frow tool-frow">
+              <div className="flabel">Gastos administrativos</div>
+              <CampoMonedaCaptura
+                currency={captureCurrency}
+                value={gastoDisplay}
+                readOnly
+              />
+            </div>
+            <div className="frow tool-frow">
+              <div className="flabel">Monto pendiente</div>
+              <CampoMonedaCaptura
+                currency={captureCurrency}
+                value={pendienteDisplay}
+                readOnly
+              />
+            </div>
           </div>
 
-          <VentaResumenReadonly
-            montoFmt={montoCapture ? fmtCaptureResult(montoCapture) : "—"}
-            gastoFmt={fmtCaptureResult(gastoTotalCapture)}
-          />
-
+          <div className="rh-fin-accordions">
           <PaymentCaptureBlock
             title="Datos de enganche"
             tone="blue"
@@ -525,6 +525,7 @@ export function WorksheetRhFinancingPanel({
               </>
             )}
           />
+          </div>
 
           <div className="g2 survey-result-pair rh-fin-totales">
             <div className="vbox blue">
@@ -533,11 +534,12 @@ export function WorksheetRhFinancingPanel({
             </div>
             <div className="vbox green">
               <div className="vbox-val">{ws.totales?.engancheMasAdmin != null ? fmtResult(ws.totales.engancheMasAdmin) : "—"}</div>
-              <div className="vbox-label">Enganche + Gast</div>
+              <div className="vbox-label">Enganche + Gasto administrativo</div>
             </div>
             <div className="vbox yellow span2">
               <div className="vbox-val">{ws.totales?.balanceAFinanciar != null ? fmtResult(ws.totales.balanceAFinanciar) : "—"}</div>
-              <div className="vbox-label">Balance</div>
+              <div className="vbox-label">Balance a financiar</div>
+              <div className="vbox-sub">Venta − Enganche + Monto pendiente</div>
             </div>
           </div>
         </div>
