@@ -192,15 +192,30 @@ export async function upsertEmpresaAdmin(actorId, empresaId, body) {
 
 export async function removeEmpresaAdmin(actorId, empresaId, userId) {
   const admin = await requireEmpresaAdmin(actorId, empresaId);
-  const { count } = await admin
+
+  const { data: target, error: targetError } = await admin
     .from("empresa_miembros")
-    .select("id", { count: "exact", head: true })
+    .select("id, es_admin, roles(slug)")
     .eq("empresa_id", empresaId)
-    .eq("es_admin", true)
-    .eq("estado", "activo");
-  if ((count ?? 0) <= 1) {
-    throw new ServiceError("La empresa debe conservar al menos un administrador.", 409);
+    .eq("usuario_id", userId)
+    .eq("estado", "activo")
+    .maybeSingle();
+  if (targetError) throw new ServiceError(targetError.message, 500);
+  if (!target) throw new ServiceError("Administrador no encontrado.", 404);
+
+  const removingRealAdmin = target.es_admin === true && target.roles?.slug !== "asistente_empresa";
+  if (removingRealAdmin) {
+    const { count } = await admin
+      .from("empresa_miembros")
+      .select("id", { count: "exact", head: true })
+      .eq("empresa_id", empresaId)
+      .eq("es_admin", true)
+      .eq("estado", "activo");
+    if ((count ?? 0) <= 1) {
+      throw new ServiceError("La empresa debe conservar al menos un administrador.", 409);
+    }
   }
+
   const { error, count: removed } = await admin
     .from("empresa_miembros")
     .delete({ count: "exact" })
