@@ -100,8 +100,8 @@ for (const row of finRows) {
   const plazo = Number(row[2]);
   if (!currentEng || !plazo) continue;
   const blocks = [
-    { nat: "mexicano", tasa: row[3], factor: row[5] },
-    { nat: "resto", tasa: row[6], factor: row[8] },
+    { nat: "mexicano", tasa: row[3], factor: row[4] },
+    { nat: "resto", tasa: row[6], factor: row[7] },
     { nat: "argentino", tasa: row[9], factor: row[10] },
   ];
   for (const b of blocks) {

@@ -8,6 +8,7 @@ export {
   plazosDisponibles,
   resolveFinanciamientoEngancheTier,
   calcularMensualidad,
+  calcularMensualidadFinanciamiento,
   calcularTotalesWorksheet,
   regalosDisponibles,
   regalosParaWorksheet,

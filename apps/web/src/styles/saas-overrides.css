@@ -9909,10 +9909,21 @@ body,
   min-width: 120px;
 }
 .rh-fin-hoy-block-hint {
-  grid-area: hint;
   margin: 0;
   font-size: 12px;
   line-height: 1.4;
+}
+.rh-fin-hoy-block-meta {
+  grid-area: hint;
+  display: grid;
+  gap: 4px;
+}
+.rh-fin-hoy-block-meta .rh-hint { margin: 0; }
+.rh-fin-enganche-delta {
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--blue, #1e5eff);
+  font-weight: 600;
 }
 /* Legacy selectors — mantener por si queda markup antiguo en caché PWA */
 .rh-fin-hoy-row .rh-fin-hoy-inputs {

@@ -8,7 +8,7 @@ import {
   lookupComision,
   resolveComisionTier,
   resolveFinanciamientoEngancheTier,
-  calcularMensualidad,
+  calcularMensualidadFinanciamiento,
   calcularTotalesWorksheet,
   regalosParaWorksheet,
   diferenciaComisionPct,
@@ -138,7 +138,14 @@ export async function previewCalculo(client, empresaId, body) {
     financiamiento_enganche_tier: finTier.tier,
     financiamiento_enganche_exacto: finTier.exact,
     financiamiento_seleccionado: finRow,
-    mensualidad: finRow ? calcularMensualidad(monto, finRow.factor_mensual) : null,
+    mensualidad: finRow
+      ? calcularMensualidadFinanciamiento({
+        montoVenta: monto,
+        enganchePct: eng,
+        factorMensual: finRow.factor_mensual,
+        balanceAnterior: Number(body.balance_anterior) || 0,
+      })
+      : null,
     totales,
     regalos: regalosParaWorksheet(bundle.regalos, { holidayCredits: hc, montoVenta: monto }),
     parametros: bundle.parametros,

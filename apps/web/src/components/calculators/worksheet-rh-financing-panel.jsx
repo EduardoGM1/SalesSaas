@@ -40,6 +40,10 @@ function fmtPct(v) {
   return `${n.toFixed(2)} %`;
 }
 
+function montoDeltaVisible(pactadoPct, hoyPct) {
+  return Math.abs(Number(pactadoPct) - Number(hoyPct)) > 0.005 || Number(pactadoPct) > Number(hoyPct);
+}
+
 function fmtPlazoTasa(plazo, tasa) {
   const t = Number(tasa);
   const tStr = Number.isFinite(t) ? t.toFixed(2) : "0.00";
@@ -138,8 +142,9 @@ function PaymentCaptureBlock({
   captureCurrency,
   pctHoy,
   pctHoyLabel,
-  saldo,
+  pctPactado,
   saldoFmt,
+  saldo,
   saldoPct,
   saldoHint,
   numPagos,
@@ -156,6 +161,10 @@ function PaymentCaptureBlock({
   extraHint,
   topContent,
 }) {
+  const hoyAmount = Number(hoyValue) || 0;
+  const pactado = pctPactado != null ? Number(pctPactado) : null;
+  const showEngancheDelta = pactado != null && hoyAmount > 0 && montoDeltaVisible(pactado, pctHoy);
+
   return (
     <CollapsibleSection
       title={title}
@@ -177,9 +186,19 @@ function PaymentCaptureBlock({
             />
             <span className={`rh-fin-pct-badge rh-fin-pct-badge--${tone}`}>{fmtPct(pctHoy)}</span>
           </div>
-          {pctHoyLabel ? (
-            <p className="muted rh-hint rh-fin-hoy-block-hint">{pctHoyLabel}</p>
-          ) : null}
+          <div className="rh-fin-hoy-block-meta">
+            {pctHoyLabel ? (
+              <p className="muted rh-hint rh-fin-hoy-block-hint">{pctHoyLabel}</p>
+            ) : null}
+            {showEngancheDelta ? (
+              <p className="muted rh-hint rh-fin-enganche-delta">
+                Pactado {fmtPct(pactado)} · Entregado hoy {fmtPct(pctHoy)}
+                {" · "}
+                Pendiente {fmtPct(Math.max(0, pactado - pctHoy))}
+                {saldoFmt ? ` (${saldoFmt})` : ""}
+              </p>
+            ) : null}
+          </div>
         </div>
 
         <div className={`rh-fin-saldo rh-fin-saldo--${tone}`}>
@@ -406,6 +425,7 @@ export function WorksheetRhFinancingPanel({
             onHoyChange={(v) => set("enganche_hoy", v)}
             onHoyBlur={() => onMoneyBlur?.("enganche_hoy", formatCapture(form.enganche_hoy))}
             pctHoy={pctEngancheHoy}
+            pctPactado={Number(form.enganche_pct) || 0}
             pctHoyLabel="Pagos hoy."
             saldo={saldoEnganche}
             saldoFmt={fmtSaldo(saldoEnganche)}

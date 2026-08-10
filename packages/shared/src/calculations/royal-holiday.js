@@ -131,8 +131,25 @@ export function resolveFinanciamientoEngancheTier(financiamientoRows, { enganche
   };
 }
 
-export function calcularMensualidad(montoVenta, factorMensual) {
-  return (Number(montoVenta) || 0) * (Number(factorMensual) || 0);
+/** Mensualidad = Ap × factor_mensual (Ap = monto a financiar, no venta bruta). */
+export function calcularMensualidad(montoAFfinanciar, factorMensual) {
+  return (Number(montoAFfinanciar) || 0) * (Number(factorMensual) || 0);
+}
+
+/** Ap = venta − enganche pactado (+ balance anterior); usa factor del catálogo. */
+export function calcularMensualidadFinanciamiento({
+  montoVenta,
+  enganchePct,
+  factorMensual,
+  balanceAnterior = 0,
+}) {
+  const { balanceAFinanciar } = calcularTotalesWorksheet({
+    montoVenta,
+    enganchePct,
+    costoAdmin: 0,
+    balanceAnterior,
+  });
+  return calcularMensualidad(balanceAFinanciar, factorMensual);
 }
 
 /** Totales alineados al Worksheet estándar: eng, eng+cc, balance. */

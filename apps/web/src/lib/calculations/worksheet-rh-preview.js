@@ -45,7 +45,8 @@ export function buildRhWorksheetState(catalogo, preview, form) {
 
   const plazoSel = Number(form.plazo_meses);
   const finRow = finTier.rows.find((p) => Number(p.plazo_meses) === plazoSel) || preview?.financiamiento_seleccionado || null;
-  const mensualidad = preview?.mensualidad ?? (finRow ? calcularMensualidad(monto, finRow.factor_mensual) : null);
+  const mensualidad = preview?.mensualidad
+    ?? (finRow ? calcularMensualidad(totales.balanceAFinanciar, finRow.factor_mensual) : null);
 
   const comTier = preview?.comision && !preview.comision.pendiente
     ? {

@@ -80,7 +80,7 @@ export function WorksheetRoyalHolidayPage({ clientId, shared }) {
     epvFvi: ["", "", "", "", ""],
     posicion: "ftb",
     monto_venta: "",
-    enganche_pct: "15",
+    enganche_pct: "25",
     enganche_hoy: "",
     gasto_adm_hoy: "",
     nacionalidad: "mexicano",
