@@ -12,8 +12,9 @@ import {
 } from "@/components/admin/admin-ui.jsx";
 import { AdminOverflowMenu } from "@/components/admin/admin-overflow-menu.jsx";
 import { BuscadorUsuario } from "@/components/admin/buscador-usuario.jsx";
-import { DelegacionChecklist } from "@/components/admin/delegacion-checklist.jsx";
-import { SalesModal } from "@/components/ui/sales-modal";
+import { AdminSidePanel } from "@/components/admin/admin-side-panel.jsx";
+import { ModuleChecklist } from "@/components/admin/module-checklist.jsx";
+import { PermissionMatrix } from "@/components/admin/permission-matrix.jsx";
 import { useAdminFetch } from "@/hooks/use-admin-session.js";
 import { adminJson } from "@/lib/admin/api.js";
 import { compressSupportScreenshot } from "@/lib/support-image.js";
@@ -50,6 +51,10 @@ function companyOptionsFromContext(context) {
 
 function memberRows(room) {
   return Array.isArray(room?.workspace_miembros) ? room.workspace_miembros : [];
+}
+
+function permisoLabel(permisos, clave) {
+  return (permisos || []).find((p) => p.clave === clave)?.nombre_visible || clave;
 }
 
 export function TenantCompanyAdministration({
@@ -544,7 +549,7 @@ export function TenantCompanyAdministration({
           <div className="admin-company-layout">
             <AdminCard
               title={editingRole ? `Editar: ${editingRole.slug}` : "Crear puesto"}
-              subtitle="Marca los módulos existentes. Los puestos de sistema se pueden renombrar y ajustar módulos, pero no eliminar."
+              subtitle="El puesto controla qué módulos ve el usuario. Los puestos de sistema se pueden renombrar y ajustar módulos, pero no eliminar."
             >
               <form className="admin-inline-form" onSubmit={(event) => {
                 event.preventDefault();
@@ -593,23 +598,26 @@ export function TenantCompanyAdministration({
                   <p className="admin-card-muted">Clave interna: <code>{editingRole.slug}</code> (no editable)</p>
                 )}
                 <div className="section-label" style={{ marginTop: 8 }}>Módulos</div>
-                <div className="admin-tenant-check-grid">
-                  {state.flags.map((flag) => (
-                    <label key={flag.id}>
-                      <input
-                        type="checkbox"
-                        checked={roleForm.flag_keys.includes(flag.clave)}
-                        onChange={(event) => setRoleForm((current) => ({
-                          ...current,
-                          flag_keys: event.target.checked
-                            ? [...current.flag_keys, flag.clave]
-                            : current.flag_keys.filter((key) => key !== flag.clave),
-                        }))}
-                      />
-                      {flag.nombre_visible}
-                    </label>
-                  ))}
-                </div>
+                <ModuleChecklist
+                  flags={state.flags}
+                  value={roleForm.flag_keys}
+                  idPrefix="role"
+                  onChange={(flag_keys) => setRoleForm((current) => ({ ...current, flag_keys }))}
+                />
+                {editingRole ? (
+                  <>
+                    <div className="section-label" style={{ marginTop: 16 }}>Acciones (permisos)</div>
+                    <p className="admin-card-muted">
+                      Acciones base del puesto. La edición desde aquí llegará en una fase posterior; los asistentes reciben acciones adicionales en Administradores → Delegar permisos.
+                    </p>
+                    <PermissionMatrix
+                      permisos={state.permissions}
+                      value={editingRole.permission_keys || []}
+                      readOnly
+                      emptyLabel="Sin acciones base en este puesto."
+                    />
+                  </>
+                ) : null}
                 <div className="btn-row" style={{ marginTop: 8 }}>
                   {editingRole && (
                     <button
@@ -673,15 +681,35 @@ export function TenantCompanyAdministration({
                 >
                   <p className="admin-card-muted">
                     {(role.flag_keys?.length ?? 0)} módulos
-                    {role.paquetes_acceso?.nombre ? ` · ${role.paquetes_acceso.nombre}` : ""}
+                    {role.paquetes_acceso?.nombre ? ` · plantilla: ${role.paquetes_acceso.nombre}` : ""}
+                    {(role.permission_keys?.length ?? 0) > 0 ? ` · ${role.permission_keys.length} acciones` : ""}
                   </p>
+                  <div className="section-label admin-role-card-section">Módulos</div>
                   <div className="admin-tenant-tag-list">
                     {(role.flag_keys || []).slice(0, 6).map((clave) => (
                       <AdminStatusBadge key={clave} tone="info">
                         {state.flags.find((f) => f.clave === clave)?.nombre_visible || clave}
                       </AdminStatusBadge>
                     ))}
+                    {(role.flag_keys?.length ?? 0) > 6 ? (
+                      <span className="admin-card-muted">+{role.flag_keys.length - 6} más</span>
+                    ) : null}
                   </div>
+                  {(role.permission_keys?.length ?? 0) > 0 ? (
+                    <>
+                      <div className="section-label admin-role-card-section">Acciones</div>
+                      <div className="admin-tenant-tag-list">
+                        {(role.permission_keys || []).slice(0, 6).map((clave) => (
+                          <AdminStatusBadge key={clave} tone="neutral">
+                            {permisoLabel(state.permissions, clave)}
+                          </AdminStatusBadge>
+                        ))}
+                        {role.permission_keys.length > 6 ? (
+                          <span className="admin-card-muted">+{role.permission_keys.length - 6} más</span>
+                        ) : null}
+                      </div>
+                    </>
+                  ) : null}
                 </AdminCard>
               ))}
             </div>
@@ -775,7 +803,10 @@ export function TenantCompanyAdministration({
 
         {tab === "packages" ? (
           <div className="admin-company-layout">
-            <AdminCard title="Crear Paquete de Acceso" subtitle="El paquete controla módulos; el puesto controla permisos.">
+            <AdminCard
+              title="Crear plantilla de módulos"
+              subtitle="Paquete reutilizable: define un conjunto de módulos para asignar a varios puestos sin repetir la configuración."
+            >
               <form className="admin-inline-form" onSubmit={(event) => {
                 event.preventDefault();
                 void mutate(async () => {
@@ -785,17 +816,25 @@ export function TenantCompanyAdministration({
               }}>
                 <input className="auth-input" placeholder="Nombre del paquete" value={packageForm.nombre} onChange={(event) => setPackageForm((current) => ({ ...current, nombre: event.target.value }))} required />
                 <input className="auth-input" placeholder="Descripción" value={packageForm.descripcion} onChange={(event) => setPackageForm((current) => ({ ...current, descripcion: event.target.value }))} />
-                <div className="admin-tenant-check-grid">
-                  {state.flags.map((flag) => (
-                    <label key={flag.id}><input type="checkbox" checked={packageForm.flag_keys.includes(flag.clave)} onChange={(event) => setPackageForm((current) => ({ ...current, flag_keys: event.target.checked ? [...current.flag_keys, flag.clave] : current.flag_keys.filter((key) => key !== flag.clave) }))} />{flag.nombre_visible}</label>
-                  ))}
-                </div>
+                <div className="section-label">Módulos incluidos</div>
+                <ModuleChecklist
+                  flags={state.flags}
+                  value={packageForm.flag_keys}
+                  idPrefix="pkg"
+                  onChange={(flag_keys) => setPackageForm((current) => ({ ...current, flag_keys }))}
+                />
                 <button className="btn btn-primary" disabled={pending}>Crear paquete</button>
               </form>
             </AdminCard>
             <div className="admin-room-cards">
               {state.packages.map((pack) => (
-                <AdminCard key={pack.id} title={pack.nombre} subtitle={pack.descripcion || "Sin descripción"} action={!pack.es_sistema ? <AdminOverflowMenu label={`Acciones de ${pack.nombre}`} items={[{ id: "delete", label: "Eliminar paquete", danger: true, onSelect: () => void mutate(() => adminJson(`tenant/empresas/${companyId}/packages/${pack.id}`, { method: "DELETE" }), "Paquete eliminado") }]} /> : null}>
+                <AdminCard
+                  key={pack.id}
+                  title={pack.nombre}
+                  subtitle={pack.descripcion || "Plantilla reutilizable de módulos"}
+                  action={!pack.es_sistema ? <AdminOverflowMenu label={`Acciones de ${pack.nombre}`} items={[{ id: "delete", label: "Eliminar paquete", danger: true, onSelect: () => void mutate(() => adminJson(`tenant/empresas/${companyId}/packages/${pack.id}`, { method: "DELETE" }), "Paquete eliminado") }]} /> : null}
+                >
+                  <p className="admin-card-muted">{(pack.paquete_flags?.length ?? 0)} módulos</p>
                   <div className="admin-tenant-tag-list">{(pack.paquete_flags || []).map((entry) => <AdminStatusBadge key={entry.flag_id} tone="info">{entry.flags?.nombre_visible || entry.flags?.clave}</AdminStatusBadge>)}</div>
                 </AdminCard>
               ))}
@@ -883,31 +922,50 @@ export function TenantCompanyAdministration({
         ) : null}
       </AdminPageState>
 
-      <SalesModal
+      <AdminSidePanel
         open={delegOpen}
-        onOpenChange={(open) => {
-          setDelegOpen(open);
-          if (!open) setDelegAsistente(null);
+        onClose={() => {
+          setDelegOpen(false);
+          setDelegAsistente(null);
         }}
-        title={`Delegar permisos — ${delegAsistente?.profiles?.full_name || delegAsistente?.profiles?.email || ""}`}
-        maxWidth={560}
+        title="Delegar permisos"
+        subtitle={delegAsistente?.profiles?.full_name || delegAsistente?.profiles?.email || ""}
+        footer={(
+          <div className="btn-row admin-side-panel-actions">
+            <button
+              type="button"
+              className="btn btn-ghost"
+              onClick={() => {
+                setDelegOpen(false);
+                setDelegAsistente(null);
+              }}
+              disabled={pending}
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={saveEmpresaDelegacion}
+              disabled={pending || delegLoading}
+            >
+              Guardar delegación
+            </button>
+          </div>
+        )}
       >
-        <p className="team-hint team-hint--modal">
-          Solo puedes marcar permisos que tú ya tienes como Admin de Empresa.
+        <p className="team-hint">
+          Solo puedes marcar acciones que tú ya tienes como Admin de Empresa. Los módulos del puesto se configuran en Puestos.
         </p>
-        <DelegacionChecklist
+        <PermissionMatrix
+          permisos={state.permissions}
           ceiling={delegCeiling}
-          selected={delegSelected}
+          value={delegSelected}
           onChange={setDelegSelected}
           loading={delegLoading}
+          emptyLabel="No hay acciones que puedas delegar."
         />
-        <div className="btn-row team-modal-actions">
-          <button type="button" className="btn btn-ghost" onClick={() => setDelegOpen(false)} disabled={pending}>Cancelar</button>
-          <button type="button" className="btn btn-primary" onClick={saveEmpresaDelegacion} disabled={pending || delegLoading}>
-            Guardar delegación
-          </button>
-        </div>
-      </SalesModal>
+      </AdminSidePanel>
     </>
   );
 
