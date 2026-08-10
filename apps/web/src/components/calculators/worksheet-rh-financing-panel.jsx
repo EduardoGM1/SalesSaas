@@ -1,6 +1,6 @@
 import { useEffect, useMemo } from "react";
 import { CollapsibleSection } from "@/components/ui/collapsible-section.jsx";
-import { useMoney } from "@/hooks/use-money.js";
+import { CampoMonedaCaptura } from "@/components/currency/campo-moneda-captura.jsx";
 import {
   RH_EXTRA_DP_PLAZO_DIAS,
   calcularMensualidad,
@@ -134,15 +134,19 @@ function PaymentCaptureBlock({
   hoyLabel,
   hoyValue,
   onHoyChange,
+  onHoyBlur,
+  captureCurrency,
   pctHoy,
   pctHoyLabel,
   saldo,
+  saldoFmt,
   saldoPct,
   saldoHint,
   numPagos,
   onNumPagosChange,
   pagos,
   onPagosChange,
+  onPagoBlur,
   readOnly,
   extraTitle,
   extraRows,
@@ -163,13 +167,13 @@ function PaymentCaptureBlock({
         <div className="frow tool-frow rh-fin-hoy-row">
           <div className="flabel">{hoyLabel}</div>
           <div className="rh-fin-hoy-inputs">
-            <input
-              className="input tool-num-input"
-              type="number"
-              disabled={readOnly}
+            <CampoMonedaCaptura
+              currency={captureCurrency}
               value={hoyValue}
-              onChange={(e) => onHoyChange(e.target.value)}
-              placeholder="0.00"
+              readOnly={readOnly}
+              onChange={onHoyChange}
+              onBlurCapture={onHoyBlur}
+              className="rh-fin-hoy-mfield"
             />
             <span className={`rh-fin-pct-badge rh-fin-pct-badge--${tone}`}>{fmtPct(pctHoy)}</span>
           </div>
@@ -178,7 +182,7 @@ function PaymentCaptureBlock({
 
         <div className={`rh-fin-saldo rh-fin-saldo--${tone}`}>
           <div className="rh-fin-saldo-label">Saldo pendiente</div>
-          <div className="rh-fin-saldo-val">{roundMoney(saldo).toLocaleString("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+          <div className="rh-fin-saldo-val">{saldoFmt}</div>
           <div className="rh-fin-saldo-pct">{fmtPct(saldoPct)}{saldoPctLabel(saldoHint)}</div>
           {saldoHint ? <p className="muted rh-hint">{saldoHint}</p> : null}
         </div>
@@ -212,16 +216,17 @@ function PaymentCaptureBlock({
                   <tr key={idx}>
                     <td className="rh-fin-pago-num">{idx + 1}</td>
                     <td>
-                      <input
-                        className="input input-compact tool-num-input"
-                        type="number"
-                        disabled={readOnly}
+                      <CampoMonedaCaptura
+                        currency={captureCurrency}
                         value={p.monto}
-                        onChange={(e) => {
+                        readOnly={readOnly}
+                        onChange={(value) => {
                           const next = [...pagos];
-                          next[idx] = { ...next[idx], monto: e.target.value };
+                          next[idx] = { ...next[idx], monto: value };
                           onPagosChange(next);
                         }}
+                        onBlurCapture={() => onPagoBlur?.(idx, p.monto)}
+                        className="rh-fin-pago-mfield"
                       />
                     </td>
                     <td>
@@ -281,23 +286,29 @@ export function WorksheetRhFinancingPanel({
   worksheetState,
   catalogo,
   readOnly,
-  fmtNum,
+  captureCurrency = "USD",
+  moneda,
+  onMoneyBlur,
   stacked,
 }) {
-  const { settings, fmtN2 } = useMoney();
+  const { fmtResult, fmtCaptureResult, formatCapture, toCaptureDisplay } = moneda || {};
   const ws = worksheetState || {};
   const monto = montoVentaWorksheet(form);
-  const engancheTotal = Number(ws.totales?.enganche ?? (monto * Number(form.enganche_pct || 0)) / 100);
+  const engancheTotalCapture = ws.totales?.enganche != null
+    ? toCaptureDisplay(ws.totales.enganche)
+    : (monto * Number(form.enganche_pct || 0)) / 100;
   const engancheHoy = Number(form.enganche_hoy || 0);
-  const saldoEnganche = Math.max(0, engancheTotal - engancheHoy);
+  const saldoEnganche = Math.max(0, engancheTotalCapture - engancheHoy);
   const pctEngancheHoy = monto > 0 ? (engancheHoy / monto) * 100 : 0;
   const pctSaldoEnganche = monto > 0 ? (saldoEnganche / monto) * 100 : 0;
 
-  const gastoTotal = Number(form.costo_administrativo_usd || ws.costo_administrativo_usd || 0);
+  const gastoTotalCapture = form.costo_administrativo_usd !== "" && form.costo_administrativo_usd != null
+    ? toCaptureDisplay(Number(form.costo_administrativo_usd))
+    : toCaptureDisplay(Number(ws.costo_administrativo_usd || 0));
   const gastoHoy = Number(form.gasto_adm_hoy || 0);
-  const saldoGasto = Math.max(0, gastoTotal - gastoHoy);
-  const pctGastoHoy = gastoTotal > 0 ? (gastoHoy / gastoTotal) * 100 : 0;
-  const pctSaldoGasto = gastoTotal > 0 ? (saldoGasto / gastoTotal) * 100 : 0;
+  const saldoGasto = Math.max(0, gastoTotalCapture - gastoHoy);
+  const pctGastoHoy = gastoTotalCapture > 0 ? (gastoHoy / gastoTotalCapture) * 100 : 0;
+  const pctSaldoGasto = gastoTotalCapture > 0 ? (saldoGasto / gastoTotalCapture) * 100 : 0;
 
   const maxDp = catalogo?.parametros?.max_extra_dp ?? 6;
   const maxCc = catalogo?.parametros?.max_extra_cc ?? 6;
@@ -306,7 +317,7 @@ export function WorksheetRhFinancingPanel({
   const fechaVentaRef = toDateStr(new Date());
   const extraDpLimite = fechaLimiteExtraDp(fechaVentaRef);
 
-  const balanceFinanciar = Number(ws.totales?.balanceAFinanciar ?? Math.max(0, monto - engancheTotal));
+  const balanceFinanciarUsd = Number(ws.totales?.balanceAFinanciar ?? Math.max(0, monto - engancheTotalCapture));
 
   const finTier = useMemo(() => ({
     rows: ws.plazos || [],
@@ -337,30 +348,36 @@ export function WorksheetRhFinancingPanel({
   const plazoCards = useMemo(() => {
     return (finTier.rows || []).map((p) => ({
       ...p,
-      mensualidad: calcularMensualidad(balanceFinanciar, p.factor_mensual),
+      mensualidad: calcularMensualidad(balanceFinanciarUsd, p.factor_mensual),
     }));
-  }, [finTier.rows, balanceFinanciar]);
+  }, [finTier.rows, balanceFinanciarUsd]);
 
-  const tcLabel = settings.currency === "MXN"
-    ? `Tipo de cambio 1 USD = ${Number(settings.exchangeRate || 1).toFixed(2)} MXN`
-    : null;
+  const fmtSaldo = (amount) => fmtCaptureResult(roundMoney(amount));
+
+  const handlePagoBlur = (planKey, index, rawValue) => {
+    const formatted = formatCapture(rawValue);
+    setForm((f) => {
+      const rows = [...(f[planKey] || [])];
+      rows[index] = { ...rows[index], monto: formatted };
+      return { ...f, [planKey]: rows };
+    });
+    onMoneyBlur?.(`${planKey === "enganche_pagos" ? "enganche" : "gasto"}_pago_${index}`, formatted);
+  };
 
   return (
     <section className={`worksheet-rh-fin${stacked ? " worksheet-rh-fin--stacked" : ""}`}>
-      {tcLabel ? <p className="rh-fin-tc-hint muted">{tcLabel}</p> : null}
-
       <div className="worksheet-rh-fin-grid">
         <div className="card tool-calc-card rh-fin-left">
           <div className="card-heading">Monto venta</div>
           <div className="tool-calc-fields">
             <div className="frow tool-frow">
               <div className="flabel">Monto de venta</div>
-              <input
-                className="input tool-num-input"
-                type="number"
-                disabled={readOnly}
+              <CampoMonedaCaptura
+                currency={captureCurrency}
                 value={form.monto_venta}
-                onChange={(e) => set("monto_venta", e.target.value)}
+                readOnly={readOnly}
+                onChange={(value) => set("monto_venta", value)}
+                onBlurCapture={() => onMoneyBlur?.("monto_venta", formatCapture(form.monto_venta))}
               />
             </div>
             <div className="frow tool-frow">
@@ -381,18 +398,22 @@ export function WorksheetRhFinancingPanel({
           <PaymentCaptureBlock
             title="Datos de enganche"
             tone="blue"
+            captureCurrency={captureCurrency}
             hoyLabel="Hoy (pago inicial)"
             hoyValue={form.enganche_hoy}
             onHoyChange={(v) => set("enganche_hoy", v)}
+            onHoyBlur={() => onMoneyBlur?.("enganche_hoy", formatCapture(form.enganche_hoy))}
             pctHoy={pctEngancheHoy}
             pctHoyLabel="Pagos hoy."
             saldo={saldoEnganche}
+            saldoFmt={fmtSaldo(saldoEnganche)}
             saldoPct={pctSaldoEnganche}
             saldoHint="Falta por completar el enganche."
             numPagos={form.enganche_num_pagos}
             onNumPagosChange={(v) => set("enganche_num_pagos", v)}
             pagos={form.enganche_pagos}
             onPagosChange={(rows) => set("enganche_pagos", rows)}
+            onPagoBlur={(idx, raw) => handlePagoBlur("enganche_pagos", idx, raw)}
             readOnly={readOnly}
             extraTitle="(+) Extra enganche"
             extraRows={form.extrasDp}
@@ -408,18 +429,22 @@ export function WorksheetRhFinancingPanel({
           <PaymentCaptureBlock
             title="Gastos administrativos"
             tone="green"
+            captureCurrency={captureCurrency}
             hoyLabel="Hoy (pago inicial)"
             hoyValue={form.gasto_adm_hoy}
             onHoyChange={(v) => set("gasto_adm_hoy", v)}
+            onHoyBlur={() => onMoneyBlur?.("gasto_adm_hoy", formatCapture(form.gasto_adm_hoy))}
             pctHoy={pctGastoHoy}
             pctHoyLabel="Respecto al gasto administrativo."
             saldo={saldoGasto}
+            saldoFmt={fmtSaldo(saldoGasto)}
             saldoPct={pctSaldoGasto}
             saldoHint="Falta por completar el gasto."
             numPagos={form.gasto_num_pagos}
             onNumPagosChange={(v) => set("gasto_num_pagos", v)}
             pagos={form.gasto_pagos}
             onPagosChange={(rows) => set("gasto_pagos", rows)}
+            onPagoBlur={(idx, raw) => handlePagoBlur("gasto_pagos", idx, raw)}
             readOnly={readOnly}
             extraTitle="(+) Extra gasto administrativo"
             extraRows={form.extrasCc}
@@ -453,15 +478,15 @@ export function WorksheetRhFinancingPanel({
 
           <div className="g2 survey-result-pair rh-fin-totales">
             <div className="vbox blue">
-              <div className="vbox-val">{fmtNum(ws.totales?.enganche)}</div>
+              <div className="vbox-val">{ws.totales?.enganche != null ? fmtResult(ws.totales.enganche) : "—"}</div>
               <div className="vbox-label">Enganche</div>
             </div>
             <div className="vbox green">
-              <div className="vbox-val">{fmtNum(ws.totales?.engancheMasAdmin)}</div>
+              <div className="vbox-val">{ws.totales?.engancheMasAdmin != null ? fmtResult(ws.totales.engancheMasAdmin) : "—"}</div>
               <div className="vbox-label">Enganche + Gast</div>
             </div>
             <div className="vbox yellow span2">
-              <div className="vbox-val">{fmtNum(ws.totales?.balanceAFinanciar)}</div>
+              <div className="vbox-val">{ws.totales?.balanceAFinanciar != null ? fmtResult(ws.totales.balanceAFinanciar) : "—"}</div>
               <div className="vbox-label">Balance</div>
             </div>
           </div>
@@ -513,7 +538,7 @@ export function WorksheetRhFinancingPanel({
                       <div className="rh-fin-plazo-sub">{plazoSubtitle(p.tasa_interes)}</div>
                     </div>
                     <div className="rh-fin-plazo-monthly">
-                      USD {fmtN2(p.mensualidad)}<span className="rh-fin-plazo-monthly-suffix"> /mes</span>
+                      {fmtResult(p.mensualidad)}<span className="rh-fin-plazo-monthly-suffix"> /mes</span>
                     </div>
                   </label>
                 );
@@ -527,7 +552,7 @@ export function WorksheetRhFinancingPanel({
               <p className="rh-warn-text">{ws.comision.mensaje}</p>
             ) : ws.comision ? (
               <p className="muted rh-hint">
-                Comisión {ws.comision.porcentaje}% → {fmtNum(ws.comision.monto)} · pago {ws.comision.fecha_pago}
+                Comisión {ws.comision.porcentaje}% → {fmtResult(ws.comision.monto)} · pago {ws.comision.fecha_pago}
                 {!ws.comision_enganche_exacto && ws.comision_enganche_tier != null
                   ? ` (tier enganche ${ws.comision_enganche_tier}%)`
                   : ""}
@@ -546,13 +571,13 @@ export function WorksheetRhFinancingPanel({
                   onChange={(e) => set("tarjeta_inmex_on", e.target.checked)}
                 />
                 <span>{tarjetas[0] || "INMEX"}</span>
-                <input
-                  className="input tool-num-input"
-                  type="number"
-                  disabled={readOnly || !form.tarjeta_inmex_on}
+                <CampoMonedaCaptura
+                  currency={captureCurrency}
                   value={form.tarjeta_inmex}
-                  onChange={(e) => set("tarjeta_inmex", e.target.value)}
-                  placeholder="Monto"
+                  readOnly={readOnly || !form.tarjeta_inmex_on}
+                  onChange={(value) => set("tarjeta_inmex", value)}
+                  onBlurCapture={() => onMoneyBlur?.("tarjeta_inmex", formatCapture(form.tarjeta_inmex))}
+                  className="rh-card-mfield"
                 />
               </label>
               <label className="rh-card-check">
@@ -563,13 +588,13 @@ export function WorksheetRhFinancingPanel({
                   onChange={(e) => set("tarjeta_rci_on", e.target.checked)}
                 />
                 <span>{tarjetas[1] || "RCI"}</span>
-                <input
-                  className="input tool-num-input"
-                  type="number"
-                  disabled={readOnly || !form.tarjeta_rci_on}
+                <CampoMonedaCaptura
+                  currency={captureCurrency}
                   value={form.tarjeta_rci}
-                  onChange={(e) => set("tarjeta_rci", e.target.value)}
-                  placeholder="Monto"
+                  readOnly={readOnly || !form.tarjeta_rci_on}
+                  onChange={(value) => set("tarjeta_rci", value)}
+                  onBlurCapture={() => onMoneyBlur?.("tarjeta_rci", formatCapture(form.tarjeta_rci))}
+                  className="rh-card-mfield"
                 />
               </label>
             </div>

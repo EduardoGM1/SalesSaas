@@ -4,6 +4,7 @@ import { Topbar } from "@/components/layout/topbar";
 import { PageBack } from "@/components/layout/page-back.jsx";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { useToolSession } from "@/hooks/use-tool-session.js";
+import { useMonedaToolBucket } from "@/hooks/use-moneda-tool.js";
 import { fetchSession } from "@/lib/session-api.js";
 import { royalHolidayApi } from "@/lib/royal-holiday-api.js";
 import { toast } from "@/lib/toast";
@@ -16,6 +17,13 @@ import {
 import { WorksheetRhFinancingPanel } from "@/components/calculators/worksheet-rh-financing-panel.jsx";
 import { buildRhWorksheetState } from "@/lib/calculations/worksheet-rh-preview.js";
 import { montoVentaWorksheet } from "@/lib/calculations/royal-holiday.js";
+import { SelectorMoneda } from "@/components/currency/selector-moneda.jsx";
+import { CampoMonedaCaptura } from "@/components/currency/campo-moneda-captura.jsx";
+import {
+  rhFormToOperational,
+  rhMontoVentaOperational,
+  switchRhFormCaptureCurrency,
+} from "@/lib/currency/rh-form-currency.js";
 
 const TABS = [
   { id: "financiamiento", label: "Datos Financiamiento" },
@@ -50,7 +58,15 @@ function buildCreditMatrix(bottomLine) {
 export function WorksheetRoyalHolidayPage({ clientId, shared }) {
   const { t } = useI18n();
   const session = useToolSession({ clientId, shared, section: "worksheet" });
-  const { ready, backHref, readOnly } = session;
+  const { ready, backHref, readOnly, getBucket, toolsRevision } = session;
+  const {
+    captureCurrency,
+    currencyMeta,
+    moneda,
+    recordMoneyCapture,
+    applyCaptureCurrency,
+  } = useMonedaToolBucket({ getBucket, toolKey: "worksheet", ready, toolsRevision });
+  const { fmtResult } = moneda;
   const [tab, setTab] = useState("financiamiento");
   const [empresaId, setEmpresaId] = useState(null);
   const [workspaceId, setWorkspaceId] = useState(null);
@@ -112,11 +128,12 @@ export function WorksheetRoyalHolidayPage({ clientId, shared }) {
 
   useEffect(() => {
     if (!empresaId) return;
+    const operationalMonto = rhMontoVentaOperational(form, captureCurrency, currencyMeta, moneda.ctx);
     const tmr = setTimeout(async () => {
       try {
         const p = await royalHolidayApi.preview(empresaId, {
           holiday_credits: form.holiday_credits,
-          monto_venta: form.monto_venta || form.valor || form.valores.find(Boolean) || undefined,
+          monto_venta: operationalMonto || undefined,
           enganche_pct: form.enganche_pct,
           posicion: form.posicion,
           nacionalidad: form.nacionalidad,
@@ -144,7 +161,15 @@ export function WorksheetRoyalHolidayPage({ clientId, shared }) {
     form.nacionalidad,
     form.plazo_meses,
     form.costo_administrativo_usd,
+    captureCurrency,
+    currencyMeta,
+    moneda.ctx,
   ]);
+
+  const operationalForm = useMemo(
+    () => rhFormToOperational(form, captureCurrency, currencyMeta, moneda.ctx),
+    [form, captureCurrency, currencyMeta, moneda.ctx],
+  );
 
   const posicionesDisponibles = useMemo(() => {
     const fromCat = new Set((catalogo?.comisiones || []).map((c) => String(c.posicion).toLowerCase()));
@@ -153,14 +178,45 @@ export function WorksheetRoyalHolidayPage({ clientId, shared }) {
   }, [catalogo]);
 
   const creditMatrix = useMemo(() => buildCreditMatrix(catalogo?.bottom_line), [catalogo]);
-  const ws = useMemo(() => buildRhWorksheetState(catalogo, preview, form), [catalogo, preview, form]);
+  const ws = useMemo(
+    () => buildRhWorksheetState(catalogo, preview, operationalForm),
+    [catalogo, preview, operationalForm],
+  );
   const set = (key, value) => setForm((f) => ({ ...f, [key]: value }));
+
+  const handleMoneyBlur = (key, formattedValue) => {
+    set(key, formattedValue);
+    recordMoneyCapture(key, formattedValue);
+  };
+
+  const handleValoresBlur = (index, formattedValue) => {
+    setForm((f) => {
+      const next = [...f.valores];
+      next[index] = formattedValue;
+      return { ...f, valores: next, valor: index === 0 ? formattedValue : f.valor };
+    });
+    recordMoneyCapture(`valores_${index}`, formattedValue);
+    if (index === 0) recordMoneyCapture("valor", formattedValue);
+  };
+
+  const handleCaptureCurrencyChange = (next) => {
+    const { form: converted, meta } = switchRhFormCaptureCurrency(
+      form,
+      captureCurrency,
+      next,
+      moneda.ctx,
+      moneda.language,
+    );
+    setForm(converted);
+    applyCaptureCurrency(next, meta);
+  };
 
   const bl = ws.bottom_line;
   const boardOnline = ws.board_online;
-  const monto = montoVentaWorksheet(form);
+  const montoCapture = montoVentaWorksheet(form);
+  const montoOperational = rhMontoVentaOperational(form, captureCurrency, currencyMeta, moneda.ctx);
   const blMonto = Number(bl?.precio_minimo_con_iva || boardOnline || 0);
-  const blDifer = monto && blMonto ? monto - blMonto : null;
+  const blDifer = montoOperational && blMonto ? montoOperational - blMonto : null;
   const boardOk = ws.precio_ok;
   const regalosLista = ws.regalos;
   const maxDp = catalogo?.parametros?.max_extra_dp ?? 6;
@@ -195,7 +251,7 @@ export function WorksheetRoyalHolidayPage({ clientId, shared }) {
         workspace_id: workspaceId,
         prospect_id: clientId || null,
         holiday_credits: form.holiday_credits,
-        monto_venta: form.monto_venta || form.valor || form.valores.find(Boolean),
+        monto_venta: rhMontoVentaOperational(form, captureCurrency, currencyMeta, moneda.ctx) || undefined,
         enganche_pct: form.enganche_pct,
         posicion: form.posicion,
         nacionalidad: form.nacionalidad,
@@ -263,6 +319,14 @@ export function WorksheetRoyalHolidayPage({ clientId, shared }) {
         {!empresaId && (
           <p className="muted">Activa un workspace de sala Royal Holiday para cargar el catálogo.</p>
         )}
+
+        <fieldset className="shared-tool-fieldset" disabled={readOnly}>
+        <SelectorMoneda
+          value={captureCurrency}
+          onChange={handleCaptureCurrencyChange}
+          disabled={readOnly}
+          className="tool-moneda-selector"
+        />
 
         {(tab === "resumen" || tab === "prevlo") && (
           <div className="card tool-calc-card">
@@ -337,15 +401,17 @@ export function WorksheetRoyalHolidayPage({ clientId, shared }) {
               <div className="card tool-calc-card">
                 <div className="card-heading">Bottom Line</div>
                 <div className="rh-bl-box">
-                  <div className="rh-bl-main">BL = <strong>{fmtNum(boardOnline ?? bl?.precio_minimo_con_iva)}</strong>
+                  <div className="rh-bl-main">BL = <strong>{fmtResult(boardOnline ?? bl?.precio_minimo_con_iva ?? 0)}</strong>
                     {boardOk === true && <CheckCircle2 size={16} className="rh-ok" />}
                     {boardOk === false && <AlertTriangle size={16} className="rh-warn" />}
                   </div>
                   <ul className="rh-bl-list">
-                    <li>Monto = <strong>{fmtNum(monto || null)}</strong></li>
-                    <li>Difer = <strong className={blDifer != null && blDifer < 0 ? "rh-warn-text" : ""}>{fmtNum(blDifer)}</strong></li>
+                    <li>Monto = <strong>{montoCapture ? moneda.fmtCaptureResult(montoCapture) : "—"}</strong></li>
+                    <li>Difer = <strong className={blDifer != null && blDifer < 0 ? "rh-warn-text" : ""}>
+                      {blDifer != null ? fmtResult(blDifer) : "—"}
+                    </strong></li>
                     {bl?.precio_minimo_sin_iva != null && (
-                      <li>BL sin IVA = <strong>{fmtNum(bl.precio_minimo_sin_iva)}</strong></li>
+                      <li>BL sin IVA = <strong>{fmtResult(bl.precio_minimo_sin_iva)}</strong></li>
                     )}
                   </ul>
                 </div>
@@ -353,7 +419,7 @@ export function WorksheetRoyalHolidayPage({ clientId, shared }) {
                   <p className="rh-warn-text rh-hint">{ws.comision.mensaje}</p>
                 ) : ws.comision ? (
                   <p className="muted rh-hint">
-                    Comisión {ws.comision.porcentaje}% → {fmtNum(ws.comision.monto)} · pago {ws.comision.fecha_pago}
+                    Comisión {ws.comision.porcentaje}% → {fmtResult(ws.comision.monto)} · pago {ws.comision.fecha_pago}
                     {!ws.comision_enganche_exacto && ws.comision_enganche_tier != null
                       ? ` (tier enganche ${ws.comision_enganche_tier}%)`
                       : ""}
@@ -404,18 +470,17 @@ export function WorksheetRoyalHolidayPage({ clientId, shared }) {
                 <div className="tool-calc-fields">
                   {form.valores.map((v, i) => (
                     <div className="frow tool-frow" key={i}>
-                      <div className="flabel">$</div>
-                      <input
-                        className="input tool-num-input"
-                        type="number"
-                        disabled={readOnly}
+                      <div className="flabel">{i + 1}</div>
+                      <CampoMonedaCaptura
+                        currency={captureCurrency}
                         value={v}
-                        onChange={(e) => {
+                        readOnly={readOnly}
+                        onChange={(value) => {
                           const next = [...form.valores];
-                          next[i] = e.target.value;
-                          set("valores", next);
-                          if (i === 0) set("valor", e.target.value);
+                          next[i] = value;
+                          setForm((f) => ({ ...f, valores: next, valor: i === 0 ? value : f.valor }));
                         }}
+                        onBlurCapture={() => handleValoresBlur(i, moneda.formatCapture(form.valores[i]))}
                       />
                     </div>
                   ))}
@@ -497,10 +562,13 @@ export function WorksheetRoyalHolidayPage({ clientId, shared }) {
             worksheetState={ws}
             catalogo={catalogo}
             readOnly={readOnly}
-            fmtNum={fmtNum}
+            captureCurrency={captureCurrency}
+            moneda={moneda}
+            onMoneyBlur={handleMoneyBlur}
             stacked={tab === "worksheet"}
           />
         )}
+        </fieldset>
 
         {!readOnly && tab !== "resumen" && tab !== "prevlo" && (
           <div className="save-footer tool-save-footer">

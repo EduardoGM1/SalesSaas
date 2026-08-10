@@ -9573,6 +9573,9 @@ body,
   flex-wrap: wrap;
 }
 .rh-fin-hoy-row .tool-num-input { max-width: 160px; }
+.rh-fin-hoy-row .rh-fin-hoy-mfield { max-width: 180px; flex: 1; min-width: 140px; }
+.rh-fin-pagos-table .rh-fin-pago-mfield { min-width: 120px; }
+.rh-card-check .rh-card-mfield { flex: 1; min-width: 100px; }
 .rh-fin-pct-badge {
   font-size: 13px;
   font-weight: 700;
@@ -9768,7 +9771,8 @@ body,
     grid-column: 2;
   }
 
-  .worksheet-rh .rh-card-check .tool-num-input {
+  .worksheet-rh .rh-card-check .tool-num-input,
+  .worksheet-rh .rh-card-check .rh-card-mfield {
     grid-column: 1 / -1;
     width: 100% !important;
     min-height: 44px;
