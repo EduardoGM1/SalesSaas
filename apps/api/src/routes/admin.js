@@ -989,6 +989,17 @@ router.get("/flags", async (req, res) => {
   await runService(res, () => flagsService.listFlagsTree(a.supabase, a.profile), { wrap: "data" });
 });
 
+/** Resumen read-only: empresas con configuración distinta al interruptor general. */
+router.get("/flags/:id/empresas-resumen", async (req, res) => {
+  const a = await requireSuperAdminApi(req, res);
+  if (!a) return;
+  await runService(
+    res,
+    () => flagsService.getFlagEmpresasResumen(a.profile, req.params.id),
+    { wrap: "data" },
+  );
+});
+
 router.patch("/flags/:id", async (req, res) => {
   const a = await requireSuperAdminApi(req, res);
   if (!a) return;

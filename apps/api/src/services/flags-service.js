@@ -122,10 +122,17 @@ export async function listFlagsTree(supabase, adminProfile) {
     .select("id, flag_id, alcance, alcance_id, activo, created_at");
   if (rErr) throw new ServiceError(rErr.message, 500);
 
+  const empresasDistintasByFlag = await countEmpresasConfigDistinta(adminProfile);
+
   const byParent = new Map();
   const roots = [];
   for (const f of flags ?? []) {
-    const node = { ...f, children: [], rules: (rules ?? []).filter((r) => r.flag_id === f.id) };
+    const node = {
+      ...f,
+      children: [],
+      rules: (rules ?? []).filter((r) => r.flag_id === f.id),
+      empresas_distintas: empresasDistintasByFlag.get(f.id) ?? 0,
+    };
     byParent.set(f.id, node);
   }
   for (const f of flags ?? []) {
@@ -137,6 +144,48 @@ export async function listFlagsTree(supabase, adminProfile) {
     }
   }
   return roots;
+}
+
+/**
+ * Empresas con al menos un paquete donde este módulo difiere del interruptor general.
+ * Solo lectura; no altera resolución de flags.
+ */
+export async function countEmpresasConfigDistinta(adminProfile) {
+  if (!isSuperAdmin(adminProfile) && adminProfile?.role !== "admin") {
+    throw new ServiceError("No autorizado.", 403);
+  }
+  const admin = createServiceSupabaseClient();
+  if (!admin) throw new ServiceError("Service role no configurado.", 500);
+
+  const { data: rows, error } = await admin
+    .from("paquete_flags")
+    .select("flag_id, activo, paquetes_acceso!inner(empresa_id), flags!inner(default_global)")
+    .not("paquetes_acceso.empresa_id", "is", null);
+  if (error) throw new ServiceError(error.message, 500);
+
+  const counts = new Map();
+  for (const row of rows ?? []) {
+    const flagId = row.flag_id;
+    const defaultGlobal = row.flags?.default_global === true;
+    const activo = row.activo === true;
+    if (activo === defaultGlobal) continue;
+    const empresaId = row.paquetes_acceso?.empresa_id;
+    if (!empresaId) continue;
+    if (!counts.has(flagId)) counts.set(flagId, new Set());
+    counts.get(flagId).add(empresaId);
+  }
+
+  const result = new Map();
+  for (const [flagId, set] of counts) {
+    result.set(flagId, set.size);
+  }
+  return result;
+}
+
+export async function getFlagEmpresasResumen(adminProfile, flagId) {
+  if (!isSuperAdmin(adminProfile)) throw new ServiceError("Solo Superadmin.", 403);
+  const all = await countEmpresasConfigDistinta(adminProfile);
+  return { flag_id: flagId, empresas_distintas: all.get(flagId) ?? 0 };
 }
 
 export async function updateFlagDefault(_supabase, adminProfile, flagId, defaultGlobal) {
