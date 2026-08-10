@@ -31,6 +31,7 @@ import {
   rhMontoVentaOperational,
   switchRhFormCaptureCurrency,
 } from "@/lib/currency/rh-form-currency.js";
+import { resolveOperationalAmount } from "@/lib/currency/moneda-service";
 
 const TABS = [
   { id: "financiamiento", label: "Datos Financiamiento" },
@@ -154,6 +155,9 @@ export function WorksheetRoyalHolidayPage({ clientId, shared }) {
   useEffect(() => {
     if (!empresaId) return;
     const operationalMonto = rhMontoVentaOperational(form, captureCurrency, currencyMeta, moneda.ctx);
+    const balanceAnterior = String(form.monto_pendiente ?? "").trim() !== ""
+      ? resolveOperationalAmount(form.monto_pendiente, currencyMeta?.monto_pendiente, captureCurrency, moneda.ctx)
+      : 0;
     const tmr = setTimeout(async () => {
       try {
         const p = await royalHolidayApi.preview(empresaId, {
@@ -164,6 +168,7 @@ export function WorksheetRoyalHolidayPage({ clientId, shared }) {
           nacionalidad: form.nacionalidad,
           plazo_meses: form.plazo_meses || undefined,
           costo_administrativo_usd: form.costo_administrativo_usd || undefined,
+          balance_anterior: balanceAnterior || undefined,
         });
         setPreview(p);
         if (!form.costo_administrativo_usd && p.costo_administrativo_usd != null) {
@@ -186,6 +191,7 @@ export function WorksheetRoyalHolidayPage({ clientId, shared }) {
     form.nacionalidad,
     form.plazo_meses,
     form.costo_administrativo_usd,
+    form.monto_pendiente,
     captureCurrency,
     currencyMeta,
     moneda.ctx,

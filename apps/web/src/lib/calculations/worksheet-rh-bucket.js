@@ -9,6 +9,7 @@ export const DEFAULT_RH_FORM = {
   enganche_pct: "25",
   enganche_hoy: "",
   gasto_adm_hoy: "",
+  monto_pendiente: "",
   nacionalidad: "mexicano",
   plazo_meses: "",
   costo_administrativo_usd: "",

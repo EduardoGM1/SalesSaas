@@ -33,6 +33,7 @@ export function buildRhWorksheetState(catalogo, preview, form) {
     montoVenta: monto,
     enganchePct: eng,
     costoAdmin: costoAdminUsd,
+    balanceAnterior: Number(form.monto_pendiente) || 0,
   });
 
   const finTier = preview?.plazos?.length

@@ -12,6 +12,7 @@ import {
 export const RH_WORKSHEET_MONEY_FIELDS = [
   "monto_venta",
   "valor",
+  "monto_pendiente",
   "enganche_hoy",
   "gasto_adm_hoy",
   "tarjeta_inmex",
