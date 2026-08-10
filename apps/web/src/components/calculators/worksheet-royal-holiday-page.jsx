@@ -13,6 +13,7 @@ import {
   toDateStr,
   fechaLimiteExtraDp,
 } from "@/lib/calculations/royal-holiday.js";
+import { WorksheetRhFinancingPanel } from "@/components/calculators/worksheet-rh-financing-panel.jsx";
 
 const TABS = [
   { id: "financiamiento", label: "Datos Financiamiento" },
@@ -32,73 +33,6 @@ function fmtNum(v) {
   return Number.isFinite(n) ? n.toLocaleString("es-MX", { maximumFractionDigits: 2 }) : String(v);
 }
 
-function ExtraTable({ title, rows, onChange, max, onAdd, readOnly }) {
-  return (
-    <div className="rh-extra-table">
-      <div className="rh-extra-table-head">
-        <span className="flabel">{title}</span>
-        {!readOnly && (
-          <button type="button" className="btn btn-ghost btn-sm" disabled={rows.length >= max} onClick={onAdd}>
-            + Extra
-          </button>
-        )}
-      </div>
-      <table className="client-table rh-mini-table">
-        <thead>
-          <tr>
-            <th>% Extra</th>
-            <th>Fecha</th>
-            <th />
-          </tr>
-        </thead>
-        <tbody>
-          {rows.length === 0 && (
-            <tr><td colSpan={3} className="muted">Sin extras</td></tr>
-          )}
-          {rows.map((row, idx) => (
-            <tr key={idx}>
-              <td>
-                <input
-                  type="number"
-                  className="input input-compact"
-                  disabled={readOnly}
-                  value={row.porcentaje}
-                  onChange={(e) => {
-                    const next = [...rows];
-                    next[idx] = { ...next[idx], porcentaje: e.target.value };
-                    onChange(next);
-                  }}
-                />
-              </td>
-              <td>
-                <input
-                  type="date"
-                  className="input input-compact"
-                  disabled={readOnly}
-                  value={row.fecha}
-                  onChange={(e) => {
-                    const next = [...rows];
-                    next[idx] = { ...next[idx], fecha: e.target.value };
-                    onChange(next);
-                  }}
-                />
-              </td>
-              <td>
-                {!readOnly && (
-                  <button type="button" className="btn btn-ghost btn-sm" onClick={() => onChange(rows.filter((_, i) => i !== idx))}>
-                    ×
-                  </button>
-                )}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      <p className="muted rh-hint">Máximo {max} (catálogo).</p>
-    </div>
-  );
-}
-
 /** Agrupa bottom_line en matriz 3×3 (N.1–N.3 × Alta/Media/Baja) por HC. */
 function buildCreditMatrix(bottomLine) {
   const sorted = [...(bottomLine || [])].sort((a, b) => Number(a.holiday_credits) - Number(b.holiday_credits));
@@ -115,7 +49,7 @@ export function WorksheetRoyalHolidayPage({ clientId, shared }) {
   const { t } = useI18n();
   const session = useToolSession({ clientId, shared, section: "worksheet" });
   const { ready, backHref, readOnly } = session;
-  const [tab, setTab] = useState("venta");
+  const [tab, setTab] = useState("financiamiento");
   const [empresaId, setEmpresaId] = useState(null);
   const [workspaceId, setWorkspaceId] = useState(null);
   const [catalogo, setCatalogo] = useState(null);
@@ -137,6 +71,10 @@ export function WorksheetRoyalHolidayPage({ clientId, shared }) {
     regalosElegidos: {},
     extrasDp: [],
     extrasCc: [],
+    enganche_num_pagos: "3",
+    enganche_pagos: [],
+    gasto_num_pagos: "2",
+    gasto_pagos: [],
     opc: "",
     liner: "",
     closer1: "",
@@ -221,9 +159,6 @@ export function WorksheetRoyalHolidayPage({ clientId, shared }) {
   const blDifer = monto && blMonto ? monto - blMonto : null;
   const boardOk = preview?.precio_ok;
   const maxDp = catalogo?.parametros?.max_extra_dp ?? 6;
-  const maxCc = catalogo?.parametros?.max_extra_cc ?? 6;
-  const adminOptions = (catalogo?.costo_administrativo || []).map((c) => c.monto_usd);
-  const tarjetas = catalogo?.parametros?.tarjetas_internas || ["Invex", "RCI"];
   const fechaVentaRef = toDateStr(new Date());
   const extraDpLimite = fechaLimiteExtraDp(fechaVentaRef);
 
@@ -271,6 +206,16 @@ export function WorksheetRoyalHolidayPage({ clientId, shared }) {
           tarjetas: {
             inmex: form.tarjeta_inmex_on ? form.tarjeta_inmex : null,
             rci: form.tarjeta_rci_on ? form.tarjeta_rci : null,
+          },
+          enganche_plan: {
+            hoy: form.enganche_hoy,
+            num_pagos: form.enganche_num_pagos,
+            pagos: form.enganche_pagos,
+          },
+          gasto_plan: {
+            hoy: form.gasto_adm_hoy,
+            num_pagos: form.gasto_num_pagos,
+            pagos: form.gasto_pagos,
           },
         },
       });
@@ -524,179 +469,16 @@ export function WorksheetRoyalHolidayPage({ clientId, shared }) {
         )}
 
         {showFin && (
-          <section className={`worksheet-rh-fin${tab === "worksheet" ? " worksheet-rh-fin--stacked" : ""}`}>
-            <div className="worksheet-rh-fin-grid">
-              <div className="card tool-calc-card">
-                <div className="card-heading">Monto venta</div>
-                <div className="tool-calc-fields">
-                  <div className="frow tool-frow">
-                    <div className="flabel">Monto venta</div>
-                    <input className="input tool-num-input" type="number" disabled={readOnly}
-                      value={form.monto_venta} onChange={(e) => set("monto_venta", e.target.value)} />
-                  </div>
-                  <div className="frow tool-frow">
-                    <div className="flabel">Enganche %</div>
-                    <div className="frow-inline">
-                      <input className="input tool-num-input" type="number" disabled={readOnly}
-                        value={form.enganche_pct} onChange={(e) => set("enganche_pct", e.target.value)} />
-                      <span className="frow-suffix">%</span>
-                    </div>
-                  </div>
-                  <div className="frow tool-frow">
-                    <div className="flabel">Hoy =</div>
-                    <input className="input tool-num-input" type="number" disabled={readOnly}
-                      value={form.enganche_hoy} onChange={(e) => set("enganche_hoy", e.target.value)}
-                      placeholder={preview?.totales?.enganche != null ? String(preview.totales.enganche) : ""} />
-                  </div>
-                </div>
-                <ExtraTable
-                  title="(+) Extra DP"
-                  rows={form.extrasDp}
-                  max={maxDp}
-                  readOnly={readOnly}
-                  onChange={(rows) => set("extrasDp", rows)}
-                  onAdd={() => set("extrasDp", [...form.extrasDp, { porcentaje: "10", fecha: new Date().toISOString().slice(0, 10) }])}
-                />
-                <p className="muted rh-hint">
-                  Extra DP: máximo {maxDp} y fecha dentro de {RH_EXTRA_DP_PLAZO_DIAS} días desde la venta
-                  {extraDpLimite ? ` (hasta ${toDateStr(extraDpLimite)})` : ""}. Pasado ese plazo sin cobrar, no aplica diferencial de comisión.
-                </p>
-                <div className="tool-calc-fields" style={{ marginTop: 12 }}>
-                  <div className="frow tool-frow">
-                    <div className="flabel">Gasto Adm.</div>
-                    <select className="input" disabled={readOnly} value={form.costo_administrativo_usd}
-                      onChange={(e) => set("costo_administrativo_usd", e.target.value)}>
-                      {adminOptions.length === 0 && <option value="">—</option>}
-                      {adminOptions.map((m) => (
-                        <option key={m} value={m}>{m} USD</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="frow tool-frow">
-                    <div className="flabel">Hoy =</div>
-                    <input className="input tool-num-input" type="number" disabled={readOnly}
-                      value={form.gasto_adm_hoy} onChange={(e) => set("gasto_adm_hoy", e.target.value)} />
-                  </div>
-                </div>
-                <ExtraTable
-                  title="(+) Extra CC"
-                  rows={form.extrasCc}
-                  max={maxCc}
-                  readOnly={readOnly}
-                  onChange={(rows) => set("extrasCc", rows)}
-                  onAdd={() => set("extrasCc", [...form.extrasCc, { porcentaje: "10", fecha: new Date().toISOString().slice(0, 10) }])}
-                />
-                <div className="g2 survey-result-pair" style={{ marginTop: 14 }}>
-                  <div className="vbox blue">
-                    <div className="vbox-val">{fmtNum(preview?.totales?.enganche)}</div>
-                    <div className="vbox-label">Enganche</div>
-                  </div>
-                  <div className="vbox green">
-                    <div className="vbox-val">{fmtNum(preview?.totales?.engancheMasAdmin)}</div>
-                    <div className="vbox-label">Enganche + Gast</div>
-                  </div>
-                  <div className="vbox yellow span2">
-                    <div className="vbox-val">{fmtNum(preview?.totales?.balanceAFinanciar)}</div>
-                    <div className="vbox-label">Balance</div>
-                  </div>
-                </div>
-                <p className="muted rh-hint">Costo admin: 750 USD (enganche ≥15%), 950 USD (enganche ≥27.5%).</p>
-              </div>
-
-              <div className="worksheet-rh-fin-right">
-                <div className="card tool-calc-card">
-                  <div className="card-heading">Financiamiento = {form.nacionalidad === "mexicano" ? "MEX" : form.nacionalidad === "argentino" ? "ARG" : "RESTO"}</div>
-                  <div className="frow tool-frow">
-                    <div className="flabel">Nacionalidad</div>
-                    <select className="input" disabled={readOnly} value={form.nacionalidad}
-                      onChange={(e) => set("nacionalidad", e.target.value)}>
-                      <option value="mexicano">Mexicano</option>
-                      <option value="argentino">Argentino</option>
-                      <option value="resto">Resto del mundo</option>
-                    </select>
-                  </div>
-                  <div className="rh-plazo-grid">
-                    {(preview?.plazos || []).map((p) => (
-                      <label key={p.plazo_meses} className={`rh-plazo-item${String(form.plazo_meses) === String(p.plazo_meses) ? " selected" : ""}`}>
-                        <input
-                          type="radio"
-                          name="plazo-rh"
-                          disabled={readOnly}
-                          checked={String(form.plazo_meses) === String(p.plazo_meses)}
-                          onChange={() => set("plazo_meses", String(p.plazo_meses))}
-                        />
-                        <span>{p.plazo_meses} meses</span>
-                      </label>
-                    ))}
-                    {!preview?.plazos?.length && <span className="muted">Sin plazos para esta combinación.</span>}
-                  </div>
-                  <div className="tool-calc-fields" style={{ marginTop: 12 }}>
-                    <div className="frow tool-frow">
-                      <div className="flabel">Selección</div>
-                      <div className="vbox-val rh-readonly">{form.plazo_meses ? `${form.plazo_meses} m` : "—"}</div>
-                    </div>
-                    <div className="frow tool-frow">
-                      <div className="flabel">Enganche</div>
-                      <div className="vbox-val rh-readonly">{fmtNum(preview?.totales?.enganche)}</div>
-                    </div>
-                    {preview?.mensualidad != null && (
-                      <div className="frow tool-frow">
-                        <div className="flabel">Mensualidad</div>
-                        <div className="vbox-val rh-readonly">{fmtNum(preview.mensualidad)}</div>
-                      </div>
-                    )}
-                  </div>
-                  {preview?.comision?.pendiente ? (
-                    <p className="rh-warn-text">{preview.comision.mensaje}</p>
-                  ) : preview?.comision ? (
-                    <p className="muted rh-hint">
-                      Comisión {preview.comision.porcentaje}% → {fmtNum(preview.comision.monto)} · pago {preview.comision.fecha_pago}
-                    </p>
-                  ) : null}
-                </div>
-
-                <div className="card tool-calc-card">
-                  <div className="card-heading">Tarjetas para financiamiento</div>
-                  <div className="tool-calc-fields">
-                    <label className="rh-card-check">
-                      <input
-                        type="checkbox"
-                        disabled={readOnly}
-                        checked={form.tarjeta_inmex_on}
-                        onChange={(e) => set("tarjeta_inmex_on", e.target.checked)}
-                      />
-                      <span>{tarjetas[0] || "INMEX"}</span>
-                      <input
-                        className="input tool-num-input"
-                        type="number"
-                        disabled={readOnly || !form.tarjeta_inmex_on}
-                        value={form.tarjeta_inmex}
-                        onChange={(e) => set("tarjeta_inmex", e.target.value)}
-                        placeholder="Monto"
-                      />
-                    </label>
-                    <label className="rh-card-check">
-                      <input
-                        type="checkbox"
-                        disabled={readOnly}
-                        checked={form.tarjeta_rci_on}
-                        onChange={(e) => set("tarjeta_rci_on", e.target.checked)}
-                      />
-                      <span>{tarjetas[1] || "RCI"}</span>
-                      <input
-                        className="input tool-num-input"
-                        type="number"
-                        disabled={readOnly || !form.tarjeta_rci_on}
-                        value={form.tarjeta_rci}
-                        onChange={(e) => set("tarjeta_rci", e.target.value)}
-                        placeholder="Monto"
-                      />
-                    </label>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </section>
+          <WorksheetRhFinancingPanel
+            form={form}
+            set={set}
+            setForm={setForm}
+            preview={preview}
+            catalogo={catalogo}
+            readOnly={readOnly}
+            fmtNum={fmtNum}
+            stacked={tab === "worksheet"}
+          />
         )}
 
         {!readOnly && tab !== "resumen" && tab !== "prevlo" && (

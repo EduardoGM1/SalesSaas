@@ -9457,7 +9457,15 @@ body,
 .schema-form .input { width: 100%; }
 
 /* ===== Worksheet Royal Holiday ===== */
-.worksheet-rh-tabs { margin: 8px 0 16px; flex-wrap: wrap; gap: 6px; }
+.worksheet-rh-tabs {
+  margin: 8px 0 16px;
+  flex-wrap: nowrap;
+  gap: 4px;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
 .worksheet-rh .rh-hint { font-size: 12px; margin: 8px 0 0; }
 .worksheet-rh .rh-readonly { font-weight: 700; font-size: 15px; }
 .worksheet-rh-row3 {
@@ -9538,6 +9546,106 @@ body,
   align-items: center;
   margin-bottom: 8px;
 }
+/* Financiamiento RH — bloques colapsables y tarjetas de plazo */
+.rh-fin-tc-hint { font-size: 13px; margin: 0 0 12px; }
+.rh-fin-left .rh-fin-block-collapsible,
+.rh-fin-left .rh-fin-nested-collapsible {
+  margin-top: 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.rh-fin-block-collapsible .collapsible-section-head,
+.rh-fin-nested-collapsible .collapsible-section-head {
+  padding: 10px 12px;
+  background: color-mix(in srgb, var(--muted2, #64748b) 6%, transparent);
+}
+.rh-fin-block-collapsible .collapsible-section-title,
+.rh-fin-nested-collapsible .collapsible-section-title {
+  font-size: 14px;
+  font-weight: 700;
+}
+.rh-fin-block-inner { padding: 12px; display: grid; gap: 12px; }
+.rh-fin-hoy-row .rh-fin-hoy-inputs {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.rh-fin-hoy-row .tool-num-input { max-width: 160px; }
+.rh-fin-pct-badge {
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.rh-fin-pct-badge--blue { color: var(--blue, #1e5eff); }
+.rh-fin-pct-badge--green { color: #16a34a; }
+.rh-fin-hoy-hint { margin: 4px 0 0; }
+.rh-fin-saldo {
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: color-mix(in srgb, var(--blue, #1e5eff) 6%, transparent);
+}
+.rh-fin-saldo--green {
+  background: color-mix(in srgb, #16a34a 8%, transparent);
+}
+.rh-fin-saldo-label { font-size: 12px; color: var(--muted); font-weight: 600; }
+.rh-fin-saldo-val {
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1.2;
+  margin: 4px 0;
+}
+.rh-fin-saldo--blue .rh-fin-saldo-val { color: var(--blue, #1e5eff); }
+.rh-fin-saldo--green .rh-fin-saldo-val { color: #16a34a; }
+.rh-fin-saldo-pct { font-size: 12px; font-weight: 600; color: var(--muted); }
+.rh-fin-pagos-table-wrap { margin-top: 4px; }
+.rh-fin-pagos-table { width: 100%; font-size: 13px; }
+.rh-fin-pago-num { width: 28px; font-weight: 700; color: var(--muted); }
+.rh-fin-extra-add { margin-top: 8px; }
+.rh-fin-gasto-select { margin-bottom: 0; }
+.rh-fin-totales { margin-top: 14px; }
+.rh-fin-options-banner {
+  margin: 10px 0 12px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  line-height: 1.45;
+  background: color-mix(in srgb, var(--blue, #1e5eff) 10%, transparent);
+  color: var(--text);
+}
+.rh-fin-plazo-list { display: grid; gap: 8px; }
+.rh-fin-plazo-card {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 10px;
+  align-items: center;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+.rh-fin-plazo-card.is-selected {
+  border-color: var(--blue, #1e5eff);
+  background: color-mix(in srgb, var(--blue, #1e5eff) 8%, transparent);
+}
+.rh-fin-plazo-check {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--blue, #1e5eff);
+  cursor: pointer;
+}
+.rh-fin-plazo-title { font-size: 14px; font-weight: 700; }
+.rh-fin-plazo-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.rh-fin-plazo-monthly {
+  font-size: 14px;
+  font-weight: 700;
+  color: #16a34a;
+  white-space: nowrap;
+  text-align: right;
+}
+.rh-fin-plazo-monthly-suffix { font-size: 12px; font-weight: 500; color: var(--muted); }
 .rh-tools-section { margin-top: 8px; }
 .rh-tools-section-title {
   font-size: 13px;
@@ -9559,4 +9667,127 @@ body,
     grid-template-columns: 1fr;
   }
   .rh-plazo-grid { grid-template-columns: 1fr; }
+  .rh-fin-plazo-card {
+    grid-template-columns: auto 1fr;
+    grid-template-rows: auto auto;
+  }
+  .rh-fin-plazo-monthly {
+    grid-column: 2;
+    text-align: left;
+    margin-top: 4px;
+  }
+}
+
+@media (max-width: 768px) {
+  .worksheet-rh-tabs .admin-subnav-item {
+    min-height: 44px;
+    padding-inline: 12px;
+    font-size: 11px;
+  }
+
+  .worksheet-rh .rh-fin-block-collapsible .collapsible-section-head,
+  .worksheet-rh .rh-fin-nested-collapsible .collapsible-section-head {
+    min-height: 44px;
+    align-items: center;
+  }
+
+  .worksheet-rh .rh-fin-block-inner {
+    padding: 10px;
+    gap: 10px;
+  }
+
+  .worksheet-rh .rh-fin-hoy-row .rh-fin-hoy-inputs {
+    flex: 1;
+    justify-content: flex-end;
+  }
+
+  .worksheet-rh .rh-fin-hoy-row .tool-num-input {
+    width: 110px !important;
+    max-width: none;
+    min-height: 44px;
+    font-size: 16px;
+  }
+
+  .worksheet-rh .rh-fin-left > .tool-calc-fields .tool-frow .tool-num-input,
+  .worksheet-rh .rh-fin-left > .tool-calc-fields .tool-frow .input {
+    width: 120px !important;
+    max-width: 45vw;
+    min-height: 44px;
+    font-size: 16px;
+  }
+
+  .worksheet-rh .rh-fin-pagos-table-wrap {
+    margin-inline: -4px;
+  }
+
+  .worksheet-rh .rh-fin-pagos-table {
+    min-width: 320px;
+  }
+
+  .worksheet-rh .rh-fin-pagos-table .input-compact {
+    min-width: 96px;
+    min-height: 44px;
+    font-size: 16px;
+  }
+
+  .worksheet-rh .rh-fin-saldo-val {
+    font-size: 20px;
+  }
+
+  .worksheet-rh .rh-fin-plazo-card {
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-rows: auto auto;
+    gap: 8px;
+    padding: 12px;
+    min-height: 44px;
+  }
+
+  .worksheet-rh .rh-fin-plazo-check {
+    width: 22px;
+    height: 22px;
+  }
+
+  .worksheet-rh .rh-fin-plazo-monthly {
+    grid-column: 1 / -1;
+    text-align: left;
+    margin-top: 0;
+    padding-left: 30px;
+  }
+
+  .worksheet-rh .rh-card-check {
+    grid-template-columns: auto 1fr;
+    grid-template-rows: auto auto;
+    gap: 8px;
+  }
+
+  .worksheet-rh .rh-card-check span {
+    grid-column: 2;
+  }
+
+  .worksheet-rh .rh-card-check .tool-num-input {
+    grid-column: 1 / -1;
+    width: 100% !important;
+    min-height: 44px;
+    font-size: 16px;
+  }
+
+  .worksheet-rh .rh-fin-totales.survey-result-pair .span2 {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 480px) {
+  .worksheet-rh .rh-fin-hoy-row {
+    flex-wrap: wrap;
+  }
+
+  .worksheet-rh .rh-fin-hoy-row .rh-fin-hoy-inputs {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .worksheet-rh .rh-fin-hoy-row .tool-num-input {
+    flex: 1;
+    width: auto !important;
+  }
 }
