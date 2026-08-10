@@ -14,6 +14,7 @@ import { AdminOverflowMenu } from "@/components/admin/admin-overflow-menu.jsx";
 import { BuscadorUsuario } from "@/components/admin/buscador-usuario.jsx";
 import { AdminSidePanel } from "@/components/admin/admin-side-panel.jsx";
 import { ModuleChecklist } from "@/components/admin/module-checklist.jsx";
+import { RoleEditorModal } from "@/components/admin/role-editor-modal.jsx";
 import { PermissionMatrix } from "@/components/admin/permission-matrix.jsx";
 import { useAdminFetch } from "@/hooks/use-admin-session.js";
 import { adminJson } from "@/lib/admin/api.js";
@@ -102,6 +103,7 @@ export function TenantCompanyAdministration({
   const [adminForm, setAdminForm] = useState({ usuario: null, role_id: "" });
   const [roleForm, setRoleForm] = useState({ nombre: "", scope: "workspace", flag_keys: [] });
   const [editingRole, setEditingRole] = useState(null);
+  const [editRoleForm, setEditRoleForm] = useState({ nombre: "", flag_keys: [] });
   const [packageForm, setPackageForm] = useState({ nombre: "", descripcion: "", flag_keys: [] });
   const [moduleForm, setModuleForm] = useState(EMPTY_MODULE_FORM);
   const [memberForm, setMemberForm] = useState({ workspace_id: "", usuario: null, role_id: "" });
@@ -256,6 +258,35 @@ export function TenantCompanyAdministration({
     } finally {
       setPending(false);
     }
+  };
+
+  const closeRoleEditor = () => {
+    setEditingRole(null);
+  };
+
+  const openRoleEditor = (role) => {
+    setEditingRole(role);
+    setEditRoleForm({
+      nombre: role.nombre,
+      flag_keys: Array.isArray(role.flag_keys) ? role.flag_keys : [],
+    });
+  };
+
+  const saveEditingRole = () => {
+    if (!editingRole) return;
+    void mutate(async () => {
+      const baseline = new Set(editingRole.flag_keys || []);
+      const current = new Set(editRoleForm.flag_keys || []);
+      const modulesChanged = baseline.size !== current.size
+        || [...current].some((key) => !baseline.has(key));
+      const body = { nombre: editRoleForm.nombre };
+      if (modulesChanged) body.flag_keys = editRoleForm.flag_keys;
+      await adminJson(`tenant/empresas/${companyId}/roles/${editingRole.id}`, {
+        method: "PATCH",
+        body,
+      });
+      closeRoleEditor();
+    }, "Puesto actualizado");
   };
 
   const loadAccesoCruzado = async (gerenteId) => {
@@ -548,38 +579,22 @@ export function TenantCompanyAdministration({
         {tab === "roles" ? (
           <div className="admin-company-layout">
             <AdminCard
-              title={editingRole ? `Editar: ${editingRole.slug}` : "Crear puesto"}
-              subtitle="El puesto controla qué módulos ve el usuario. Los puestos de sistema se pueden renombrar y ajustar módulos, pero no eliminar."
+              title="Crear puesto"
+              subtitle="El puesto controla qué módulos ve el usuario. Para editar un puesto existente, usa el menú de acciones en su tarjeta."
             >
               <form className="admin-inline-form" onSubmit={(event) => {
                 event.preventDefault();
                 void mutate(async () => {
-                  if (editingRole) {
-                    // PATCH parcial: solo nombre si los módulos no cambiaron.
-                    // Evita reenviar flag_keys=[] y borrar el paquete al “solo renombrar”.
-                    const baseline = new Set(editingRole.flag_keys || []);
-                    const current = new Set(roleForm.flag_keys || []);
-                    const modulesChanged = baseline.size !== current.size
-                      || [...current].some((key) => !baseline.has(key));
-                    const body = { nombre: roleForm.nombre };
-                    if (modulesChanged) body.flag_keys = roleForm.flag_keys;
-                    await adminJson(`tenant/empresas/${companyId}/roles/${editingRole.id}`, {
-                      method: "PATCH",
-                      body,
-                    });
-                    setEditingRole(null);
-                  } else {
-                    await adminJson(`tenant/empresas/${companyId}/roles`, {
-                      method: "POST",
-                      body: {
-                        nombre: roleForm.nombre,
-                        scope: roleForm.scope,
-                        flag_keys: roleForm.flag_keys,
-                      },
-                    });
-                  }
+                  await adminJson(`tenant/empresas/${companyId}/roles`, {
+                    method: "POST",
+                    body: {
+                      nombre: roleForm.nombre,
+                      scope: roleForm.scope,
+                      flag_keys: roleForm.flag_keys,
+                    },
+                  });
                   setRoleForm({ nombre: "", scope: "workspace", flag_keys: [] });
-                }, editingRole ? "Puesto actualizado" : "Puesto creado");
+                }, "Puesto creado");
               }}>
                 <input
                   className="auth-input"
@@ -588,52 +603,20 @@ export function TenantCompanyAdministration({
                   onChange={(event) => setRoleForm((current) => ({ ...current, nombre: event.target.value }))}
                   required
                 />
-                {!editingRole && (
-                  <select className="auth-input" value={roleForm.scope} onChange={(event) => setRoleForm((current) => ({ ...current, scope: event.target.value }))}>
-                    <option value="workspace">Sala de Ventas</option>
-                    <option value="empresa">Empresa</option>
-                  </select>
-                )}
-                {editingRole?.es_sistema && (
-                  <p className="admin-card-muted">Clave interna: <code>{editingRole.slug}</code> (no editable)</p>
-                )}
+                <select className="auth-input" value={roleForm.scope} onChange={(event) => setRoleForm((current) => ({ ...current, scope: event.target.value }))}>
+                  <option value="workspace">Sala de Ventas</option>
+                  <option value="empresa">Empresa</option>
+                </select>
                 <div className="section-label" style={{ marginTop: 8 }}>Módulos</div>
                 <ModuleChecklist
                   flags={state.flags}
                   value={roleForm.flag_keys}
-                  idPrefix="role"
+                  idPrefix="role-create"
                   onChange={(flag_keys) => setRoleForm((current) => ({ ...current, flag_keys }))}
                 />
-                {editingRole ? (
-                  <>
-                    <div className="section-label" style={{ marginTop: 16 }}>Acciones (permisos)</div>
-                    <p className="admin-card-muted">
-                      Acciones base del puesto. La edición desde aquí llegará en una fase posterior; los asistentes reciben acciones adicionales en Administradores → Delegar permisos.
-                    </p>
-                    <PermissionMatrix
-                      permisos={state.permissions}
-                      value={editingRole.permission_keys || []}
-                      readOnly
-                      emptyLabel="Sin acciones base en este puesto."
-                    />
-                  </>
-                ) : null}
                 <div className="btn-row" style={{ marginTop: 8 }}>
-                  {editingRole && (
-                    <button
-                      type="button"
-                      className="btn btn-ghost"
-                      disabled={pending}
-                      onClick={() => {
-                        setEditingRole(null);
-                        setRoleForm({ nombre: "", scope: "workspace", flag_keys: [] });
-                      }}
-                    >
-                      Cancelar
-                    </button>
-                  )}
                   <button className="btn btn-primary" disabled={pending}>
-                    {editingRole ? "Guardar cambios" : "Crear puesto"}
+                    Crear puesto
                   </button>
                 </div>
               </form>
@@ -655,14 +638,7 @@ export function TenantCompanyAdministration({
                         {
                           id: "edit",
                           label: "Editar nombre/módulos",
-                          onSelect: () => {
-                            setEditingRole(role);
-                            setRoleForm({
-                              nombre: role.nombre,
-                              scope: role.scope || "workspace",
-                              flag_keys: Array.isArray(role.flag_keys) ? role.flag_keys : [],
-                            });
-                          },
+                          onSelect: () => openRoleEditor(role),
                         },
                         ...(!role.es_sistema
                           ? [{
@@ -921,6 +897,18 @@ export function TenantCompanyAdministration({
           </AdminCard>
         ) : null}
       </AdminPageState>
+
+      <RoleEditorModal
+        open={!!editingRole}
+        role={editingRole}
+        form={editRoleForm}
+        onFormChange={setEditRoleForm}
+        onClose={closeRoleEditor}
+        onSave={saveEditingRole}
+        pending={pending}
+        flags={state.flags}
+        permissions={state.permissions}
+      />
 
       <AdminSidePanel
         open={delegOpen}

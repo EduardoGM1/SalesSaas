@@ -5044,6 +5044,76 @@ body,
 .admin-side-panel-actions {
   justify-content: flex-end;
 }
+.sales-modal-viewport .modal.role-editor-modal {
+  max-height: min(92vh, 900px);
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 0;
+}
+.role-editor-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-height: 0;
+}
+.role-editor-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.role-editor-field {
+  display: grid;
+  gap: 6px;
+}
+.role-editor-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  min-height: 0;
+}
+.role-editor-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 12px 14px;
+  background: var(--surface2, #f8fafc);
+}
+.role-editor-panel--readonly {
+  background: var(--surface, #fff);
+}
+.role-editor-panel-head h3 {
+  margin: 0;
+  font-size: 14px;
+}
+.role-editor-panel-head p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+.role-editor-checklist.admin-tenant-check-grid,
+.role-editor-permissions .permission-matrix {
+  max-height: min(46vh, 420px);
+  flex: 1;
+}
+.role-editor-actions {
+  justify-content: flex-end;
+  margin-top: 4px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+@media (max-width: 760px) {
+  .role-editor-columns {
+    grid-template-columns: 1fr;
+  }
+  .role-editor-checklist.admin-tenant-check-grid,
+  .role-editor-permissions .permission-matrix {
+    max-height: 280px;
+  }
+}
 .prospect-workflow-panel {
   margin-bottom: 16px;
   padding: clamp(16px, 3vw, 24px);
