@@ -1,5 +1,5 @@
 -- ============================================================
--- 0082 — Endurecimiento de seguridad (RPC auth, RLS, invites)
+-- 0083 — Endurecimiento de seguridad (RPC auth, RLS, invites)
 -- ============================================================
 
 -- ---------- Helper: caller = target user o superadmin ----------
