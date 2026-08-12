@@ -9853,14 +9853,15 @@ body,
 .worksheet-rh-venta { display: grid; gap: 12px; margin-bottom: 12px; }
 .worksheet-rh-venta-grid {
   display: grid;
-  grid-template-columns: minmax(0, 360px) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr);
   gap: 12px;
   align-items: start;
 }
-.worksheet-rh-venta-left { display: grid; gap: 12px; align-content: start; }
+.worksheet-rh-venta-left { display: grid; gap: 12px; align-content: start; min-width: 0; }
 .worksheet-rh-venta-left .tool-calc-fields .tool-frow .tool-num-input,
-.worksheet-rh-venta-left .tool-calc-fields .tool-frow .input {
-  width: 140px;
+.worksheet-rh-venta-left .tool-calc-fields .tool-frow .input,
+.worksheet-rh-venta-left .tool-calc-fields .tool-frow select {
+  width: min(220px, 100%);
   max-width: 100%;
 }
 .worksheet-rh .rh-field-val {
@@ -9879,10 +9880,14 @@ body,
 }
 .rh-ipv-list li {
   display: grid;
-  grid-template-columns: 24px minmax(0, 1fr) minmax(120px, 160px);
-  gap: 8px;
+  grid-template-columns: 28px minmax(0, 1fr) minmax(160px, 240px);
+  gap: 10px;
   align-items: center;
   font-size: 13px;
+}
+.rh-ipv-list .input-compact {
+  width: 100%;
+  min-width: 0;
 }
 .rh-ipv-row-disabled { opacity: 0.55; }
 .rh-ipv-index {
