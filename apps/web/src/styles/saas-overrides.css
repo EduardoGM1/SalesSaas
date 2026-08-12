@@ -9823,25 +9823,6 @@ body,
   grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 10px;
 }
-.rh-credit-matrix th, .rh-credit-matrix td { text-align: center; padding: 4px; }
-.rh-credit-matrix th[scope="row"] { text-align: left; font-size: 12px; white-space: nowrap; }
-.rh-matrix-cell {
-  width: 100%;
-  min-height: 36px;
-  border: 1px solid var(--border);
-  background: var(--surface, #fff);
-  border-radius: 8px;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  color: var(--text);
-}
-.rh-matrix-cell:disabled { opacity: 0.45; cursor: default; }
-.rh-matrix-cell.selected {
-  border-color: var(--blue, #1e5eff);
-  background: color-mix(in srgb, var(--blue, #1e5eff) 12%, transparent);
-  color: var(--blue, #1e5eff);
-}
 .rh-bl-box { padding: 8px 0; }
 .rh-bl-main { font-size: 16px; display: flex; align-items: center; gap: 8px; }
 .rh-bl-list { margin: 10px 0 0; padding-left: 18px; }
@@ -9896,22 +9877,36 @@ body,
   text-align: center;
 }
 .rh-ipv-name { min-width: 0; }
-.rh-ipv-credits {
+.rh-ipv-bl-table {
   margin-bottom: 14px;
   padding-bottom: 14px;
   border-bottom: 1px solid var(--border);
 }
-.rh-ipv-credits-label {
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--muted);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  margin-bottom: 8px;
+.rh-bl-membership-scroll {
+  max-height: 220px;
+  overflow-y: auto;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border: 1px solid var(--border);
+  border-radius: 8px;
 }
-.rh-credit-matrix-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-.rh-ipv-credits .rh-credit-matrix { width: 100%; margin: 0; }
-.rh-ipv-credits .rh-matrix-cell { min-height: 34px; }
+.rh-bl-membership-table { width: 100%; margin: 0; font-size: 13px; }
+.rh-bl-membership-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--surface, #fff);
+  box-shadow: 0 1px 0 var(--border);
+}
+.rh-bl-membership-table .rh-col-num { text-align: right; white-space: nowrap; }
+.rh-bl-membership-table tbody tr.rh-bl-row-selectable { cursor: pointer; }
+.rh-bl-membership-table tbody tr.rh-bl-row-selectable:hover td {
+  background: color-mix(in srgb, var(--blue, #1e5eff) 6%, transparent);
+}
+.rh-bl-membership-table tbody tr.is-selected td {
+  background: color-mix(in srgb, var(--blue, #1e5eff) 10%, transparent);
+  font-weight: 600;
+}
 .rh-regalos-sub { margin: 0 0 10px; }
 .rh-regalos-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 .rh-regalos-table { width: 100%; font-size: 13px; table-layout: fixed; }

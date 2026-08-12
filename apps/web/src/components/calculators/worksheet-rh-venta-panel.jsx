@@ -1,11 +1,6 @@
 import { useMemo } from "react";
 import { AlertTriangle, CheckCircle2, Gift, Info, ShoppingCart, Landmark } from "lucide-react";
 import { evaluarRegaloWorksheet } from "@/lib/calculations/royal-holiday.js";
-import {
-  RH_CREDIT_MATRIX_COLS,
-  RH_CREDIT_MATRIX_ROWS,
-  buildRhCreditMatrix,
-} from "@/lib/calculations/worksheet-rh-credit-matrix.js";
 
 function isVentaCarga(carga) {
   const s = String(carga || "").toLowerCase();
@@ -87,10 +82,14 @@ export function WorksheetRhVentaPanel({
     [regalosCatalogo, hc, mv],
   );
 
-  const creditMatrix = useMemo(
-    () => buildRhCreditMatrix(catalogo?.bottom_line),
+  const bottomLineRows = useMemo(
+    () => [...(catalogo?.bottom_line || [])].sort(
+      (a, b) => Number(a.holiday_credits) - Number(b.holiday_credits),
+    ),
     [catalogo?.bottom_line],
   );
+
+  const selectedHc = String(form.holiday_credits ?? "");
 
   const regaloTotals = useMemo(() => {
     let venta = 0;
@@ -219,40 +218,40 @@ export function WorksheetRhVentaPanel({
 
           <div className="card tool-calc-card">
             <div className="card-heading">IPV – FVI (Regalos / Promociones disponibles)</div>
-            <div className="rh-ipv-credits">
-              <div className="rh-ipv-credits-label">Créditos</div>
-              <div className="rh-credit-matrix-wrap">
-                <table className="client-table rh-credit-matrix">
+            <div className="rh-ipv-bl-table">
+              <div className="rh-bl-membership-scroll">
+                <table className="client-table rh-mini-table rh-bl-membership-table">
                   <thead>
                     <tr>
-                      <th />
-                      {RH_CREDIT_MATRIX_COLS.map((c) => <th key={c}>{c}</th>)}
+                      <th>Membresía</th>
+                      <th className="rh-col-num">Créditos</th>
+                      <th className="rh-col-num">Precio mínimo con IVA</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {RH_CREDIT_MATRIX_ROWS.map((rowLabel, ri) => (
-                      <tr key={rowLabel}>
-                        <th scope="row">{ri + 1}-{rowLabel}</th>
-                        {RH_CREDIT_MATRIX_COLS.map((col, ci) => {
-                          const cell = creditMatrix[ri][ci];
-                          const cellHc = cell ? String(cell.holiday_credits) : "";
-                          const selected = cellHc && cellHc === String(form.holiday_credits);
-                          return (
-                            <td key={col}>
-                              <button
-                                type="button"
-                                className={`rh-matrix-cell${selected ? " selected" : ""}`}
-                                disabled={readOnly || !cell}
-                                onClick={() => cell && set("holiday_credits", String(cell.holiday_credits))}
-                                title={cell ? `${cell.programa} · ${cell.holiday_credits} HC` : "Sin dato en catálogo"}
-                              >
-                                {cell ? Number(cell.holiday_credits).toLocaleString("es-MX") : "—"}
-                              </button>
-                            </td>
-                          );
-                        })}
-                      </tr>
-                    ))}
+                    {bottomLineRows.length === 0 ? (
+                      <tr><td colSpan={3} className="muted">Sin membresías en catálogo</td></tr>
+                    ) : null}
+                    {bottomLineRows.map((row) => {
+                      const rowHc = String(row.holiday_credits);
+                      const selected = rowHc === selectedHc;
+                      return (
+                        <tr
+                          key={row.id || `${row.programa}-${rowHc}`}
+                          className={selected ? "is-selected rh-bl-row-selectable" : "rh-bl-row-selectable"}
+                          onClick={() => !readOnly && set("holiday_credits", rowHc)}
+                          title={`${row.programa} · ${rowHc} HC`}
+                        >
+                          <td>{row.programa || "—"}</td>
+                          <td className="rh-col-num">
+                            {Number(row.holiday_credits).toLocaleString("es-MX")}
+                          </td>
+                          <td className="rh-col-num">
+                            {row.precio_minimo_con_iva != null ? fmtResult(row.precio_minimo_con_iva) : "—"}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
