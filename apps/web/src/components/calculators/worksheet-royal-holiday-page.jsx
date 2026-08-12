@@ -234,7 +234,7 @@ export function WorksheetRoyalHolidayPage({ clientId, shared }) {
   const blMonto = Number(bl?.precio_minimo_con_iva || boardOnline || 0);
   const blDifer = montoOperational && blMonto ? montoOperational - blMonto : null;
   const boardOk = ws.precio_ok;
-  const regalosLista = ws.regalos;
+  const regalosCatalogo = catalogo?.regalos || [];
   const maxDp = catalogo?.parametros?.max_extra_dp ?? 6;
   const fechaVentaRef = toDateStr(new Date());
   const extraDpLimite = fechaLimiteExtraDp(fechaVentaRef);
@@ -368,9 +368,10 @@ export function WorksheetRoyalHolidayPage({ clientId, shared }) {
             boardOk={boardOk}
             blDifer={blDifer}
             montoCapture={montoCapture}
+            montoOperational={montoOperational}
             moneda={moneda}
             posicionesDisponibles={posicionesDisponibles}
-            regalosLista={regalosLista}
+            regalosCatalogo={regalosCatalogo}
             showExtras={tab === "worksheet"}
           />
         )}

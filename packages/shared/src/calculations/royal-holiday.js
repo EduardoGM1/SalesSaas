@@ -193,6 +193,97 @@ export function regalosParaWorksheet(regalos, { holidayCredits, montoVenta }) {
   return regalosDisponibles(list, { holidayCredits: hc, montoVenta: mv });
 }
 
+function cargaEsVenta(carga) {
+  const s = String(carga || "").toLowerCase();
+  return s === "venta" || s.includes("venta");
+}
+
+function cargaEsClosing(carga) {
+  const s = String(carga || "").toLowerCase();
+  return s === "closing_cost" || s.includes("closing");
+}
+
+/**
+ * Evalúa un regalo del catálogo RH para la UI del worksheet (sin filtrar la lista).
+ * estado: elegible | pendiente_monto | no_elegible
+ */
+export function evaluarRegaloWorksheet(regalo, { holidayCredits, montoVenta }) {
+  const r = regalo?.restricciones || {};
+  const hc = Number(holidayCredits) || 0;
+  const mv = Number(montoVenta) || 0;
+  const cargas = Array.isArray(regalo?.cargas_permitidas) ? regalo.cargas_permitidas : [];
+  const permiteVenta = cargas.some(cargaEsVenta);
+  const permiteClosing = cargas.some(cargaEsClosing);
+  const costoNum = Number(regalo?.costo);
+  const costoUnitario = Number.isFinite(costoNum) ? costoNum : null;
+  const monedaCosto = r.moneda_costo || "USD";
+
+  if (r.venta_minima_hc != null && hc < Number(r.venta_minima_hc)) {
+    return {
+      estado: "no_elegible",
+      motivo: `Requiere mínimo ${Number(r.venta_minima_hc).toLocaleString("es-MX")} HC`,
+      permiteVenta,
+      permiteClosing,
+      costoUnitario,
+      monedaCosto,
+    };
+  }
+
+  const requiereMonto = r.venta_minima_usd != null || r.venta_min_usd != null || r.venta_max_usd != null;
+  if (mv <= 0 && requiereMonto) {
+    return {
+      estado: "pendiente_monto",
+      motivo: "Captura monto de venta en Datos Financiamiento",
+      permiteVenta,
+      permiteClosing,
+      costoUnitario,
+      monedaCosto,
+    };
+  }
+
+  if (mv > 0) {
+    if (r.venta_minima_usd != null && mv < Number(r.venta_minima_usd)) {
+      return {
+        estado: "no_elegible",
+        motivo: `Venta mínima ${Number(r.venta_minima_usd).toLocaleString("es-MX")} USD`,
+        permiteVenta,
+        permiteClosing,
+        costoUnitario,
+        monedaCosto,
+      };
+    }
+    if (r.venta_min_usd != null && mv < Number(r.venta_min_usd)) {
+      return {
+        estado: "no_elegible",
+        motivo: `Rango venta ${r.venta_min_usd}–${r.venta_max_usd ?? "∞"} USD`,
+        permiteVenta,
+        permiteClosing,
+        costoUnitario,
+        monedaCosto,
+      };
+    }
+    if (r.venta_max_usd != null && mv > Number(r.venta_max_usd)) {
+      return {
+        estado: "no_elegible",
+        motivo: `Rango venta ${r.venta_min_usd ?? 0}–${r.venta_max_usd} USD`,
+        permiteVenta,
+        permiteClosing,
+        costoUnitario,
+        monedaCosto,
+      };
+    }
+  }
+
+  return {
+    estado: "elegible",
+    motivo: null,
+    permiteVenta,
+    permiteClosing,
+    costoUnitario,
+    monedaCosto,
+  };
+}
+
 function parseMoneyScalar(v) {
   const n = parseFloat(String(v ?? "").replace(/[^0-9.\-]/g, ""));
   return Number.isFinite(n) ? n : 0;

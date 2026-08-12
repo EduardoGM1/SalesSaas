@@ -12,6 +12,7 @@ export {
   calcularTotalesWorksheet,
   regalosDisponibles,
   regalosParaWorksheet,
+  evaluarRegaloWorksheet,
   montoVentaWorksheet,
   diferenciaComisionPct,
   montoComision,

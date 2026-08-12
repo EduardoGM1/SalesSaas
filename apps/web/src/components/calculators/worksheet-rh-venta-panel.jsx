@@ -1,11 +1,6 @@
 import { useMemo } from "react";
-import { AlertTriangle, CheckCircle2, Info, ShoppingCart, Landmark } from "lucide-react";
-
-function fmtUsd(v) {
-  const n = Number(v);
-  if (!Number.isFinite(n)) return "$0.00";
-  return `$${n.toLocaleString("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-}
+import { AlertTriangle, CheckCircle2, Gift, Info, ShoppingCart, Landmark } from "lucide-react";
+import { evaluarRegaloWorksheet } from "@/lib/calculations/royal-holiday.js";
 
 function isVentaCarga(carga) {
   const s = String(carga || "").toLowerCase();
@@ -33,7 +28,23 @@ function vigenciaFromCatalog(bl, catalogo) {
     const y = Math.round(Number(meses) / 12);
     return y > 0 ? `${y} años` : `${meses} meses`;
   }
-  return null;
+  return "—";
+}
+
+function fmtRegaloCosto(ev, fmtResult) {
+  if (ev.costoUnitario == null) return "—";
+  const n = ev.costoUnitario;
+  if (ev.monedaCosto === "MXN") {
+    return `$${n.toLocaleString("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} MXN`;
+  }
+  return fmtResult(n);
+}
+
+function fmtLineAmount(amount, ev, fmtResult) {
+  if (ev.monedaCosto === "MXN") {
+    return `$${amount.toLocaleString("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  }
+  return fmtResult(amount);
 }
 
 /**
@@ -53,28 +64,41 @@ export function WorksheetRhVentaPanel({
   boardOk,
   blDifer,
   montoCapture,
+  montoOperational,
   moneda,
   posicionesDisponibles,
-  regalosLista,
+  regalosCatalogo,
   showExtras = false,
 }) {
   const { fmtResult } = moneda;
+  const hc = Number(form.holiday_credits) || 0;
+  const mv = Number(montoOperational) || 0;
+
+  const regalosEvaluados = useMemo(
+    () => (regalosCatalogo || []).map((g) => ({
+      regalo: g,
+      ev: evaluarRegaloWorksheet(g, { holidayCredits: hc, montoVenta: mv }),
+    })),
+    [regalosCatalogo, hc, mv],
+  );
 
   const regaloTotals = useMemo(() => {
     let venta = 0;
     let closing = 0;
-    for (const g of regalosLista) {
+    for (const { regalo: g, ev } of regalosEvaluados) {
+      if (ev.estado !== "elegible") continue;
       const qty = Math.max(1, Number(form.regalosCantidad?.[g.id] ?? 1) || 1);
-      const line = (Number(g.costo) || 0) * qty;
+      const line = (ev.costoUnitario ?? 0) * qty;
       const carga = form.regalosElegidos[g.id];
       if (!carga) continue;
       if (isVentaCarga(carga)) venta += line;
       else if (isClosingCarga(carga)) closing += line;
     }
     return { venta, closing, total: venta + closing };
-  }, [regalosLista, form.regalosElegidos, form.regalosCantidad]);
+  }, [regalosEvaluados, form.regalosElegidos, form.regalosCantidad]);
 
   const vigencia = vigenciaFromCatalog(bl, catalogo);
+  const cuotaAnual = bl?.cuota_anual_mfee != null ? fmtResult(bl.cuota_anual_mfee) : "—";
 
   const touchDirty = (key) => {
     dirtyKeysRef?.current?.add(key);
@@ -96,15 +120,17 @@ export function WorksheetRhVentaPanel({
     }));
   };
 
-  const setRegaloColumnAmount = (regalo, column, amountKey) => {
+  const setRegaloColumnAmount = (regalo, ev, column, amountKey) => {
+    if (ev.estado !== "elegible") return;
     const qty = Math.max(1, Number(form.regalosCantidad?.[regalo.id] ?? 1) || 1);
-    const lineTotal = (Number(regalo.costo) || 0) * qty;
+    const lineTotal = (ev.costoUnitario ?? 0) * qty;
     if (amountKey === "zero") {
       const other = column === "venta" ? "closing" : "venta";
       const otherCarga = pickCargaForColumn(regalo.cargas_permitidas, other);
-      if (otherCarga && form.regalosElegidos[regalo.id] && (
-        (column === "venta" && isVentaCarga(form.regalosElegidos[regalo.id]))
-        || (column === "closing" && isClosingCarga(form.regalosElegidos[regalo.id]))
+      const carga = form.regalosElegidos[regalo.id];
+      if (otherCarga && carga && (
+        (column === "venta" && isVentaCarga(carga))
+        || (column === "closing" && isClosingCarga(carga))
       )) {
         setRegaloCarga(regalo.id, otherCarga);
       } else {
@@ -116,78 +142,101 @@ export function WorksheetRhVentaPanel({
     if (carga) setRegaloCarga(regalo.id, carga);
   };
 
+  const renderCargaCell = (regalo, ev, column) => {
+    const permite = column === "venta" ? ev.permiteVenta : ev.permiteClosing;
+    if (!permite) {
+      return <span className="rh-cell-na">—</span>;
+    }
+    if (ev.estado !== "elegible") {
+      return (
+        <span className="rh-cell-na" title={ev.motivo || undefined}>
+          —
+        </span>
+      );
+    }
+
+    const qty = Math.max(1, Number(form.regalosCantidad?.[regalo.id] ?? 1) || 1);
+    const lineTotal = (ev.costoUnitario ?? 0) * qty;
+    const carga = form.regalosElegidos[regalo.id];
+    const selected = column === "venta" ? isVentaCarga(carga) : isClosingCarga(carga);
+
+    return (
+      <select
+        className="input input-compact rh-carga-select"
+        disabled={readOnly}
+        value={selected && lineTotal > 0 ? "full" : "zero"}
+        onChange={(e) => setRegaloColumnAmount(regalo, ev, column, e.target.value)}
+      >
+        <option value="zero">{fmtLineAmount(0, ev, fmtResult)}</option>
+        {lineTotal > 0 ? (
+          <option value="full">{fmtLineAmount(lineTotal, ev, fmtResult)}</option>
+        ) : null}
+      </select>
+    );
+  };
+
   return (
     <section className="worksheet-rh-venta">
       <div className="worksheet-rh-venta-grid">
         <div className="worksheet-rh-venta-left">
           <div className="card tool-calc-card">
             <div className="card-heading">Programa y créditos</div>
-            <dl className="rh-programa-kv">
-              <div>
-                <dt>Puntos / Créditos</dt>
-                <dd>
-                  <input
-                    className="input tool-num-input rh-programa-credits-input"
-                    type="number"
-                    disabled={readOnly}
-                    value={form.holiday_credits}
-                    onChange={(e) => set("holiday_credits", e.target.value)}
-                  />
-                </dd>
+            <div className="tool-calc-fields">
+              <div className="frow frow-first tool-frow">
+                <div className="flabel">Puntos / Créditos</div>
+                <input
+                  className="input tool-num-input"
+                  type="number"
+                  disabled={readOnly}
+                  value={form.holiday_credits}
+                  onChange={(e) => set("holiday_credits", e.target.value)}
+                />
               </div>
-              <div>
-                <dt>Programa</dt>
-                <dd className="rh-readonly">{bl?.programa || "—"}</dd>
+              <div className="frow tool-frow">
+                <div className="flabel">Programa</div>
+                <div className="rh-readonly rh-field-val">{bl?.programa || "—"}</div>
               </div>
-              <div>
-                <dt>Cuota anual</dt>
-                <dd className="rh-readonly">{bl?.cuota_anual_mfee != null ? fmtUsd(bl.cuota_anual_mfee) : "—"}</dd>
+              <div className="frow tool-frow">
+                <div className="flabel">Cuota anual</div>
+                <div className="rh-readonly rh-field-val">{cuotaAnual}</div>
               </div>
-              {vigencia ? (
-                <div>
-                  <dt>Vigencia</dt>
-                  <dd className="rh-readonly">{vigencia}</dd>
-                </div>
-              ) : null}
-            </dl>
-            <div className="frow tool-frow rh-programa-posicion">
-              <div className="flabel">Posición</div>
-              <select className="input" disabled={readOnly} value={form.posicion} onChange={(e) => set("posicion", e.target.value)}>
-                {posicionesDisponibles.map((p) => (
-                  <option key={p} value={p} disabled={p === "opc" || p === "x"}>
-                    {p.toUpperCase()}{p === "opc" || p === "x" ? " (pendiente catálogo)" : ""}
-                  </option>
-                ))}
-              </select>
+              <div className="frow tool-frow">
+                <div className="flabel">Vigencia</div>
+                <div className="rh-readonly rh-field-val">{vigencia}</div>
+              </div>
             </div>
           </div>
 
           <div className="card tool-calc-card">
             <div className="card-heading">IPV – FVI (Regalos / Promociones disponibles)</div>
-            {!ws.regalos_filtrados_por_monto && regalosLista.length > 0 ? (
-              <p className="muted rh-hint">Captura monto de venta en Datos Financiamiento para filtrar regalos por rango USD.</p>
-            ) : null}
             <ol className="rh-ipv-list">
-              {regalosLista.length === 0 ? (
-                <li className="muted">Sin regalos en catálogo para esta venta</li>
+              {regalosEvaluados.length === 0 ? (
+                <li className="muted">Sin regalos en catálogo</li>
               ) : null}
-              {regalosLista.map((g, index) => (
-                <li key={g.id}>
-                  <span className="rh-ipv-index">{index + 1}</span>
-                  <span className="rh-ipv-name">{g.nombre}</span>
-                  <select
-                    className="input input-compact"
-                    disabled={readOnly}
-                    value={form.regalosElegidos[g.id] || ""}
-                    onChange={(e) => setRegaloCarga(g.id, e.target.value)}
+              {regalosEvaluados.map(({ regalo: g, ev }, index) => {
+                const rowDisabled = readOnly || ev.estado !== "elegible";
+                return (
+                  <li
+                    key={g.id}
+                    className={ev.estado !== "elegible" ? "rh-ipv-row-disabled" : undefined}
+                    title={ev.motivo || undefined}
                   >
-                    <option value="">— Seleccionar —</option>
-                    {(g.cargas_permitidas || []).map((c) => (
-                      <option key={c} value={c}>{c.replace(/_/g, " ")}</option>
-                    ))}
-                  </select>
-                </li>
-              ))}
+                    <span className="rh-ipv-index">{index + 1}</span>
+                    <span className="rh-ipv-name">{g.nombre}</span>
+                    <select
+                      className="input input-compact"
+                      disabled={rowDisabled}
+                      value={form.regalosElegidos[g.id] || ""}
+                      onChange={(e) => setRegaloCarga(g.id, e.target.value)}
+                    >
+                      <option value="">— Seleccionar —</option>
+                      {(g.cargas_permitidas || []).map((c) => (
+                        <option key={c} value={c}>{c.replace(/_/g, " ")}</option>
+                      ))}
+                    </select>
+                  </li>
+                );
+              })}
             </ol>
           </div>
         </div>
@@ -201,72 +250,57 @@ export function WorksheetRhVentaPanel({
             <table className="client-table rh-regalos-table">
               <thead>
                 <tr>
-                  <th>#</th>
-                  <th>Regalos</th>
-                  <th>Cantidad</th>
-                  <th>Costo unitario (MXN)</th>
+                  <th className="rh-col-num">#</th>
+                  <th className="rh-col-name">Regalos</th>
+                  <th className="rh-col-qty">Cantidad</th>
+                  <th className="rh-col-cost">Costo unitario</th>
                   <th className="rh-col-venta">Venta (Monto venta)</th>
                   <th className="rh-col-closing">Closing (Gasto adm.)</th>
                 </tr>
               </thead>
               <tbody>
-                {regalosLista.length === 0 ? (
-                  <tr><td colSpan={6} className="muted">Sin regalos en catálogo para esta venta</td></tr>
+                {regalosEvaluados.length === 0 ? (
+                  <tr><td colSpan={6} className="muted">Sin regalos en catálogo</td></tr>
                 ) : null}
-                {regalosLista.map((g, index) => {
+                {regalosEvaluados.map(({ regalo: g, ev }, index) => {
                   const qty = Math.max(1, Number(form.regalosCantidad?.[g.id] ?? 1) || 1);
-                  const unit = Number(g.costo) || 0;
-                  const lineTotal = unit * qty;
-                  const carga = form.regalosElegidos[g.id];
-                  const ventaSelected = isVentaCarga(carga);
-                  const closingSelected = isClosingCarga(carga);
+                  const rowDisabled = readOnly || ev.estado !== "elegible";
+                  const rowTitle = [ev.motivo, g.notas].filter(Boolean).join(" · ") || undefined;
                   return (
-                    <tr key={g.id}>
-                      <td>{index + 1}</td>
-                      <td>
+                    <tr
+                      key={g.id}
+                      className={ev.estado !== "elegible" ? "rh-regalo-row-disabled" : undefined}
+                      title={rowTitle}
+                    >
+                      <td className="rh-col-num">{index + 1}</td>
+                      <td className="rh-col-name">
                         <span className="rh-regalo-name">
                           {g.nombre}
-                          {g.notas ? (
+                          {ev.motivo ? (
+                            <span className="rh-regalo-info" title={ev.motivo} aria-label={ev.motivo}>
+                              <AlertTriangle size={14} />
+                            </span>
+                          ) : g.notas ? (
                             <span className="rh-regalo-info" title={g.notas} aria-label={g.notas}>
                               <Info size={14} />
                             </span>
                           ) : null}
                         </span>
                       </td>
-                      <td>
+                      <td className="rh-col-qty">
                         <input
                           type="number"
                           min={1}
                           max={99}
                           className="input input-compact rh-qty-input"
-                          disabled={readOnly}
+                          disabled={rowDisabled}
                           value={qty}
                           onChange={(e) => setRegaloQty(g.id, e.target.value)}
                         />
                       </td>
-                      <td>{unit > 0 ? fmtUsd(unit) : "—"}</td>
-                      <td className="rh-col-venta">
-                        <select
-                          className="input input-compact"
-                          disabled={readOnly || !pickCargaForColumn(g.cargas_permitidas, "venta")}
-                          value={ventaSelected && lineTotal > 0 ? "full" : "zero"}
-                          onChange={(e) => setRegaloColumnAmount(g, "venta", e.target.value)}
-                        >
-                          <option value="zero">{fmtUsd(0)}</option>
-                          {lineTotal > 0 ? <option value="full">{fmtUsd(lineTotal)}</option> : null}
-                        </select>
-                      </td>
-                      <td className="rh-col-closing">
-                        <select
-                          className="input input-compact"
-                          disabled={readOnly || !pickCargaForColumn(g.cargas_permitidas, "closing")}
-                          value={closingSelected && lineTotal > 0 ? "full" : "zero"}
-                          onChange={(e) => setRegaloColumnAmount(g, "closing", e.target.value)}
-                        >
-                          <option value="zero">{fmtUsd(0)}</option>
-                          {lineTotal > 0 ? <option value="full">{fmtUsd(lineTotal)}</option> : null}
-                        </select>
-                      </td>
+                      <td className="rh-col-cost">{fmtRegaloCosto(ev, fmtResult)}</td>
+                      <td className="rh-col-venta">{renderCargaCell(g, ev, "venta")}</td>
+                      <td className="rh-col-closing">{renderCargaCell(g, ev, "closing")}</td>
                     </tr>
                   );
                 })}
@@ -277,22 +311,25 @@ export function WorksheetRhVentaPanel({
       </div>
 
       <div className="g2 survey-result-pair rh-regalos-totales">
-        <div className="vbox green">
+        <div className="vbox green rh-total-box">
           <div className="vbox-val rh-total-with-icon">
             <ShoppingCart size={16} aria-hidden />
-            {fmtUsd(regaloTotals.venta)}
+            {fmtResult(regaloTotals.venta)}
           </div>
           <div className="vbox-label">Total aplicado a Monto venta</div>
         </div>
-        <div className="vbox purple">
+        <div className="vbox purple rh-total-box">
           <div className="vbox-val rh-total-with-icon">
             <Landmark size={16} aria-hidden />
-            {fmtUsd(regaloTotals.closing)}
+            {fmtResult(regaloTotals.closing)}
           </div>
           <div className="vbox-label">Total aplicado a Gasto adm.</div>
         </div>
-        <div className="vbox rh-regalos-total-combined">
-          <div className="vbox-val">{fmtUsd(regaloTotals.total)}</div>
+        <div className="vbox rh-total-box rh-regalos-total-combined">
+          <div className="vbox-val rh-total-with-icon">
+            <Gift size={16} aria-hidden />
+            {fmtResult(regaloTotals.total)}
+          </div>
           <div className="vbox-label">Total regalos aplicados</div>
           <div className="vbox-sub">Venta + Gasto adm.</div>
         </div>
@@ -324,6 +361,16 @@ export function WorksheetRhVentaPanel({
                 Comisión {ws.comision.porcentaje}% → {fmtResult(ws.comision.monto)} · pago {ws.comision.fecha_pago}
               </p>
             ) : null}
+            <div className="frow tool-frow rh-programa-posicion">
+              <div className="flabel">Posición</div>
+              <select className="input" disabled={readOnly} value={form.posicion} onChange={(e) => set("posicion", e.target.value)}>
+                {posicionesDisponibles.map((p) => (
+                  <option key={p} value={p} disabled={p === "opc" || p === "x"}>
+                    {p.toUpperCase()}{p === "opc" || p === "x" ? " (pendiente catálogo)" : ""}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
           <div className="card tool-calc-card worksheet-rh-roles">

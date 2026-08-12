@@ -9853,32 +9853,23 @@ body,
 .worksheet-rh-venta { display: grid; gap: 12px; margin-bottom: 12px; }
 .worksheet-rh-venta-grid {
   display: grid;
-  grid-template-columns: minmax(0, 340px) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 360px) minmax(0, 1fr);
   gap: 12px;
   align-items: start;
 }
 .worksheet-rh-venta-left { display: grid; gap: 12px; align-content: start; }
-.rh-programa-kv {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px 16px;
-  margin: 0;
-}
-.rh-programa-kv > div { min-width: 0; }
-.rh-programa-kv dt {
-  margin: 0 0 4px;
-  font-size: 12px;
-  color: var(--muted);
-  font-weight: 500;
-}
-.rh-programa-kv dd { margin: 0; }
-.rh-programa-credits-input {
-  font-weight: 700;
-  font-size: 15px;
-  color: var(--blue, #1e5eff);
+.worksheet-rh-venta-left .tool-calc-fields .tool-frow .tool-num-input,
+.worksheet-rh-venta-left .tool-calc-fields .tool-frow .input {
+  width: 140px;
   max-width: 100%;
 }
-.rh-programa-posicion { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
+.worksheet-rh .rh-field-val {
+  font-weight: 700;
+  font-size: 15px;
+  text-align: right;
+  flex-shrink: 0;
+}
+.worksheet-rh .rh-programa-posicion { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
 .rh-ipv-list {
   list-style: none;
   margin: 0;
@@ -9893,6 +9884,7 @@ body,
   align-items: center;
   font-size: 13px;
 }
+.rh-ipv-row-disabled { opacity: 0.55; }
 .rh-ipv-index {
   font-weight: 700;
   color: var(--muted);
@@ -9901,9 +9893,15 @@ body,
 .rh-ipv-name { min-width: 0; }
 .rh-regalos-sub { margin: 0 0 10px; }
 .rh-regalos-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-.rh-regalos-table { width: 100%; font-size: 13px; }
+.rh-regalos-table { width: 100%; font-size: 13px; table-layout: fixed; }
 .rh-regalos-table th,
-.rh-regalos-table td { vertical-align: middle; padding: 8px 6px; }
+.rh-regalos-table td { vertical-align: middle; padding: 8px 8px; }
+.rh-regalos-table .rh-col-num { width: 36px; text-align: center; }
+.rh-regalos-table .rh-col-name { text-align: left; }
+.rh-regalos-table .rh-col-qty { width: 88px; text-align: center; }
+.rh-regalos-table .rh-col-cost { width: 120px; text-align: right; white-space: nowrap; }
+.rh-regalos-table .rh-col-venta,
+.rh-regalos-table .rh-col-closing { width: 132px; text-align: right; }
 .rh-regalos-table th.rh-col-venta,
 .rh-regalos-table td.rh-col-venta {
   background: rgba(5, 150, 105, 0.04);
@@ -9912,12 +9910,28 @@ body,
 .rh-regalos-table td.rh-col-closing {
   background: rgba(124, 58, 237, 0.04);
 }
+.rh-regalo-row-disabled { opacity: 0.55; }
 .rh-regalo-name { display: inline-flex; align-items: center; gap: 6px; }
-.rh-regalo-info { color: var(--blue, #1e5eff); display: inline-flex; cursor: help; }
-.rh-qty-input { width: 64px; text-align: center; }
+.rh-regalo-info { color: var(--blue, #1e5eff); display: inline-flex; cursor: help; flex-shrink: 0; }
+.rh-regalo-row-disabled .rh-regalo-info { color: var(--yellow, #d97706); }
+.rh-qty-input { width: 64px; text-align: center; margin-inline: auto; display: block; }
+.rh-carga-select { width: 100%; min-width: 0; text-align: right; text-align-last: right; }
+.rh-cell-na {
+  display: block;
+  text-align: right;
+  color: var(--muted2);
+  font-weight: 600;
+  padding: 9px 4px;
+}
 .rh-regalos-totales {
   grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
   margin-top: 4px;
+}
+.rh-regalos-totales .rh-total-box {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 88px;
 }
 .rh-regalos-total-combined {
   background: var(--surface, #fff);
@@ -9927,7 +9941,9 @@ body,
 .rh-total-with-icon {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
+  width: 100%;
 }
 .rh-bl-compact { margin-top: 4px; }
 
