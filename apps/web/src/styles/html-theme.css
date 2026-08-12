@@ -138,11 +138,13 @@ body{font-family:var(--font-sans,'Inter',sans-serif);background:var(--bg);color:
 .vbox{border-radius:var(--r);padding:14px 16px;}
 .vbox.blue{background:rgba(37,99,235,0.06);border:1px solid rgba(37,99,235,0.2);}
 .vbox.green{background:rgba(5,150,105,0.06);border:1px solid rgba(5,150,105,0.2);}
+.vbox.purple{background:rgba(124,58,237,0.06);border:1px solid rgba(124,58,237,0.2);}
 .vbox.yellow{background:rgba(217,119,6,0.06);border:1px solid rgba(217,119,6,0.2);}
 .vbox.red{background:rgba(220,38,38,0.06);border:1px solid rgba(220,38,38,0.2);}
 .vbox-val{font-family:var(--mono);font-size:20px;font-weight:600;letter-spacing:-0.5px;}
 .vbox.blue .vbox-val{color:var(--blue);}
 .vbox.green .vbox-val{color:var(--green);}
+.vbox.purple .vbox-val{color:var(--purple);}
 .vbox.yellow .vbox-val{color:var(--yellow);}
 .vbox.red .vbox-val{color:var(--red);}
 .vbox-label{font-size:11px;color:var(--muted);margin-top:5px;font-weight:500;white-space:normal;line-height:1.3;}

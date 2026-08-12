@@ -9848,6 +9848,89 @@ body,
 .rh-ok { color: #16a34a; }
 .rh-warn { color: #dc2626; }
 .rh-warn-text { color: #dc2626; }
+
+/* Datos Venta — layout dos columnas */
+.worksheet-rh-venta { display: grid; gap: 12px; margin-bottom: 12px; }
+.worksheet-rh-venta-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 340px) minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+}
+.worksheet-rh-venta-left { display: grid; gap: 12px; align-content: start; }
+.rh-programa-kv {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px 16px;
+  margin: 0;
+}
+.rh-programa-kv > div { min-width: 0; }
+.rh-programa-kv dt {
+  margin: 0 0 4px;
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 500;
+}
+.rh-programa-kv dd { margin: 0; }
+.rh-programa-credits-input {
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--blue, #1e5eff);
+  max-width: 100%;
+}
+.rh-programa-posicion { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
+.rh-ipv-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+.rh-ipv-list li {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) minmax(120px, 160px);
+  gap: 8px;
+  align-items: center;
+  font-size: 13px;
+}
+.rh-ipv-index {
+  font-weight: 700;
+  color: var(--muted);
+  text-align: center;
+}
+.rh-ipv-name { min-width: 0; }
+.rh-regalos-sub { margin: 0 0 10px; }
+.rh-regalos-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.rh-regalos-table { width: 100%; font-size: 13px; }
+.rh-regalos-table th,
+.rh-regalos-table td { vertical-align: middle; padding: 8px 6px; }
+.rh-regalos-table th.rh-col-venta,
+.rh-regalos-table td.rh-col-venta {
+  background: rgba(5, 150, 105, 0.04);
+}
+.rh-regalos-table th.rh-col-closing,
+.rh-regalos-table td.rh-col-closing {
+  background: rgba(124, 58, 237, 0.04);
+}
+.rh-regalo-name { display: inline-flex; align-items: center; gap: 6px; }
+.rh-regalo-info { color: var(--blue, #1e5eff); display: inline-flex; cursor: help; }
+.rh-qty-input { width: 64px; text-align: center; }
+.rh-regalos-totales {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  margin-top: 4px;
+}
+.rh-regalos-total-combined {
+  background: var(--surface, #fff);
+  border: 1px solid var(--border);
+}
+.rh-regalos-total-combined .vbox-val { color: var(--text); }
+.rh-total-with-icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.rh-bl-compact { margin-top: 4px; }
+
 .rh-extra-table { margin-top: 12px; }
 .rh-extra-table-head {
   display: flex;
@@ -10066,8 +10149,15 @@ body,
 @media (max-width: 960px) {
   .worksheet-rh-row3,
   .worksheet-rh-fin-grid,
-  .worksheet-rh-roles-grid {
+  .worksheet-rh-roles-grid,
+  .worksheet-rh-venta-grid {
     grid-template-columns: 1fr;
+  }
+  .rh-regalos-totales {
+    grid-template-columns: 1fr 1fr !important;
+  }
+  .rh-regalos-totales .rh-regalos-total-combined {
+    grid-column: span 2;
   }
   .rh-plazo-grid { grid-template-columns: 1fr; }
   .rh-fin-plazo-card {
