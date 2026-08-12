@@ -5,9 +5,6 @@ import { useI18n } from "@/hooks/use-i18n.js";
 import { useAppStore } from "@/stores/app-store";
 import { AdminTopbarTabs } from "@/components/layout/admin-topbar-tabs.jsx";
 import { MobileTopAvatar, MobileTopNavActions, DesktopTopNavActions } from "@/components/layout/mobile-top-nav.jsx";
-import { WorkspaceBrandMark } from "@/components/layout/workspace-brand-mark.jsx";
-import { useWorkspace } from "@/hooks/use-workspace.js";
-import { workspacePrincipalLogoUrl } from "@/lib/workspace-logo.js";
 import { useSyncStore } from "@/stores/sync-store";
 
 export function Topbar({ title, subtitle, showMonthNav, admin }) {
@@ -17,7 +14,6 @@ export function Topbar({ title, subtitle, showMonthNav, admin }) {
   const calMonth = useAppStore((s) => s.calMonth);
   const calPrev = useAppStore((s) => s.calPrev);
   const calNext = useAppStore((s) => s.calNext);
-  const { brand, active } = useWorkspace();
   const pendingOutbound = useSyncStore((s) => s.pendingOutbound);
   const syncStatus = useSyncStore((s) => s.status);
 
@@ -57,21 +53,9 @@ export function Topbar({ title, subtitle, showMonthNav, admin }) {
     );
   }
 
-  const brandName = brand?.nombre || "Saletse";
-  const brandLogo = workspacePrincipalLogoUrl(brand);
   const saletseLogo = (
-    <div className="topbar-brand" title={brandName} aria-label={brandName}>
-      {brandLogo && active?.tipo === "sala_de_venta" ? (
-        <WorkspaceBrandMark
-          src={brandLogo}
-          name={brandName}
-          alt={brandName}
-          imgClassName="topbar-brand-ws-logo"
-          initialsClassName="topbar-brand-ws-fallback"
-        />
-      ) : (
-        <Image src="/saletse-logo.png" alt="Saletse" width={132} height={30} priority />
-      )}
+    <div className="topbar-brand" title="Saletse" aria-label="Saletse">
+      <Image src="/saletse-logo.png" alt="Saletse" width={132} height={30} priority />
     </div>
   );
 

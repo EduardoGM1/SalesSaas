@@ -5244,6 +5244,21 @@ body,
   margin-bottom: 16px;
   padding: clamp(16px, 3vw, 24px);
 }
+.prospect-workflow-collab-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.prospect-workflow-collab-head .section-label {
+  margin: 0;
+}
+.prospect-workflow-panel.exp-collapsible-card .collapsible-section-head {
+  align-items: center;
+}
+.prospect-workflow-collab-body {
+  padding-top: 4px;
+}
 .prospect-workflow-head h2,
 .workflow-inbox-head h1 {
   margin: 4px 0;
@@ -5693,6 +5708,7 @@ body,
 .admin-brand-preview-header-logo { display: inline-flex; align-items: center; justify-content: center; min-width: 96px; max-width: 160px; height: 30px; padding: 0 8px; border-radius: 8px; background: #f7f9fc; overflow: hidden; }
 .admin-brand-preview-header-logo img { display: block; max-width: 100%; max-height: 30px; object-fit: contain; }
 .admin-brand-preview-header-logo span { font-size: 11px; font-weight: 800; color: var(--brand-preview-accent); }
+.admin-brand-preview-header-logo--saletse img { display: block; max-width: 100%; max-height: 30px; object-fit: contain; }
 .admin-brand-preview-copy { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; padding: 34px 26px; }
 .admin-brand-preview-copy strong { color: #15213a; font-size: 20px; }
 .admin-brand-preview-copy span { color: #6e788d; font-size: 11px; }

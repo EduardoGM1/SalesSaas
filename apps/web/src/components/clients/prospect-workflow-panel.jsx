@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { BadgeCheck, Clock3, MessageSquare, Pencil, Plus, UserRound, UserRoundCheck } from "lucide-react";
 import { AdminStatusBadge } from "@/components/admin/admin-ui.jsx";
 import { ProspectParticipantAssignModal } from "@/components/clients/prospect-participant-assign-modal.jsx";
+import { CollapsibleSection } from "@/components/ui/collapsible-section.jsx";
 import { participantsApi } from "@/lib/participants-api.js";
 import { toast } from "@/lib/toast";
 
@@ -75,7 +76,6 @@ export function ProspectParticipantsPanel({ prospectId, enabled = true, onCapabi
 
   const state = payload?.state;
   const capabilities = payload?.capabilities || {};
-  const context = payload?.context || {};
 
   const roleCards = useMemo(() => {
     if (!state) return [];
@@ -134,23 +134,22 @@ export function ProspectParticipantsPanel({ prospectId, enabled = true, onCapabi
   if (!enabled || hidden || (!payload && !error)) return null;
 
   return (
-    <section className="card prospect-workflow-panel" aria-labelledby="participants-title">
-      <div className="prospect-workflow-head">
-        <div>
+    <CollapsibleSection
+      id="prospect-collaboration"
+      defaultOpen
+      className="card prospect-workflow-panel exp-collapsible-card"
+      title={(
+        <div className="prospect-workflow-collab-head">
           <span className="section-label">Colaboración</span>
-          <h2 id="participants-title">Participantes</h2>
-          <p>
-            Las 3 partes trabajan sobre el mismo expediente, sin traspasos.
-            {context.sala_nombre ? ` Sala: ${context.sala_nombre}${context.empresa_nombre ? ` · ${context.empresa_nombre}` : ""}.` : null}
-          </p>
+          {state ? (
+            <AdminStatusBadge tone={state.estado === "completado" ? "success" : "neutral"}>
+              {state.estado === "completado" ? "Completado" : state.estado === "cancelado" ? "Cancelado" : "Activo"}
+            </AdminStatusBadge>
+          ) : null}
         </div>
-        {state ? (
-          <AdminStatusBadge tone={state.estado === "completado" ? "success" : "neutral"}>
-            {state.estado === "completado" ? "Completado" : state.estado === "cancelado" ? "Cancelado" : "Activo"}
-          </AdminStatusBadge>
-        ) : null}
-      </div>
-
+      )}
+      bodyClassName="prospect-workflow-collab-body"
+    >
       {error ? <div className="auth-error">{error}</div> : null}
       {state ? (
         <>
@@ -268,7 +267,7 @@ export function ProspectParticipantsPanel({ prospectId, enabled = true, onCapabi
         pending={pending}
         onSave={(userId) => assignModal?.onSave?.(userId)}
       />
-    </section>
+    </CollapsibleSection>
   );
 }
 
