@@ -9896,6 +9896,22 @@ body,
   text-align: center;
 }
 .rh-ipv-name { min-width: 0; }
+.rh-ipv-credits {
+  margin-bottom: 14px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border);
+}
+.rh-ipv-credits-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 8px;
+}
+.rh-credit-matrix-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.rh-ipv-credits .rh-credit-matrix { width: 100%; margin: 0; }
+.rh-ipv-credits .rh-matrix-cell { min-height: 34px; }
 .rh-regalos-sub { margin: 0 0 10px; }
 .rh-regalos-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 .rh-regalos-table { width: 100%; font-size: 13px; table-layout: fixed; }

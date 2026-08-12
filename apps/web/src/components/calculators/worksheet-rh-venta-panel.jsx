@@ -1,6 +1,11 @@
 import { useMemo } from "react";
 import { AlertTriangle, CheckCircle2, Gift, Info, ShoppingCart, Landmark } from "lucide-react";
 import { evaluarRegaloWorksheet } from "@/lib/calculations/royal-holiday.js";
+import {
+  RH_CREDIT_MATRIX_COLS,
+  RH_CREDIT_MATRIX_ROWS,
+  buildRhCreditMatrix,
+} from "@/lib/calculations/worksheet-rh-credit-matrix.js";
 
 function isVentaCarga(carga) {
   const s = String(carga || "").toLowerCase();
@@ -80,6 +85,11 @@ export function WorksheetRhVentaPanel({
       ev: evaluarRegaloWorksheet(g, { holidayCredits: hc, montoVenta: mv }),
     })),
     [regalosCatalogo, hc, mv],
+  );
+
+  const creditMatrix = useMemo(
+    () => buildRhCreditMatrix(catalogo?.bottom_line),
+    [catalogo?.bottom_line],
   );
 
   const regaloTotals = useMemo(() => {
@@ -209,6 +219,44 @@ export function WorksheetRhVentaPanel({
 
           <div className="card tool-calc-card">
             <div className="card-heading">IPV – FVI (Regalos / Promociones disponibles)</div>
+            <div className="rh-ipv-credits">
+              <div className="rh-ipv-credits-label">Créditos</div>
+              <div className="rh-credit-matrix-wrap">
+                <table className="client-table rh-credit-matrix">
+                  <thead>
+                    <tr>
+                      <th />
+                      {RH_CREDIT_MATRIX_COLS.map((c) => <th key={c}>{c}</th>)}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {RH_CREDIT_MATRIX_ROWS.map((rowLabel, ri) => (
+                      <tr key={rowLabel}>
+                        <th scope="row">{ri + 1}-{rowLabel}</th>
+                        {RH_CREDIT_MATRIX_COLS.map((col, ci) => {
+                          const cell = creditMatrix[ri][ci];
+                          const cellHc = cell ? String(cell.holiday_credits) : "";
+                          const selected = cellHc && cellHc === String(form.holiday_credits);
+                          return (
+                            <td key={col}>
+                              <button
+                                type="button"
+                                className={`rh-matrix-cell${selected ? " selected" : ""}`}
+                                disabled={readOnly || !cell}
+                                onClick={() => cell && set("holiday_credits", String(cell.holiday_credits))}
+                                title={cell ? `${cell.programa} · ${cell.holiday_credits} HC` : "Sin dato en catálogo"}
+                              >
+                                {cell ? Number(cell.holiday_credits).toLocaleString("es-MX") : "—"}
+                              </button>
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
             <ol className="rh-ipv-list">
               {regalosEvaluados.length === 0 ? (
                 <li className="muted">Sin regalos en catálogo</li>
