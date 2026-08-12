@@ -10,7 +10,6 @@ import { probeSupabaseAuth } from "./lib/supabase-server.js";
 
 export function createApp() {
   const app = express();
-  const origins = webOrigins();
 
   app.set("trust proxy", 1);
 
