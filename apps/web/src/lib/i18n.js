@@ -14,10 +14,12 @@ export { getMonths, getWeekdays, getWeekdaysShort };
 const ES = {
   "nav.agenda": "Agenda",
   "nav.dashboard": "Dashboard",
+  "nav.dashboardShort": "Panel",
   "nav.goals": "Metas",
   "nav.clients": "Clientes",
   "nav.sales": "Ventas",
   "nav.tools": "Herramientas",
+  "nav.toolsShort": "Herram.",
   "nav.network": "Red",
   "nav.messages": "Mensajes",
   "nav.teamChat": "Chat de equipo",
@@ -390,10 +392,12 @@ const ES = {
 const EN = {
   "nav.agenda": "Agenda",
   "nav.dashboard": "Dashboard",
+  "nav.dashboardShort": "Dash",
   "nav.goals": "Goals",
   "nav.clients": "Clients",
   "nav.sales": "Sales",
   "nav.tools": "Tools",
+  "nav.toolsShort": "Tools",
   "nav.network": "Network",
   "nav.messages": "Messages",
   "nav.teamChat": "Team chat",
@@ -808,6 +812,16 @@ export function navLabel(label, lang = "es") {
   };
   const k = map[label];
   return k ? t(k, lang) : label;
+}
+
+/** Etiquetas cortas para bottom-nav en pantallas estrechas (≤390px). */
+export function navLabelCompact(label, lang = "es") {
+  const shortMap = {
+    Dashboard: "nav.dashboardShort",
+    Herramientas: "nav.toolsShort",
+  };
+  const k = shortMap[label];
+  return k ? t(k, lang) : navLabel(label, lang);
 }
 
 /** Traducción desde settings del store (acciones, utilidades fuera de React). */

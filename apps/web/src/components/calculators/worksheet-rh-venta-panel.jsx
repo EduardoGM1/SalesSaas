@@ -293,6 +293,9 @@ export function WorksheetRhVentaPanel({
           <p className="muted rh-hint rh-regalos-sub">
             Selecciona los regalos que se darán y define en qué concepto se aplicará su costo.
           </p>
+          <p className="muted rh-hint rh-regalos-scroll-hint">
+            Desliza horizontalmente para ver todas las columnas.
+          </p>
           <div className="rh-regalos-table-wrap">
             <table className="client-table rh-regalos-table">
               <thead>

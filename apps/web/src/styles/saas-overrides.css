@@ -5777,22 +5777,33 @@ body,
   .admin-users-filterbar .admin-filterbar-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .admin-users-filterbar .admin-filterbar-actions > :first-child { grid-column: 1 / -1; }
   .admin-users-filterbar .btn { justify-content: center; width: 100%; }
-  .admin-users-data-card { overflow: visible; border: 0; background: transparent; }
-  .admin-users-table-wrap { display: none; }
-  .admin-user-cards { display: grid; gap: 10px; }
-  .admin-user-cards article { padding: 15px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); }
-  .admin-user-cards article.is-inactive { opacity: .72; }
-  .admin-user-card-head { display: grid; grid-template-columns: 38px minmax(0, 1fr) auto; align-items: center; gap: 10px; }
-  .admin-user-avatar { display: grid; place-items: center; width: 38px; height: 38px; border-radius: 12px; color: var(--blue); background: color-mix(in srgb, var(--blue) 10%, white); font-size: 11px; font-weight: 900; }
-  .admin-user-card-head > div:nth-child(2) { display: grid; gap: 3px; min-width: 0; }
-  .admin-user-card-head strong { overflow: hidden; color: var(--text); font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
-  .admin-user-card-head span { overflow: hidden; color: var(--muted); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
-  .admin-user-card-badges { display: flex; flex-wrap: wrap; gap: 6px; margin: 14px 0; }
-  .admin-user-cards dl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 0; padding-top: 13px; border-top: 1px solid var(--border); }
-  .admin-user-cards dl > div { min-width: 0; }
-  .admin-user-cards dt { color: var(--muted); font-size: 9px; }
-  .admin-user-cards dd { margin: 4px 0 0; overflow: hidden; color: var(--text2); font-size: 11px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
-  .admin-pagination { margin-top: 10px; padding-inline: 0; border: 0; }
+  /* Solo /admin/users: tabla → cards. Catálogo RH y otras tablas conservan scroll horizontal. */
+  .admin-users-enterprise .admin-users-data-card { overflow: visible; border: 0; background: transparent; }
+  .admin-users-enterprise .admin-users-data-card > .admin-users-table-wrap { display: none; }
+  .admin-users-enterprise .admin-user-cards { display: grid; gap: 10px; }
+  .admin-users-enterprise .admin-user-cards article { padding: 15px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); }
+  .admin-users-enterprise .admin-user-cards article.is-inactive { opacity: .72; }
+  .admin-users-enterprise .admin-user-card-head { display: grid; grid-template-columns: 38px minmax(0, 1fr) auto; align-items: center; gap: 10px; }
+  .admin-users-enterprise .admin-user-avatar { display: grid; place-items: center; width: 38px; height: 38px; border-radius: 12px; color: var(--blue); background: color-mix(in srgb, var(--blue) 10%, white); font-size: 11px; font-weight: 900; }
+  .admin-users-enterprise .admin-user-card-head > div:nth-child(2) { display: grid; gap: 3px; min-width: 0; }
+  .admin-users-enterprise .admin-user-card-head strong { overflow: hidden; color: var(--text); font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
+  .admin-users-enterprise .admin-user-card-head span { overflow: hidden; color: var(--muted); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+  .admin-users-enterprise .admin-user-card-badges { display: flex; flex-wrap: wrap; gap: 6px; margin: 14px 0; }
+  .admin-users-enterprise .admin-user-cards dl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 0; padding-top: 13px; border-top: 1px solid var(--border); }
+  .admin-users-enterprise .admin-user-cards dl > div { min-width: 0; }
+  .admin-users-enterprise .admin-user-cards dt { color: var(--muted); font-size: 9px; }
+  .admin-users-enterprise .admin-user-cards dd { margin: 4px 0 0; overflow: hidden; color: var(--text2); font-size: 11px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+  .admin-users-enterprise .admin-pagination { margin-top: 10px; padding-inline: 0; border: 0; }
+  .admin-company-layout .admin-users-table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-inline: contain;
+  }
+  .admin-company-layout .admin-users-table-wrap .client-table { min-width: 480px; }
+  .admin-company-layout .admin-users-table-wrap .auth-input {
+    min-height: 40px;
+    font-size: 14px;
+  }
 }
 
 /* Admin system-wide consolidation */
@@ -6376,6 +6387,11 @@ body,
     letter-spacing: -0.01em;
   }
 
+  .bottom-nav-label--compact {
+    font-size: 8px;
+    letter-spacing: -0.02em;
+  }
+
   .team-page {
     gap: 12px;
   }
@@ -6591,14 +6607,16 @@ body,
     flex: 1;
     min-width: 0;
     font-size: 13px;
+    line-height: 1.35;
+    white-space: normal;
   }
 
   .sales-page.tool-calc-page .tool-frow .input-compact,
   .sales-page.tool-calc-page .tool-frow .tool-num-input {
-    width: 72px !important;
+    width: 88px !important;
     max-width: none !important;
-    min-height: auto !important;
-    font-size: 14px !important;
+    min-height: 44px !important;
+    font-size: 16px !important;
     flex-shrink: 0;
   }
 
@@ -6606,7 +6624,8 @@ body,
     width: auto !important;
     flex-shrink: 0;
     min-width: 100px;
-    padding: 7px 9px;
+    min-height: 44px;
+    padding: 10px 12px;
   }
 
   .sales-page.tool-calc-page .tool-frow .seg {
@@ -6617,9 +6636,9 @@ body,
 
   .sales-page.tool-calc-page .tool-frow .seg-btn {
     flex: 1;
-    min-height: auto !important;
-    padding: 7px 8px;
-    font-size: 10px;
+    min-height: 44px !important;
+    padding: 10px 8px;
+    font-size: 11px;
   }
 
   .sales-page.tool-calc-page .tool-frow .frow-inline {
@@ -9908,6 +9927,7 @@ body,
   font-weight: 600;
 }
 .rh-regalos-sub { margin: 0 0 10px; }
+.rh-regalos-scroll-hint { display: none; margin: 0 0 8px; font-size: 11px; }
 .rh-regalos-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 .rh-regalos-table { width: 100%; font-size: 13px; table-layout: fixed; }
 .rh-regalos-table th,
@@ -10359,6 +10379,77 @@ body,
 
   .worksheet-rh .rh-fin-totales.survey-result-pair .span2 {
     grid-column: 1 / -1;
+  }
+
+  /* Datos Venta — touch-friendly (mismo criterio que financiamiento) */
+  .worksheet-rh .worksheet-rh-venta-left .tool-calc-fields .tool-frow {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+    padding: 8px 0;
+  }
+
+  .worksheet-rh .worksheet-rh-venta-left .tool-calc-fields .tool-frow .flabel {
+    flex: none;
+    font-size: 13px;
+    line-height: 1.35;
+  }
+
+  .worksheet-rh .worksheet-rh-venta-left .tool-calc-fields .tool-frow .tool-num-input,
+  .worksheet-rh .worksheet-rh-venta-left .tool-calc-fields .tool-frow .input,
+  .worksheet-rh .worksheet-rh-venta-left .tool-calc-fields .tool-frow select {
+    width: 100% !important;
+    max-width: none !important;
+    min-height: 44px;
+    font-size: 16px;
+  }
+
+  .worksheet-rh .worksheet-rh-venta-left .tool-calc-fields .tool-frow .rh-field-val {
+    text-align: left;
+    font-size: 16px;
+  }
+
+  .worksheet-rh .rh-ipv-list li {
+    grid-template-columns: 28px minmax(0, 1fr);
+    grid-template-rows: auto auto;
+    gap: 6px 10px;
+  }
+
+  .worksheet-rh .rh-ipv-list .rh-ipv-name {
+    grid-column: 2;
+  }
+
+  .worksheet-rh .rh-ipv-list .input-compact,
+  .worksheet-rh .rh-ipv-list select {
+    grid-column: 1 / -1;
+    width: 100%;
+    min-height: 44px;
+    font-size: 16px;
+  }
+
+  .worksheet-rh .rh-regalos-scroll-hint {
+    display: block;
+  }
+
+  .worksheet-rh .rh-regalos-table-wrap {
+    margin-inline: -4px;
+    padding-inline: 4px;
+    scroll-padding-inline: 8px;
+    overscroll-behavior-inline: contain;
+  }
+
+  .worksheet-rh .rh-regalos-table {
+    min-width: 520px;
+  }
+
+  .worksheet-rh .rh-regalos-table .rh-qty-input,
+  .worksheet-rh .rh-regalos-table select {
+    min-height: 44px;
+    font-size: 16px;
+  }
+
+  .worksheet-rh .rh-bl-membership-table tbody tr.rh-bl-row-selectable {
+    min-height: 44px;
   }
 }
 
