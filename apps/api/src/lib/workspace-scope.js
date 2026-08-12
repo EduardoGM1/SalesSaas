@@ -44,10 +44,12 @@ export async function getRequestWorkspaceContext(supabase, userId) {
   }
 }
 
-/** Aplica .eq("workspace_id", id) si hay workspace activo. */
+/** Aplica .eq("workspace_id", id); falla cerrado si no hay workspace activo. */
 export function scopeByWorkspace(query, workspaceId) {
-  if (workspaceId) return query.eq("workspace_id", workspaceId);
-  return query;
+  if (!workspaceId) {
+    throw new ServiceError("Workspace activo requerido.", 403);
+  }
+  return query.eq("workspace_id", workspaceId);
 }
 
 function rpcMissing(error) {

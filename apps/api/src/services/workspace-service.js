@@ -1,5 +1,7 @@
 import { ServiceError, assertFound } from "../lib/service-error.js";
 import { createServiceSupabaseClient } from "../lib/supabase-server.js";
+import { ilikeOrFilter } from "../lib/ilike.js";
+import { assertPublicHttpUrl } from "../lib/safe-url.js";
 import { isSuperAdmin } from "@salesapp/shared/auth/permissions.js";
 import { SUPERADMIN_ONLY_KEYS } from "@salesapp/shared/auth/permission-catalog.js";
 import { ADMIN_AUDIT_ACTIONS, writeAdminLog } from "./admin-audit-service.js";
@@ -688,10 +690,13 @@ export async function searchInviteCandidates(supabase, userId, rawQuery) {
   const admin = createServiceSupabaseClient();
   if (!admin) throw new ServiceError("Service role no configurado.", 500);
 
+  const filter = ilikeOrFilter(["full_name", "email"], query);
+  if (!filter) return [];
+
   const { data: matches, error } = await admin
     .from("profiles")
     .select("id, full_name, email, avatar_url")
-    .or(`full_name.ilike.%${query}%,email.ilike.%${query}%`)
+    .or(filter)
     .order("full_name")
     .limit(30);
   if (error) throw new ServiceError(error.message, 500);
@@ -954,6 +959,15 @@ async function resolvePersistedLogoUrl(admin, { tipo, id, logoUrl, slot = "princ
 
   if (!/^https?:\/\//i.test(url)) {
     throw new ServiceError("La URL del logo debe ser http(s) directa a la imagen.", 400);
+  }
+
+  try {
+    assertPublicHttpUrl(url);
+  } catch (err) {
+    throw new ServiceError(
+      err instanceof Error ? err.message : "URL no permitida.",
+      400,
+    );
   }
 
   let res;

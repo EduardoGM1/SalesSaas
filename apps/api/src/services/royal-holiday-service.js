@@ -202,53 +202,57 @@ export async function saveVenta(client, userId, body) {
     .single();
   if (error) throw new ServiceError(error.message, 400);
 
-  // Extra DP/CC
-  const extraRows = [];
-  for (const ex of extras) {
-    extraRows.push({
-      rh_venta_id: venta.id,
-      tipo: ex.tipo === "extra_cc" ? "extra_cc" : "extra_dp",
-      porcentaje: normalizeEnganchePct(ex.porcentaje),
-      fecha_programada: String(ex.fecha).slice(0, 10),
-      metodo_pago: ex.metodo_pago || null,
-      cumplido: false,
-    });
-  }
-  if (extraRows.length) {
-    const { error: eErr } = await client.from("rh_extra_pagos").insert(extraRows);
-    if (eErr) throw new ServiceError(eErr.message, 400);
-
-    // Recordatorios en agenda del vendedor
-    for (const ex of extraRows) {
-      const { error: calErr } = await client.from("calendar_entries").insert({
-        user_id: userId,
-        workspace_id: workspaceId,
-        type: "follow",
-        entry_date: ex.fecha_programada,
-        note: `RH ${ex.tipo === "extra_cc" ? "Extra CC" : "Extra DP"} ${ex.porcentaje}% — venta ${venta.id}`,
-        prospect_id: body.prospect_id || null,
+  try {
+    // Extra DP/CC
+    const extraRows = [];
+    for (const ex of extras) {
+      extraRows.push({
+        rh_venta_id: venta.id,
+        tipo: ex.tipo === "extra_cc" ? "extra_cc" : "extra_dp",
+        porcentaje: normalizeEnganchePct(ex.porcentaje),
+        fecha_programada: String(ex.fecha).slice(0, 10),
+        metodo_pago: ex.metodo_pago || null,
+        cumplido: false,
       });
-      if (calErr) console.warn("[rh] calendar reminder:", calErr.message);
     }
+    if (extraRows.length) {
+      const { error: eErr } = await client.from("rh_extra_pagos").insert(extraRows);
+      if (eErr) throw new ServiceError(eErr.message, 400);
+
+      for (const ex of extraRows) {
+        const { error: calErr } = await client.from("calendar_entries").insert({
+          user_id: userId,
+          workspace_id: workspaceId,
+          type: "follow",
+          entry_date: ex.fecha_programada,
+          note: `RH ${ex.tipo === "extra_cc" ? "Extra CC" : "Extra DP"} ${ex.porcentaje}% — venta ${venta.id}`,
+          prospect_id: body.prospect_id || null,
+        });
+        if (calErr) console.warn("[rh] calendar reminder:", calErr.message);
+      }
+    }
+
+    if (preview.comision && !preview.comision.pendiente) {
+      const { error: mErr } = await client.from("rh_comision_movimientos").insert({
+        rh_venta_id: venta.id,
+        tipo: "inicial",
+        porcentaje: preview.comision.porcentaje,
+        monto_base: Number(body.monto_venta) || 0,
+        monto_comision: preview.comision.monto,
+        fecha_evento: toDateStr(fechaEvento),
+        fecha_pago: preview.comision.fecha_pago,
+        estado: "programada",
+        detalle: { posicion: body.posicion, enganche_pct: eng },
+      });
+      if (mErr) throw new ServiceError(mErr.message, 400);
+    }
+  } catch (err) {
+    await client.from("rh_extra_pagos").delete().eq("rh_venta_id", venta.id);
+    await client.from("rh_comision_movimientos").delete().eq("rh_venta_id", venta.id);
+    await client.from("rh_ventas").delete().eq("id", venta.id);
+    throw err;
   }
 
-  // Comisión inicial
-  if (preview.comision && !preview.comision.pendiente) {
-    const { error: mErr } = await client.from("rh_comision_movimientos").insert({
-      rh_venta_id: venta.id,
-      tipo: "inicial",
-      porcentaje: preview.comision.porcentaje,
-      monto_base: Number(body.monto_venta) || 0,
-      monto_comision: preview.comision.monto,
-      fecha_evento: toDateStr(fechaEvento),
-      fecha_pago: preview.comision.fecha_pago,
-      estado: "programada",
-      detalle: { posicion: body.posicion, enganche_pct: eng },
-    });
-    if (mErr) throw new ServiceError(mErr.message, 400);
-  }
-
-  // EXCEPCIÓN service-role: job interno post-insert (Extra DP vencidos / forfeit); no es request de usuario directo.
   await processExtraDpJobs({ ventaId: venta.id });
 
   const { data: full } = await client
@@ -431,10 +435,11 @@ export async function publishNuevaVersion(admin, empresaId, actorId, patch = {})
   if (!admin) throw new ServiceError("Cliente admin requerido.", 500);
   const vigente = await getCatalogoVigente(admin, empresaId);
   const now = new Date().toISOString();
+  const prevCatalogoId = vigente.catalogo.id;
   await admin
     .from("catalogo_configuracion")
     .update({ vigente_hasta: now })
-    .eq("id", vigente.catalogo.id);
+    .eq("id", prevCatalogoId);
 
   const { data: nuevo, error } = await admin
     .from("catalogo_configuracion")
@@ -450,40 +455,52 @@ export async function publishNuevaVersion(admin, empresaId, actorId, patch = {})
   if (error) throw new ServiceError(error.message, 400);
 
   const cid = nuevo.id;
-  const mapRows = (rows, omit = ["id", "created_at", "updated_at"]) =>
-    (rows || []).map((r) => {
-      const o = { ...r, catalogo_configuracion_id: cid };
-      for (const k of omit) delete o[k];
-      for (const [k, v] of Object.entries(o)) {
-        if (k === "catalogo_configuracion_id" || k === "programa" || k === "nacionalidad" || k === "posicion" || k === "nombre" || k === "notas") continue;
-        if (k === "cargas_permitidas") {
-          o[k] = Array.isArray(v) ? v : String(v || "").split(",").map((x) => x.trim()).filter(Boolean);
-          continue;
+  try {
+    const mapRows = (rows, omit = ["id", "created_at", "updated_at"]) =>
+      (rows || []).map((r) => {
+        const o = { ...r, catalogo_configuracion_id: cid };
+        for (const k of omit) delete o[k];
+        for (const [k, v] of Object.entries(o)) {
+          if (k === "catalogo_configuracion_id" || k === "programa" || k === "nacionalidad" || k === "posicion" || k === "nombre" || k === "notas") continue;
+          if (k === "cargas_permitidas") {
+            o[k] = Array.isArray(v) ? v : String(v || "").split(",").map((x) => x.trim()).filter(Boolean);
+            continue;
+          }
+          if (k === "restricciones" || k === "impuestos") continue;
+          if (typeof v === "string" && v !== "" && !Number.isNaN(Number(v)) && k !== "vigente_desde" && k !== "vigente_hasta") {
+            o[k] = Number(v);
+          }
         }
-        if (k === "restricciones" || k === "impuestos") continue;
-        if (typeof v === "string" && v !== "" && !Number.isNaN(Number(v)) && k !== "vigente_desde" && k !== "vigente_hasta") {
-          o[k] = Number(v);
-        }
-      }
-      return o;
-    });
+        return o;
+      });
 
-  const bl = mapRows(patch.bottom_line || vigente.bottom_line);
-  const fin = mapRows(patch.financiamiento || vigente.financiamiento);
-  const com = mapRows(patch.comisiones || vigente.comisiones);
-  const reg = mapRows(patch.regalos || vigente.regalos);
-  const ca = mapRows(patch.costo_administrativo || vigente.costo_administrativo);
-  assertComisionesFtb(com);
-  if (bl.length) await admin.from("rh_bottom_line").insert(bl);
-  if (fin.length) await admin.from("rh_financiamiento").insert(fin);
-  if (com.length) await admin.from("rh_comisiones").insert(com);
-  if (reg.length) await admin.from("rh_regalos").insert(reg);
-  if (ca.length) await admin.from("rh_costo_administrativo").insert(ca);
+    const bl = mapRows(patch.bottom_line || vigente.bottom_line);
+    const fin = mapRows(patch.financiamiento || vigente.financiamiento);
+    const com = mapRows(patch.comisiones || vigente.comisiones);
+    const reg = mapRows(patch.regalos || vigente.regalos);
+    const ca = mapRows(patch.costo_administrativo || vigente.costo_administrativo);
+    assertComisionesFtb(com);
+    if (bl.length) await admin.from("rh_bottom_line").insert(bl);
+    if (fin.length) await admin.from("rh_financiamiento").insert(fin);
+    if (com.length) await admin.from("rh_comisiones").insert(com);
+    if (reg.length) await admin.from("rh_regalos").insert(reg);
+    if (ca.length) await admin.from("rh_costo_administrativo").insert(ca);
 
-  const pg = { ...(patch.parametros || vigente.parametros || {}) };
-  delete pg.id;
-  pg.catalogo_configuracion_id = cid;
-  await admin.from("rh_parametros_generales").insert(pg);
+    const pg = { ...(patch.parametros || vigente.parametros || {}) };
+    delete pg.id;
+    pg.catalogo_configuracion_id = cid;
+    await admin.from("rh_parametros_generales").insert(pg);
+  } catch (err) {
+    await admin.from("catalogo_configuracion").delete().eq("id", cid);
+    await admin
+      .from("catalogo_configuracion")
+      .update({ vigente_hasta: null })
+      .eq("id", prevCatalogoId);
+    throw err instanceof ServiceError ? err : new ServiceError(
+      err instanceof Error ? err.message : "Error al publicar catálogo.",
+      400,
+    );
+  }
 
   return loadCatalogBundle(admin, cid);
 }

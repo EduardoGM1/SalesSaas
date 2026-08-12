@@ -14,9 +14,12 @@ export function createApp() {
 
   app.set("trust proxy", 1);
 
+  const origins = webOrigins();
+  const isProd = process.env.NODE_ENV === "production" || Boolean(process.env.VERCEL);
+
   app.use(compression());
   app.use(cors({
-    origin: origins.length ? origins : true,
+    origin: origins.length ? origins : (isProd ? false : true),
     credentials: true,
   }));
   app.use(express.json({ limit: "15mb" }));

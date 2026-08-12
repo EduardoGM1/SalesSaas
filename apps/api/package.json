@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "node --import ./src/load-env.js --watch src/index.js",
     "start": "node --import ./src/load-env.js src/index.js",
-    "verify": "node --import ./src/load-env.js scripts/verify-smoke.mjs"
+    "verify": "node --import ./src/load-env.js scripts/verify-smoke.mjs",
+    "test:security": "node --test src/lib/security-lib.test.mjs"
   },
   "dependencies": {
     "@salesapp/shared": "*",

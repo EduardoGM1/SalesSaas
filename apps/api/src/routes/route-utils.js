@@ -2,6 +2,13 @@ import { authenticateApi } from "../middleware/auth.js";
 import { apiError, json, parseBody } from "../lib/http.js";
 import { ServiceError } from "../lib/service-error.js";
 
+/** Mensaje genérico en producción para no filtrar detalles internos. */
+export function internalErrorMessage(err) {
+  const isProd = process.env.NODE_ENV === "production" || Boolean(process.env.VERCEL);
+  if (isProd) return "Error interno del servidor.";
+  return err instanceof Error ? err.message : "Error interno del servidor.";
+}
+
 export async function requireAuth(req, res) {
   const auth = await authenticateApi(req, res);
   if (!auth.ok) {
@@ -30,6 +37,6 @@ export async function runService(res, handler, { successStatus, wrap } = {}) {
   } catch (err) {
     if (err instanceof ServiceError) return apiError(res, err.message, err.status);
     console.error("[runService]", err);
-    return apiError(res, err instanceof Error ? err.message : "Error interno del servidor.", 500);
+    return apiError(res, internalErrorMessage(err), 500);
   }
 }

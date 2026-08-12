@@ -1,4 +1,5 @@
 import { ServiceError } from "../lib/service-error.js";
+import { ilikeOrFilter } from "../lib/ilike.js";
 import { adminClient, requireEmpresaAdmin } from "../lib/tenant-access.js";
 import { persistBrandingLogo } from "./workspace-service.js";
 
@@ -96,10 +97,13 @@ export async function searchAssignableUsers(actorId, empresaId, rawQuery) {
   if (query.length < SEARCH_MIN_CHARS) return [];
   if (query.length > SEARCH_MAX_CHARS) throw new ServiceError("Búsqueda demasiado larga.", 400);
 
+  const filter = ilikeOrFilter(["full_name", "email"], query);
+  if (!filter) return [];
+
   const { data: matches, error } = await admin
     .from("profiles")
     .select("id, full_name, email, avatar_url")
-    .or(`full_name.ilike.%${query}%,email.ilike.%${query}%`)
+    .or(filter)
     .order("full_name")
     .limit(30);
   if (error) throw new ServiceError(error.message, 500);

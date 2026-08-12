@@ -79,6 +79,23 @@ export async function listCeilingKeys(actorId, { empresaId, salaId }) {
 export async function listDelegatedKeys(actorId, { asistenteId, empresaId, salaId }) {
   const admin = adminClient();
   if (empresaId) await requireEmpresaAdmin(actorId, empresaId);
+  if (salaId) {
+    const emp = await empresaFromWorkspace(admin, salaId);
+    const { data: mem } = await admin
+      .from("workspace_miembros")
+      .select("rol_en_workspace, roles(slug)")
+      .eq("workspace_id", salaId)
+      .eq("usuario_id", actorId)
+      .maybeSingle();
+    const isGerente = mem?.rol_en_workspace === "gerente" || mem?.roles?.slug === "gerente";
+    const { data: isAdmin } = await admin.rpc("user_is_empresa_admin", {
+      p_usuario_id: actorId,
+      p_empresa_id: emp,
+    });
+    if (!isGerente && isAdmin !== true) {
+      throw new ServiceError("Solo el Gerente de la sala o Admin de Empresa pueden ver delegaciones aquí.", 403);
+    }
+  }
   const { data, error } = await admin.rpc("list_permisos_delegados_keys", {
     p_asistente_id: asistenteId,
     p_empresa_id: empresaId || null,

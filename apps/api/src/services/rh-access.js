@@ -89,7 +89,10 @@ export async function guardRhRequest(supabase, userId, empresaId, { flag, flags,
   } else if (flag) {
     resolvedWs = await assertRhModuleEnabled(supabase, userId, flag, workspaceId ?? undefined);
   }
-  await assertRhEmpresaAccess(supabase, userId, empresaId, resolvedWs ?? undefined);
+  if (!resolvedWs) {
+    throw new ServiceError(DENY, 403);
+  }
+  await assertRhEmpresaAccess(supabase, userId, empresaId, resolvedWs);
   return resolvedWs;
 }
 

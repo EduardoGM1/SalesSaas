@@ -19,7 +19,7 @@ import {
   getSellerOptions,
   getToolsUsage,
 } from "../lib/admin/data.js";
-import { parseJsonBody, runService } from "./route-utils.js";
+import { parseJsonBody, runService, internalErrorMessage } from "./route-utils.js";
 import { rateLimit } from "../middleware/rate-limit.js";
 import * as adminUsersService from "../services/admin-users-service.js";
 import * as supportService from "../services/support-service.js";
@@ -712,7 +712,7 @@ router.get("/export/logs", async (req, res) => {
     res.setHeader("Content-Disposition", 'attachment; filename="logs-administracion.csv"');
     res.send(csv);
   } catch (err) {
-    apiError(res, err instanceof Error ? err.message : "Error al exportar.", 500);
+    apiError(res, internalErrorMessage(err), 500);
   }
 });
 
@@ -729,7 +729,7 @@ router.get("/overview", async (req, res) => {
     const data = await getOverview(a.supabase);
     json(res, { data });
   } catch (err) {
-    apiError(res, err instanceof Error ? err.message : "Error al cargar resumen.", 500);
+    apiError(res, internalErrorMessage(err), 500);
   }
 });
 
@@ -760,7 +760,7 @@ router.get("/users", async (req, res) => {
     const data = await getUsers(a.supabase, filters, { includeMetrics });
     json(res, { data });
   } catch (err) {
-    apiError(res, err instanceof Error ? err.message : "Error al cargar usuarios.", 500);
+    apiError(res, internalErrorMessage(err), 500);
   }
 });
 
@@ -780,7 +780,7 @@ router.get("/tools-usage", async (req, res) => {
     const data = await getToolsUsage(a.supabase, filters);
     json(res, { data });
   } catch (err) {
-    apiError(res, err instanceof Error ? err.message : "Error al cargar uso de herramientas.", 500);
+    apiError(res, internalErrorMessage(err), 500);
   }
 });
 
@@ -798,7 +798,7 @@ router.get("/export/goals", async (req, res) => {
     res.setHeader("Content-Disposition", 'attachment; filename="metas.csv"');
     res.send(csv);
   } catch (err) {
-    apiError(res, err instanceof Error ? err.message : "Error al exportar.", 500);
+    apiError(res, internalErrorMessage(err), 500);
   }
 });
 
@@ -816,7 +816,7 @@ router.get("/export/metas", async (req, res) => {
     res.setHeader("Content-Disposition", 'attachment; filename="metas.csv"');
     res.send(csv);
   } catch (err) {
-    apiError(res, err instanceof Error ? err.message : "Error al exportar.", 500);
+    apiError(res, internalErrorMessage(err), 500);
   }
 });
 
@@ -840,7 +840,7 @@ router.get("/export/metrics", async (req, res) => {
     res.setHeader("Content-Disposition", 'attachment; filename="metricas.csv"');
     res.send(csv);
   } catch (err) {
-    apiError(res, err instanceof Error ? err.message : "Error al exportar.", 500);
+    apiError(res, internalErrorMessage(err), 500);
   }
 });
 
@@ -878,7 +878,7 @@ router.get("/export/support", async (req, res) => {
     res.setHeader("Content-Disposition", 'attachment; filename="soporte.csv"');
     res.send(csv);
   } catch (err) {
-    apiError(res, err instanceof Error ? err.message : "Error al exportar.", 500);
+    apiError(res, internalErrorMessage(err), 500);
   }
 });
 
@@ -905,7 +905,7 @@ router.get("/export/users", async (req, res) => {
     res.setHeader("Content-Disposition", `attachment; filename="usuarios-${new Date().toISOString().slice(0, 10)}.csv"`);
     res.send(csv);
   } catch (err) {
-    apiError(res, err instanceof Error ? err.message : "Error al exportar.", 500);
+    apiError(res, internalErrorMessage(err), 500);
   }
 });
 

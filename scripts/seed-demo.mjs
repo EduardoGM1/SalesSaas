@@ -7,7 +7,7 @@
  *   npm run seed:demo -- --reset   (borra usuarios @demo.salesapp.test y recrea)
  *
  * Credenciales demo (todos los vendedores):
- *   Contraseña: Demo1234!
+ *   Contraseña: variable DEMO_SEED_PASSWORD (o valor por defecto en desarrollo)
  */
 
 import { createClient } from "@supabase/supabase-js";
@@ -18,7 +18,7 @@ import { randomUUID } from "crypto";
 
 const __dir = dirname(fileURLToPath(import.meta.url));
 const DEMO_DOMAIN = "demo.salesapp.test";
-const DEMO_PASSWORD = "Demo1234!";
+const DEMO_PASSWORD = process.env.DEMO_SEED_PASSWORD || "Demo1234!";
 
 const WS_DEFAULTS = {
   wo1m: "60", wo1r: "12.99",
@@ -596,7 +596,11 @@ async function main() {
 
   console.log("\n=== Listo ===");
   console.log(`\nUsuarios demo (@${DEMO_DOMAIN}):`);
-  console.log(`  Contraseña: ${DEMO_PASSWORD}`);
+  if (!process.env.DEMO_SEED_PASSWORD) {
+    console.log("  Contraseña: (valor por defecto de desarrollo — configura DEMO_SEED_PASSWORD en prod)");
+  } else {
+    console.log("  Contraseña: configurada vía DEMO_SEED_PASSWORD");
+  }
   for (const v of VENDORS) {
     console.log(`  • ${v.email} — ${v.role}`);
   }
