@@ -9849,20 +9849,32 @@ body,
 .rh-warn { color: #dc2626; }
 .rh-warn-text { color: #dc2626; }
 
-/* Datos Venta — layout dos columnas */
+/* Datos Venta — 3 cards de cruce + regalos full-width */
 .worksheet-rh-venta { display: grid; gap: 12px; margin-bottom: 12px; }
-.worksheet-rh-venta-grid {
+.worksheet-rh-venta-top {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
   align-items: start;
 }
-.worksheet-rh-venta-left { display: grid; gap: 12px; align-content: start; min-width: 0; }
-.worksheet-rh-venta-left .tool-calc-fields .tool-frow .tool-num-input,
-.worksheet-rh-venta-left .tool-calc-fields .tool-frow .input,
-.worksheet-rh-venta-left .tool-calc-fields .tool-frow select {
+.worksheet-rh-venta-top .tool-calc-fields .tool-frow .tool-num-input,
+.worksheet-rh-venta-top .tool-calc-fields .tool-frow .input,
+.worksheet-rh-venta-top .tool-calc-fields .tool-frow select {
   width: min(220px, 100%);
   max-width: 100%;
+}
+.worksheet-rh-venta .rh-card-sub { margin: 0 0 10px; }
+.worksheet-rh-venta .rh-credits-input {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.worksheet-rh-venta .rh-credits-input .tool-num-input { flex: 1; min-width: 0; }
+.worksheet-rh-venta .rh-credits-suffix {
+  font-size: 12px;
+  font-weight: 700;
+  flex-shrink: 0;
 }
 .worksheet-rh .rh-field-val {
   font-weight: 700;
@@ -9896,11 +9908,6 @@ body,
   text-align: center;
 }
 .rh-ipv-name { min-width: 0; }
-.rh-ipv-bl-table {
-  margin-bottom: 14px;
-  padding-bottom: 14px;
-  border-bottom: 1px solid var(--border);
-}
 .rh-bl-membership-scroll {
   max-height: 220px;
   overflow-y: auto;
@@ -9936,6 +9943,7 @@ body,
 .rh-regalos-table .rh-col-name { text-align: left; }
 .rh-regalos-table .rh-col-qty { width: 88px; text-align: center; }
 .rh-regalos-table .rh-col-cost { width: 120px; text-align: right; white-space: nowrap; }
+.rh-regalos-table .rh-col-total { width: 112px; text-align: right; white-space: nowrap; font-weight: 700; }
 .rh-regalos-table .rh-col-venta,
 .rh-regalos-table .rh-col-closing { width: 132px; text-align: right; }
 .rh-regalos-table th.rh-col-venta,
@@ -9961,7 +9969,7 @@ body,
 }
 .rh-regalos-totales {
   grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
-  margin-top: 4px;
+  margin-top: 12px;
 }
 .rh-regalos-totales .rh-total-box {
   display: flex;
@@ -10202,7 +10210,7 @@ body,
   .worksheet-rh-row3,
   .worksheet-rh-fin-grid,
   .worksheet-rh-roles-grid,
-  .worksheet-rh-venta-grid {
+  .worksheet-rh-venta-top {
     grid-template-columns: 1fr;
   }
   .rh-regalos-totales {
@@ -10382,31 +10390,35 @@ body,
   }
 
   /* Datos Venta — touch-friendly (mismo criterio que financiamiento) */
-  .worksheet-rh .worksheet-rh-venta-left .tool-calc-fields .tool-frow {
+  .worksheet-rh .worksheet-rh-venta-top .tool-calc-fields .tool-frow {
     flex-direction: column;
     align-items: stretch;
     gap: 6px;
     padding: 8px 0;
   }
 
-  .worksheet-rh .worksheet-rh-venta-left .tool-calc-fields .tool-frow .flabel {
+  .worksheet-rh .worksheet-rh-venta-top .tool-calc-fields .tool-frow .flabel {
     flex: none;
     font-size: 13px;
     line-height: 1.35;
   }
 
-  .worksheet-rh .worksheet-rh-venta-left .tool-calc-fields .tool-frow .tool-num-input,
-  .worksheet-rh .worksheet-rh-venta-left .tool-calc-fields .tool-frow .input,
-  .worksheet-rh .worksheet-rh-venta-left .tool-calc-fields .tool-frow select {
+  .worksheet-rh .worksheet-rh-venta-top .tool-calc-fields .tool-frow .tool-num-input,
+  .worksheet-rh .worksheet-rh-venta-top .tool-calc-fields .tool-frow .input,
+  .worksheet-rh .worksheet-rh-venta-top .tool-calc-fields .tool-frow select {
     width: 100% !important;
     max-width: none !important;
     min-height: 44px;
     font-size: 16px;
   }
 
-  .worksheet-rh .worksheet-rh-venta-left .tool-calc-fields .tool-frow .rh-field-val {
+  .worksheet-rh .worksheet-rh-venta-top .tool-calc-fields .tool-frow .rh-field-val {
     text-align: left;
     font-size: 16px;
+  }
+
+  .worksheet-rh .worksheet-rh-venta-top .rh-credits-input {
+    width: 100%;
   }
 
   .worksheet-rh .rh-ipv-list li {
