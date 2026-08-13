@@ -187,8 +187,10 @@ export function WorksheetRoyalHolidayPage({ clientId, shared }) {
   }, [catalogo]);
 
   const ws = useMemo(
-    () => buildRhWorksheetState(catalogo, preview, operationalForm),
-    [catalogo, preview, operationalForm],
+    () => buildRhWorksheetState(catalogo, preview, operationalForm, {
+      mxnToUsd: (n) => moneda.convertir(n, "MXN", moneda.monedaOperativa),
+    }),
+    [catalogo, preview, operationalForm, moneda.ctx, moneda.monedaOperativa],
   );
   const set = (key, value) => {
     markFieldsDirty(dirtyKeysRef, key);
@@ -281,6 +283,9 @@ export function WorksheetRoyalHolidayPage({ clientId, shared }) {
           epv_fvi: form.epvFvi,
           valores: form.valores,
           regalos_cantidad: form.regalosCantidad,
+          monto_capturado: ws.monto_capturado,
+          monto_contrato: ws.monto_contrato,
+          regalos_totales: ws.regalos_totales,
           roles: { opc: form.opc, liner: form.liner, closer1: form.closer1, closer2: form.closer2, exit: form.exit },
           tarjetas: {
             inmex: form.tarjeta_inmex_on ? form.tarjeta_inmex : null,

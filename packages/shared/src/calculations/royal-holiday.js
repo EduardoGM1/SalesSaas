@@ -32,6 +32,28 @@ export function lookupBottomLine(rows, holidayCredits) {
   return best;
 }
 
+/** Mayor tier cuyo precio mínimo c/IVA no supera el monto de venta. */
+export function lookupBottomLineByMonto(rows, monto) {
+  const m = Number(monto) || 0;
+  if (m <= 0) return null;
+  const sorted = [...(rows || [])].sort(
+    (a, b) => Number(a.precio_minimo_con_iva) - Number(b.precio_minimo_con_iva),
+  );
+  let best = null;
+  for (const row of sorted) {
+    if (Number(row.precio_minimo_con_iva) <= m) best = row;
+  }
+  return best;
+}
+
+/** Monto capturado − precio mínimo c/IVA de un tier BL (positivo = por encima). */
+export function deltaMontoVsBottomLine(monto, blRow) {
+  const m = Number(monto) || 0;
+  const p = Number(blRow?.precio_minimo_con_iva);
+  if (!blRow || !Number.isFinite(p) || m <= 0) return null;
+  return m - p;
+}
+
 export function lookupCostoAdministrativo(rows, enganchePct) {
   const eng = Number(enganchePct) || 0;
   // enganchePct en UI suele ser 15, 25…; catálogo puede estar en 0.15 o 15
@@ -173,7 +195,6 @@ export function regalosDisponibles(regalos, { holidayCredits, montoVenta }) {
     const r = g.restricciones || {};
     if (r.venta_minima_hc != null && hc < Number(r.venta_minima_hc)) return false;
     if (r.venta_minima_usd != null && mv < Number(r.venta_minima_usd)) return false;
-    if (r.venta_max_usd != null && mv > Number(r.venta_max_usd)) return false;
     return true;
   });
 }
@@ -203,85 +224,163 @@ function cargaEsClosing(carga) {
   return s === "closing_cost" || s.includes("closing");
 }
 
+function cargaEsSinCosto(carga) {
+  const s = String(carga || "").toLowerCase().replace(/\s+/g, "_");
+  return s === "sin_costo" || s.startsWith("sin_costo");
+}
+
+export function restriccionesRegalo(regalo) {
+  return regalo?.restricciones && typeof regalo.restricciones === "object" ? regalo.restricciones : {};
+}
+
+export function cantidadDefaultRegalo(regalo) {
+  const r = restriccionesRegalo(regalo);
+  if (r.cantidad_default != null && Number.isFinite(Number(r.cantidad_default))) {
+    return Number(r.cantidad_default);
+  }
+  if (r.cantidad_es_monto) return 0;
+  return 1;
+}
+
+export function cantidadRegalo(regalo, regalosCantidad) {
+  const raw = regalosCantidad?.[regalo.id];
+  if (raw === "" || raw == null) return cantidadDefaultRegalo(regalo);
+  const n = Number(raw);
+  return Number.isFinite(n) ? n : cantidadDefaultRegalo(regalo);
+}
+
+/** Costo unitario efectivo (cuota anual, catálogo o nulo si el usuario captura el monto). */
+export function costoUnitarioRegalo(regalo, { cuotaAnual } = {}) {
+  const r = restriccionesRegalo(regalo);
+  if (r.cantidad_es_monto) return null;
+  if (r.costo_es_cuota_anual) {
+    const n = Number(cuotaAnual);
+    return Number.isFinite(n) ? n : 0;
+  }
+  const n = Number(regalo?.costo);
+  return Number.isFinite(n) ? n : null;
+}
+
+/** Total de línea en la moneda del regalo (MXN o USD). */
+export function totalLineaRegalo(regalo, { qty, cuotaAnual } = {}) {
+  const r = restriccionesRegalo(regalo);
+  if (r.cantidad_es_monto) {
+    const n = Number(qty);
+    return Number.isFinite(n) ? Math.max(0, n) : 0;
+  }
+  const unit = costoUnitarioRegalo(regalo, { cuotaAnual });
+  if (unit == null) return 0;
+  return unit * Math.max(0, Number(qty) || 0);
+}
+
+export function totalLineaRegaloUsd(regalo, opts, mxnToUsd) {
+  const total = totalLineaRegalo(regalo, opts);
+  if (restriccionesRegalo(regalo).moneda_costo === "MXN") {
+    const converted = typeof mxnToUsd === "function" ? mxnToUsd(total) : null;
+    return Number.isFinite(converted) ? converted : 0;
+  }
+  return total;
+}
+
 /**
  * Evalúa un regalo del catálogo RH para la UI del worksheet (sin filtrar la lista).
  * estado: elegible | pendiente_monto | no_elegible
  */
-export function evaluarRegaloWorksheet(regalo, { holidayCredits, montoVenta }) {
-  const r = regalo?.restricciones || {};
+export function evaluarRegaloWorksheet(regalo, {
+  holidayCredits,
+  montoVenta,
+  cuotaAnual,
+  qty,
+  grupoMontosOtros = {},
+} = {}) {
+  const r = restriccionesRegalo(regalo);
   const hc = Number(holidayCredits) || 0;
   const mv = Number(montoVenta) || 0;
   const cargas = Array.isArray(regalo?.cargas_permitidas) ? regalo.cargas_permitidas : [];
   const permiteVenta = cargas.some(cargaEsVenta);
   const permiteClosing = cargas.some(cargaEsClosing);
-  const costoNum = Number(regalo?.costo);
-  const costoUnitario = Number.isFinite(costoNum) ? costoNum : null;
+  const permiteSinCosto = cargas.some(cargaEsSinCosto) && !permiteVenta && !permiteClosing;
+  const costoUnitario = costoUnitarioRegalo(regalo, { cuotaAnual });
   const monedaCosto = r.moneda_costo || "USD";
+  const qtyEff = qty == null ? cantidadDefaultRegalo(regalo) : qty;
+
+  const base = { permiteVenta, permiteClosing, permiteSinCosto, costoUnitario, monedaCosto };
 
   if (r.venta_minima_hc != null && hc < Number(r.venta_minima_hc)) {
-    return {
-      estado: "no_elegible",
-      motivo: `Requiere mínimo ${Number(r.venta_minima_hc).toLocaleString("es-MX")} HC`,
-      permiteVenta,
-      permiteClosing,
-      costoUnitario,
-      monedaCosto,
-    };
+    return { ...base, estado: "no_elegible", motivo: `Requiere mínimo ${Number(r.venta_minima_hc).toLocaleString("es-MX")} HC` };
   }
 
-  const requiereMonto = r.venta_minima_usd != null || r.venta_min_usd != null || r.venta_max_usd != null;
+  const requiereMonto = r.venta_minima_usd != null;
   if (mv <= 0 && requiereMonto) {
+    return { ...base, estado: "pendiente_monto", motivo: "Captura monto de venta en Datos Financiamiento" };
+  }
+
+  if (mv > 0 && r.venta_minima_usd != null && mv < Number(r.venta_minima_usd)) {
     return {
-      estado: "pendiente_monto",
-      motivo: "Captura monto de venta en Datos Financiamiento",
-      permiteVenta,
-      permiteClosing,
-      costoUnitario,
-      monedaCosto,
+      ...base,
+      estado: "no_elegible",
+      motivo: `Venta mínima ${Number(r.venta_minima_usd).toLocaleString("es-MX")} USD`,
     };
   }
 
-  if (mv > 0) {
-    if (r.venta_minima_usd != null && mv < Number(r.venta_minima_usd)) {
-      return {
-        estado: "no_elegible",
-        motivo: `Venta mínima ${Number(r.venta_minima_usd).toLocaleString("es-MX")} USD`,
-        permiteVenta,
-        permiteClosing,
-        costoUnitario,
-        monedaCosto,
-      };
-    }
-    if (r.venta_min_usd != null && mv < Number(r.venta_min_usd)) {
-      return {
-        estado: "no_elegible",
-        motivo: `Rango venta ${r.venta_min_usd}–${r.venta_max_usd ?? "∞"} USD`,
-        permiteVenta,
-        permiteClosing,
-        costoUnitario,
-        monedaCosto,
-      };
-    }
-    if (r.venta_max_usd != null && mv > Number(r.venta_max_usd)) {
-      return {
-        estado: "no_elegible",
-        motivo: `Rango venta ${r.venta_min_usd ?? 0}–${r.venta_max_usd} USD`,
-        permiteVenta,
-        permiteClosing,
-        costoUnitario,
-        monedaCosto,
-      };
+  let aviso = null;
+  if (r.ppd_min != null && r.ppd_max != null) {
+    aviso = `Tarifa p/p entre ${r.ppd_min} y ${r.ppd_max} USD`;
+  }
+
+  if (r.grupo_tope && r.grupo_tope_usd != null) {
+    const others = Number(grupoMontosOtros[r.grupo_tope] || 0);
+    const mine = totalLineaRegalo(regalo, { qty: qtyEff, cuotaAnual });
+    const cap = Number(r.grupo_tope_usd);
+    if (mine + others > cap + 0.009) {
+      aviso = `All inclusive + vuelo no puede exceder ${cap.toLocaleString("es-MX")} USD`;
     }
   }
 
-  return {
-    estado: "elegible",
-    motivo: null,
-    permiteVenta,
-    permiteClosing,
-    costoUnitario,
-    monedaCosto,
-  };
+  const bonoHc = r.hc_bonus_factor != null && hc > 0
+    ? Math.min(hc * Number(r.hc_bonus_factor), Number(r.hc_bonus_max) || hc * Number(r.hc_bonus_factor))
+    : null;
+
+  return { ...base, estado: "elegible", motivo: null, aviso, bonoHc };
+}
+
+export function totalesRegalosAplicados(regalos, form, { holidayCredits, montoVenta, cuotaAnual, mxnToUsd } = {}) {
+  let venta = 0;
+  let closing = 0;
+  const grupoMontosOtros = {};
+  const list = regalos || [];
+  for (const g of list) {
+    const carga = form?.regalosElegidos?.[g.id];
+    if (!carga || cargaEsSinCosto(carga)) continue;
+    const r = restriccionesRegalo(g);
+    if (!r.grupo_tope) continue;
+    const qty = cantidadRegalo(g, form?.regalosCantidad);
+    const line = totalLineaRegaloUsd(g, { qty, cuotaAnual }, mxnToUsd);
+    grupoMontosOtros[r.grupo_tope] = (grupoMontosOtros[r.grupo_tope] || 0) + line;
+  }
+
+  for (const g of list) {
+    const carga = form?.regalosElegidos?.[g.id];
+    if (!carga || cargaEsSinCosto(carga)) continue;
+    const qty = cantidadRegalo(g, form?.regalosCantidad);
+    const r = restriccionesRegalo(g);
+    const others = { ...grupoMontosOtros };
+    if (r.grupo_tope) {
+      others[r.grupo_tope] = Math.max(0, (others[r.grupo_tope] || 0) - totalLineaRegaloUsd(g, { qty, cuotaAnual }, mxnToUsd));
+    }
+    const ev = evaluarRegaloWorksheet(g, {
+      holidayCredits,
+      montoVenta,
+      cuotaAnual,
+      qty,
+      grupoMontosOtros: others,
+    });
+    if (ev.estado !== "elegible") continue;
+    const line = totalLineaRegaloUsd(g, { qty, cuotaAnual }, mxnToUsd);
+    if (cargaEsVenta(carga)) venta += line;
+    else if (cargaEsClosing(carga)) closing += line;
+  }
+  return { venta, closing, total: venta + closing };
 }
 
 function parseMoneyScalar(v) {

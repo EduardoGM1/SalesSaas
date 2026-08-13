@@ -7,6 +7,7 @@ import { dirname, resolve } from "path";
 import { fileURLToPath } from "url";
 import { createClient } from "@supabase/supabase-js";
 import { createRequire } from "module";
+import { RH_REGALOS_EXCEL } from "../packages/shared/src/calculations/royal-holiday-regalos-catalog.js";
 
 const require = createRequire(import.meta.url);
 const XLSX = require("xlsx");
@@ -184,80 +185,15 @@ if (blInserts.length) {
 }
 console.log("✓ bottom_line", blInserts.length);
 
-// --- Regalos (parse razonable) ---
-const regSheet = wb.Sheets["Regalos "] || wb.Sheets["Regalos"];
-const regRows = XLSX.utils.sheet_to_json(regSheet, { header: 1, defval: "" });
-const regInserts = [];
-for (let i = 4; i < regRows.length; i++) {
-  const row = regRows[i];
-  const nombre = String(row[1] || "").trim();
-  if (!nombre || nombre.toLowerCase() === "tours") continue;
-  const cargas = [];
-  const closing = row[2];
-  const venta = row[3];
-  const sin = row[4];
-  let costo = null;
-  const restricciones = {};
-  const parseUsdRange = (raw) => {
-    const m = String(raw || "").match(/([\d.]+)\s*-\s*([\d.]+)/);
-    if (!m) return null;
-    const a = Number(m[1]);
-    const b = Number(m[2]);
-    if (!Number.isFinite(a) || !Number.isFinite(b)) return null;
-    return { min: Math.min(a, b), max: Math.max(a, b) };
-  };
-  if (closing !== "" && closing != null && String(closing).toLowerCase() !== "x") {
-    const n = Number(String(closing).split("-")[0]);
-    if (Number.isFinite(n)) {
-      costo = n;
-      cargas.push("closing_cost");
-    }
-  } else if (String(closing).toLowerCase() === "x") cargas.push("closing_cost");
-  if (venta !== "" && venta != null && String(venta).toLowerCase() !== "x") {
-    const range = parseUsdRange(venta);
-    if (range) {
-      restricciones.venta_min_usd = range.min;
-      restricciones.venta_max_usd = range.max;
-      if (!cargas.includes("venta")) cargas.push("venta");
-    } else {
-      const n = Number(String(venta).split("-")[0]);
-      if (Number.isFinite(n)) {
-        if (costo == null) costo = n;
-        if (!cargas.includes("venta")) cargas.push("venta");
-      }
-    }
-  } else if (String(venta).toLowerCase() === "x") {
-    if (!cargas.includes("venta")) cargas.push("venta");
-  }
-  if (String(sin).toLowerCase() === "x" || (sin !== "" && sin != null && Number.isFinite(Number(sin)))) {
-    cargas.push("sin_costo");
-    if (costo == null && Number.isFinite(Number(sin))) costo = Number(sin);
-  }
-  if (!cargas.length) cargas.push("sin_costo");
-  const restText = [row[7], row[8], row[9]].filter(Boolean).join(" ");
-  const mHc = /venta minima\s*(\d+)\s*hc/i.exec(restText);
-  if (mHc) restricciones.venta_minima_hc = Number(mHc[1]) * 1000;
-  const mUsd = /\$?\s*([\d,.]+)/.exec(String(row[8] || row[7] || ""));
-  if (/venta minima\s*\$/i.test(restText) && mUsd) {
-    restricciones.venta_minima_usd = Number(String(mUsd[1]).replace(/,/g, ""));
-  }
-  if (/flyback/i.test(nombre)) restricciones.venta_minima_usd = 19167.58;
-  if (/prevelige|privilege/i.test(nombre)) restricciones.venta_minima_hc = 15000;
-  if (/move in/i.test(nombre)) restricciones.moneda_costo = "MXN";
-  if (/bono de creditos/i.test(nombre)) {
-    restricciones.vigencia_meses = 18;
-    restricciones.hc_tiers = [10000, 15000, 30000];
-  }
-
-  regInserts.push({
-    catalogo_configuracion_id: cid,
-    nombre,
-    costo,
-    cargas_permitidas: cargas,
-    restricciones,
-    notas: restText || null,
-  });
-}
+// --- Regalos (canónico Excel Saletse: Regalos + Worksheet) ---
+const regInserts = RH_REGALOS_EXCEL.map((g) => ({
+  catalogo_configuracion_id: cid,
+  nombre: g.nombre,
+  costo: g.costo,
+  cargas_permitidas: g.cargas_permitidas,
+  restricciones: g.restricciones,
+  notas: g.notas || null,
+}));
 if (regInserts.length) {
   const { error } = await admin.from("rh_regalos").insert(regInserts);
   if (error) throw new Error("regalos: " + error.message);

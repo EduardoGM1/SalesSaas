@@ -1,6 +1,14 @@
 import { useMemo } from "react";
 import { AlertTriangle, CheckCircle2, Gift, Info, ShoppingCart, Landmark } from "lucide-react";
-import { evaluarRegaloWorksheet } from "@/lib/calculations/royal-holiday.js";
+import {
+  cantidadRegalo,
+  deltaMontoVsBottomLine,
+  evaluarRegaloWorksheet,
+  lookupBottomLineByMonto,
+  restriccionesRegalo,
+  totalLineaRegalo,
+  totalesRegalosAplicados,
+} from "@/lib/calculations/royal-holiday.js";
 
 function isVentaCarga(carga) {
   const s = String(carga || "").toLowerCase();
@@ -12,30 +20,21 @@ function isClosingCarga(carga) {
   return s === "closing_cost" || s.includes("closing");
 }
 
+function isSinCostoCarga(carga) {
+  const s = String(carga || "").toLowerCase().replace(/\s+/g, "_");
+  return s === "sin_costo" || s.startsWith("sin_costo");
+}
+
 function pickCargaForColumn(cargas, column) {
   const list = Array.isArray(cargas) ? cargas : [];
   if (column === "venta") {
-    return list.find((c) => isVentaCarga(c)) || list.find((c) => !isClosingCarga(c)) || list[0] || "";
+    return list.find((c) => isVentaCarga(c)) || list.find((c) => !isClosingCarga(c) && !isSinCostoCarga(c)) || list[0] || "";
   }
   return list.find((c) => isClosingCarga(c)) || "";
 }
 
-/** Mayor tier de bottom_line cuyo precio mínimo c/IVA no supera el monto. */
-function lookupBottomLineByMonto(rows, monto) {
-  const m = Number(monto) || 0;
-  if (m <= 0) return null;
-  const sorted = [...(rows || [])].sort(
-    (a, b) => Number(a.precio_minimo_con_iva) - Number(b.precio_minimo_con_iva),
-  );
-  let best = null;
-  for (const row of sorted) {
-    if (Number(row.precio_minimo_con_iva) <= m) best = row;
-  }
-  return best;
-}
-
 function fmtRegaloCosto(ev, fmtResult) {
-  if (ev.costoUnitario == null) return "—";
+  if (ev.costoUnitario == null) return "Monto";
   const n = ev.costoUnitario;
   if (ev.monedaCosto === "MXN") {
     return `$${n.toLocaleString("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} MXN`;
@@ -45,9 +44,17 @@ function fmtRegaloCosto(ev, fmtResult) {
 
 function fmtLineAmount(amount, ev, fmtResult) {
   if (ev.monedaCosto === "MXN") {
-    return `$${amount.toLocaleString("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    return `$${Number(amount || 0).toLocaleString("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} MXN`;
   }
   return fmtResult(amount);
+}
+
+function fmtDelta(delta, fmtResult) {
+  if (delta == null) return "—";
+  const abs = fmtResult(Math.abs(delta));
+  if (delta > 0.009) return `Por encima ${abs}`;
+  if (delta < -0.009) return `Por debajo ${abs}`;
+  return "Al precio de Tabla 1";
 }
 
 /**
@@ -76,14 +83,46 @@ export function WorksheetRhVentaPanel({
   const { fmtResult } = moneda;
   const hc = Number(form.holiday_credits) || 0;
   const mv = Number(montoOperational) || 0;
+  const cuotaAnualNum = Number(bl?.cuota_anual_mfee) || 0;
+  const mxnToUsd = (n) => moneda.convertir(n, "MXN", moneda.monedaOperativa);
 
-  const regalosEvaluados = useMemo(
-    () => (regalosCatalogo || []).map((g) => ({
-      regalo: g,
-      ev: evaluarRegaloWorksheet(g, { holidayCredits: hc, montoVenta: mv }),
-    })),
-    [regalosCatalogo, hc, mv],
-  );
+  const regalosEvaluados = useMemo(() => {
+    const list = regalosCatalogo || [];
+    const grupoMontos = {};
+    for (const g of list) {
+      const r = restriccionesRegalo(g);
+      if (!r.grupo_tope) continue;
+      const carga = form.regalosElegidos?.[g.id];
+      if (!carga || isSinCostoCarga(carga)) continue;
+      const qty = cantidadRegalo(g, form.regalosCantidad);
+      grupoMontos[r.grupo_tope] = (grupoMontos[r.grupo_tope] || 0) + totalLineaRegalo(g, {
+        qty,
+        cuotaAnual: cuotaAnualNum,
+      });
+    }
+    return list.map((g) => {
+      const r = restriccionesRegalo(g);
+      const qty = cantidadRegalo(g, form.regalosCantidad);
+      const others = { ...grupoMontos };
+      if (r.grupo_tope) {
+        others[r.grupo_tope] = Math.max(
+          0,
+          (others[r.grupo_tope] || 0) - totalLineaRegalo(g, { qty, cuotaAnual: cuotaAnualNum }),
+        );
+      }
+      return {
+        regalo: g,
+        qty,
+        ev: evaluarRegaloWorksheet(g, {
+          holidayCredits: hc,
+          montoVenta: mv,
+          cuotaAnual: cuotaAnualNum,
+          qty,
+          grupoMontosOtros: others,
+        }),
+      };
+    });
+  }, [regalosCatalogo, hc, mv, cuotaAnualNum, form.regalosElegidos, form.regalosCantidad]);
 
   const bottomLineRows = useMemo(
     () => [...(catalogo?.bottom_line || [])].sort(
@@ -94,26 +133,25 @@ export function WorksheetRhVentaPanel({
 
   const selectedHc = String(form.holiday_credits ?? "");
 
-  const regaloTotals = useMemo(() => {
-    let venta = 0;
-    let closing = 0;
-    for (const { regalo: g, ev } of regalosEvaluados) {
-      if (ev.estado !== "elegible") continue;
-      const qty = Math.max(1, Number(form.regalosCantidad?.[g.id] ?? 1) || 1);
-      const line = (ev.costoUnitario ?? 0) * qty;
-      const carga = form.regalosElegidos[g.id];
-      if (!carga) continue;
-      if (isVentaCarga(carga)) venta += line;
-      else if (isClosingCarga(carga)) closing += line;
-    }
-    return { venta, closing, total: venta + closing };
-  }, [regalosEvaluados, form.regalosElegidos, form.regalosCantidad]);
+  const regaloTotals = useMemo(
+    () => totalesRegalosAplicados(regalosCatalogo, form, {
+      holidayCredits: hc,
+      montoVenta: mv,
+      cuotaAnual: cuotaAnualNum,
+      mxnToUsd,
+    }),
+    [regalosCatalogo, form.regalosElegidos, form.regalosCantidad, hc, mv, cuotaAnualNum, moneda.ctx],
+  );
 
   const cuotaAnual = bl?.cuota_anual_mfee != null ? fmtResult(bl.cuota_anual_mfee) : "—";
   const precioMin = bl?.precio_minimo_con_iva != null ? fmtResult(bl.precio_minimo_con_iva) : "—";
   const blByMonto = useMemo(
     () => lookupBottomLineByMonto(bottomLineRows, montoOperational || montoCapture),
     [bottomLineRows, montoOperational, montoCapture],
+  );
+  const deltaTabla1 = useMemo(
+    () => deltaMontoVsBottomLine(montoOperational || montoCapture, bl),
+    [montoOperational, montoCapture, bl],
   );
   const montoDisplay = montoCapture
     ? moneda.fmtCaptureResult(montoCapture)
@@ -130,31 +168,25 @@ export function WorksheetRhVentaPanel({
     }));
   };
 
-  const setRegaloQty = (regaloId, raw) => {
-    touchDirty(`regalo_qty_${regaloId}`);
-    const qty = Math.max(1, Math.min(99, Number(raw) || 1));
+  const setRegaloQty = (regalo, raw) => {
+    touchDirty(`regalo_qty_${regalo.id}`);
+    const r = restriccionesRegalo(regalo);
+    let qty;
+    if (r.cantidad_es_monto) {
+      qty = raw === "" ? "" : Math.max(0, Number(raw) || 0);
+    } else {
+      qty = Math.max(1, Math.min(99, Number(raw) || 1));
+    }
     patchForm((f) => ({
       ...f,
-      regalosCantidad: { ...(f.regalosCantidad || {}), [regaloId]: qty },
+      regalosCantidad: { ...(f.regalosCantidad || {}), [regalo.id]: qty },
     }));
   };
 
-  const setRegaloColumnAmount = (regalo, ev, column, amountKey) => {
+  const setRegaloColumnChecked = (regalo, ev, column, checked) => {
     if (ev.estado !== "elegible") return;
-    const qty = Math.max(1, Number(form.regalosCantidad?.[regalo.id] ?? 1) || 1);
-    const lineTotal = (ev.costoUnitario ?? 0) * qty;
-    if (amountKey === "zero") {
-      const other = column === "venta" ? "closing" : "venta";
-      const otherCarga = pickCargaForColumn(regalo.cargas_permitidas, other);
-      const carga = form.regalosElegidos[regalo.id];
-      if (otherCarga && carga && (
-        (column === "venta" && isVentaCarga(carga))
-        || (column === "closing" && isClosingCarga(carga))
-      )) {
-        setRegaloCarga(regalo.id, otherCarga);
-      } else {
-        setRegaloCarga(regalo.id, "");
-      }
+    if (!checked) {
+      setRegaloCarga(regalo.id, "");
       return;
     }
     const carga = pickCargaForColumn(regalo.cargas_permitidas, column);
@@ -174,23 +206,20 @@ export function WorksheetRhVentaPanel({
       );
     }
 
-    const qty = Math.max(1, Number(form.regalosCantidad?.[regalo.id] ?? 1) || 1);
-    const lineTotal = (ev.costoUnitario ?? 0) * qty;
     const carga = form.regalosElegidos[regalo.id];
     const selected = column === "venta" ? isVentaCarga(carga) : isClosingCarga(carga);
+    const label = column === "venta" ? "Cargar a venta" : "Cargar a closing";
 
     return (
-      <select
-        className="input input-compact rh-carga-select"
-        disabled={readOnly}
-        value={selected && lineTotal > 0 ? "full" : "zero"}
-        onChange={(e) => setRegaloColumnAmount(regalo, ev, column, e.target.value)}
-      >
-        <option value="zero">{fmtLineAmount(0, ev, fmtResult)}</option>
-        {lineTotal > 0 ? (
-          <option value="full">{fmtLineAmount(lineTotal, ev, fmtResult)}</option>
-        ) : null}
-      </select>
+      <label className="rh-carga-check">
+        <input
+          type="checkbox"
+          disabled={readOnly}
+          checked={selected}
+          aria-label={label}
+          onChange={(e) => setRegaloColumnChecked(regalo, ev, column, e.target.checked)}
+        />
+      </label>
     );
   };
 
@@ -294,6 +323,12 @@ export function WorksheetRhVentaPanel({
                   : "—"}
               </div>
             </div>
+            <div className="frow tool-frow">
+              <div className="flabel">Vs precio Tabla 1</div>
+              <div className={`rh-readonly rh-field-val${deltaTabla1 != null && deltaTabla1 < 0 ? " rh-warn-text" : ""}`}>
+                {fmtDelta(deltaTabla1, fmtResult)}
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -302,6 +337,7 @@ export function WorksheetRhVentaPanel({
         <div className="card-heading">Regalos y cargos</div>
         <p className="muted rh-hint rh-regalos-sub">
           Selecciona los regalos que se darán y define en qué concepto se aplicará su costo.
+          All inclusive + certificado de vuelo no pueden sumar más de $1,500 USD.
         </p>
         <p className="muted rh-hint rh-regalos-scroll-hint">
           Desliza horizontalmente para ver todas las columnas.
@@ -312,7 +348,7 @@ export function WorksheetRhVentaPanel({
               <tr>
                 <th className="rh-col-num">#</th>
                 <th className="rh-col-name">Regalo</th>
-                <th className="rh-col-qty">Cant.</th>
+                <th className="rh-col-qty">Cant. / Monto</th>
                 <th className="rh-col-cost">Costo unit.</th>
                 <th className="rh-col-total">Total</th>
                 <th className="rh-col-closing">Closing (Gasto adm.)</th>
@@ -323,23 +359,25 @@ export function WorksheetRhVentaPanel({
               {regalosEvaluados.length === 0 ? (
                 <tr><td colSpan={7} className="muted">Sin regalos en catálogo</td></tr>
               ) : null}
-              {regalosEvaluados.map(({ regalo: g, ev }, index) => {
-                const qty = Math.max(1, Number(form.regalosCantidad?.[g.id] ?? 1) || 1);
-                const lineTotal = ev.costoUnitario != null ? (ev.costoUnitario ?? 0) * qty : null;
+              {regalosEvaluados.map(({ regalo: g, ev, qty }, index) => {
+                const r = restriccionesRegalo(g);
+                const lineTotal = totalLineaRegalo(g, { qty, cuotaAnual: cuotaAnualNum });
                 const rowDisabled = readOnly || ev.estado !== "elegible";
-                const rowTitle = [ev.motivo, g.notas].filter(Boolean).join(" · ") || undefined;
+                const warn = ev.aviso || ev.motivo;
+                const rowTitle = [warn, g.notas].filter(Boolean).join(" · ") || undefined;
+                const includedSinCosto = isSinCostoCarga(form.regalosElegidos[g.id]);
                 return (
                   <tr
                     key={g.id}
-                    className={ev.estado !== "elegible" ? "rh-regalo-row-disabled" : undefined}
+                    className={ev.estado !== "elegible" ? "rh-regalo-row-disabled" : (ev.aviso ? "rh-regalo-row-warn" : undefined)}
                     title={rowTitle}
                   >
                     <td className="rh-col-num">{index + 1}</td>
                     <td className="rh-col-name">
                       <span className="rh-regalo-name">
                         {g.nombre}
-                        {ev.motivo ? (
-                          <span className="rh-regalo-info" title={ev.motivo} aria-label={ev.motivo}>
+                        {warn ? (
+                          <span className="rh-regalo-info" title={warn} aria-label={warn}>
                             <AlertTriangle size={14} />
                           </span>
                         ) : g.notas ? (
@@ -348,21 +386,47 @@ export function WorksheetRhVentaPanel({
                           </span>
                         ) : null}
                       </span>
+                      {ev.permiteSinCosto ? (
+                        <label className="rh-regalo-include">
+                          <input
+                            type="checkbox"
+                            disabled={rowDisabled}
+                            checked={includedSinCosto}
+                            onChange={(e) => setRegaloCarga(g.id, e.target.checked ? "sin_costo" : "")}
+                          />
+                          Incluir
+                        </label>
+                      ) : null}
+                      {ev.bonoHc != null ? (
+                        <div className="muted rh-regalo-bonus">
+                          Bono {Math.round(ev.bonoHc).toLocaleString("es-MX")} HC extra
+                        </div>
+                      ) : null}
+                      {r.activacion_usd != null ? (
+                        <div className="muted rh-regalo-bonus">
+                          Activación socio {fmtResult(r.activacion_usd)}
+                        </div>
+                      ) : null}
                     </td>
                     <td className="rh-col-qty">
-                      <input
-                        type="number"
-                        min={1}
-                        max={99}
-                        className="input input-compact rh-qty-input"
-                        disabled={rowDisabled}
-                        value={qty}
-                        onChange={(e) => setRegaloQty(g.id, e.target.value)}
-                      />
+                      {ev.permiteSinCosto ? (
+                        <span className="rh-cell-na">—</span>
+                      ) : (
+                        <input
+                          type="number"
+                          min={r.cantidad_es_monto ? 0 : 1}
+                          max={r.cantidad_es_monto ? undefined : 99}
+                          step={r.cantidad_es_monto ? "0.01" : "1"}
+                          className={`input input-compact rh-qty-input${r.cantidad_es_monto ? " rh-qty-amount" : ""}`}
+                          disabled={rowDisabled}
+                          value={form.regalosCantidad?.[g.id] ?? qty}
+                          onChange={(e) => setRegaloQty(g, e.target.value)}
+                        />
+                      )}
                     </td>
                     <td className="rh-col-cost">{fmtRegaloCosto(ev, fmtResult)}</td>
                     <td className="rh-col-total">
-                      {lineTotal != null ? fmtLineAmount(lineTotal, ev, fmtResult) : "—"}
+                      {ev.permiteSinCosto ? "—" : fmtLineAmount(lineTotal, ev, fmtResult)}
                     </td>
                     <td className="rh-col-closing">{renderCargaCell(g, ev, "closing")}</td>
                     <td className="rh-col-venta">{renderCargaCell(g, ev, "venta")}</td>

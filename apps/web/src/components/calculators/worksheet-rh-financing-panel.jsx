@@ -318,17 +318,20 @@ export function WorksheetRhFinancingPanel({
   const ws = worksheetState || {};
   const montoCapture = montoVentaWorksheet(form);
   const engPct = Number(form.enganche_pct || 0);
+  const regalosVenta = Number(ws.regalos_totales?.venta || 0);
+  const regalosClosing = Number(ws.regalos_totales?.closing || 0);
+  const montoContratoCapture = ws.monto_contrato != null
+    ? toCaptureDisplay(Number(ws.monto_contrato))
+    : montoCapture + toCaptureDisplay(regalosVenta);
   const engancheTotalCapture = ws.totales?.enganche != null
     ? toCaptureDisplay(ws.totales.enganche)
-    : (montoCapture * engPct) / 100;
+    : (montoContratoCapture * engPct) / 100;
   const engancheHoy = parseMoney(form.enganche_hoy);
   const saldoEnganche = Math.max(0, engancheTotalCapture - engancheHoy);
-  const pctEngancheHoy = montoCapture > 0 ? (engancheHoy / montoCapture) * 100 : 0;
-  const pctSaldoEnganche = montoCapture > 0 ? (saldoEnganche / montoCapture) * 100 : 0;
+  const pctEngancheHoy = montoContratoCapture > 0 ? (engancheHoy / montoContratoCapture) * 100 : 0;
+  const pctSaldoEnganche = montoContratoCapture > 0 ? (saldoEnganche / montoContratoCapture) * 100 : 0;
 
-  const gastoTotalCapture = form.costo_administrativo_usd !== "" && form.costo_administrativo_usd != null
-    ? toCaptureDisplay(Number(form.costo_administrativo_usd))
-    : toCaptureDisplay(Number(ws.costo_administrativo_usd || 0));
+  const gastoTotalCapture = toCaptureDisplay(Number(ws.costo_administrativo_usd || 0));
   const gastoHoy = parseMoney(form.gasto_adm_hoy);
   const saldoGasto = Math.max(0, gastoTotalCapture - gastoHoy);
   const pctGastoHoy = gastoTotalCapture > 0 ? (gastoHoy / gastoTotalCapture) * 100 : 0;
@@ -409,6 +412,12 @@ export function WorksheetRhFinancingPanel({
                 onBlurCapture={() => onMoneyBlur?.("monto_venta", formatCapture(form.monto_venta))}
               />
             </div>
+            {regalosVenta > 0 ? (
+              <div className="frow tool-frow">
+                <div className="flabel">Contrato (venta + regalos)</div>
+                <div className="rh-readonly rh-fin-field-val">{fmtCaptureResult(montoContratoCapture)}</div>
+              </div>
+            ) : null}
             <div className="frow tool-frow">
               <div className="flabel">% Enganche</div>
               <div className="frow-inline">
@@ -426,6 +435,9 @@ export function WorksheetRhFinancingPanel({
               <div className="flabel">Gastos administrativos</div>
               <div className="rh-readonly rh-fin-field-val">{fmtCaptureResult(gastoTotalCapture)}</div>
             </div>
+            {regalosClosing > 0 ? (
+              <p className="muted rh-hint">Incluye regalos cargados a closing.</p>
+            ) : null}
             <div className="frow tool-frow">
               <div className="flabel">Monto pendiente</div>
               <CampoMonedaCaptura
@@ -516,7 +528,10 @@ export function WorksheetRhFinancingPanel({
                     ))}
                   </select>
                 </div>
-                <p className="muted rh-hint">Costo admin: 750 USD (enganche ≥15%), 950 USD (enganche ≥27.5%).</p>
+                <p className="muted rh-hint">
+                  Costo admin: 750 USD (enganche ≥15%), 950 USD (enganche ≥27.5%).
+                  {regalosClosing > 0 ? " El total de arriba suma los regalos a closing." : ""}
+                </p>
               </>
             )}
           />
@@ -534,7 +549,7 @@ export function WorksheetRhFinancingPanel({
             <div className="vbox yellow span2">
               <div className="vbox-val">{ws.totales?.balanceAFinanciar != null ? fmtResult(ws.totales.balanceAFinanciar) : "—"}</div>
               <div className="vbox-label">Balance a financiar</div>
-              <div className="vbox-sub">Venta − Enganche + Monto pendiente</div>
+              <div className="vbox-sub">Contrato − Enganche + Monto pendiente</div>
             </div>
           </div>
         </div>

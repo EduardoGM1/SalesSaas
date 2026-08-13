@@ -10,10 +10,11 @@ import {
   resolveComisionTier,
   resolveFinanciamientoEngancheTier,
   toDateStr,
+  totalesRegalosAplicados,
 } from "@/lib/calculations/royal-holiday.js";
 
 /** Une preview API + catálogo vigente para que el worksheet refleje siempre la configuración RH. */
-export function buildRhWorksheetState(catalogo, preview, form) {
+export function buildRhWorksheetState(catalogo, preview, form, { mxnToUsd } = {}) {
   const hc = Number(form.holiday_credits) || 0;
   const monto = montoVentaWorksheet(form);
   const eng = form.enganche_pct;
@@ -25,12 +26,22 @@ export function buildRhWorksheetState(catalogo, preview, form) {
 
   const ca = preview?.costo_administrativo
     ?? lookupCostoAdministrativo(catalogo?.costo_administrativo, eng);
-  const costoAdminUsd = form.costo_administrativo_usd !== "" && form.costo_administrativo_usd != null
+  const costoAdminBase = form.costo_administrativo_usd !== "" && form.costo_administrativo_usd != null
     ? Number(form.costo_administrativo_usd)
     : Number(preview?.costo_administrativo_usd ?? ca?.monto_usd ?? 0);
 
-  const totales = preview?.totales ?? calcularTotalesWorksheet({
+  const cuotaAnual = Number(bl?.cuota_anual_mfee) || 0;
+  const regalosTotales = totalesRegalosAplicados(catalogo?.regalos || preview?.regalos, form, {
+    holidayCredits: hc,
     montoVenta: monto,
+    cuotaAnual,
+    mxnToUsd,
+  });
+  const montoContrato = monto + (regalosTotales.venta || 0);
+  const costoAdminUsd = costoAdminBase + (regalosTotales.closing || 0);
+
+  const totales = calcularTotalesWorksheet({
+    montoVenta: montoContrato,
     enganchePct: eng,
     costoAdmin: costoAdminUsd,
     balanceAnterior: Number(form.monto_pendiente) || 0,
@@ -46,12 +57,16 @@ export function buildRhWorksheetState(catalogo, preview, form) {
 
   const plazoSel = Number(form.plazo_meses);
   const finRow = finTier.rows.find((p) => Number(p.plazo_meses) === plazoSel) || preview?.financiamiento_seleccionado || null;
-  const mensualidad = preview?.mensualidad
-    ?? (finRow ? calcularMensualidad(totales.balanceAFinanciar, finRow.factor_mensual) : null);
+  const mensualidad = finRow
+    ? calcularMensualidad(totales.balanceAFinanciar, finRow.factor_mensual)
+    : preview?.mensualidad ?? null;
 
   const comTier = preview?.comision && !preview.comision.pendiente
     ? {
-        row: preview.comision,
+        row: {
+          ...preview.comision,
+          monto: montoComision(montoContrato, preview.comision.porcentaje),
+        },
         tier: preview.comision_enganche_tier,
         exact: preview.comision_enganche_exacto !== false,
       }
@@ -71,7 +86,7 @@ export function buildRhWorksheetState(catalogo, preview, form) {
         return {
           row: {
             porcentaje: Number(resolved.row.porcentaje_comision),
-            monto: montoComision(monto, resolved.row.porcentaje_comision),
+            monto: montoComision(montoContrato, resolved.row.porcentaje_comision),
             fecha_pago: toDateStr(calcularFechaPagoComision(new Date())),
             pendiente: false,
           },
@@ -89,7 +104,11 @@ export function buildRhWorksheetState(catalogo, preview, form) {
     board_online: boardOnline,
     precio_ok: precioOk,
     costo_administrativo: ca,
+    costo_administrativo_base_usd: costoAdminBase,
     costo_administrativo_usd: costoAdminUsd,
+    monto_capturado: monto,
+    monto_contrato: montoContrato,
+    regalos_totales: regalosTotales,
     totales,
     plazos: finTier.rows,
     financiamiento_enganche_tier: finTier.tier,

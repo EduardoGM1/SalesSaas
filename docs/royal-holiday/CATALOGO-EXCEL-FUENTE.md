@@ -2,16 +2,15 @@
 
 ## Fuente de verdad
 
-El archivo **`Configuracion Proyecto.xlsx`** es la fuente funcional/numérica. Para **seed, auditoría y re-cargas** usar las **hojas dedicadas**:
+El archivo **`Saletse-Royal-Holiday.xlsx`** (hojas BL, Comisiones, Regalos, Worksheet) es la fuente de regalos, BL y comisiones. El archivo **`Configuracion Proyecto.xlsx`** sigue usándose para financiamiento (plazos/tasas) y costo admin.
 
-| Hoja | Tabla destino |
-|------|----------------|
-| `Financiamiento` | `rh_financiamiento` |
+| Hoja (Saletse) | Tabla destino |
+|----------------|----------------|
+| `BL - Financiamientos` | `rh_bottom_line` |
 | `Comisiones` | `rh_comisiones` |
-| `Botton lines` | `rh_bottom_line` (solo columnas: Membresía, Créditos, Precio mín sin/con IVA, M.Fee) |
-| `Regalos ` | `rh_regalos` |
+| `Regalos` + `Worksheet` | `rh_regalos` |
 
-La hoja **`Catalogo proyecto`** es consolidado de referencia; puede tener columnas desplazadas respecto a las hojas dedicadas. **No usar** su bloque de financiamiento para seed hasta corregir el Excel.
+La hoja **`Catalogo proyecto`** del Excel viejo es consolidado de referencia. **No usar** su bloque de financiamiento para seed.
 
 ## Reglas de negocio (Excel → código)
 
@@ -27,14 +26,20 @@ La hoja **`Catalogo proyecto`** es consolidado de referencia; puede tener column
 
 | Regalo | `restricciones` |
 |--------|-----------------|
-| All inclusive / Cert. vuelo | `venta_min_usd`, `venta_max_usd` (rango 500–1000) |
-| Move In | `moneda_costo: "MXN"` |
-| Bono de créditos | `vigencia_meses: 18`, `hc_tiers: [10000,15000,30000]` |
+| All inclusive (crédito) / Cert. vuelo | `cantidad_es_monto`, `grupo_tope: ai_vuelo`, `grupo_tope_usd: 1500` |
+| Flyback | `venta_minima_usd: 19167.58`, `cantidad_default: 2` |
+| Prevelige Member | `venta_minima_hc: 15000`, carga `sin_costo` |
+| Move In | `moneda_costo: "MXN"`, costo 4000 |
+| Cert. multidestino | costo 0, `activacion_usd: 399` (paga el socio) |
+| Bono de créditos | `costo_es_cuota_anual`, `hc_bonus_factor: 2`, `hc_bonus_max: 60000` |
+| Tours / All inclusive noches | `cantidad_es_monto` (el usuario captura el monto) |
 
 ## Scripts
 
 ```bash
 node scripts/seed-royal-holiday-catalog.mjs   # seed idempotente (sin catálogo vigente)
+node scripts/sync-rh-regalos-excel.mjs         # actualiza regalos del catálogo vigente
+node scripts/test-rh-regalos-excel.mjs         # motor vs reglas Excel
 node scripts/audit-rh-excel-fidelity.mjs        # auditoría Excel vs prod (reporte)
 ```
 

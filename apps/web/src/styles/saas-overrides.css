@@ -9945,7 +9945,7 @@ body,
 .rh-regalos-table .rh-col-cost { width: 120px; text-align: right; white-space: nowrap; }
 .rh-regalos-table .rh-col-total { width: 112px; text-align: right; white-space: nowrap; font-weight: 700; }
 .rh-regalos-table .rh-col-venta,
-.rh-regalos-table .rh-col-closing { width: 132px; text-align: right; }
+.rh-regalos-table .rh-col-closing { width: 108px; text-align: center; }
 .rh-regalos-table th.rh-col-venta,
 .rh-regalos-table td.rh-col-venta {
   background: rgba(5, 150, 105, 0.04);
@@ -9958,11 +9958,39 @@ body,
 .rh-regalo-name { display: inline-flex; align-items: center; gap: 6px; }
 .rh-regalo-info { color: var(--blue, #1e5eff); display: inline-flex; cursor: help; flex-shrink: 0; }
 .rh-regalo-row-disabled .rh-regalo-info { color: var(--yellow, #d97706); }
+.rh-regalo-row-warn { }
+.rh-regalo-row-warn .rh-regalo-info { color: var(--yellow, #d97706); }
+.rh-regalo-include {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+}
+.rh-regalo-include input { margin: 0; }
+.rh-regalo-bonus { margin-top: 4px; font-size: 11px; }
 .rh-qty-input { width: 64px; text-align: center; margin-inline: auto; display: block; }
-.rh-carga-select { width: 100%; min-width: 0; text-align: right; text-align-last: right; }
+.rh-qty-input.rh-qty-amount { width: 88px; text-align: right; }
+.rh-carga-check {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+  margin: 0;
+  cursor: pointer;
+}
+.rh-carga-check input {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--blue, #1e5eff);
+  cursor: pointer;
+}
 .rh-cell-na {
   display: block;
-  text-align: right;
+  text-align: center;
   color: var(--muted2);
   font-weight: 600;
   padding: 9px 4px;
@@ -10454,10 +10482,16 @@ body,
     min-width: 520px;
   }
 
-  .worksheet-rh .rh-regalos-table .rh-qty-input,
-  .worksheet-rh .rh-regalos-table select {
+  .worksheet-rh .rh-regalos-table .rh-qty-input {
     min-height: 44px;
     font-size: 16px;
+  }
+  .worksheet-rh .rh-regalos-table .rh-carga-check {
+    min-height: 44px;
+  }
+  .worksheet-rh .rh-regalos-table .rh-carga-check input {
+    width: 22px;
+    height: 22px;
   }
 
   .worksheet-rh .rh-bl-membership-table tbody tr.rh-bl-row-selectable {
