@@ -17,6 +17,8 @@ export {
   evaluarRegaloWorksheet,
   cantidadDefaultRegalo,
   cantidadRegalo,
+  cantidadEsEditable,
+  ordenarRegalosExcel,
   costoUnitarioRegalo,
   totalLineaRegalo,
   totalLineaRegaloUsd,

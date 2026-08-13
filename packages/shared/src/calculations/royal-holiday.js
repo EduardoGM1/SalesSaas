@@ -3,6 +3,10 @@
  * Reutilizable por API y web.
  */
 
+import { claveRegaloExcel, RH_REGALOS_EXCEL } from "./royal-holiday-regalos-catalog.js";
+
+const ORDEN_REGALOS_EXCEL = RH_REGALOS_EXCEL.map((g) => claveRegaloExcel(g.nombre, g.restricciones));
+
 export function calcularFechaPagoComision(fechaEvento) {
   const d = fechaEvento instanceof Date ? new Date(fechaEvento) : new Date(String(fechaEvento));
   if (Number.isNaN(d.getTime())) throw new Error("Fecha de evento inválida.");
@@ -247,6 +251,30 @@ export function cantidadRegalo(regalo, regalosCantidad) {
   if (raw === "" || raw == null) return cantidadDefaultRegalo(regalo);
   const n = Number(raw);
   return Number.isFinite(n) ? n : cantidadDefaultRegalo(regalo);
+}
+
+/** Cantidad editable solo si el Excel lo permite (monto capturado o unidades variables). */
+export function cantidadEsEditable(regalo) {
+  const r = restriccionesRegalo(regalo);
+  if (r.cantidad_editable === false) return false;
+  if (r.cantidad_es_monto) return true;
+  if (r.costo_es_cuota_anual) return false;
+  const cargas = Array.isArray(regalo?.cargas_permitidas) ? regalo.cargas_permitidas : [];
+  const permiteVenta = cargas.some(cargaEsVenta);
+  const permiteClosing = cargas.some(cargaEsClosing);
+  const permiteSinCosto = cargas.some(cargaEsSinCosto) && !permiteVenta && !permiteClosing;
+  if (permiteSinCosto) return false;
+  if (String(r.moneda_costo || "").toUpperCase() === "MXN") return false;
+  return true;
+}
+
+/** Orden de Tabla 4 del Excel Saletse. */
+export function ordenarRegalosExcel(regalos) {
+  return [...(regalos || [])].sort((a, b) => {
+    const ia = ORDEN_REGALOS_EXCEL.indexOf(claveRegaloExcel(a.nombre, a.restricciones));
+    const ib = ORDEN_REGALOS_EXCEL.indexOf(claveRegaloExcel(b.nombre, b.restricciones));
+    return (ia < 0 ? 999 : ia) - (ib < 0 ? 999 : ib);
+  });
 }
 
 /** Costo unitario efectivo (cuota anual, catálogo o nulo si el usuario captura el monto). */

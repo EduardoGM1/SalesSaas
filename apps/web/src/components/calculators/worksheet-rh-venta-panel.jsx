@@ -1,10 +1,12 @@
 import { useMemo } from "react";
 import { AlertTriangle, CheckCircle2, Gift, Info, ShoppingCart, Landmark } from "lucide-react";
 import {
+  cantidadEsEditable,
   cantidadRegalo,
   deltaMontoVsBottomLine,
   evaluarRegaloWorksheet,
   lookupBottomLineByMonto,
+  ordenarRegalosExcel,
   restriccionesRegalo,
   totalLineaRegalo,
   totalesRegalosAplicados,
@@ -87,7 +89,7 @@ export function WorksheetRhVentaPanel({
   const mxnToUsd = (n) => moneda.convertir(n, "MXN", moneda.monedaOperativa);
 
   const regalosEvaluados = useMemo(() => {
-    const list = regalosCatalogo || [];
+    const list = ordenarRegalosExcel(regalosCatalogo || []);
     const grupoMontos = {};
     for (const g of list) {
       const r = restriccionesRegalo(g);
@@ -346,23 +348,23 @@ export function WorksheetRhVentaPanel({
           <table className="client-table rh-regalos-table">
             <thead>
               <tr>
-                <th className="rh-col-num">#</th>
                 <th className="rh-col-name">Regalo</th>
-                <th className="rh-col-qty">Cant. / Monto</th>
+                <th className="rh-col-qty">Cantidad</th>
                 <th className="rh-col-cost">Costo unit.</th>
                 <th className="rh-col-total">Total</th>
-                <th className="rh-col-closing">Closing (Gasto adm.)</th>
-                <th className="rh-col-venta">Venta (Monto venta)</th>
+                <th className="rh-col-closing">Closing cost</th>
+                <th className="rh-col-venta">Venta</th>
               </tr>
             </thead>
             <tbody>
               {regalosEvaluados.length === 0 ? (
-                <tr><td colSpan={7} className="muted">Sin regalos en catálogo</td></tr>
+                <tr><td colSpan={6} className="muted">Sin regalos en catálogo</td></tr>
               ) : null}
-              {regalosEvaluados.map(({ regalo: g, ev, qty }, index) => {
+              {regalosEvaluados.map(({ regalo: g, ev, qty }) => {
                 const r = restriccionesRegalo(g);
                 const lineTotal = totalLineaRegalo(g, { qty, cuotaAnual: cuotaAnualNum });
                 const rowDisabled = readOnly || ev.estado !== "elegible";
+                const qtyEditable = cantidadEsEditable(g);
                 const warn = ev.aviso || ev.motivo;
                 const rowTitle = [warn, g.notas].filter(Boolean).join(" · ") || undefined;
                 const includedSinCosto = isSinCostoCarga(form.regalosElegidos[g.id]);
@@ -372,7 +374,6 @@ export function WorksheetRhVentaPanel({
                     className={ev.estado !== "elegible" ? "rh-regalo-row-disabled" : (ev.aviso ? "rh-regalo-row-warn" : undefined)}
                     title={rowTitle}
                   >
-                    <td className="rh-col-num">{index + 1}</td>
                     <td className="rh-col-name">
                       <span className="rh-regalo-name">
                         {g.nombre}
@@ -409,8 +410,8 @@ export function WorksheetRhVentaPanel({
                       ) : null}
                     </td>
                     <td className="rh-col-qty">
-                      {ev.permiteSinCosto ? (
-                        <span className="rh-cell-na">—</span>
+                      {!qtyEditable ? (
+                        <span className="rh-cell-na">{ev.permiteSinCosto ? "—" : qty}</span>
                       ) : (
                         <input
                           type="number"
@@ -418,7 +419,7 @@ export function WorksheetRhVentaPanel({
                           max={r.cantidad_es_monto ? undefined : 99}
                           step={r.cantidad_es_monto ? "0.01" : "1"}
                           className={`input input-compact rh-qty-input${r.cantidad_es_monto ? " rh-qty-amount" : ""}`}
-                          disabled={rowDisabled}
+                          disabled={readOnly}
                           value={form.regalosCantidad?.[g.id] ?? qty}
                           onChange={(e) => setRegaloQty(g, e.target.value)}
                         />

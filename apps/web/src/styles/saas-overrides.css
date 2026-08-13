@@ -9941,7 +9941,7 @@ body,
 .rh-regalos-table td { vertical-align: middle; padding: 8px 8px; }
 .rh-regalos-table .rh-col-num { width: 36px; text-align: center; }
 .rh-regalos-table .rh-col-name { text-align: left; }
-.rh-regalos-table .rh-col-qty { width: 88px; text-align: center; }
+.rh-regalos-table .rh-col-qty { width: 100px; text-align: center; }
 .rh-regalos-table .rh-col-cost { width: 120px; text-align: right; white-space: nowrap; }
 .rh-regalos-table .rh-col-total { width: 112px; text-align: right; white-space: nowrap; font-weight: 700; }
 .rh-regalos-table .rh-col-venta,

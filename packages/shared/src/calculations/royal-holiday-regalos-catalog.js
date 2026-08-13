@@ -54,6 +54,7 @@ export const RH_REGALOS_EXCEL = [
     restricciones: {
       moneda_costo: "MXN",
       cantidad_default: 1,
+      cantidad_editable: false,
     },
     notas: "Costo en pesos MXN. Se carga a gastos administrativos (closing).",
   },
@@ -85,6 +86,8 @@ export const RH_REGALOS_EXCEL = [
     cargas_permitidas: ["closing_cost", "venta"],
     restricciones: {
       costo_es_cuota_anual: true,
+      cantidad_default: 1,
+      cantidad_editable: false,
       hc_bonus_factor: 2,
       hc_bonus_max: 60000,
       vigencia_meses: 18,
