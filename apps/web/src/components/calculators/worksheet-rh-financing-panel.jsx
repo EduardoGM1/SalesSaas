@@ -170,7 +170,7 @@ function PaymentCaptureBlock({
     <CollapsibleSection
       title={title}
       defaultOpen={false}
-      className="rh-fin-block-collapsible"
+      className={`rh-fin-block-collapsible rh-fin-block--${tone}`}
     >
       <div className="rh-fin-block-inner">
         {topContent}
@@ -484,7 +484,7 @@ export function WorksheetRhFinancingPanel({
           />
 
           <PaymentCaptureBlock
-            title="Gastos administrativos"
+            title="Datos de gastos administrativos"
             tone="green"
             captureCurrency={captureCurrency}
             hoyLabel="Hoy (pago inicial)"

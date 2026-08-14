@@ -9853,9 +9853,19 @@ body,
 .worksheet-rh-venta { display: grid; gap: 12px; margin-bottom: 12px; }
 .worksheet-rh-venta-top {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: minmax(200px, 0.72fr) minmax(280px, 1.5fr) minmax(0, 1.05fr);
   gap: 12px;
   align-items: start;
+  justify-items: stretch;
+}
+.worksheet-rh-venta-top .rh-card-creditos {
+  justify-self: center;
+  width: 100%;
+  max-width: 280px;
+}
+.worksheet-rh-venta-top .rh-card-membresias {
+  justify-self: start;
+  width: 100%;
 }
 .worksheet-rh-venta-top .tool-calc-fields .tool-frow .tool-num-input,
 .worksheet-rh-venta-top .tool-calc-fields .tool-frow .input,
@@ -9970,6 +9980,22 @@ body,
   color: var(--text);
 }
 .rh-regalo-include input { margin: 0; }
+.rh-regalo-sin-costo {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.rh-regalo-sin-costo input { margin: 0; }
+.rh-regalos-table td.rh-col-sin-costo {
+  text-align: right;
+  background: transparent;
+}
 .rh-regalo-bonus { margin-top: 4px; font-size: 11px; }
 .rh-qty-input { width: 64px; text-align: center; margin-inline: auto; display: block; }
 .rh-qty-input.rh-qty-amount { width: 88px; text-align: right; }
@@ -10068,6 +10094,18 @@ body,
 .rh-fin-nested-collapsible .collapsible-section-head {
   padding: 10px 12px;
   background: color-mix(in srgb, var(--muted2, #64748b) 6%, transparent);
+}
+.rh-fin-block--blue .collapsible-section-head {
+  background: color-mix(in srgb, var(--blue, #1e5eff) 10%, var(--surface, #fff));
+}
+.rh-fin-block--green .collapsible-section-head {
+  background: color-mix(in srgb, var(--green, #059669) 10%, var(--surface, #fff));
+}
+.rh-fin-block--blue .rh-fin-block-inner {
+  background: color-mix(in srgb, var(--blue, #1e5eff) 5%, var(--surface, #fff));
+}
+.rh-fin-block--green .rh-fin-block-inner {
+  background: color-mix(in srgb, var(--green, #059669) 5%, var(--surface, #fff));
 }
 .rh-fin-block-collapsible .collapsible-section-title,
 .rh-fin-nested-collapsible .collapsible-section-title {
@@ -10240,6 +10278,10 @@ body,
   .worksheet-rh-roles-grid,
   .worksheet-rh-venta-top {
     grid-template-columns: 1fr;
+  }
+  .worksheet-rh-venta-top .rh-card-creditos {
+    max-width: none;
+    justify-self: stretch;
   }
   .rh-regalos-totales {
     grid-template-columns: 1fr 1fr !important;
