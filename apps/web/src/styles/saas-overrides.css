@@ -10616,33 +10616,47 @@ body,
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(118px, 148px);
     grid-template-areas:
-      "copy pagos"
-      "hint hint";
-    gap: 6px 12px;
+      "s-label p-label"
+      "s-val   p-select"
+      "s-pct   s-pct"
+      "s-hint  s-hint";
+    column-gap: 12px;
+    row-gap: 4px;
     align-items: center;
   }
-  .rh-fin-saldo-copy { grid-area: copy; }
+  .rh-fin-saldo-copy,
   .rh-fin-saldo-pagos {
-    grid-area: pagos;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    min-width: 0;
+    display: contents;
+  }
+  .rh-fin-saldo-label {
+    grid-area: s-label;
+    align-self: end;
+    line-height: 1.2;
   }
   .rh-fin-saldo-pagos-label {
-    font-size: 11px;
+    grid-area: p-label;
+    align-self: end;
+    font-size: 12px;
     font-weight: 600;
     color: var(--muted);
     line-height: 1.2;
   }
+  .rh-fin-saldo-val {
+    grid-area: s-val;
+    margin: 0;
+    align-self: center;
+  }
   .rh-fin-saldo-pagos .input,
   .rh-fin-saldo-pagos select {
+    grid-area: p-select;
+    align-self: center;
     width: 100%;
     min-height: 44px;
     font-size: 16px;
     padding: 6px 8px;
   }
-  .rh-fin-saldo-hint { grid-area: hint; margin: 0; }
+  .rh-fin-saldo-pct { grid-area: s-pct; }
+  .rh-fin-saldo-hint { grid-area: s-hint; margin: 4px 0 0; }
   .rh-fin-pagos-frow { display: none !important; }
 }
 
@@ -10650,9 +10664,11 @@ body,
   .rh-fin-saldo {
     grid-template-columns: 1fr;
     grid-template-areas:
-      "copy"
-      "pagos"
-      "hint";
+      "s-label"
+      "s-val"
+      "s-pct"
+      "p-label"
+      "p-select"
+      "s-hint";
   }
-  .rh-fin-saldo-pagos { margin-top: 4px; }
 }
