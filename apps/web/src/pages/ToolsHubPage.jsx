@@ -11,7 +11,7 @@ import { PremiumFeatureCard } from "@/components/premium/premium-feature-card.js
 import { useAppStore } from "@/stores/app-store.js";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { useUserPermissions } from "@/hooks/use-user-permissions.js";
-import { useFlag, useFlags } from "@/hooks/use-flag.js";
+import { useFlags } from "@/hooks/use-flag.js";
 import { TOOL_PERMISSION_KEYS } from "@/lib/auth/tool-permissions.js";
 import { TOOL_FLAG_KEYS, WORKSHEET_ROYAL_HOLIDAY_FLAG, RH_TOOL_FLAGS } from "@/lib/auth/tool-flags.js";
 
@@ -28,13 +28,48 @@ function ToolLink({ href, label, desc, icon: Icon, tone, onClick }) {
   );
 }
 
+function ToolCardSkeleton() {
+  return (
+    <div className="tool-card-stack">
+      <div className="tool-card tool-card-skeleton" aria-hidden="true">
+        <div className="tool-skel tool-skel-icon" />
+        <div className="tool-skel-copy">
+          <div className="tool-skel tool-skel-name" />
+          <div className="tool-skel tool-skel-desc" />
+        </div>
+        <div className="tool-skel tool-skel-chevron" />
+      </div>
+    </div>
+  );
+}
+
+function ToolsHubSkeleton() {
+  return (
+    <div className="rh-tools-section" aria-busy="true" aria-live="polite">
+      <div className="rh-tools-section-title">Herramientas (Gerente, Closer, Reps)</div>
+      <div className="exp-tool-list tools-hub-list">
+        {Array.from({ length: 6 }, (_, i) => <ToolCardSkeleton key={`rh-${i}`} />)}
+      </div>
+      <div className="rh-tools-section-title">Administrativo operaciones</div>
+      <div className="exp-tool-list tools-hub-list">
+        <ToolCardSkeleton />
+      </div>
+      <div className="rh-tools-section-title">Otras herramientas</div>
+      <div className="exp-tool-list tools-hub-list">
+        {Array.from({ length: 2 }, (_, i) => <ToolCardSkeleton key={`other-${i}`} />)}
+      </div>
+    </div>
+  );
+}
+
 export function ToolsHubPage() {
   const navigate = useNavigate();
   const setToolMode = useAppStore((s) => s.setToolMode);
   const { t } = useI18n();
-  const { can } = useUserPermissions();
-  const { isEnabled, hasCatalog } = useFlags();
-  const rhFlag = useFlag(WORKSHEET_ROYAL_HOLIDAY_FLAG);
+  const { can, ready: permReady } = useUserPermissions();
+  const { isEnabled, hasCatalog, ready: flagsReady } = useFlags();
+  const hubReady = flagsReady && permReady;
+  const rhEnabled = hubReady && isEnabled(WORKSHEET_ROYAL_HOLIDAY_FLAG) === true;
   const [newClientOpen, setNewClientOpen] = useState(false);
 
   const toolAllowed = (tool) => {
@@ -44,7 +79,7 @@ export function ToolsHubPage() {
   };
 
   const rhToolOn = (clave) => {
-    if (!rhFlag.enabled) return false;
+    if (!rhEnabled) return false;
     const v = isEnabled(clave);
     // Si el flag hijo aún no está en sesión, mostrar cuando RH está activo
     if (v === null || v === undefined) return true;
@@ -66,7 +101,7 @@ export function ToolsHubPage() {
     { href: "/tools/rh/dias-descanso", label: "Días de descanso", desc: "Registrar descansos", icon: BedDouble, tone: "green", flag: RH_TOOL_FLAGS.dias_descanso },
   ].filter((tool) => !tool.flag || rhToolOn(tool.flag));
 
-  const showOps = rhFlag.enabled && rhToolOn(RH_TOOL_FLAGS.ops);
+  const showOps = rhEnabled && rhToolOn(RH_TOOL_FLAGS.ops);
 
   return (
     <>
@@ -76,62 +111,81 @@ export function ToolsHubPage() {
           <PageBack inline />
         </div>
 
-        {rhFlag.enabled && (
-          <div className="rh-tools-section">
-            <div className="rh-tools-section-title">Herramientas (Gerente, Closer, Reps)</div>
-            <div className="exp-tool-list tools-hub-list">
-              {RH_TOOLS.map((tool) => {
-                const Icon = tool.icon;
-                return (
-                  <div key={tool.href} className="tool-card-stack">
-                    <ToolLink
-                      href={tool.href}
-                      label={tool.label}
-                      desc={tool.desc}
-                      icon={Icon}
-                      tone={tool.tone}
-                      onClick={() => setToolMode("libre", null)}
-                    />
-                  </div>
-                );
-              })}
-            </div>
-            {showOps && (
-              <>
-                <div className="rh-tools-section-title">Administrativo operaciones</div>
+        {!hubReady ? (
+          <ToolsHubSkeleton />
+        ) : (
+          <div className="tools-hub-ready">
+            {rhEnabled && (
+              <div className="rh-tools-section">
+                <div className="rh-tools-section-title">Herramientas (Gerente, Closer, Reps)</div>
                 <div className="exp-tool-list tools-hub-list">
-                  <div className="tool-card-stack">
-                    <ToolLink
-                      href="/ops/rh"
-                      label="Operaciones sala"
-                      desc="Premanifiesto, línea, resumen, OKR…"
-                      icon={Briefcase}
-                      tone="blue"
-                    />
-                  </div>
+                  {RH_TOOLS.map((tool) => {
+                    const Icon = tool.icon;
+                    return (
+                      <div key={tool.href} className="tool-card-stack">
+                        <ToolLink
+                          href={tool.href}
+                          label={tool.label}
+                          desc={tool.desc}
+                          icon={Icon}
+                          tone={tool.tone}
+                          onClick={() => setToolMode("libre", null)}
+                        />
+                      </div>
+                    );
+                  })}
                 </div>
-              </>
+                {showOps && (
+                  <>
+                    <div className="rh-tools-section-title">Administrativo operaciones</div>
+                    <div className="exp-tool-list tools-hub-list">
+                      <div className="tool-card-stack">
+                        <ToolLink
+                          href="/ops/rh"
+                          label="Operaciones sala"
+                          desc="Premanifiesto, línea, resumen, OKR…"
+                          icon={Briefcase}
+                          tone="blue"
+                        />
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
             )}
-          </div>
-        )}
 
-        {(!rhFlag.enabled || TOOLS.some((t) => t.tool !== "worksheet")) && (
-          <>
-            {rhFlag.enabled && <div className="rh-tools-section-title">Otras herramientas</div>}
-            <div className="exp-tool-list tools-hub-list">
-              {TOOLS.filter((tool) => !rhFlag.enabled || tool.tool !== "worksheet").map((tool) => {
-                const Icon = tool.icon;
-                return (
-                  <div key={tool.href} className="tool-card-stack">
-                    <ToolLink
-                      href={tool.href}
-                      label={t(tool.labelKey)}
-                      desc={t(tool.descKey)}
-                      icon={Icon}
-                      tone={tool.tone}
-                      onClick={() => setToolMode("libre", null)}
-                    />
-                    {tool.tool === "worksheet" && (
+            {(!rhEnabled || TOOLS.some((t) => t.tool !== "worksheet")) && (
+              <>
+                {rhEnabled && <div className="rh-tools-section-title">Otras herramientas</div>}
+                <div className="exp-tool-list tools-hub-list">
+                  {TOOLS.filter((tool) => !rhEnabled || tool.tool !== "worksheet").map((tool) => {
+                    const Icon = tool.icon;
+                    return (
+                      <div key={tool.href} className="tool-card-stack">
+                        <ToolLink
+                          href={tool.href}
+                          label={t(tool.labelKey)}
+                          desc={t(tool.descKey)}
+                          icon={Icon}
+                          tone={tool.tone}
+                          onClick={() => setToolMode("libre", null)}
+                        />
+                        {tool.tool === "worksheet" && (
+                          <PremiumFeatureCard
+                            featureKey="money_box"
+                            title={t("moneyBox.title")}
+                            description={t("moneyBox.cardDesc")}
+                            icon={Wallet}
+                            tone="green"
+                            to="/tools/money-box"
+                            onBeforeOpen={() => setToolMode("libre", null)}
+                          />
+                        )}
+                      </div>
+                    );
+                  })}
+                  {!TOOLS.some((tool) => tool.tool === "worksheet") && !rhEnabled && (
+                    <div className="tool-card-stack">
                       <PremiumFeatureCard
                         featureKey="money_box"
                         title={t("moneyBox.title")}
@@ -141,25 +195,12 @@ export function ToolsHubPage() {
                         to="/tools/money-box"
                         onBeforeOpen={() => setToolMode("libre", null)}
                       />
-                    )}
-                  </div>
-                );
-              })}
-              {!TOOLS.some((tool) => tool.tool === "worksheet") && !rhFlag.enabled && (
-                <div className="tool-card-stack">
-                  <PremiumFeatureCard
-                    featureKey="money_box"
-                    title={t("moneyBox.title")}
-                    description={t("moneyBox.cardDesc")}
-                    icon={Wallet}
-                    tone="green"
-                    to="/tools/money-box"
-                    onBeforeOpen={() => setToolMode("libre", null)}
-                  />
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-          </>
+              </>
+            )}
+          </div>
         )}
 
         <div className="tools-hub-cta">

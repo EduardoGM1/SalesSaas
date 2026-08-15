@@ -8,13 +8,18 @@ import { hasResolvedPermission } from "@salesapp/shared/auth/resolve-permissions
  */
 export function useUserPermissions() {
   const [profile, setProfile] = useState(null);
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
     if (!isSupabaseConfigured()) {
       setProfile(null);
+      setReady(true);
       return undefined;
     }
-    return watchSession((session) => setProfile(session?.profile ?? null));
+    return watchSession((session) => {
+      setProfile(session?.profile ?? null);
+      setReady(true);
+    });
   }, []);
 
   const keys = useMemo(() => {
@@ -24,6 +29,7 @@ export function useUserPermissions() {
 
   return {
     keys,
+    ready,
     can: (clave) => {
       if (!profile) return true;
       // Sin catálogo en sesión → compat (no bloquear)
