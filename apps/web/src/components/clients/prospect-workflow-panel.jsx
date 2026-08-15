@@ -136,7 +136,7 @@ export function ProspectParticipantsPanel({ prospectId, enabled = true, onCapabi
   return (
     <CollapsibleSection
       id="prospect-collaboration"
-      defaultOpen
+      defaultOpen={false}
       className="card prospect-workflow-panel exp-collapsible-card"
       title={(
         <div className="prospect-workflow-collab-head">
