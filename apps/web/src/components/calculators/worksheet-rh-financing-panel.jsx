@@ -210,9 +210,9 @@ function PaymentCaptureBlock({
             <div className="rh-fin-saldo-pct">{fmtPct(saldoPct)}{saldoPctLabel(saldoHint)}</div>
           </div>
           <div className="rh-fin-saldo-pagos">
-            <label className="rh-fin-saldo-pagos-label" htmlFor={pagosSelectId}>Número de pagos</label>
+            <label className="rh-fin-saldo-pagos-label" htmlFor={`${pagosSelectId}-m`}>Número de pagos</label>
             <select
-              id={pagosSelectId}
+              id={`${pagosSelectId}-m`}
               className="input"
               disabled={readOnly}
               value={numPagos}
@@ -226,9 +226,24 @@ function PaymentCaptureBlock({
           {saldoHint ? <p className="muted rh-hint rh-fin-saldo-hint">{saldoHint}</p> : null}
         </div>
 
+        <div className="frow tool-frow rh-fin-pagos-frow">
+          <div className="flabel">Número de pagos</div>
+          <select
+            id={`${pagosSelectId}-d`}
+            className="input"
+            disabled={readOnly}
+            value={numPagos}
+            onChange={(e) => onNumPagosChange(e.target.value)}
+          >
+            {PAGO_OPTS.map((n) => (
+              <option key={n} value={String(n)}>{n} {n === 1 ? "pago" : "pagos"}</option>
+            ))}
+          </select>
+        </div>
+
         {pagos.length > 0 && (
           <>
-            <div className="rh-fin-pagos-table-wrap rh-fin-pagos-scroll">
+            <div className={`rh-fin-pagos-table-wrap${pagos.length >= 4 ? " rh-fin-pagos-scroll" : ""}`}>
               <table className="client-table rh-fin-pagos-table">
                 <thead>
                   <tr>
