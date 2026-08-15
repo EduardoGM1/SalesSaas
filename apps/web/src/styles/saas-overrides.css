@@ -4982,14 +4982,23 @@ body,
 .tool-skel-name { height: 14px; width: 46%; }
 .tool-skel-desc { height: 12px; width: 68%; margin-top: 8px; }
 .tool-skel-chevron { width: 12px; height: 18px; margin-left: auto; border-radius: 4px; flex-shrink: 0; }
-.tools-hub-ready { animation: tools-hub-fade-in 0.2s ease-out; }
+.tools-hub-ready,
+.content-ready { animation: tools-hub-fade-in 0.2s ease-out; }
 @keyframes tools-hub-fade-in {
   from { opacity: 0; }
   to { opacity: 1; }
 }
+.tool-skel-heading { height: 16px; width: 180px; margin-bottom: 16px; }
+.tool-skel-label { height: 14px; width: 88px; flex-shrink: 0; }
+.tool-skel-input { height: 36px; flex: 1; border-radius: 8px; }
+.tool-skel-vbox { height: 72px; border-radius: 12px; }
+.tool-skel-table { display: grid; gap: 8px; }
+.tool-skel-table-row { height: 40px; border-radius: 8px; }
+.tool-skel-tab { height: 32px; width: 120px; border-radius: 8px; }
 @media (prefers-reduced-motion: reduce) {
   .tool-skel { animation: none; }
-  .tools-hub-ready { animation: none; }
+  .tools-hub-ready,
+  .content-ready { animation: none; }
 }
 
 @media (min-width: 769px) {

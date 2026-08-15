@@ -128,7 +128,7 @@ export function AdminPageState({ loading, error, skeleton = "table", children })
       </div>
     );
   }
-  return children ?? null;
+  return children == null ? null : <div className="content-ready">{children}</div>;
 }
 
 /**

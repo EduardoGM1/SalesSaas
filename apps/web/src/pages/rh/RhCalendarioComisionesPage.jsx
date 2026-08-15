@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { RhToolShell } from "@/components/rh/rh-tool-shell.jsx";
+import { RhToolLoading, RhToolShell } from "@/components/rh/rh-tool-shell.jsx";
 import { useRhEmpresa } from "@/hooks/use-rh-empresa.js";
 import { royalHolidayApi } from "@/lib/royal-holiday-api.js";
 import { toast } from "@/lib/toast";
@@ -17,14 +17,15 @@ export function RhCalendarioComisionesPage() {
   const now = new Date();
   const [ym, setYm] = useState(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`);
   const [rows, setRows] = useState([]);
+  const [listReady, setListReady] = useState(false);
 
   useEffect(() => {
     if (!empresaId) return;
     const { from, to } = monthBounds(ym);
     royalHolidayApi
       .listComisiones(empresaId, { workspaceId, from, to })
-      .then(setRows)
-      .catch((e) => toast.error(e.message));
+      .then((data) => { setRows(data); setListReady(true); })
+      .catch((e) => { toast.error(e.message); setListReady(true); });
   }, [empresaId, workspaceId, ym]);
 
   const byDay = useMemo(() => {
@@ -37,10 +38,13 @@ export function RhCalendarioComisionesPage() {
     return map;
   }, [rows]);
 
-  if (!ready) return <div className="sales-page" style={{ padding: 24 }}>Cargando…</div>;
+  if (!ready || (empresaId && !listReady)) {
+    return <RhToolLoading title="Calendario comisiones" variant="table" />;
+  }
 
   return (
     <RhToolShell title="Calendario comisiones">
+      <div className="content-ready">
       <div className="card tool-calc-card">
         <div className="page-toolbar page-toolbar--between">
           <div className="card-heading" style={{ margin: 0 }}>Mes</div>
@@ -76,6 +80,7 @@ export function RhCalendarioComisionesPage() {
           </table>
         </div>
         <p className="muted rh-hint">{Object.keys(byDay).length} día(s) con pagos programados.</p>
+      </div>
       </div>
     </RhToolShell>
   );

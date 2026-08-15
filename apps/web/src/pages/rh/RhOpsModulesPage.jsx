@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { RhToolShell } from "@/components/rh/rh-tool-shell.jsx";
+import { RhToolLoading, RhToolShell } from "@/components/rh/rh-tool-shell.jsx";
 import { useRhEmpresa } from "@/hooks/use-rh-empresa.js";
 import { royalHolidayApi } from "@/lib/royal-holiday-api.js";
 import { toast } from "@/lib/toast";
@@ -42,7 +42,7 @@ export function RhPremanifiestoPage() {
     }
   };
 
-  if (!ready) return <div className="sales-page" style={{ padding: 24 }}>Cargando…</div>;
+  if (!ready) return <RhToolLoading title="Premanifiesto" backHref="/ops/rh" />;
   return (
     <ModuleShell title="Premanifiesto">
       <div className="card tool-calc-card">
@@ -98,7 +98,7 @@ export function RhLineaPage() {
     }
   };
 
-  if (!ready) return <div className="sales-page" style={{ padding: 24 }}>Cargando…</div>;
+  if (!ready) return <RhToolLoading title="Línea" backHref="/ops/rh" />;
   const rows = tab === "asignacion" ? asig : rot;
   return (
     <ModuleShell title="Línea">
@@ -147,7 +147,7 @@ export function RhResumenOpsPage() {
     royalHolidayApi.resumen(empresaId, { workspaceId, from }).then(setData).catch((e) => toast.error(e.message));
   }, [empresaId, workspaceId, range]);
 
-  if (!ready) return <div className="sales-page" style={{ padding: 24 }}>Cargando…</div>;
+  if (!ready) return <RhToolLoading title="Resumen" backHref="/ops/rh" variant="kpis" />;
   return (
     <ModuleShell title="Resumen">
       <nav className="admin-subnav">
@@ -181,7 +181,7 @@ export function RhEstadisticosPage() {
     if (!empresaId) return;
     royalHolidayApi.resumen(empresaId, { workspaceId }).then(setData).catch((e) => toast.error(e.message));
   }, [empresaId, workspaceId]);
-  if (!ready) return <div className="sales-page" style={{ padding: 24 }}>Cargando…</div>;
+  if (!ready) return <RhToolLoading title="Estadísticos sala" backHref="/ops/rh" variant="kpis" />;
   const reps = (data?.by_posicion?.liner || 0) + (data?.by_posicion?.ftb || 0);
   const closers = data?.by_posicion?.closer || 0;
   return (
@@ -224,7 +224,7 @@ export function RhOkrPage() {
     }
   };
 
-  if (!ready) return <div className="sales-page" style={{ padding: 24 }}>Cargando…</div>;
+  if (!ready) return <RhToolLoading title="OKR → Dashboard" backHref="/ops/rh" />;
   return (
     <ModuleShell title="OKR → Dashboard">
       <div className="card tool-calc-card">
@@ -257,7 +257,7 @@ export function RhCalendarioDescansosPage() {
     if (!empresaId) return;
     royalHolidayApi.listDiasDescanso(empresaId, { workspaceId }).then(setRows).catch((e) => toast.error(e.message));
   }, [empresaId, workspaceId]);
-  if (!ready) return <div className="sales-page" style={{ padding: 24 }}>Cargando…</div>;
+  if (!ready) return <RhToolLoading title="Calendario de descansos" backHref="/ops/rh" variant="table" />;
   return (
     <ModuleShell title="Calendario de descansos">
       <div className="card tool-calc-card">
@@ -306,7 +306,7 @@ export function RhPropinasPage() {
 
   const total = useMemo(() => rows.reduce((s, r) => s + Number(r.monto || 0), 0), [rows]);
 
-  if (!ready) return <div className="sales-page" style={{ padding: 24 }}>Cargando…</div>;
+  if (!ready) return <RhToolLoading title="Pago de propinas" backHref="/ops/rh" />;
   return (
     <ModuleShell title="Pago de propinas">
       <div className="card tool-calc-card">

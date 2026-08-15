@@ -31,6 +31,7 @@ import {
   switchRhFormCaptureCurrency,
 } from "@/lib/currency/rh-form-currency.js";
 import { resolveOperationalAmount } from "@/lib/currency/moneda-service";
+import { WorksheetRhSkeleton } from "@/components/ui/content-skeleton.jsx";
 
 const TABS = [
   { id: "financiamiento", label: "Datos Financiamiento" },
@@ -312,7 +313,15 @@ export function WorksheetRoyalHolidayPage({ clientId, shared }) {
   };
 
   if (!ready) {
-    return <div className="sales-page" style={{ padding: 24 }}>{t("common.loading") || "Cargando…"}</div>;
+    return (
+      <>
+        <Topbar title="Worksheet · Royal Holiday" subtitle="Sala Royal Holiday" />
+        <div className="sales-page tool-calc-page" aria-busy="true">
+          <div className="page-toolbar"><PageBack inline href={backHref} /></div>
+          <WorksheetRhSkeleton />
+        </div>
+      </>
+    );
   }
 
   const showVenta = tab === "venta" || tab === "worksheet";
@@ -321,7 +330,7 @@ export function WorksheetRoyalHolidayPage({ clientId, shared }) {
   return (
     <>
       <Topbar title="Worksheet · Royal Holiday" subtitle="Sala Royal Holiday" />
-      <div className={`sales-page tool-calc-page worksheet-rh${!readOnly ? " tool-calc-page--with-save" : ""}`}>
+      <div className={`sales-page tool-calc-page worksheet-rh content-ready${!readOnly ? " tool-calc-page--with-save" : ""}`}>
         <div className="page-toolbar page-toolbar--between">
           <PageBack inline href={backHref} hasUnsavedChanges={() => dirtyKeysRef.current.size > 0} />
         </div>

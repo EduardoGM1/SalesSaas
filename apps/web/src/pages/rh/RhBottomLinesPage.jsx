@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { RhToolShell } from "@/components/rh/rh-tool-shell.jsx";
+import { RhToolLoading, RhToolShell } from "@/components/rh/rh-tool-shell.jsx";
 import { useRhEmpresa } from "@/hooks/use-rh-empresa.js";
 import { royalHolidayApi } from "@/lib/royal-holiday-api.js";
 import { lookupBottomLine } from "@/lib/calculations/royal-holiday.js";
@@ -12,7 +12,10 @@ export function RhBottomLinesPage() {
 
   useEffect(() => {
     if (!empresaId) return;
-    royalHolidayApi.getCatalogo(empresaId).then(setCatalogo).catch((e) => toast.error(e.message));
+    royalHolidayApi.getCatalogo(empresaId).then(setCatalogo).catch((e) => {
+      toast.error(e.message);
+      setCatalogo({ bottom_line: [] });
+    });
   }, [empresaId]);
 
   const row = useMemo(
@@ -20,10 +23,13 @@ export function RhBottomLinesPage() {
     [catalogo, hc],
   );
 
-  if (!ready) return <div className="sales-page" style={{ padding: 24 }}>Cargando…</div>;
+  if (!ready || (empresaId && catalogo == null)) {
+    return <RhToolLoading title="Calculadora B. Lines" />;
+  }
 
   return (
     <RhToolShell title="Calculadora B. Lines">
+      <div className="content-ready">
       {!empresaId && <p className="muted">Activa un workspace Royal Holiday.</p>}
       <div className="card tool-calc-card">
         <div className="card-heading">Holiday Credits</div>
@@ -54,6 +60,7 @@ export function RhBottomLinesPage() {
             </tbody>
           </table>
         </div>
+      </div>
       </div>
     </RhToolShell>
   );

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { RhToolShell } from "@/components/rh/rh-tool-shell.jsx";
+import { RhToolLoading, RhToolShell } from "@/components/rh/rh-tool-shell.jsx";
 import { useRhEmpresa } from "@/hooks/use-rh-empresa.js";
 import { royalHolidayApi } from "@/lib/royal-holiday-api.js";
 import { fetchSession } from "@/lib/session-api.js";
@@ -8,6 +8,7 @@ import { toast } from "@/lib/toast";
 export function RhDiasDescansoPage() {
   const { empresaId, workspaceId, ready } = useRhEmpresa();
   const [rows, setRows] = useState([]);
+  const [listReady, setListReady] = useState(false);
   const [userId, setUserId] = useState(null);
   const [fecha, setFecha] = useState(() => new Date().toISOString().slice(0, 10));
   const [notas, setNotas] = useState("");
@@ -16,6 +17,7 @@ export function RhDiasDescansoPage() {
     if (!empresaId) return;
     const data = await royalHolidayApi.listDiasDescanso(empresaId, { workspaceId });
     setRows(data);
+    setListReady(true);
   };
 
   useEffect(() => {
@@ -24,7 +26,7 @@ export function RhDiasDescansoPage() {
 
   useEffect(() => {
     if (!empresaId) return;
-    reload().catch((e) => toast.error(e.message));
+    reload().catch((e) => { toast.error(e.message); setListReady(true); });
   }, [empresaId, workspaceId]);
 
   const add = async () => {
@@ -53,10 +55,13 @@ export function RhDiasDescansoPage() {
     }
   };
 
-  if (!ready) return <div className="sales-page" style={{ padding: 24 }}>Cargando…</div>;
+  if (!ready || (empresaId && !listReady)) {
+    return <RhToolLoading title="Días de descanso" />;
+  }
 
   return (
     <RhToolShell title="Días de descanso">
+      <div className="content-ready">
       <div className="card tool-calc-card">
         <div className="card-heading">Registrar</div>
         <div className="tool-calc-fields">
@@ -95,6 +100,7 @@ export function RhDiasDescansoPage() {
             </tbody>
           </table>
         </div>
+      </div>
       </div>
     </RhToolShell>
   );

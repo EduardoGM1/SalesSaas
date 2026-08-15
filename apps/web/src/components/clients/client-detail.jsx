@@ -38,6 +38,7 @@ import { selectOnFocus } from "@/lib/focus-select.js";
 import { useCustomModules } from "@/hooks/use-custom-modules.js";
 import { CustomModulePanel } from "@/components/custom-modules/CustomModulePanel.jsx";
 import { EXTENSION_POINTS } from "@/lib/custom-modules/extension-points.js";
+import { ToolCardSkeleton } from "@/components/ui/content-skeleton.jsx";
 
 const NOTE_TYPE_OPTIONS = [
   ["nota", "exp.note.typeNote"],
@@ -62,8 +63,9 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
   const { saveNoteForClient } = useCalendarActions();
   const { fmt } = useMoney();
   const { t, lang } = useI18n();
-  const { can } = useUserPermissions();
-  const { isEnabled, hasCatalog } = useFlags();
+  const { can, ready: permReady } = useUserPermissions();
+  const { isEnabled, hasCatalog, ready: flagsReady } = useFlags();
+  const toolsReady = flagsReady && permReady;
   const { active } = useWorkspace();
   const { modules: customExpedienteModules } = useCustomModules(EXTENSION_POINTS.EXPEDIENTE_TAB);
   const isPersonalWorkspace = !active || active.tipo === "personal";
@@ -425,7 +427,9 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
           <div>
             <div className="section-label" id="exp-tool-section-label">{t("exp.section.info")}</div>
             <div className="exp-tool-list" id="exp-tool-list">
-              {toolCards.map((card) => {
+              {!toolsReady ? (
+                Array.from({ length: isQuick ? 2 : 3 }, (_, i) => <ToolCardSkeleton key={`exp-skel-${i}`} />)
+              ) : toolCards.map((card) => {
                 const Icon = card.icon;
                 return (
                   <div key={card.label} className="tool-card-stack">
@@ -457,7 +461,7 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
                   </div>
                 );
               })}
-              {!isQuick && !toolCards.some((card) => card.toolKey === "worksheet") && (
+              {toolsReady && !isQuick && !toolCards.some((card) => card.toolKey === "worksheet") && (
                 <div className="tool-card-stack">
                   <PremiumFeatureCard
                     featureKey="money_box"

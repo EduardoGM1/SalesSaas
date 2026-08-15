@@ -4,6 +4,7 @@ import { Wallet, CalendarDays, Layers } from "lucide-react";
 import { Topbar } from "@/components/layout/topbar";
 import { PageBack } from "@/components/layout/page-back.jsx";
 import { CollapsibleSection } from "@/components/ui/collapsible-section.jsx";
+import { CalcCardSkeleton } from "@/components/ui/content-skeleton.jsx";
 import { useFeatureAccess } from "@/hooks/use-feature-access.js";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { useMoney } from "@/hooks/use-money.js";
@@ -352,12 +353,13 @@ export function MoneyBoxPage({ clientId, shared }) {
   if (loading || !ready) {
     return (
       <>
-        <Topbar title={t("moneyBox.title")} subtitle={t("common.loading")} />
-        <div className="sales-page tool-calc-page">
+        <Topbar title={t("moneyBox.title")} subtitle={t("moneyBox.subtitle")} />
+        <div className="sales-page tool-calc-page" aria-busy="true">
           <div className="page-toolbar">
             <PageBack inline href={backHref} fallback={backHref} />
           </div>
-          <div className="admin-embedded-loading">{t("common.loading")}</div>
+          <CalcCardSkeleton rows={3} boxes={2} />
+          <div style={{ marginTop: 12 }}><CalcCardSkeleton rows={4} boxes={0} /></div>
         </div>
       </>
     );

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { RhToolShell } from "@/components/rh/rh-tool-shell.jsx";
+import { RhToolLoading, RhToolShell } from "@/components/rh/rh-tool-shell.jsx";
 import { useRhEmpresa } from "@/hooks/use-rh-empresa.js";
 import { royalHolidayApi } from "@/lib/royal-holiday-api.js";
 import {
@@ -20,7 +20,10 @@ export function RhComisionesPage() {
 
   useEffect(() => {
     if (!empresaId) return;
-    royalHolidayApi.getCatalogo(empresaId).then(setCatalogo).catch((e) => toast.error(e.message));
+    royalHolidayApi.getCatalogo(empresaId).then(setCatalogo).catch((e) => {
+      toast.error(e.message);
+      setCatalogo({ comisiones: [] });
+    });
   }, [empresaId]);
 
   const row = useMemo(
@@ -35,10 +38,13 @@ export function RhComisionesPage() {
   const fechaPago = toDateStr(calcularFechaPagoComision(new Date()));
   const montoCalc = row ? montoComision(monto, row.porcentaje_comision) : null;
 
-  if (!ready) return <div className="sales-page" style={{ padding: 24 }}>Cargando…</div>;
+  if (!ready || (empresaId && catalogo == null)) {
+    return <RhToolLoading title="Calculadora Comisiones" variant="form" />;
+  }
 
   return (
     <RhToolShell title="Calculadora Comisiones">
+      <div className="content-ready">
       <div className="card tool-calc-card">
         <div className="card-heading">Parámetros</div>
         <div className="tool-calc-fields">
@@ -62,6 +68,7 @@ export function RhComisionesPage() {
           <div className="vbox yellow span2"><div className="vbox-val">{fechaPago}</div><div className="vbox-label">Fecha pago</div></div>
         </div>
         {!row && <p className="muted rh-hint">Sin coincidencia en catálogo para esta combinación.</p>}
+      </div>
       </div>
     </RhToolShell>
   );

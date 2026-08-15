@@ -18,6 +18,7 @@ import { useToolSession } from "@/hooks/use-tool-session.js";
 import { useFlushLibreToolOnLeave } from "@/hooks/use-flush-libre-tool-on-leave.js";
 import { useFlag } from "@/hooks/use-flag.js";
 import { WORKSHEET_ROYAL_HOLIDAY_FLAG } from "@/lib/auth/tool-flags.js";
+import { CalcCardSkeleton } from "@/components/ui/content-skeleton.jsx";
 import { CollabField, collabFieldId } from "@/components/clients/collab-field.jsx";
 import { SelectorMoneda } from "@/components/currency/selector-moneda.jsx";
 import { CampoMonedaCaptura } from "@/components/currency/campo-moneda-captura.jsx";
@@ -30,7 +31,16 @@ const EMPTY_FIELDS = { wv: "", we: "", wcc: "", wob: "" };
 export function WorksheetPage({ clientId, shared }) {
   const rhFlag = useFlag(WORKSHEET_ROYAL_HOLIDAY_FLAG);
   if (rhFlag.loading) {
-    return <div className="sales-page" style={{ padding: 24 }}>Cargando…</div>;
+    return (
+      <>
+        <Topbar title="Worksheet" subtitle="Royal Holiday" />
+        <div className="sales-page tool-calc-page" aria-busy="true">
+          <div className="page-toolbar"><PageBack inline href="/tools" /></div>
+          <CalcCardSkeleton rows={4} boxes={3} />
+          <div style={{ marginTop: 12 }}><CalcCardSkeleton rows={3} boxes={2} /></div>
+        </div>
+      </>
+    );
   }
   if (rhFlag.enabled) {
     return <WorksheetRoyalHolidayPage clientId={clientId} shared={shared} />;

@@ -1087,7 +1087,13 @@ function RoyalHolidayCatalogPanel({ companyId, companyName }) {
       </AdminCard>
     );
   }
-  if (!cat) return <AdminCard title="Catálogo RH"><p>Cargando…</p></AdminCard>;
+  if (!cat) {
+    return (
+      <AdminCard title="Catálogo RH">
+        <AdminPageState loading />
+      </AdminCard>
+    );
+  }
 
   const subs = [
     { id: "parametros", label: "Parámetros" },

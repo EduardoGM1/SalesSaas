@@ -8,6 +8,7 @@ import { Topbar } from "@/components/layout/topbar.jsx";
 import { PageBack } from "@/components/layout/page-back.jsx";
 import { NewClientModal } from "@/components/clients/new-client-modal.jsx";
 import { PremiumFeatureCard } from "@/components/premium/premium-feature-card.jsx";
+import { ContentFade, ToolCardSkeleton } from "@/components/ui/content-skeleton.jsx";
 import { useAppStore } from "@/stores/app-store.js";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { useUserPermissions } from "@/hooks/use-user-permissions.js";
@@ -28,38 +29,51 @@ function ToolLink({ href, label, desc, icon: Icon, tone, onClick }) {
   );
 }
 
-function ToolCardSkeleton() {
+function ToolsHubSkeleton({ rh = true, ops = true, other = 2 }) {
   return (
-    <div className="tool-card-stack">
-      <div className="tool-card tool-card-skeleton" aria-hidden="true">
-        <div className="tool-skel tool-skel-icon" />
-        <div className="tool-skel-copy">
-          <div className="tool-skel tool-skel-name" />
-          <div className="tool-skel tool-skel-desc" />
-        </div>
-        <div className="tool-skel tool-skel-chevron" />
-      </div>
+    <div className="rh-tools-section" aria-busy="true" aria-live="polite">
+      <span className="sr-only">Cargando herramientas</span>
+      {rh ? (
+        <>
+          <div className="rh-tools-section-title">Herramientas (Gerente, Closer, Reps)</div>
+          <div className="exp-tool-list tools-hub-list">
+            {Array.from({ length: 6 }, (_, i) => <ToolCardSkeleton key={`rh-${i}`} />)}
+          </div>
+        </>
+      ) : null}
+      {rh && ops ? (
+        <>
+          <div className="rh-tools-section-title">Administrativo operaciones</div>
+          <div className="exp-tool-list tools-hub-list">
+            <ToolCardSkeleton />
+          </div>
+        </>
+      ) : null}
+      {other > 0 ? (
+        <>
+          {rh ? <div className="rh-tools-section-title">Otras herramientas</div> : null}
+          <div className="exp-tool-list tools-hub-list">
+            {Array.from({ length: other }, (_, i) => <ToolCardSkeleton key={`other-${i}`} />)}
+          </div>
+        </>
+      ) : null}
     </div>
   );
 }
 
-function ToolsHubSkeleton() {
-  return (
-    <div className="rh-tools-section" aria-busy="true" aria-live="polite">
-      <div className="rh-tools-section-title">Herramientas (Gerente, Closer, Reps)</div>
-      <div className="exp-tool-list tools-hub-list">
-        {Array.from({ length: 6 }, (_, i) => <ToolCardSkeleton key={`rh-${i}`} />)}
-      </div>
-      <div className="rh-tools-section-title">Administrativo operaciones</div>
-      <div className="exp-tool-list tools-hub-list">
-        <ToolCardSkeleton />
-      </div>
-      <div className="rh-tools-section-title">Otras herramientas</div>
-      <div className="exp-tool-list tools-hub-list">
-        {Array.from({ length: 2 }, (_, i) => <ToolCardSkeleton key={`other-${i}`} />)}
-      </div>
-    </div>
-  );
+function hubSkeletonSpec(flagsReady, isEnabled, hasCatalog) {
+  if (!flagsReady) return { rh: true, ops: true, other: 2 };
+  const rh = isEnabled(WORKSHEET_ROYAL_HOLIDAY_FLAG) === true;
+  const opsFlag = isEnabled(RH_TOOL_FLAGS.ops);
+  const ops = rh && (opsFlag === true || opsFlag == null);
+  let other = 0;
+  if (hasCatalog) {
+    if (isEnabled(TOOL_FLAG_KEYS.survey) === true) other += 1;
+    if (isEnabled(TOOL_FLAG_KEYS.vacaciones) === true) other += 1;
+  } else {
+    other = rh ? 2 : 3;
+  }
+  return { rh, ops, other };
 }
 
 export function ToolsHubPage() {
@@ -102,6 +116,7 @@ export function ToolsHubPage() {
   ].filter((tool) => !tool.flag || rhToolOn(tool.flag));
 
   const showOps = rhEnabled && rhToolOn(RH_TOOL_FLAGS.ops);
+  const skeletonSpec = hubSkeletonSpec(flagsReady, isEnabled, hasCatalog);
 
   return (
     <>
@@ -112,9 +127,9 @@ export function ToolsHubPage() {
         </div>
 
         {!hubReady ? (
-          <ToolsHubSkeleton />
+          <ToolsHubSkeleton {...skeletonSpec} />
         ) : (
-          <div className="tools-hub-ready">
+          <ContentFade className="tools-hub-ready">
             {rhEnabled && (
               <div className="rh-tools-section">
                 <div className="rh-tools-section-title">Herramientas (Gerente, Closer, Reps)</div>
@@ -200,7 +215,7 @@ export function ToolsHubPage() {
                 </div>
               </>
             )}
-          </div>
+          </ContentFade>
         )}
 
         <div className="tools-hub-cta">

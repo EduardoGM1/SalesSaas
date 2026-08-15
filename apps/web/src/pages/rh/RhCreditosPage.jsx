@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { RhToolShell } from "@/components/rh/rh-tool-shell.jsx";
+import { RhToolLoading, RhToolShell } from "@/components/rh/rh-tool-shell.jsx";
 import { useRhEmpresa } from "@/hooks/use-rh-empresa.js";
 import { royalHolidayApi } from "@/lib/royal-holiday-api.js";
 import { lookupBottomLine } from "@/lib/calculations/royal-holiday.js";
@@ -12,7 +12,10 @@ export function RhCreditosPage() {
 
   useEffect(() => {
     if (!empresaId) return;
-    royalHolidayApi.getCatalogo(empresaId).then(setCatalogo).catch((e) => toast.error(e.message));
+    royalHolidayApi.getCatalogo(empresaId).then(setCatalogo).catch((e) => {
+      toast.error(e.message);
+      setCatalogo({ bottom_line: [] });
+    });
   }, [empresaId]);
 
   const match = useMemo(
@@ -25,10 +28,13 @@ export function RhCreditosPage() {
     return rows;
   }, [catalogo]);
 
-  if (!ready) return <div className="sales-page" style={{ padding: 24 }}>Cargando…</div>;
+  if (!ready || (empresaId && catalogo == null)) {
+    return <RhToolLoading title="Calculadora de Créditos" />;
+  }
 
   return (
     <RhToolShell title="Calculadora de Créditos">
+      <div className="content-ready">
       <div className="card tool-calc-card">
         <div className="card-heading">Explorar créditos (HC)</div>
         <div className="frow tool-frow">
@@ -64,6 +70,7 @@ export function RhCreditosPage() {
             </tbody>
           </table>
         </div>
+      </div>
       </div>
     </RhToolShell>
   );
