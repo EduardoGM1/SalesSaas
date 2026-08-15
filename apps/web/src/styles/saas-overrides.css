@@ -10219,6 +10219,13 @@ body,
 .rh-fin-hoy-hint,
 .rh-fin-hoy-block-hint { margin: 0; }
 .rh-fin-saldo {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(118px, 148px);
+  grid-template-areas:
+    "copy pagos"
+    "hint hint";
+  gap: 6px 12px;
+  align-items: center;
   border-radius: 8px;
   padding: 10px 12px;
   background: color-mix(in srgb, var(--blue, #1e5eff) 6%, transparent);
@@ -10226,6 +10233,28 @@ body,
 .rh-fin-saldo--green {
   background: color-mix(in srgb, #16a34a 8%, transparent);
 }
+.rh-fin-saldo-copy { grid-area: copy; min-width: 0; }
+.rh-fin-saldo-pagos {
+  grid-area: pagos;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.rh-fin-saldo-pagos-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  line-height: 1.2;
+}
+.rh-fin-saldo-pagos .input,
+.rh-fin-saldo-pagos select {
+  width: 100%;
+  min-height: 36px;
+  font-size: 13px;
+  padding: 6px 8px;
+}
+.rh-fin-saldo-hint { grid-area: hint; margin: 0; }
 .rh-fin-saldo-label { font-size: 12px; color: var(--muted); font-weight: 600; }
 .rh-fin-saldo-val {
   font-size: 22px;
@@ -10237,6 +10266,23 @@ body,
 .rh-fin-saldo--green .rh-fin-saldo-val { color: #16a34a; }
 .rh-fin-saldo-pct { font-size: 12px; font-weight: 600; color: var(--muted); }
 .rh-fin-pagos-table-wrap { margin-top: 4px; }
+.rh-fin-pagos-scroll {
+  max-height: min(48vh, 420px);
+  overflow-y: auto;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.rh-fin-pagos-scroll .rh-fin-pagos-table { margin: 0; }
+.rh-fin-pagos-scroll thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--surface, #fff);
+  box-shadow: 0 1px 0 var(--border);
+}
+.rh-fin-pagos-hint { margin: 4px 0 0; }
 .rh-fin-pagos-table { width: 100%; font-size: 13px; }
 .rh-fin-pago-num { width: 28px; font-weight: 700; color: var(--muted); }
 .rh-fin-extra-add { margin-top: 8px; }
@@ -10414,7 +10460,17 @@ body,
   }
 
   .worksheet-rh .rh-fin-pagos-table-wrap {
-    margin-inline: -4px;
+    margin-inline: 0;
+  }
+
+  .worksheet-rh .rh-fin-pagos-scroll {
+    max-height: min(52vh, 340px);
+  }
+
+  .worksheet-rh .rh-fin-saldo-pagos .input,
+  .worksheet-rh .rh-fin-saldo-pagos select {
+    min-height: 44px;
+    font-size: 16px;
   }
 
   .worksheet-rh .rh-fin-pagos-table {
@@ -10582,7 +10638,20 @@ body,
 
 @media (max-width: 480px) {
   .worksheet-rh .rh-fin-pagos-table-wrap {
-    overflow-x: visible;
+    overflow-x: auto;
     margin-inline: 0;
+  }
+}
+
+@media (max-width: 359px) {
+  .rh-fin-saldo {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "copy"
+      "pagos"
+      "hint";
+  }
+  .rh-fin-saldo-pagos {
+    margin-top: 4px;
   }
 }

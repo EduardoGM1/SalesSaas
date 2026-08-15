@@ -165,6 +165,7 @@ function PaymentCaptureBlock({
   const hoyAmount = Number(hoyValue) || 0;
   const pactado = pctPactado != null ? Number(pctPactado) : null;
   const showEngancheDelta = pactado != null && hoyAmount > 0 && montoDeltaVisible(pactado, pctHoy);
+  const pagosSelectId = `rh-num-pagos-${String(title || "plan").replace(/\s+/g, "-").toLowerCase()}`;
 
   return (
     <CollapsibleSection
@@ -203,73 +204,77 @@ function PaymentCaptureBlock({
         </div>
 
         <div className={`rh-fin-saldo rh-fin-saldo--${tone}`}>
-          <div className="rh-fin-saldo-label">Saldo pendiente</div>
-          <div className="rh-fin-saldo-val">{saldoFmt}</div>
-          <div className="rh-fin-saldo-pct">{fmtPct(saldoPct)}{saldoPctLabel(saldoHint)}</div>
-          {saldoHint ? <p className="muted rh-hint">{saldoHint}</p> : null}
-        </div>
-
-        <div className="frow tool-frow">
-          <div className="flabel">Número de pagos</div>
-          <select
-            className="input"
-            disabled={readOnly}
-            value={numPagos}
-            onChange={(e) => onNumPagosChange(e.target.value)}
-          >
-            {PAGO_OPTS.map((n) => (
-              <option key={n} value={String(n)}>{n} {n === 1 ? "pago" : "pagos"}</option>
-            ))}
-          </select>
+          <div className="rh-fin-saldo-copy">
+            <div className="rh-fin-saldo-label">Saldo pendiente</div>
+            <div className="rh-fin-saldo-val">{saldoFmt}</div>
+            <div className="rh-fin-saldo-pct">{fmtPct(saldoPct)}{saldoPctLabel(saldoHint)}</div>
+          </div>
+          <div className="rh-fin-saldo-pagos">
+            <label className="rh-fin-saldo-pagos-label" htmlFor={pagosSelectId}>Número de pagos</label>
+            <select
+              id={pagosSelectId}
+              className="input"
+              disabled={readOnly}
+              value={numPagos}
+              onChange={(e) => onNumPagosChange(e.target.value)}
+            >
+              {PAGO_OPTS.map((n) => (
+                <option key={n} value={String(n)}>{n} {n === 1 ? "pago" : "pagos"}</option>
+              ))}
+            </select>
+          </div>
+          {saldoHint ? <p className="muted rh-hint rh-fin-saldo-hint">{saldoHint}</p> : null}
         </div>
 
         {pagos.length > 0 && (
-          <div className="rh-fin-pagos-table-wrap table-scroll">
-            <table className="client-table rh-fin-pagos-table">
-              <thead>
-                <tr>
-                  <th />
-                  <th>Monto por pago</th>
-                  <th>Fecha</th>
-                </tr>
-              </thead>
-              <tbody>
-                {pagos.map((p, idx) => (
-                  <tr key={idx}>
-                    <td className="rh-fin-pago-num">{idx + 1}</td>
-                    <td>
-                      <CampoMonedaCaptura
-                        currency={captureCurrency}
-                        value={p.monto}
-                        readOnly={readOnly}
-                        onChange={(value) => {
-                          const next = [...pagos];
-                          next[idx] = { ...next[idx], monto: value };
-                          onPagosChange(next);
-                        }}
-                        onBlurCapture={() => onPagoBlur?.(idx, p.monto)}
-                        className="rh-fin-pago-mfield"
-                      />
-                    </td>
-                    <td>
-                      <input
-                        type="date"
-                        className="input input-compact"
-                        disabled={readOnly}
-                        value={p.fecha}
-                        onChange={(e) => {
-                          const next = [...pagos];
-                          next[idx] = { ...next[idx], fecha: e.target.value };
-                          onPagosChange(next);
-                        }}
-                      />
-                    </td>
+          <>
+            <div className="rh-fin-pagos-table-wrap rh-fin-pagos-scroll">
+              <table className="client-table rh-fin-pagos-table">
+                <thead>
+                  <tr>
+                    <th />
+                    <th>Monto por pago</th>
+                    <th>Fecha</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-            <p className="muted rh-hint">El saldo se divide automáticamente; ajusta las fechas según el calendario acordado.</p>
-          </div>
+                </thead>
+                <tbody>
+                  {pagos.map((p, idx) => (
+                    <tr key={idx}>
+                      <td className="rh-fin-pago-num">{idx + 1}</td>
+                      <td>
+                        <CampoMonedaCaptura
+                          currency={captureCurrency}
+                          value={p.monto}
+                          readOnly={readOnly}
+                          onChange={(value) => {
+                            const next = [...pagos];
+                            next[idx] = { ...next[idx], monto: value };
+                            onPagosChange(next);
+                          }}
+                          onBlurCapture={() => onPagoBlur?.(idx, p.monto)}
+                          className="rh-fin-pago-mfield"
+                        />
+                      </td>
+                      <td>
+                        <input
+                          type="date"
+                          className="input input-compact"
+                          disabled={readOnly}
+                          value={p.fecha}
+                          onChange={(e) => {
+                            const next = [...pagos];
+                            next[idx] = { ...next[idx], fecha: e.target.value };
+                            onPagosChange(next);
+                          }}
+                        />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p className="muted rh-hint rh-fin-pagos-hint">El saldo se divide automáticamente; ajusta las fechas según el calendario acordado.</p>
+          </>
         )}
 
         {extraTitle ? (
