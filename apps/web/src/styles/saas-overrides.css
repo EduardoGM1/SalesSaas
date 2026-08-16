@@ -10331,11 +10331,109 @@ body,
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   gap: 12px;
 }
+
+/* Hoja de trabajo RH — vista consolidada (pestaña Worksheet) */
+.worksheet-rh-hoja { display: grid; gap: 12px; margin-bottom: 12px; }
+.rh-hoja-sheet { padding-bottom: 8px; }
+.rh-hoja-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+.rh-hoja-title { margin-bottom: 0; }
+.rh-hoja-title-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.rh-hoja-print-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.rh-hoja-sub { margin: 4px 0 0; }
+.rh-hoja-meta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(140px, 200px));
+  gap: 8px 16px;
+  min-width: 0;
+}
+.rh-hoja-section {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border, #e2e8f0);
+}
+.rh-hoja-section-title {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted, #64748b);
+  margin-bottom: 10px;
+}
+.rh-hoja-pago-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 24px;
+  align-items: start;
+}
+.rh-hoja-pago-col { display: grid; gap: 2px; }
+.rh-hoja-field .tool-frow { margin: 0; }
+.rh-hoja-field-hint { margin: 0 0 6px; font-size: 11px; }
+.rh-hoja-field--pending .flabel { color: var(--muted, #64748b); }
+.rh-hoja-placeholder {
+  margin: 0;
+  color: var(--muted, #64748b);
+  font-weight: 600;
+}
+.rh-hoja-firmas {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 8px;
+}
+.rh-hoja-firma-line {
+  height: 36px;
+  border-bottom: 1px solid var(--border, #e2e8f0);
+}
+.rh-hoja-firma-label {
+  margin-top: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted, #64748b);
+}
+.rh-hoja-personas { display: grid; gap: 10px; }
+.rh-hoja-personas-hint { margin: 0 0 10px; }
+.rh-hoja-personas-row {
+  display: grid;
+  gap: 10px 16px;
+  min-width: 0;
+}
+.rh-hoja-personas-row--full { grid-template-columns: 1fr; }
+.rh-hoja-personas-row--2 { grid-template-columns: 1.4fr 1fr; }
+.rh-hoja-personas-row--3 { grid-template-columns: 1fr 1fr 1fr; }
+.rh-hoja-write { min-width: 0; }
+.rh-hoja-write .flabel { margin-bottom: 4px; }
+.rh-hoja-write-line {
+  min-height: 28px;
+  border-bottom: 1px solid var(--border, #e2e8f0);
+}
+.rh-hoja-ruled { display: grid; gap: 10px; }
+
 @media (max-width: 960px) {
   .worksheet-rh-row3,
   .worksheet-rh-fin-grid,
   .worksheet-rh-roles-grid,
-  .worksheet-rh-venta-top {
+  .worksheet-rh-venta-top,
+  .rh-hoja-pago-grid,
+  .rh-hoja-firmas,
+  .rh-hoja-meta,
+  .rh-hoja-personas-row--2,
+  .rh-hoja-personas-row--3 {
     grid-template-columns: 1fr;
   }
   .worksheet-rh-venta-top .rh-card-creditos {
@@ -10550,6 +10648,21 @@ body,
     font-size: 16px;
   }
 
+  .worksheet-rh .rh-hoja-field .tool-frow {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 4px;
+    padding: 8px 0;
+  }
+  .worksheet-rh .rh-hoja-field .tool-frow .flabel {
+    flex: none;
+    font-size: 13px;
+  }
+  .worksheet-rh .rh-hoja-field .rh-field-val {
+    text-align: left;
+    font-size: 16px;
+  }
+
   .worksheet-rh .worksheet-rh-venta-top .rh-credits-input {
     width: 100%;
   }
@@ -10671,4 +10784,93 @@ body,
       "p-select"
       "s-hint";
   }
+}
+
+/* Hoja de trabajo RH — impresión (solo la hoja, sin chrome de la app) */
+@media print {
+  @page {
+    size: letter portrait;
+    margin: 10mm 12mm;
+  }
+
+  html, body {
+    background: #fff !important;
+    color: #111 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .sidebar,
+  .topbar,
+  .bottom-nav,
+  .page-toolbar,
+  .worksheet-rh-tabs,
+  .tool-moneda-selector,
+  .save-footer,
+  .rh-hoja-screen-only,
+  .toast-stack,
+  .toasts,
+  [data-toast] {
+    display: none !important;
+  }
+
+  .app,
+  .main,
+  .sales-page,
+  .worksheet-rh,
+  .tool-calc-page,
+  .shared-tool-fieldset {
+    display: block !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    max-width: none !important;
+    width: 100% !important;
+    background: #fff !important;
+    box-shadow: none !important;
+    overflow: visible !important;
+  }
+
+  .main { margin-left: 0 !important; }
+  .shared-tool-fieldset[disabled],
+  fieldset.shared-tool-fieldset:disabled {
+    opacity: 1 !important;
+    color: inherit !important;
+  }
+
+  .worksheet-rh--hoja .worksheet-rh-hoja {
+    display: block;
+    margin: 0;
+  }
+
+  .rh-hoja-sheet {
+    border: none !important;
+    box-shadow: none !important;
+    background: #fff !important;
+    padding: 0 !important;
+    border-radius: 0 !important;
+  }
+
+  .rh-hoja-pago-grid {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 4px 16px !important;
+  }
+  .rh-hoja-personas-row--2 { grid-template-columns: 1.4fr 1fr !important; }
+  .rh-hoja-personas-row--3 { grid-template-columns: 1fr 1fr 1fr !important; }
+  .rh-hoja-firmas { grid-template-columns: repeat(5, minmax(0, 1fr)) !important; }
+  .rh-hoja-meta { grid-template-columns: repeat(2, minmax(140px, 220px)) !important; }
+  .rh-hoja-header { flex-wrap: nowrap; }
+  .rh-hoja-section {
+    margin-top: 10px;
+    padding-top: 8px;
+    break-inside: avoid;
+  }
+  .rh-hoja-write-line { min-height: 22px; }
+  .rh-hoja-firma-line { height: 28px; }
+  .rh-hoja-title { font-size: 16px; }
+  .rh-hoja-field .rh-field-val,
+  .rh-hoja-write .flabel,
+  .rh-hoja-field .flabel {
+    font-size: 11px;
+  }
+  .rh-readonly.rh-field-val { font-size: 12px !important; }
 }

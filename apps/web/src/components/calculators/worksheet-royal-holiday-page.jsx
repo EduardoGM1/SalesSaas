@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Topbar } from "@/components/layout/topbar";
 import { PageBack } from "@/components/layout/page-back.jsx";
-import { useI18n } from "@/hooks/use-i18n.js";
 import { useToolSession } from "@/hooks/use-tool-session.js";
 import { useMonedaToolBucket } from "@/hooks/use-moneda-tool.js";
 import { useFlushLibreToolOnLeave } from "@/hooks/use-flush-libre-tool-on-leave.js";
@@ -16,6 +15,8 @@ import {
 } from "@/lib/calculations/royal-holiday.js";
 import { WorksheetRhFinancingPanel } from "@/components/calculators/worksheet-rh-financing-panel.jsx";
 import { WorksheetRhVentaPanel } from "@/components/calculators/worksheet-rh-venta-panel.jsx";
+import { WorksheetRhHojaPanel } from "@/components/calculators/worksheet-rh-hoja-panel.jsx";
+import { useDbStore } from "@/stores/db-store";
 import { buildRhWorksheetState } from "@/lib/calculations/worksheet-rh-preview.js";
 import { montoVentaWorksheet } from "@/lib/calculations/royal-holiday.js";
 import {
@@ -44,7 +45,8 @@ const TABS = [
 const POSICIONES = ["liner", "closer", "ftb", "opc", "x"];
 
 export function WorksheetRoyalHolidayPage({ clientId, shared }) {
-  const { t } = useI18n();
+  const getClient = useDbStore((s) => s.getClient);
+  const client = clientId ? getClient(clientId) : null;
   const session = useToolSession({ clientId, shared, section: "worksheet" });
   const { ready, backHref, readOnly, getBucket, saveBucket, isFileMode, toolsRevision } = session;
   const {
@@ -324,13 +326,14 @@ export function WorksheetRoyalHolidayPage({ clientId, shared }) {
     );
   }
 
-  const showVenta = tab === "venta" || tab === "worksheet";
-  const showFin = tab === "financiamiento" || tab === "worksheet";
+  const showVenta = tab === "venta";
+  const showFin = tab === "financiamiento";
+  const showHoja = tab === "worksheet";
 
   return (
     <>
       <Topbar title="Worksheet · Royal Holiday" subtitle="Sala Royal Holiday" />
-      <div className={`sales-page tool-calc-page worksheet-rh content-ready${!readOnly ? " tool-calc-page--with-save" : ""}`}>
+      <div className={`sales-page tool-calc-page worksheet-rh content-ready${showHoja ? " worksheet-rh--hoja" : ""}${!readOnly ? " tool-calc-page--with-save" : ""}`}>
         <div className="page-toolbar page-toolbar--between">
           <PageBack inline href={backHref} hasUnsavedChanges={() => dirtyKeysRef.current.size > 0} />
         </div>
@@ -386,7 +389,27 @@ export function WorksheetRoyalHolidayPage({ clientId, shared }) {
             moneda={moneda}
             posicionesDisponibles={posicionesDisponibles}
             regalosCatalogo={regalosCatalogo}
-            showExtras={tab === "worksheet"}
+            showExtras={false}
+          />
+        )}
+
+        {showHoja && (
+          <WorksheetRhHojaPanel
+            form={form}
+            set={set}
+            readOnly={readOnly}
+            ws={ws}
+            catalogo={catalogo}
+            bl={bl}
+            boardOnline={boardOnline}
+            boardOk={boardOk}
+            blDifer={blDifer}
+            montoCapture={montoCapture}
+            moneda={moneda}
+            posicionesDisponibles={posicionesDisponibles}
+            regalosCatalogo={regalosCatalogo}
+            captureCurrency={captureCurrency}
+            client={client}
           />
         )}
 
@@ -402,7 +425,7 @@ export function WorksheetRoyalHolidayPage({ clientId, shared }) {
             montoOperational={montoOperational}
             moneda={moneda}
             onMoneyBlur={handleMoneyBlur}
-            stacked={tab === "worksheet"}
+            stacked={false}
           />
         )}
         </fieldset>
