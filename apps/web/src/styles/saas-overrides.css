@@ -10406,6 +10406,29 @@ body,
   font-weight: 600;
   color: var(--muted, #64748b);
 }
+.rh-hoja-incentivos { margin-top: 10px; }
+.rh-hoja-incentivos-title { margin-bottom: 6px; }
+.rh-hoja-incentivos-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px 16px;
+}
+.rh-hoja-incentivo {
+  font-size: 13px;
+  font-weight: 600;
+  min-width: 0;
+}
+.rh-hoja-firma-line--named {
+  display: flex;
+  align-items: flex-end;
+  font-size: 12px;
+  font-weight: 700;
+  padding-bottom: 2px;
+}
+.rh-hoja-firma-empty { margin: 4px 0 0; font-size: 11px; }
 .rh-hoja-personas { display: grid; gap: 10px; }
 .rh-hoja-personas-hint { margin: 0 0 10px; }
 .rh-hoja-personas-row {
@@ -10433,7 +10456,8 @@ body,
   .rh-hoja-firmas,
   .rh-hoja-meta,
   .rh-hoja-personas-row--2,
-  .rh-hoja-personas-row--3 {
+  .rh-hoja-personas-row--3,
+  .rh-hoja-incentivos-list {
     grid-template-columns: 1fr;
   }
   .worksheet-rh-venta-top .rh-card-creditos {
@@ -10852,25 +10876,54 @@ body,
 
   .rh-hoja-pago-grid {
     grid-template-columns: 1fr 1fr !important;
-    gap: 4px 16px !important;
+    gap: 2px 14px !important;
   }
   .rh-hoja-personas-row--2 { grid-template-columns: 1.4fr 1fr !important; }
   .rh-hoja-personas-row--3 { grid-template-columns: 1fr 1fr 1fr !important; }
   .rh-hoja-firmas { grid-template-columns: repeat(5, minmax(0, 1fr)) !important; }
   .rh-hoja-meta { grid-template-columns: repeat(2, minmax(140px, 220px)) !important; }
+  .rh-hoja-incentivos-list { grid-template-columns: 1fr 1fr !important; }
   .rh-hoja-header { flex-wrap: nowrap; }
+
   .rh-hoja-section {
-    margin-top: 10px;
-    padding-top: 8px;
-    break-inside: avoid;
+    margin-top: 7px;
+    padding-top: 6px;
+    break-inside: auto;
+    page-break-inside: auto;
   }
-  .rh-hoja-write-line { min-height: 22px; }
-  .rh-hoja-firma-line { height: 28px; }
-  .rh-hoja-title { font-size: 16px; }
+  .rh-hoja-header,
+  .rh-hoja-section--keep,
+  .rh-hoja-pago-keep,
+  .rh-hoja-firmas {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  .rh-hoja-section-title,
+  .rh-hoja-incentivos-title {
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+  .rh-hoja-incentivo {
+    break-inside: avoid;
+    page-break-inside: avoid;
+    font-size: 11px;
+  }
+
+  .rh-hoja-personas { gap: 6px; }
+  .rh-hoja-write-line { min-height: 18px; }
+  .rh-hoja-firma-line { height: 26px; }
+  .rh-hoja-title { font-size: 15px; }
+  .rh-hoja-ruled .rh-hoja-write-line:nth-child(n+2) { display: none; }
+  .rh-hoja-field .tool-frow { padding: 1px 0; }
   .rh-hoja-field .rh-field-val,
   .rh-hoja-write .flabel,
   .rh-hoja-field .flabel {
-    font-size: 11px;
+    font-size: 10px;
   }
-  .rh-readonly.rh-field-val { font-size: 12px !important; }
+  .rh-readonly.rh-field-val { font-size: 11px !important; }
+
+  .rh-hoja-sheet--dense .rh-hoja-personas { gap: 4px; }
+  .rh-hoja-sheet--dense .rh-hoja-section { margin-top: 5px; padding-top: 5px; }
+  .rh-hoja-sheet--dense .rh-hoja-write-line { min-height: 16px; }
+  .rh-hoja-sheet--dense .rh-hoja-incentivo { font-size: 10px; }
 }

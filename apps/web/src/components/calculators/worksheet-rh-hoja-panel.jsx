@@ -1,5 +1,7 @@
+import { useEffect, useState } from "react";
 import { AlertTriangle, CheckCircle2, Printer } from "lucide-react";
 import { parseMoney } from "@/lib/format/money";
+import { participantsApi } from "@/lib/participants-api.js";
 
 function isClosingCarga(carga) {
   const s = String(carga || "").toLowerCase();
@@ -33,6 +35,16 @@ function formatPlanCuotas({ saldo, numPagos, pagos, pct, fmt }) {
   return pctPart ? `${pctPart} = ${fmt(restante)}` : fmt(restante);
 }
 
+function dash(value) {
+  if (value == null || value === "") return "—";
+  return value;
+}
+
+function participantName(profile) {
+  const name = profile?.full_name || profile?.email || "";
+  return String(name).trim() || null;
+}
+
 function HojaField({ label, value, hint, pending, writeIn }) {
   const empty = value == null || value === "";
   if (writeIn && empty) {
@@ -49,7 +61,19 @@ function HojaField({ label, value, hint, pending, writeIn }) {
   );
 }
 
-/** Línea vacía para rellenar a mano al imprimir. No captura ni persiste. */
+function HojaFirma({ label, name }) {
+  return (
+    <div className="rh-hoja-firma">
+      <div className={`rh-hoja-firma-line${name ? " rh-hoja-firma-line--named" : ""}`}>
+        {name || ""}
+      </div>
+      <div className="rh-hoja-firma-label">{label}</div>
+      {!name ? (
+        <div className="muted rh-hint rh-hoja-firma-empty rh-hoja-screen-only">Sin asignar</div>
+      ) : null}
+    </div>
+  );
+}
 function HojaWriteLine({ label, hint }) {
   return (
     <div className="rh-hoja-write">
@@ -82,6 +106,24 @@ export function WorksheetRhHojaPanel({
   client,
 }) {
   const { fmtResult, fmtCaptureResult, toCaptureDisplay } = moneda || {};
+  const [participantState, setParticipantState] = useState(null);
+  const prospectId = client?.id || null;
+
+  useEffect(() => {
+    if (!prospectId) {
+      setParticipantState(null);
+      return undefined;
+    }
+    let cancelled = false;
+    participantsApi.get(prospectId)
+      .then((data) => {
+        if (!cancelled) setParticipantState(data?.state || null);
+      })
+      .catch(() => {
+        if (!cancelled) setParticipantState(null);
+      });
+    return () => { cancelled = true; };
+  }, [prospectId]);
   const engPct = Number(form.enganche_pct || 0);
   const regalosVenta = Number(ws.regalos_totales?.venta || 0);
   const regalosClosing = Number(ws.regalos_totales?.closing || 0);
@@ -135,12 +177,10 @@ export function WorksheetRhHojaPanel({
   const mensualidadLabel = ws.mensualidad != null ? fmtResult(ws.mensualidad) : null;
 
   const closingGifts = (regalosCatalogo || []).filter((g) => isClosingCarga(form.regalosElegidos?.[g.id]));
-  const incentivosCc = closingGifts.length
-    ? closingGifts.map((g) => g.nombre).join(", ")
-    : null;
-  const incentivosCcValue = incentivosCc
-    ? `${incentivosCc}${regalosClosing > 0 ? ` · ${fmtResult(regalosClosing)}` : ""}`
-    : (regalosClosing > 0 ? fmtResult(regalosClosing) : null);
+  const densePrint = closingGifts.length >= 3;
+  const representanteName = participantName(participantState?.representante);
+  const gerenteName = participantName(participantState?.gerente);
+  const cerradorName = participantName(participantState?.cerrador);
 
   const tarjetas = catalogo?.parametros?.tarjetas_internas || ["Invex", "RCI"];
   const cargosAuto = [
@@ -172,8 +212,8 @@ export function WorksheetRhHojaPanel({
     : "Costo administrativo (750 / 950 según % enganche).";
 
   return (
-    <section className="worksheet-rh-hoja">
-      <div className="card tool-calc-card rh-hoja-sheet">
+    <section className={`worksheet-rh-hoja${densePrint ? " worksheet-rh-hoja--dense" : ""}`}>
+      <div className={`card tool-calc-card rh-hoja-sheet${densePrint ? " rh-hoja-sheet--dense" : ""}`}>
         <div className="rh-hoja-header">
           <div>
             <div className="rh-hoja-title-row">
@@ -197,7 +237,7 @@ export function WorksheetRhHojaPanel({
           </div>
         </div>
 
-        <div className="rh-hoja-section">
+        <div className="rh-hoja-section rh-hoja-section--keep">
           <div className="rh-hoja-section-title">Datos personales</div>
           <p className="muted rh-hint rh-hoja-personas-hint rh-hoja-screen-only">
             No se toman del expediente. Líneas en blanco para llenar a mano en la impresión.
@@ -238,6 +278,7 @@ export function WorksheetRhHojaPanel({
         </div>
 
         <div className="rh-hoja-section">
+          <div className="rh-hoja-pago-keep">
           <div className="rh-hoja-section-title">Condiciones de pago</div>
           {capturaHint ? <p className="muted rh-hint rh-hoja-screen-only">{capturaHint}</p> : null}
           <div className="rh-hoja-pago-grid">
@@ -278,12 +319,27 @@ export function WorksheetRhHojaPanel({
                 value={gastoTotalCapture > 0 ? fmtCaptureResult(gastoTotalCapture) : null}
                 hint={documentacionHint}
               />
-              <HojaField label="Incentivos C.C." value={incentivosCcValue} />
             </div>
+          </div>
+          </div>
+          <div className="rh-hoja-incentivos">
+            <div className="rh-hoja-section-title rh-hoja-incentivos-title">
+              Incentivos C.C.
+              {regalosClosing > 0 ? ` · ${fmtResult(regalosClosing)}` : ""}
+            </div>
+            {closingGifts.length ? (
+              <ul className="rh-hoja-incentivos-list">
+                {closingGifts.map((g) => (
+                  <li key={g.id} className="rh-hoja-incentivo">{g.nombre}</li>
+                ))}
+              </ul>
+            ) : (
+              <p className="rh-hoja-placeholder">—</p>
+            )}
           </div>
         </div>
 
-        <div className="rh-hoja-section">
+        <div className="rh-hoja-section rh-hoja-section--keep">
           <div className="rh-hoja-section-title">Notas</div>
           <div className="rh-hoja-ruled">
             <div className="rh-hoja-write-line" />
@@ -292,14 +348,14 @@ export function WorksheetRhHojaPanel({
           </div>
         </div>
 
-        <div className="rh-hoja-section">
+        <div className="rh-hoja-section rh-hoja-section--keep">
           <div className="rh-hoja-section-title">Cargos automáticos</div>
           <p className={cargosAuto.length ? "rh-readonly rh-field-val" : "rh-hoja-placeholder"}>
             {cargosAuto.length ? cargosAuto.join(" · ") : "—"}
           </p>
         </div>
 
-        <div className="rh-hoja-section">
+        <div className="rh-hoja-section rh-hoja-section--keep">
           <div className="rh-hoja-section-title">Observaciones</div>
           <div className="rh-hoja-ruled">
             <div className="rh-hoja-write-line" />
@@ -307,16 +363,14 @@ export function WorksheetRhHojaPanel({
           </div>
         </div>
 
-        <div className="rh-hoja-section">
+        <div className="rh-hoja-section rh-hoja-section--keep rh-hoja-section--firmas">
           <div className="rh-hoja-section-title">Firmas</div>
-          <p className="muted rh-hint rh-hoja-screen-only">Sin fuente con estos roles. El equipo de la venta está debajo.</p>
           <div className="rh-hoja-firmas">
-            {["Representante", "Gerente Financiero (1)", "Gerente Financiero (2)", "Promotor", "Programas"].map((rol) => (
-              <div className="rh-hoja-firma" key={rol}>
-                <div className="rh-hoja-firma-line" />
-                <div className="rh-hoja-firma-label">{rol}</div>
-              </div>
-            ))}
+            <HojaFirma label="Representante" name={representanteName} />
+            <HojaFirma label="Gerente Financiero (1)" name={gerenteName} />
+            <HojaFirma label="Gerente Financiero (2)" name={cerradorName} />
+            <HojaFirma label="Promotor" name={null} />
+            <HojaFirma label="Programas" name={null} />
           </div>
         </div>
       </div>
