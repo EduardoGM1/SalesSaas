@@ -17,9 +17,20 @@ function fmtPct(v) {
   return Number.isInteger(rounded) ? `${rounded}%` : `${rounded.toFixed(2)}%`;
 }
 
-function dash(value) {
-  if (value == null || value === "") return "—";
-  return value;
+function formatPlanCuotas({ saldo, numPagos, pagos, pct, fmt }) {
+  const n = Number(numPagos) || 0;
+  const restante = Math.max(0, Number(saldo) || 0);
+  if (restante <= 0) return null;
+  const cuotaPagos = parseMoney(pagos?.[0]?.monto);
+  const cuota = n > 0 ? roundMoney(restante / n) : cuotaPagos;
+  const pctPart = fmtPct(pct);
+  if (n > 0 && cuota > 0) {
+    const split = pctPart
+      ? `${pctPart} ÷ ${n} meses = ${fmt(cuota)}`
+      : `${n} meses = ${fmt(cuota)}`;
+    return `${split} · ${fmt(restante)}`;
+  }
+  return pctPart ? `${pctPart} = ${fmt(restante)}` : fmt(restante);
 }
 
 function HojaField({ label, value, hint, pending, writeIn }) {
@@ -90,6 +101,9 @@ export function WorksheetRhHojaPanel({
 
   const gastoTotalCapture = toCaptureDisplay(Number(ws.costo_administrativo_usd || 0));
   const costoAdminBase = toCaptureDisplay(Number(ws.costo_administrativo_base_usd || 0));
+  const gastoHoy = parseMoney(form.gasto_adm_hoy);
+  const saldoGasto = Math.max(0, gastoTotalCapture - gastoHoy);
+  const pctSaldoGasto = gastoTotalCapture > 0 ? (saldoGasto / gastoTotalCapture) * 100 : 0;
 
   const pactadoLabel = engPct
     ? `${fmtPct(engPct) || `${engPct}%`}${engancheTotalCapture > 0 ? ` = ${fmtCaptureResult(engancheTotalCapture)}` : ""}`
@@ -98,18 +112,20 @@ export function WorksheetRhHojaPanel({
     ? `${fmtPct(pctEngancheHoy) || ""}${fmtPct(pctEngancheHoy) ? " = " : ""}${fmtCaptureResult(engancheHoy)}`
     : null;
 
-  const numPagosEng = Number(form.enganche_num_pagos) || 0;
-  const pagosEng = Array.isArray(form.enganche_pagos) ? form.enganche_pagos : [];
-  const cuotaIdp = numPagosEng > 0 && saldoEnganche > 0
-    ? roundMoney(saldoEnganche / numPagosEng)
-    : (parseMoney(pagosEng[0]?.monto) || 0);
-  const idpValue = saldoEnganche > 0
-    ? `${fmtPct(pctSaldoEnganche) || ""}${fmtPct(pctSaldoEnganche) && numPagosEng ? ` ÷ ${numPagosEng} meses = ` : " "}${fmtCaptureResult(cuotaIdp || saldoEnganche)}`
-    : null;
-  const idpTotal = saldoEnganche > 0 ? fmtCaptureResult(saldoEnganche) : null;
-  const cdpsValue = numPagosEng > 0 && (cuotaIdp > 0 || saldoEnganche > 0)
-    ? `${numPagosEng} meses = ${fmtCaptureResult(cuotaIdp || saldoEnganche / numPagosEng)}`
-    : null;
+  const idpValue = formatPlanCuotas({
+    saldo: saldoEnganche,
+    numPagos: form.enganche_num_pagos,
+    pagos: form.enganche_pagos,
+    pct: pctSaldoEnganche,
+    fmt: fmtCaptureResult,
+  });
+  const cdpsValue = formatPlanCuotas({
+    saldo: saldoGasto,
+    numPagos: form.gasto_num_pagos,
+    pagos: form.gasto_pagos,
+    pct: pctSaldoGasto,
+    fmt: fmtCaptureResult,
+  });
 
   const fin = ws.financiamiento_seleccionado;
   const plazoLabel = fin?.plazo_meses != null ? `${fin.plazo_meses} meses` : null;
@@ -242,16 +258,12 @@ export function WorksheetRhHojaPanel({
               <HojaField
                 label="I.D.P."
                 value={idpValue}
-                hint={idpTotal
-                  ? `Saldo ${idpTotal}. Hipótesis: enganche pactado − pagado hoy. Pendiente de confirmar.`
-                  : "Hipótesis: saldo de enganche. Pendiente de confirmar."}
-                pending
+                hint="Enganche: saldo a plazos (pactado − pagado hoy)."
               />
               <HojaField
                 label="C.D.P.S."
                 value={cdpsValue}
-                hint="Hipótesis: plan de pagos del saldo de enganche. Pendiente de confirmar."
-                pending
+                hint="Costo de contrato: gasto administrativo a plazos."
               />
               <HojaField
                 label="Saldo a financiar"
