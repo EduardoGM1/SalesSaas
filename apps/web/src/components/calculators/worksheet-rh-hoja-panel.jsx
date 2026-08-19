@@ -355,22 +355,11 @@ export function WorksheetRhHojaPanel({
           </p>
         </div>
 
-        <div className="rh-hoja-section rh-hoja-section--keep">
+        <div className="rh-hoja-section rh-hoja-section--keep rh-hoja-section--observaciones">
           <div className="rh-hoja-section-title">Observaciones</div>
           <div className="rh-hoja-ruled">
             <div className="rh-hoja-write-line" />
             <div className="rh-hoja-write-line" />
-          </div>
-        </div>
-
-        <div className="rh-hoja-section rh-hoja-section--keep rh-hoja-section--firmas">
-          <div className="rh-hoja-section-title">Firmas</div>
-          <div className="rh-hoja-firmas">
-            <HojaFirma label="Representante" name={representanteName} />
-            <HojaFirma label="Gerente Financiero (1)" name={gerenteName} />
-            <HojaFirma label="Gerente Financiero (2)" name={cerradorName} />
-            <HojaFirma label="Promotor" name={null} />
-            <HojaFirma label="Programas" name={null} />
           </div>
         </div>
       </div>
@@ -411,27 +400,14 @@ export function WorksheetRhHojaPanel({
         </div>
       </div>
 
-      <div className="card tool-calc-card worksheet-rh-roles rh-hoja-screen-only">
+      <div className="card tool-calc-card rh-hoja-equipo">
         <div className="card-heading">Equipo</div>
-        <div className="worksheet-rh-roles-grid">
-          {[
-            ["opc", "OPC"],
-            ["liner", "Liner"],
-            ["closer1", "Closer 1"],
-            ["closer2", "Closer 2"],
-            ["exit", "Exit"],
-          ].map(([key, label]) => (
-            <div className="frow tool-frow" key={key}>
-              <div className="flabel">{label}</div>
-              <input
-                className="input"
-                disabled={readOnly}
-                value={form[key]}
-                onChange={(e) => set(key, e.target.value)}
-                placeholder="Nombre"
-              />
-            </div>
-          ))}
+        <div className="rh-hoja-firmas">
+          <HojaFirma label="Representante" name={representanteName} />
+          <HojaFirma label="Gerente Financiero (1)" name={gerenteName} />
+          <HojaFirma label="Gerente Financiero (2)" name={cerradorName} />
+          <HojaFirma label="Promotor" name={null} />
+          <HojaFirma label="Programas" name={null} />
         </div>
       </div>
     </section>

@@ -10396,6 +10396,9 @@ body,
   gap: 16px;
   margin-top: 8px;
 }
+.rh-hoja-equipo {
+  margin-top: 12px;
+}
 .rh-hoja-firma-line {
   height: 36px;
   border-bottom: 1px solid var(--border, #e2e8f0);
@@ -10866,12 +10869,24 @@ body,
     margin: 0;
   }
 
-  .rh-hoja-sheet {
+  .rh-hoja-sheet,
+  .rh-hoja-equipo {
     border: none !important;
     box-shadow: none !important;
     background: #fff !important;
     padding: 0 !important;
     border-radius: 0 !important;
+  }
+  .rh-hoja-equipo {
+    margin-top: 10px !important;
+  }
+  .rh-hoja-equipo .card-heading {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #64748b;
+    margin-bottom: 4px;
   }
 
   .rh-hoja-pago-grid {
@@ -10894,7 +10909,8 @@ body,
   .rh-hoja-header,
   .rh-hoja-section--keep,
   .rh-hoja-pago-keep,
-  .rh-hoja-firmas {
+  .rh-hoja-firmas,
+  .rh-hoja-equipo {
     break-inside: avoid;
     page-break-inside: avoid;
   }
