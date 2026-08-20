@@ -9,7 +9,7 @@ import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { createClient, primeRealtimeAuth } from "@/lib/supabase/client";
 import { fetchRealtimeSession } from "@/lib/presence-api.js";
 import { ensureRealtimeReady, removeChannelSafe } from "@/lib/presence/realtime.js";
-import { requestSyncRefresh } from "@/lib/sync-refresh.js";
+import { applyDashboardTableChange } from "@/lib/sync-table-refresh.js";
 import { shouldLimitBackgroundRealtime } from "@/lib/connection-profile.js";
 
 const DEBOUNCE_MS = 400;
@@ -28,6 +28,25 @@ let activeWorkspaceId = null;
 let channelJoined = false;
 let debounceTimer = null;
 let starting = false;
+/** @type {Map<string, { eventType: string, payload: object }>} */
+let pendingByTable = new Map();
+
+function scheduleInvalidate(table, eventType, payload) {
+  pendingByTable.set(table, { eventType, payload });
+  clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(() => {
+    debounceTimer = null;
+    const batch = pendingByTable;
+    pendingByTable = new Map();
+    for (const [tbl, item] of batch) {
+      try {
+        applyDashboardTableChange(tbl, item.payload);
+      } catch (err) {
+        console.warn("[dashboard-realtime] apply", tbl, err?.message || err);
+      }
+    }
+  }, DEBOUNCE_MS);
+}
 
 async function ensureBrowserSession(supabase) {
   let { data: { session } } = await supabase.auth.getSession();
@@ -45,16 +64,6 @@ async function ensureBrowserSession(supabase) {
   } catch {
     return null;
   }
-}
-
-function scheduleInvalidate(table, eventType) {
-  clearTimeout(debounceTimer);
-  debounceTimer = setTimeout(() => {
-    debounceTimer = null;
-    requestSyncRefresh({ force: true, reason: `realtime:${table}:${eventType}` }).catch((err) => {
-      console.warn("[dashboard-realtime] refresh:", err?.message || err);
-    });
-  }, DEBOUNCE_MS);
 }
 
 function markChannelDead(reason) {
@@ -82,6 +91,7 @@ export function getDashboardRealtimeWorkspaceId() {
 export async function stopDashboardDataRealtime() {
   clearTimeout(debounceTimer);
   debounceTimer = null;
+  pendingByTable = new Map();
   const sb = createClient();
   const ch = channel;
   channel = null;
@@ -150,7 +160,7 @@ export async function startDashboardDataRealtime(userId, opts = {}) {
           filter,
         },
         (payload) => {
-          scheduleInvalidate(table, payload.eventType || payload.event || "*");
+          scheduleInvalidate(table, payload.eventType || payload.event || "*", payload);
         },
       );
     }
