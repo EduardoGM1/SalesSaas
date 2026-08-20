@@ -44,7 +44,9 @@ function queueFallback(reason) {
 function stripToolMeta(data) {
   if (!data || typeof data !== "object") return {};
   const out = { ...data };
-  delete out._updatedAt;
+  for (const k of Object.keys(out)) {
+    if (k.startsWith("_")) delete out[k];
+  }
   return out;
 }
 

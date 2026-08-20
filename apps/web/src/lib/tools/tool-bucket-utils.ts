@@ -6,7 +6,8 @@ export function isNonEmptyToolBucket(
   data: Record<string, string | number> | null | undefined,
 ): boolean {
   if (!data || typeof data !== "object") return false;
-  return Object.entries(data).some(([, v]) => {
+  return Object.entries(data).some(([k, v]) => {
+    if (k.startsWith("_")) return false;
     if (v === null || v === undefined) return false;
     if (typeof v === "number") return v !== 0;
     return String(v).trim() !== "";

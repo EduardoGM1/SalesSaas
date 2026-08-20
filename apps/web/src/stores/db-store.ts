@@ -50,7 +50,14 @@ interface DbState {
   deleteClient: (id: string) => void;
   deleteClientSale: (clientId: string, saleId: string) => void;
   getToolBucket: (tool: string, mode: "libre" | "client", clientId?: string | null) => Record<string, string | number>;
-  saveToolBucket: (tool: string, mode: "libre" | "client", data: Record<string, string | number>, clientId?: string | null) => void;
+  saveToolBucket: (
+    tool: string,
+    mode: "libre" | "client",
+    data: Record<string, string | number>,
+    clientId?: string | null,
+    opts?: { skipCloud?: boolean },
+  ) => void;
+  ensureToolLoaded: (tool: string, mode: "libre" | "client", clientId?: string | null) => Promise<boolean>;
   clearLibreTool: (tool: string) => void;
   addClientActivity: (clientId: string, activity: Omit<ClientActivity, "id" | "ts"> & { ts?: number }) => void;
   addUserActivity: (activity: Omit<ClientActivity, "id" | "ts">) => void;
@@ -142,7 +149,7 @@ function removeArchivedSales(db: AppDatabase, saleIds: string[]): void {
 
 function isNonEmptyToolBucket(data: Record<string, string | number> | undefined | null): boolean {
   if (!data || typeof data !== "object") return false;
-  return Object.keys(data).some((k) => k !== "_updatedAt");
+  return Object.keys(data).some((k) => !k.startsWith("_"));
 }
 
 function recalcClientSaleMeta(client: ClientRecord): void {
@@ -387,7 +394,9 @@ export const useDbStore = create<DbState>((set, get) => ({
     const stripMeta = (bucket: Record<string, string | number> | undefined) => {
       if (!bucket) return EMPTY_TOOL_BUCKET;
       const rest = { ...bucket };
-      delete rest._updatedAt;
+      for (const k of Object.keys(rest)) {
+        if (k.startsWith("_")) delete rest[k];
+      }
       return Object.keys(rest).length ? rest : EMPTY_TOOL_BUCKET;
     };
     if (mode === "client" && clientId) {
@@ -399,7 +408,7 @@ export const useDbStore = create<DbState>((set, get) => ({
     return stripMeta(db.libre[tool]);
   },
 
-  saveToolBucket: (tool, mode, data, clientId) => {
+  saveToolBucket: (tool, mode, data, clientId, opts) => {
     set((s) => {
       const db = cloneDb(s.db);
       const stamped = { ...data, _updatedAt: Date.now() };
@@ -420,10 +429,13 @@ export const useDbStore = create<DbState>((set, get) => ({
         db.libre[tool] = stamped;
       }
       saveDatabase(db);
-      notifyToolSaved(tool, mode, stamped, clientId ?? null);
+      if (!opts?.skipCloud) notifyToolSaved(tool, mode, stamped, clientId ?? null);
       return { db };
     });
   },
+
+  ensureToolLoaded: (tool, mode, clientId) =>
+    import("@/lib/tool-calculations-api.js").then((m) => m.ensureToolLoaded(tool, mode, clientId)),
 
   clearLibreTool: (tool) => {
     set((s) => {

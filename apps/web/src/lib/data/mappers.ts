@@ -164,11 +164,18 @@ function isoToMs(s: unknown): number {
   return Number.isFinite(t) ? t : Date.now();
 }
 
-function nonEmptyData(d: unknown): Record<string, string | number> | null {
+function stripToolMetaKeys(d: unknown): Record<string, string | number> | null {
   if (!d || typeof d !== "object") return null;
   const obj = { ...(d as Record<string, string | number>) };
-  delete obj._updatedAt;
-  return Object.keys(obj).length > 0 ? obj : null;
+  for (const k of Object.keys(obj)) {
+    if (k.startsWith("_")) delete obj[k];
+  }
+  return obj;
+}
+
+function nonEmptyData(d: unknown): Record<string, string | number> | null {
+  const obj = stripToolMetaKeys(d);
+  return obj && Object.keys(obj).length > 0 ? obj : null;
 }
 
 function parseGoalKey(key: string): { year: number; month: number } | null {
@@ -612,7 +619,11 @@ export function rowsToDb(rows: SupabaseRows): AppDatabase {
 
   for (const t of rows.tool_calculations) {
     const stamp = isoToMs((t as { updated_at?: string }).updated_at || t.created_at);
-    const payload = { ...(t.data || {}), _updatedAt: stamp };
+    const rawData = t.data && typeof t.data === "object" ? t.data : null;
+    const hasJson = !!(rawData && Object.keys(rawData).length > 0);
+    const payload = hasJson
+      ? { ...rawData, _updatedAt: stamp }
+      : { _updatedAt: stamp, ...(t.id ? { _id: t.id } : {}), _pending: 1 };
     if (t.prospect_id && db.clients[t.prospect_id]) {
       (db.clients[t.prospect_id].data ||= {})[t.tool as "survey" | "vacaciones" | "worksheet"] = payload;
     } else if (!t.prospect_id) {

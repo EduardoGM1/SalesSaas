@@ -37,6 +37,8 @@
     "verify:api": "npm run verify -w @salesapp/api",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
+    "test:e2e:egress": "playwright test e2e/egress-payload.spec.js e2e/egress-realtime-idle.spec.js e2e/egress-sync-empty-local.spec.js",
+    "audit:egress": "node scripts/audit-egress.js",
     "test:video-pdf": "node scripts/test-survey-calc.mjs && playwright test e2e/video-corrections.spec.js",
     "test:money-box": "node scripts/test-money-box.mjs"
   },

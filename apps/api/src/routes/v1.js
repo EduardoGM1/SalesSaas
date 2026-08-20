@@ -60,7 +60,7 @@ router.get("/", (_req, res) => {
       calendarEntries: { GET: "/api/v1/calendar-entries", POST: "/api/v1/calendar-entries", GET_ONE: "/api/v1/calendar-entries/:id", PATCH: "/api/v1/calendar-entries/:id", DELETE: "/api/v1/calendar-entries/:id" },
       goals: { GET: "/api/v1/goals", PUT: "/api/v1/goals", DELETE: "/api/v1/goals?year=&month=" },
       activities: { GET: "/api/v1/activities", POST: "/api/v1/activities", GET_ONE: "/api/v1/activities/:id", PATCH: "/api/v1/activities/:id", DELETE: "/api/v1/activities/:id" },
-      toolCalculations: { GET: "/api/v1/tool-calculations", PUT: "/api/v1/tool-calculations", DELETE: "/api/v1/tool-calculations?tool=&prospect_id=" },
+      toolCalculations: { GET: "/api/v1/tool-calculations", GET_ONE: "/api/v1/tool-calculations/:id", PUT: "/api/v1/tool-calculations", DELETE: "/api/v1/tool-calculations?tool=&prospect_id=" },
       surveyQuestionsConfig: { GET: "/api/v1/survey/questions-config", PUT: "/api/v1/survey/questions-config" },
       network: {
         search: { GET: "/api/v1/network/users/search?q=" },
@@ -727,6 +727,12 @@ router.delete("/activities/:id", async (req, res) => {
   const a = await requireAuth(req, res);
   if (!a) return;
   await runService(res, () => activitiesService.deleteActivity(a.supabase, a.userId, req.params.id), { wrap: "ok" });
+});
+
+router.get("/tool-calculations/:id", async (req, res) => {
+  const a = await requireAuth(req, res);
+  if (!a) return;
+  await runService(res, () => toolsService.getToolCalculationById(a.supabase, a.userId, req.params.id), { wrap: "data" });
 });
 
 router.get("/tool-calculations", async (req, res) => {

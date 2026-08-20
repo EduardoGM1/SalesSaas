@@ -148,9 +148,10 @@ async function reconcile(sb, db, userId, workspaceId = null, { teamScope = false
   const ownActivities = teamScope
     ? rows.activities.filter((r) => r.user_id === userId)
     : rows.activities;
-  const ownTools = teamScope
+  const ownTools = (teamScope
     ? rows.tool_calculations.filter((r) => r.user_id === userId)
-    : rows.tool_calculations;
+    : rows.tool_calculations
+  ).filter((r) => r.data && typeof r.data === "object" && Object.keys(r.data).length > 0);
   const ownCalendar = teamScope
     ? rows.calendar_entries.filter((r) => r.user_id === userId)
     : rows.calendar_entries;

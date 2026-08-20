@@ -3,7 +3,11 @@ import { bodyToToolUpsert } from "@salesapp/shared/api/validators.js";
 import { ServiceError } from "../lib/service-error.js";
 import { createServiceSupabaseClient } from "../lib/supabase-server.js";
 import { profileDisplayName } from "../lib/profile-display-name.js";
-import { requireWorkspaceFlag, scopeByWorkspace } from "../lib/workspace-scope.js";
+import {
+  getRequestWorkspaceContext,
+  requireWorkspaceFlag,
+  scopeByWorkspace,
+} from "../lib/workspace-scope.js";
 import { TOOL_FLAG_KEYS } from "./flags-service.js";
 import { notifyProspectSectionChanged } from "./push-notifications-service.js";
 
@@ -35,6 +39,18 @@ export async function getToolCalculation(supabase, userId, tool, prospectId) {
   const { data, error } = await q.maybeSingle();
   if (error) throw new ServiceError(error.message, 500);
   return data ?? null;
+}
+
+export async function getToolCalculationById(supabase, userId, id) {
+  if (!isUuid(id)) throw new ServiceError("ID inválido.");
+  const ctx = await getRequestWorkspaceContext(supabase, userId);
+  let q = supabase.from("tool_calculations").select("*").eq("id", id);
+  q = scopeByWorkspace(q, ctx.workspaceId);
+  const { data, error } = await q.maybeSingle();
+  if (error) throw new ServiceError(error.message, 500);
+  if (!data) throw new ServiceError("Cálculo no encontrado.", 404);
+  await requireWorkspaceFlag(supabase, userId, TOOL_FLAG_KEYS[data.tool] || data.tool);
+  return data;
 }
 
 export async function upsertToolCalculation(supabase, userId, body) {

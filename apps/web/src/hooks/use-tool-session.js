@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useDbStore } from "@/stores/db-store";
 import { shallow } from "zustand/shallow";
 import { useToolBucketReady } from "@/hooks/use-tool-bucket-ready";
@@ -30,6 +30,7 @@ export function useToolSession({ clientId, shared, section }) {
   const localClient = useDbStore((s) => (clientId ? s.db.clients[clientId] : undefined), shallow);
   const getToolBucket = useDbStore((s) => s.getToolBucket);
   const saveToolBucket = useDbStore((s) => s.saveToolBucket);
+  const ensureToolLoaded = useDbStore((s) => s.ensureToolLoaded);
   const getClient = useDbStore((s) => s.getClient);
   const saveClient = useDbStore((s) => s.saveClient);
   const [localToolsRevision, setLocalToolsRevision] = useState(0);
@@ -76,6 +77,24 @@ export function useToolSession({ clientId, shared, section }) {
   });
 
   const ready = useShared ? sharedSession.ready : localReady.ready;
+
+  useEffect(() => {
+    if (useShared || !ready) return;
+    const tools = toolSection === "detail"
+      ? ["survey"]
+      : ["survey", "vacaciones", "worksheet"].includes(toolSection)
+        ? [toolSection]
+        : [];
+    let cancelled = false;
+    (async () => {
+      for (const tool of tools) {
+        const hydrated = await ensureToolLoaded(tool, mode, clientId || null);
+        if (cancelled) return;
+        if (hydrated) setLocalToolsRevision((n) => n + 1);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [useShared, ready, toolSection, mode, clientId, ensureToolLoaded]);
   const sectionLocked = useShared ? sharedSession.sectionLocked : localCollab.sectionLocked;
   const lockedBy = useShared ? sharedSession.lockedBy : localCollab.lockedBy;
   const peers = useShared ? sharedSession.peers : localCollab.peers;

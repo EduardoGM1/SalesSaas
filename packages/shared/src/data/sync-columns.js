@@ -10,7 +10,10 @@ export const SYNC_SELECT = {
     "user_id,workspace_id,year,month,vol,tours,ventas,dias,descansos,updated_at",
   activities:
     "id,user_id,workspace_id,prospect_id,sale_id,type,title,note,activity_date,source,vol,tours,contract,created_at",
+  /** Pull: metadata only. El JSON `data` se pide en GET /tool-calculations. */
   tool_calculations:
+    "id,user_id,workspace_id,prospect_id,tool,updated_at",
+  tool_calculations_full:
     "id,user_id,workspace_id,prospect_id,tool,data,updated_at",
 };
 

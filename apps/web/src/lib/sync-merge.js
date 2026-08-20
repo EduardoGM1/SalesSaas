@@ -35,12 +35,25 @@ function toolBucketTs(bucket) {
   return Number.isFinite(n) ? n : 0;
 }
 
+function isToolMetaStub(bucket) {
+  if (!bucket || typeof bucket !== "object") return false;
+  if (bucket._pending || bucket._stale) return true;
+  return Object.keys(bucket).every((k) => k.startsWith("_"));
+}
+
 function mergeToolBuckets(localBucket, remoteBucket) {
   const l = localBucket && typeof localBucket === "object" ? localBucket : null;
   const r = remoteBucket && typeof remoteBucket === "object" ? remoteBucket : null;
   if (!l && !r) return {};
   if (!l) return { ...r };
   if (!r) return { ...l };
+  const localFull = !isToolMetaStub(l);
+  const remoteFull = !isToolMetaStub(r);
+  if (localFull && !remoteFull) {
+    if (toolBucketTs(r) > toolBucketTs(l)) return { ...l, _stale: true, _id: r._id || l._id, _updatedAt: toolBucketTs(r) };
+    return { ...l };
+  }
+  if (!localFull && remoteFull) return { ...r };
   return toolBucketTs(l) >= toolBucketTs(r) ? { ...l } : { ...r };
 }
 
@@ -210,7 +223,8 @@ export function localNeedsOutboundPush(local, remote) {
     for (const tool of ["survey", "vacaciones", "worksheet"]) {
       const lb = client.data?.[tool];
       const rb = remoteClient.data?.[tool];
-      if (isNonEmptyTool(lb) && (!isNonEmptyTool(rb) || toolBucketTs(lb) > toolBucketTs(rb))) {
+      if (!isNonEmptyTool(lb) || isToolMetaStub(lb)) continue;
+      if (!cloudHasTool(rb) || (isNonEmptyTool(rb) && toolBucketTs(lb) > toolBucketTs(rb))) {
         return true;
       }
     }
@@ -222,7 +236,7 @@ export function localNeedsOutboundPush(local, remote) {
   for (const tool of Object.keys(local.libre || {})) {
     const lb = local.libre[tool];
     const rb = remote?.libre?.[tool];
-    if (isNonEmptyTool(lb) && (!isNonEmptyTool(rb) || toolBucketTs(lb) > toolBucketTs(rb))) {
+    if (isNonEmptyTool(lb) && !isToolMetaStub(lb) && (!cloudHasTool(rb) || (isNonEmptyTool(rb) && toolBucketTs(lb) > toolBucketTs(rb)))) {
       return true;
     }
   }
@@ -258,7 +272,11 @@ function collectCalEntries(cal) {
 
 function isNonEmptyTool(bucket) {
   if (!bucket || typeof bucket !== "object") return false;
-  return Object.keys(bucket).some((k) => k !== "_updatedAt");
+  return Object.keys(bucket).some((k) => !k.startsWith("_"));
+}
+
+function cloudHasTool(bucket) {
+  return isNonEmptyTool(bucket) || isToolMetaStub(bucket);
 }
 
 /**
