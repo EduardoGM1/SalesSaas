@@ -1,5 +1,6 @@
 import { isUuid } from "@salesapp/shared/data/mappers.js";
 import { bodyToActivityInsert } from "@salesapp/shared/api/validators.js";
+import { ACTIVITY_LIST_COLUMNS } from "@salesapp/shared/data/sync-columns.js";
 import { ServiceError, assertFound } from "../lib/service-error.js";
 import {
   getRequestWorkspaceContext,
@@ -13,7 +14,7 @@ export async function listActivities(supabase, userId, { limit, offset, prospect
   await requireWorkspacePermission(supabase, userId, required, ctx.workspaceId);
   let q = supabase
     .from("activities")
-    .select("*", { count: "exact" })
+    .select(ACTIVITY_LIST_COLUMNS, { count: "exact" })
     .order("created_at", { ascending: false })
     .range(offset, offset + limit - 1);
   q = scopeByWorkspace(q, ctx.workspaceId);
@@ -38,7 +39,7 @@ export async function getActivity(supabase, userId, id) {
   const ctx = await getRequestWorkspaceContext(supabase, userId);
   const required = ctx.teamScope ? "expedientes:ver_equipo" : "expedientes:ver_propios";
   await requireWorkspacePermission(supabase, userId, required, ctx.workspaceId);
-  let q = supabase.from("activities").select("*").eq("id", id);
+  let q = supabase.from("activities").select(ACTIVITY_LIST_COLUMNS).eq("id", id);
   q = scopeByWorkspace(q, ctx.workspaceId);
   if (!ctx.teamScope) q = q.eq("user_id", userId);
   const { data, error } = await q.maybeSingle();

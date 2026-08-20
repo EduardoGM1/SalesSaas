@@ -24,6 +24,27 @@ test.describe("Egress — columnas de sync (estático)", () => {
     expect(src).toMatch(/tool_calculations:\s*\n?\s*"id,user_id,workspace_id,prospect_id,tool,updated_at"/);
     expect(src).not.toMatch(/tool_calculations:\s*\n?\s*"id,user_id,workspace_id,prospect_id,tool,data,updated_at"/);
   });
+
+  test("listados REST de sales/activities/calendar no usan select('*')", () => {
+    const sales = fs.readFileSync(
+      path.join(root, "apps/api/src/services/sales-service.js"),
+      "utf8",
+    );
+    const activities = fs.readFileSync(
+      path.join(root, "apps/api/src/services/activities-service.js"),
+      "utf8",
+    );
+    const calendar = fs.readFileSync(
+      path.join(root, "apps/api/src/services/calendar-service.js"),
+      "utf8",
+    );
+    expect(sales).toMatch(/SALE_LIST_COLUMNS/);
+    expect(sales).not.toMatch(/select\("\*/);
+    expect(activities).toMatch(/ACTIVITY_LIST_COLUMNS/);
+    expect(activities).not.toMatch(/select\("\*/);
+    expect(calendar).toMatch(/CALENDAR_LIST_COLUMNS/);
+    expect(calendar).not.toMatch(/select\("\*/);
+  });
 });
 
 test.describe("Egress — peso de respuestas REST", () => {

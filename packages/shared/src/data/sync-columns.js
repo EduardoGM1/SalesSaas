@@ -27,3 +27,5 @@ export const SALE_LIST_COLUMNS =
 
 export const ACTIVITY_LIST_COLUMNS =
   "id,user_id,workspace_id,prospect_id,sale_id,type,title,note,activity_date,source,vol,tours,contract,created_at";
+
+export const CALENDAR_LIST_COLUMNS = SYNC_SELECT.calendar_entries;

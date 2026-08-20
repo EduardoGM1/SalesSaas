@@ -1,5 +1,6 @@
 import { isUuid } from "@salesapp/shared/data/mappers.js";
 import { bodyToCalInsert } from "@salesapp/shared/api/validators.js";
+import { CALENDAR_LIST_COLUMNS } from "@salesapp/shared/data/sync-columns.js";
 import { ServiceError, assertFound } from "../lib/service-error.js";
 import { getRequestWorkspaceContext, scopeByWorkspace } from "../lib/workspace-scope.js";
 
@@ -7,7 +8,7 @@ export async function listCalendarEntries(supabase, userId, { limit, offset, fro
   const ctx = await getRequestWorkspaceContext(supabase, userId);
   let q = supabase
     .from("calendar_entries")
-    .select("*", { count: "exact" })
+    .select(CALENDAR_LIST_COLUMNS, { count: "exact" })
     .order("entry_date", { ascending: false })
     .range(offset, offset + limit - 1);
   q = scopeByWorkspace(q, ctx.workspaceId);
@@ -32,7 +33,7 @@ export async function createCalendarEntry(supabase, userId, body) {
 export async function getCalendarEntry(supabase, userId, id) {
   if (!isUuid(id)) throw new ServiceError("ID inválido.");
   const ctx = await getRequestWorkspaceContext(supabase, userId);
-  let q = supabase.from("calendar_entries").select("*").eq("id", id);
+  let q = supabase.from("calendar_entries").select(CALENDAR_LIST_COLUMNS).eq("id", id);
   q = scopeByWorkspace(q, ctx.workspaceId);
   if (!ctx.teamScope) q = q.eq("user_id", userId);
   const { data, error } = await q.maybeSingle();
