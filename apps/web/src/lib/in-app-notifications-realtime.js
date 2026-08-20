@@ -96,6 +96,12 @@ export async function stopInAppNotificationsRealtime() {
   if (ch) await removeChannelSafe(sb, ch);
 }
 
+function realtimeInFilter(column, ids) {
+  const list = [...new Set((ids || []).filter(Boolean))].slice(0, 80);
+  if (!list.length) return null;
+  return `${column}=in.(${list.join(",")})`;
+}
+
 export async function startInAppNotificationsRealtime(userId) {
   if (getInstallPlatform() !== "desktop") return;
   if (!isSupabaseConfigured() || !userId || starting) return;
@@ -110,7 +116,20 @@ export async function startInAppNotificationsRealtime(userId) {
 
     await ensureRealtimeReady(supabase, session.access_token, 8_000);
 
-    const ch = supabase
+    const [{ data: memberRows }, { data: ticketRows }] = await Promise.all([
+      supabase.from("chat_members").select("conversation_id").eq("usuario_id", userId).is("left_at", null),
+      supabase.from("support_requests").select("id").eq("user_id", userId),
+    ]);
+    const chatFilter = realtimeInFilter(
+      "conversation_id",
+      (memberRows || []).map((r) => r.conversation_id),
+    );
+    const supportFilter = realtimeInFilter(
+      "ticket_id",
+      (ticketRows || []).map((r) => r.id),
+    );
+
+    let ch = supabase
       .channel(`in-app-notifications:${userId}`)
       .on(
         "postgres_changes",
@@ -142,6 +161,7 @@ export async function startInAppNotificationsRealtime(userId) {
           event: "INSERT",
           schema: "public",
           table: "chat_messages",
+          ...(chatFilter ? { filter: chatFilter } : { filter: "conversation_id=eq.00000000-0000-0000-0000-000000000000" }),
         },
         (payload) => {
           void (async () => {
@@ -244,6 +264,7 @@ export async function startInAppNotificationsRealtime(userId) {
           event: "INSERT",
           schema: "public",
           table: "support_request_replies",
+          ...(supportFilter ? { filter: supportFilter } : { filter: "ticket_id=eq.00000000-0000-0000-0000-000000000000" }),
         },
         (payload) => {
           void (async () => {

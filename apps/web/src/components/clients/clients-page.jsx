@@ -306,17 +306,19 @@ export function ClientsPage() {
     void (async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (cancelled || !user?.id) return;
-      channel = supabase
-        .channel(`clients-pinned-prospects:${user.id}`)
-        .on(
+      const ids = [...pinnedIds].filter(Boolean);
+      let ch = supabase.channel(`clients-pinned-prospects:${user.id}`);
+      for (const id of ids) {
+        ch = ch.on(
           "postgres_changes",
-          { event: "UPDATE", schema: "public", table: "prospects" },
+          { event: "UPDATE", schema: "public", table: "prospects", filter: `id=eq.${id}` },
           (payload) => {
-            const id = payload.new?.id;
-            if (id && pinnedIds.has(id)) scheduleRefresh();
+            const rowId = payload.new?.id;
+            if (rowId && pinnedIds.has(rowId)) scheduleRefresh();
           },
-        )
-        .subscribe();
+        );
+      }
+      channel = ch.subscribe();
     })();
 
     return () => {

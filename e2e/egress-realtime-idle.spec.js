@@ -21,6 +21,23 @@ test.describe("Egress — Realtime (estático)", () => {
     expect(src).toMatch(/applyDashboardTableChange/);
   });
 
+  test("canales de chat, pins y soporte llevan filtro postgres_changes", () => {
+    const clients = fs.readFileSync(
+      path.join(root, "apps/web/src/components/clients/clients-page.jsx"),
+      "utf8",
+    );
+    const notify = fs.readFileSync(
+      path.join(root, "apps/web/src/lib/in-app-notifications-realtime.js"),
+      "utf8",
+    );
+    expect(clients).toMatch(/filter:\s*`id=eq\.\$\{id\}`/);
+    expect(notify).toMatch(/function realtimeInFilter/);
+    expect(notify).toMatch(/realtimeInFilter\(\s*"conversation_id"/);
+    expect(notify).toMatch(/realtimeInFilter\(\s*"ticket_id"/);
+    expect(notify).toMatch(/filter:\s*chatFilter|filter:\s*"conversation_id=/);
+    expect(notify).toMatch(/filter:\s*supportFilter|filter:\s*"ticket_id=/);
+  });
+
   test("un cambio de tabla no referencia las otras 5 rutas REST", () => {
     const src = fs.readFileSync(
       path.join(root, "apps/web/src/lib/sync-table-refresh.js"),
