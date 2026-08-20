@@ -43,7 +43,7 @@ async function postMissingProspect(client) {
  *   error?: string,
  * }>}
  */
-export async function recoverLocalProspectsToCloud() {
+export async function recoverLocalProspectsToCloud(opts = {}) {
   if (typeof navigator !== "undefined" && !navigator.onLine) {
     return {
       attempted: false,
@@ -74,9 +74,12 @@ export async function recoverLocalProspectsToCloud() {
     };
   }
 
-  let cloudDb = { clients: {}, cal: {}, goals: {}, libre: {}, sales: {} };
+  let cloudDb = opts.cloudDb || { clients: {}, cal: {}, goals: {}, libre: {}, sales: {} };
+  const alreadyHadCloud = !!(opts.cloudDb && typeof opts.cloudDb === "object");
   try {
-    cloudDb = (await pullViaApi()) || cloudDb;
+    if (!alreadyHadCloud) {
+      cloudDb = (await pullViaApi()) || cloudDb;
+    }
   } catch (err) {
     markOutboxDirty("recovery-pull-failed");
     useSyncStore.getState().setPendingOutbound(true);

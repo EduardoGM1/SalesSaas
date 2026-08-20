@@ -144,7 +144,7 @@ export function SyncProvider({ children }) {
       lastRecoveryAtRef.current = now;
       useSyncStore.getState().setStatus("syncing");
       try {
-        const result = await recoverLocalBlobToCloud();
+        const result = await recoverLocalBlobToCloud({ cloudDb: opts.cloudDb });
         if (result.reconciled) ackClean();
         else if (result.localOnlyIds?.length || result.failed?.length || isOutboxDirty()) {
           markDirty("recovery-pending");
@@ -272,6 +272,7 @@ export function SyncProvider({ children }) {
 
       const account = typeof window !== "undefined" ? localStorage.getItem(ACCOUNT_KEY) : null;
       let localDb = loadDatabase();
+      const hadLocalToRecover = !isEmptyDb(localDb) || isOutboxDirty();
 
       let cloudDb;
       try {
@@ -362,7 +363,9 @@ export function SyncProvider({ children }) {
       if (isOutboxDirty()) {
         await doReconcile();
       }
-      await runLocalRecovery({ force: true, reason: "init" });
+      if (hadLocalToRecover) {
+        await runLocalRecovery({ force: true, reason: "init", cloudDb });
+      }
       startRealtime(userId);
       maybeRequestReminderDigest();
       if (typeof stopFlushLoopRef.current === "function") stopFlushLoopRef.current();
