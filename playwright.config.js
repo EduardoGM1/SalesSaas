@@ -37,8 +37,8 @@ export default defineConfig({
           timeout: 120000,
           env: {
             ...process.env,
-            VITE_SUPABASE_URL: "",
-            VITE_SUPABASE_ANON_KEY: "",
+            VITE_SUPABASE_URL: process.env.E2E_RH ? "http://e2e.test" : "",
+            VITE_SUPABASE_ANON_KEY: process.env.E2E_RH ? "e2e-anon-key" : "",
           },
         },
       ],

@@ -3,7 +3,7 @@
  * Reutilizable por API y web.
  */
 
-import { claveRegaloExcel, RH_REGALOS_EXCEL } from "./royal-holiday-regalos-catalog.js";
+import { claveRegaloExcel, normalizarNombreRegalo, RH_REGALOS_EXCEL } from "./royal-holiday-regalos-catalog.js";
 
 const ORDEN_REGALOS_EXCEL = RH_REGALOS_EXCEL.map((g) => claveRegaloExcel(g.nombre, g.restricciones));
 
@@ -218,19 +218,112 @@ export function regalosParaWorksheet(regalos, { holidayCredits, montoVenta }) {
   return regalosDisponibles(list, { holidayCredits: hc, montoVenta: mv });
 }
 
+/** Token de carga dual — solo Flyback. No contiene "venta" ni "closing" para no romper if/else existentes. */
+export const CARGA_REGALO_AMBOS = "ambos";
+
+function roundMoneyRegalo(n) {
+  return Math.round((Number(n) || 0) * 100) / 100;
+}
+
 function cargaEsVenta(carga) {
   const s = String(carga || "").toLowerCase();
-  return s === "venta" || s.includes("venta");
+  return s === "venta" || (s.includes("venta") && !cargaEsAmbos(carga));
 }
 
 function cargaEsClosing(carga) {
   const s = String(carga || "").toLowerCase();
-  return s === "closing_cost" || s.includes("closing");
+  return s === "closing_cost" || (s.includes("closing") && !cargaEsAmbos(carga));
 }
 
 function cargaEsSinCosto(carga) {
   const s = String(carga || "").toLowerCase().replace(/\s+/g, "_");
   return s === "sin_costo" || s.startsWith("sin_costo");
+}
+
+export function cargaEsAmbos(carga) {
+  const s = String(carga || "").toLowerCase().replace(/\s+/g, "");
+  return s === CARGA_REGALO_AMBOS || s === "venta+closing" || s === "venta+closing_cost";
+}
+
+export function cargaIncluyeVenta(carga) {
+  return cargaEsAmbos(carga) || cargaEsVenta(carga);
+}
+
+export function cargaIncluyeClosing(carga) {
+  return cargaEsAmbos(carga) || cargaEsClosing(carga);
+}
+
+export function esRegaloFlyback(regalo) {
+  const nombre = regalo?.nombre;
+  const restricciones = regalo?.restricciones;
+  if (claveRegaloExcel(nombre, restricciones) === "flyback") return true;
+  const compact = normalizarNombreRegalo(nombre).replace(/[\s\-_./]/g, "");
+  if (compact.includes("flyback")) return true;
+  const r = restriccionesRegalo(regalo);
+  if (r.costo_es_cuota_anual || compact.includes("bono")) return false;
+  const cargas = Array.isArray(regalo?.cargas_permitidas) ? regalo.cargas_permitidas : [];
+  const bothCargas = cargas.some(cargaEsVenta) && cargas.some(cargaEsClosing);
+  const huellaExcel = Number(r.cantidad_default) === 2 && r.venta_minima_usd != null;
+  return bothCargas && huellaExcel;
+}
+
+/** Doble casilla venta+closing: excepción exclusiva de Flyback. */
+export function permiteCargaDualRegalo(regalo) {
+  return esRegaloFlyback(regalo);
+}
+
+/**
+ * Resuelve el siguiente estado de carga al marcar/desmarcar una columna.
+ * Flyback (dual): las dos casillas pueden quedar activas → token "ambos" + split.
+ * Resto de regalos: last-write-wins (excluyente).
+ */
+export function resolverToggleCargaRegalo({
+  dual,
+  current,
+  column,
+  checked,
+  tokenVenta = "venta",
+  tokenClosing = "closing_cost",
+  lineTotal = 0,
+} = {}) {
+  if (dual) {
+    let ventaOn = cargaIncluyeVenta(current);
+    let closingOn = cargaIncluyeClosing(current);
+    if (column === "venta") ventaOn = !!checked;
+    else closingOn = !!checked;
+    if (ventaOn && closingOn) {
+      return { carga: CARGA_REGALO_AMBOS, split: defaultSplitMontos(lineTotal) };
+    }
+    if (ventaOn) return { carga: tokenVenta || "venta", split: null };
+    if (closingOn) return { carga: tokenClosing || "closing_cost", split: null };
+    return { carga: "", split: null };
+  }
+  if (!checked) return { carga: "", split: undefined };
+  const carga = column === "venta" ? (tokenVenta || "venta") : (tokenClosing || "closing_cost");
+  return { carga, split: undefined };
+}
+
+export function defaultSplitMontos(lineTotal) {
+  const total = roundMoneyRegalo(lineTotal);
+  const venta = roundMoneyRegalo(total / 2);
+  return { venta, closing: roundMoneyRegalo(total - venta) };
+}
+
+export function splitMontosValido(split, lineTotal) {
+  const v = roundMoneyRegalo(split?.venta);
+  const c = roundMoneyRegalo(split?.closing);
+  const total = roundMoneyRegalo(lineTotal);
+  if (!Number.isFinite(v) || !Number.isFinite(c) || v < 0 || c < 0) return false;
+  return Math.abs(v + c - total) < 0.015;
+}
+
+export function escalarSplitMontos(split, fromTotal, toTotal) {
+  const next = roundMoneyRegalo(toTotal);
+  if (!splitMontosValido(split, fromTotal) || roundMoneyRegalo(fromTotal) <= 0) {
+    return defaultSplitMontos(next);
+  }
+  const venta = roundMoneyRegalo((Number(split.venta) / Number(fromTotal)) * next);
+  return { venta, closing: roundMoneyRegalo(next - venta) };
 }
 
 export function restriccionesRegalo(regalo) {
@@ -405,6 +498,16 @@ export function totalesRegalosAplicados(regalos, form, { holidayCredits, montoVe
     });
     if (ev.estado !== "elegible") continue;
     const line = totalLineaRegaloUsd(g, { qty, cuotaAnual }, mxnToUsd);
+    if (cargaEsAmbos(carga) && permiteCargaDualRegalo(g)) {
+      const split = form?.regalosSplit?.[g.id];
+      const effective = splitMontosValido(split, line)
+        ? split
+        : (split == null ? defaultSplitMontos(line) : null);
+      if (!effective) continue;
+      venta += roundMoneyRegalo(effective.venta);
+      closing += roundMoneyRegalo(effective.closing);
+      continue;
+    }
     if (cargaEsVenta(carga)) venta += line;
     else if (cargaEsClosing(carga)) closing += line;
   }

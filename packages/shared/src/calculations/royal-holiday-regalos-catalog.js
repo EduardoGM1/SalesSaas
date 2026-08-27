@@ -123,7 +123,8 @@ export function claveRegaloExcel(nombre, restricciones = {}) {
   const n = normalizarNombreRegalo(nombre);
   const r = restricciones && typeof restricciones === "object" ? restricciones : {};
   if (n.includes("prevelige") || n.includes("privilege")) return "privilege";
-  if (n.includes("flyback")) return "flyback";
+  const compact = n.replace(/[\s\-_./]/g, "");
+  if (n.includes("flyback") || compact.includes("flyback")) return "flyback";
   if (n.includes("vuelo")) return "vuelo";
   if (n.includes("move")) return "move_in";
   if (n.includes("multidestino")) return "multidestino";

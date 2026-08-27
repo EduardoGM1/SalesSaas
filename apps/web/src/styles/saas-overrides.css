@@ -8610,6 +8610,12 @@ body,
   margin-bottom: 16px;
   flex-wrap: wrap;
 }
+.money-box-embedded {
+  margin-top: 0;
+}
+.money-box-embedded .money-box-tabs {
+  margin-top: 12px;
+}
 .money-box-status {
   display: flex;
   gap: 8px;
@@ -10053,6 +10059,44 @@ body,
   accent-color: var(--blue, #1e5eff);
   cursor: pointer;
 }
+.rh-flyback-split-row td {
+  padding: 0 8px 10px;
+  background: color-mix(in srgb, var(--blue, #1e5eff) 5%, var(--surface2, #f8fafc));
+  border-top: none;
+}
+.rh-flyback-split-row--error td {
+  background: color-mix(in srgb, var(--red, #dc2626) 8%, var(--surface2, #f8fafc));
+}
+.rh-flyback-split {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
+  padding: 8px 4px 2px;
+}
+.rh-flyback-split-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text2);
+}
+.rh-flyback-split-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text2);
+  margin: 0;
+}
+.rh-flyback-split-field .rh-qty-input {
+  margin-inline: 0;
+  width: 96px;
+}
+.rh-flyback-split-sum {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+}
 .rh-cell-na {
   display: block;
   text-align: center;
@@ -10738,6 +10782,19 @@ body,
     width: 22px;
     height: 22px;
   }
+  .worksheet-rh .rh-flyback-split {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+  .worksheet-rh .rh-flyback-split-field {
+    justify-content: space-between;
+  }
+  .worksheet-rh .rh-flyback-split-field .rh-qty-input {
+    width: 120px;
+    min-height: 44px;
+    font-size: 16px;
+  }
 
   .worksheet-rh .rh-bl-membership-table tbody tr.rh-bl-row-selectable {
     min-height: 44px;
@@ -10942,4 +10999,281 @@ body,
   .rh-hoja-sheet--dense .rh-hoja-section { margin-top: 5px; padding-top: 5px; }
   .rh-hoja-sheet--dense .rh-hoja-write-line { min-height: 16px; }
   .rh-hoja-sheet--dense .rh-hoja-incentivo { font-size: 10px; }
+}
+
+/* Premanifiesto RH — Fase 2 UI (design system existente) */
+.rh-pm-page .rh-pm-subnav { margin-bottom: 14px; }
+.rh-pm-cal-layout { margin-top: 4px; }
+.rh-pm-day-panel,
+.rh-pm-day-only { min-width: 0; }
+.rh-pm-day-only { margin-top: 8px; }
+
+.rh-pm-day-panel .day-panel-head,
+.rh-pm-day-only .day-panel-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 18px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.rh-pm-day-panel .day-panel-title,
+.rh-pm-day-only .day-panel-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--text);
+  letter-spacing: -0.2px;
+  line-height: 1.35;
+  flex: 1;
+  min-width: 0;
+}
+
+.rh-pm-olas-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.rh-pm-ola-group {
+  margin-bottom: 0;
+  border-radius: var(--r-md, 12px);
+  overflow: hidden;
+  box-shadow: var(--shadow);
+}
+
+.rh-pm-ola-head {
+  cursor: default;
+  padding: 13px 16px;
+}
+
+.rh-pm-ola-head:hover {
+  background: var(--surface2);
+}
+
+.rh-pm-ola-time {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.rh-pm-ola-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px 16px 16px;
+  background: var(--white);
+  border-top: 1px solid var(--border);
+}
+
+.rh-pm-empty-day,
+.rh-pm-empty-ola {
+  font-size: 13px;
+  margin: 0;
+  padding: 12px 8px;
+  text-align: center;
+}
+
+.rh-pm-empty-ola {
+  border: 1px dashed var(--border);
+  border-radius: var(--r-md, 12px);
+  background: var(--surface2);
+}
+
+.rh-pm-cupo-pill { font-size: 11px; flex-shrink: 0; }
+
+.rh-pm-entry {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md, 12px);
+  padding: 14px 16px;
+  min-width: 0;
+}
+
+.rh-pm-entry + .rh-pm-entry {
+  margin-top: 0;
+}
+
+.rh-pm-entry-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.rh-pm-entry-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.rh-pm-entry-name {
+  display: block;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.35;
+  word-break: break-word;
+}
+
+.rh-pm-entry-badges {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.rh-pm-entry-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  font-size: 12px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--border);
+}
+
+.rh-pm-entry-meta:empty {
+  display: none;
+}
+
+.rh-pm-entry-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.rh-pm-entry-actions:empty {
+  display: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.rh-pm-csi-note {
+  margin: 10px 0 0;
+  font-size: 13px;
+  color: var(--text2);
+  background: color-mix(in srgb, var(--blue) 6%, var(--white));
+  border: 1px solid color-mix(in srgb, var(--blue) 12%, var(--border));
+  border-radius: var(--r-md, 12px);
+  padding: 10px 12px;
+  line-height: 1.45;
+}
+
+.rh-pm-csi-label { font-weight: 600; color: var(--text); }
+
+.rh-pm-status-pill { flex-shrink: 0; }
+.rh-pm-status-pill.is-en-sala {
+  background: color-mix(in srgb, var(--blue) 12%, transparent);
+  color: var(--blue);
+}
+.rh-pm-status-pill.is-cancelado {
+  background: color-mix(in srgb, var(--red) 12%, transparent);
+  color: var(--red);
+}
+
+.rh-pm-section-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  margin: 14px 0 6px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+.rh-pm-form-card .save-footer { margin-top: 12px; }
+.sales-page.tool-calc-page .rh-pm-form-card .tool-frow {
+  gap: 10px;
+}
+.sales-page.tool-calc-page .rh-pm-form-card .tool-frow .flabel {
+  flex: 1;
+  min-width: 0;
+  line-height: 1.35;
+}
+.sales-page.tool-calc-page .rh-pm-form-card .tool-frow .input,
+.sales-page.tool-calc-page .rh-pm-form-card .tool-frow select {
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: min(280px, 52%);
+  box-sizing: border-box;
+}
+.sales-page.tool-calc-page .rh-pm-form-card .tool-frow .input[type="date"],
+.sales-page.tool-calc-page .rh-pm-form-card .tool-frow .input[type="number"] {
+  max-width: min(200px, 48%);
+}
+
+@media (max-width: 768px) {
+  .sales-page.tool-calc-page .rh-pm-form-card .tool-frow {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+    padding: 12px 0;
+  }
+
+  .sales-page.tool-calc-page .rh-pm-form-card .tool-frow .flabel {
+    flex: none;
+    font-size: 13px;
+    line-height: 1.35;
+  }
+
+  .sales-page.tool-calc-page .rh-pm-form-card .tool-frow .input,
+  .sales-page.tool-calc-page .rh-pm-form-card .tool-frow select {
+    width: 100% !important;
+    max-width: none !important;
+    min-height: 44px;
+    font-size: 16px;
+    flex: none;
+  }
+
+  .rh-pm-form-card .save-footer {
+    flex-direction: column-reverse;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .rh-pm-form-card .save-footer .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .rh-pm-day-panel .day-panel-head,
+  .rh-pm-day-only .day-panel-head {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .rh-pm-day-panel .day-panel-head .btn,
+  .rh-pm-day-only .day-panel-head .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .rh-pm-ola-head {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .rh-pm-entry-head {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .rh-pm-status-pill {
+    align-self: flex-start;
+  }
+}
+.network-pill.opc-origen {
+  background: color-mix(in srgb, var(--yellow, #f59e0b) 14%, transparent);
+  color: var(--yellow, #b45309);
+}
+.rh-pm-lock-hint { margin-left: 6px; font-size: 10px; }
+.rh-pm-form-card .readonly-soft .input[readonly] {
+  opacity: 0.85;
 }

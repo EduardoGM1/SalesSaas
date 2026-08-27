@@ -2,10 +2,10 @@ import { useEffect, useState } from "react";
 import { AlertTriangle, CheckCircle2, Printer } from "lucide-react";
 import { parseMoney } from "@/lib/format/money";
 import { participantsApi } from "@/lib/participants-api.js";
+import { cargaIncluyeClosing } from "@/lib/calculations/royal-holiday.js";
 
 function isClosingCarga(carga) {
-  const s = String(carga || "").toLowerCase();
-  return s === "closing_cost" || s.includes("closing");
+  return cargaIncluyeClosing(carga);
 }
 
 function roundMoney(n) {
@@ -43,6 +43,10 @@ function dash(value) {
 function participantName(profile) {
   const name = profile?.full_name || profile?.email || "";
   return String(name).trim() || null;
+}
+
+function capturedTextName(value) {
+  return String(value ?? "").trim() || null;
 }
 
 function HojaField({ label, value, hint, pending, writeIn }) {
@@ -181,6 +185,7 @@ export function WorksheetRhHojaPanel({
   const representanteName = participantName(participantState?.representante);
   const gerenteName = participantName(participantState?.gerente);
   const cerradorName = participantName(participantState?.cerrador);
+  const promotorName = capturedTextName(form.opc);
 
   const tarjetas = catalogo?.parametros?.tarjetas_internas || ["Invex", "RCI"];
   const cargosAuto = [
@@ -406,7 +411,7 @@ export function WorksheetRhHojaPanel({
           <HojaFirma label="Representante" name={representanteName} />
           <HojaFirma label="Gerente Financiero (1)" name={gerenteName} />
           <HojaFirma label="Gerente Financiero (2)" name={cerradorName} />
-          <HojaFirma label="Promotor" name={null} />
+          <HojaFirma label="Promotor" name={promotorName} />
           <HojaFirma label="Programas" name={null} />
         </div>
       </div>

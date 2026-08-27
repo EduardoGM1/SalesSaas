@@ -16,6 +16,9 @@ import {
 import { WorksheetRhFinancingPanel } from "@/components/calculators/worksheet-rh-financing-panel.jsx";
 import { WorksheetRhVentaPanel } from "@/components/calculators/worksheet-rh-venta-panel.jsx";
 import { WorksheetRhHojaPanel } from "@/components/calculators/worksheet-rh-hoja-panel.jsx";
+import { WorksheetRhMoneyBoxPanel } from "@/components/calculators/worksheet-rh-money-box-panel.jsx";
+import { useFlag } from "@/hooks/use-flag.js";
+import { WORKSHEET_RH_MONEY_BOX_TAB_FLAG } from "@/lib/auth/tool-flags.js";
 import { useDbStore } from "@/stores/db-store";
 import { buildRhWorksheetState } from "@/lib/calculations/worksheet-rh-preview.js";
 import { montoVentaWorksheet } from "@/lib/calculations/royal-holiday.js";
@@ -37,6 +40,7 @@ import { WorksheetRhSkeleton } from "@/components/ui/content-skeleton.jsx";
 const TABS = [
   { id: "financiamiento", label: "Datos Financiamiento" },
   { id: "venta", label: "Datos Venta" },
+  { id: "moneybox", label: "Money Box", flagKey: WORKSHEET_RH_MONEY_BOX_TAB_FLAG },
   { id: "resumen", label: "Resumen", placeholder: true },
   { id: "prevlo", label: "Pre VLO", placeholder: true },
   { id: "worksheet", label: "Worksheet" },
@@ -183,6 +187,20 @@ export function WorksheetRoyalHolidayPage({ clientId, shared }) {
     [form, captureCurrency, currencyMeta, moneda.ctx],
   );
 
+  const moneyBoxFlag = useFlag(WORKSHEET_RH_MONEY_BOX_TAB_FLAG);
+
+  const visibleTabs = useMemo(() => TABS.filter((tb) => {
+    if (!tb.flagKey) return true;
+    if (!moneyBoxFlag.hasCatalog) return false;
+    return moneyBoxFlag.enabled;
+  }), [moneyBoxFlag.hasCatalog, moneyBoxFlag.enabled]);
+
+  useEffect(() => {
+    if (!visibleTabs.some((tb) => tb.id === tab)) {
+      setTab(visibleTabs[0]?.id || "financiamiento");
+    }
+  }, [visibleTabs, tab]);
+
   const posicionesDisponibles = useMemo(() => {
     const fromCat = new Set((catalogo?.comisiones || []).map((c) => String(c.posicion).toLowerCase()));
     if (fromCat.size === 0) return POSICIONES.filter((p) => p !== "opc" && p !== "x");
@@ -286,6 +304,7 @@ export function WorksheetRoyalHolidayPage({ clientId, shared }) {
           epv_fvi: form.epvFvi,
           valores: form.valores,
           regalos_cantidad: form.regalosCantidad,
+          regalos_split: form.regalosSplit,
           monto_capturado: ws.monto_capturado,
           monto_contrato: ws.monto_contrato,
           regalos_totales: ws.regalos_totales,
@@ -328,6 +347,7 @@ export function WorksheetRoyalHolidayPage({ clientId, shared }) {
 
   const showVenta = tab === "venta";
   const showFin = tab === "financiamiento";
+  const showMoneyBox = tab === "moneybox";
   const showHoja = tab === "worksheet";
 
   return (
@@ -339,7 +359,7 @@ export function WorksheetRoyalHolidayPage({ clientId, shared }) {
         </div>
 
         <nav className="admin-subnav worksheet-rh-tabs" aria-label="Pestañas worksheet">
-          {TABS.map((tb) => (
+          {visibleTabs.map((tb) => (
             <button
               key={tb.id}
               type="button"
@@ -427,6 +447,10 @@ export function WorksheetRoyalHolidayPage({ clientId, shared }) {
             onMoneyBlur={handleMoneyBlur}
             stacked={false}
           />
+        )}
+
+        {showMoneyBox && (
+          <WorksheetRhMoneyBoxPanel empresaId={empresaId} />
         )}
         </fieldset>
 

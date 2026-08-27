@@ -9,8 +9,20 @@ import {
   lookupBottomLineByMonto,
   totalLineaRegalo,
   totalesRegalosAplicados,
+  CARGA_REGALO_AMBOS,
+  defaultSplitMontos,
+  esRegaloFlyback,
+  permiteCargaDualRegalo,
+  resolverToggleCargaRegalo,
 } from "../packages/shared/src/calculations/royal-holiday.js";
+import { claveRegaloExcel } from "../packages/shared/src/calculations/royal-holiday-regalos-catalog.js";
 import { RH_REGALOS_EXCEL } from "../packages/shared/src/calculations/royal-holiday-regalos-catalog.js";
+import {
+  DEFAULT_RH_FORM,
+  mergeRhForm,
+  rhFormFromBucket,
+  rhFormToBucket,
+} from "../apps/web/src/lib/calculations/worksheet-rh-bucket.js";
 
 function fail(msg) {
   console.error("FAIL", msg);
@@ -80,6 +92,94 @@ const onlyClosing = totalesRegalosAplicados([move], {
   regalosCantidad: { [move.id]: 1 },
 }, { holidayCredits: 25000, montoVenta: 19167.58, mxnToUsd: (n) => n / 18 });
 if (Math.abs(onlyClosing.closing - moveUsd) > 0.05) fail(`closing_cost no debe tratarse como sin_costo (${onlyClosing.closing})`);
+
+const flySplit = defaultSplitMontos(3016);
+if (flySplit.venta !== 1508 || flySplit.closing !== 1508) fail("default split Flyback 1508+1508");
+
+const dualForm = {
+  regalosElegidos: { [fly.id]: CARGA_REGALO_AMBOS },
+  regalosCantidad: { [fly.id]: 2 },
+  regalosSplit: { [fly.id]: { venta: 1508, closing: 1508 } },
+};
+const dualTot = totalesRegalosAplicados([fly], dualForm, {
+  holidayCredits: 25000,
+  montoVenta: 19167.58,
+});
+if (Math.abs(dualTot.venta - 1508) > 0.01 || Math.abs(dualTot.closing - 1508) > 0.01) {
+  fail(`Flyback dual 1508/1508 got venta=${dualTot.venta} closing=${dualTot.closing}`);
+}
+if (Math.abs(dualTot.total - 3016) > 0.01) fail(`Flyback dual total ${dualTot.total}`);
+
+const dualInvalid = totalesRegalosAplicados([fly], {
+  regalosElegidos: { [fly.id]: CARGA_REGALO_AMBOS },
+  regalosCantidad: { [fly.id]: 2 },
+  regalosSplit: { [fly.id]: { venta: 1000, closing: 1000 } },
+}, { holidayCredits: 25000, montoVenta: 19167.58 });
+if (dualInvalid.venta !== 0 || dualInvalid.closing !== 0) {
+  fail("Flyback split inválido no debe aplicar");
+}
+
+const flyVentaOnly = totalesRegalosAplicados([fly], {
+  regalosElegidos: { [fly.id]: "venta" },
+  regalosCantidad: { [fly.id]: 2 },
+}, { holidayCredits: 25000, montoVenta: 19167.58 });
+if (Math.abs(flyVentaOnly.venta - 3016) > 0.01 || flyVentaOnly.closing !== 0) {
+  fail("Flyback una casilla venta debe ir íntegro");
+}
+
+const flyClosingOnly = totalesRegalosAplicados([fly], {
+  regalosElegidos: { [fly.id]: "closing_cost" },
+  regalosCantidad: { [fly.id]: 2 },
+}, { holidayCredits: 25000, montoVenta: 19167.58 });
+if (flyClosingOnly.venta !== 0 || Math.abs(flyClosingOnly.closing - 3016) > 0.01) {
+  fail("Flyback una casilla closing debe ir íntegro");
+}
+
+const flyOff = totalesRegalosAplicados([fly], {
+  regalosElegidos: { [fly.id]: "" },
+  regalosCantidad: { [fly.id]: 2 },
+}, { holidayCredits: 25000, montoVenta: 19167.58 });
+if (flyOff.venta !== 0 || flyOff.closing !== 0) fail("Flyback sin casillas no suma");
+
+const bonoDualIgnored = totalesRegalosAplicados([bono], {
+  regalosElegidos: { [bono.id]: CARGA_REGALO_AMBOS },
+  regalosCantidad: { [bono.id]: 1 },
+  regalosSplit: { [bono.id]: { venta: 520, closing: 520 } },
+}, { holidayCredits: 25000, montoVenta: 19167.58, cuotaAnual: 1040 });
+if (bonoDualIgnored.venta !== 0 || bonoDualIgnored.closing !== 0) {
+  fail("Bono no admite carga dual aunque el form diga ambos");
+}
+
+const persisted = rhFormFromBucket(rhFormToBucket(mergeRhForm(DEFAULT_RH_FORM, dualForm), "venta"));
+if (persisted.form.regalosElegidos[fly.id] !== CARGA_REGALO_AMBOS) fail("persist carga ambos");
+if (persisted.form.regalosSplit[fly.id].venta !== 1508 || persisted.form.regalosSplit[fly.id].closing !== 1508) {
+  fail("persist split Flyback");
+}
+
+if (claveRegaloExcel("Fly Back") !== "flyback") fail("clave Fly Back");
+if (claveRegaloExcel("FLY-BACK") !== "flyback") fail("clave FLY-BACK");
+if (!esRegaloFlyback({ nombre: "Fly Back", cargas_permitidas: ["venta", "closing_cost"] })) {
+  fail("esRegaloFlyback Fly Back");
+}
+if (!esRegaloFlyback({
+  nombre: "Incentivo sala",
+  cargas_permitidas: ["closing_cost", "venta"],
+  restricciones: { venta_minima_usd: 19167.58, cantidad_default: 2 },
+})) fail("esRegaloFlyback huella Excel sin nombre");
+if (permiteCargaDualRegalo(bono)) fail("Bono no debe ser dual");
+
+const t1 = resolverToggleCargaRegalo({ dual: true, current: "", column: "venta", checked: true, lineTotal: 3016 });
+if (t1.carga !== "venta") fail("toggle flyback primera casilla venta");
+const t2 = resolverToggleCargaRegalo({ dual: true, current: t1.carga, column: "closing", checked: true, lineTotal: 3016 });
+if (t2.carga !== CARGA_REGALO_AMBOS) fail(`toggle flyback ambas, got ${t2.carga}`);
+if (!t2.split || t2.split.venta !== 1508 || t2.split.closing !== 1508) fail("toggle flyback split default");
+const t3 = resolverToggleCargaRegalo({ dual: true, current: CARGA_REGALO_AMBOS, column: "venta", checked: false, lineTotal: 3016 });
+if (t3.carga !== "closing_cost") fail("desmarcar venta deja closing íntegro");
+const t4 = resolverToggleCargaRegalo({ dual: true, current: "closing_cost", column: "closing", checked: false, lineTotal: 3016 });
+if (t4.carga !== "") fail("desmarcar ambas limpia Flyback");
+
+const b1 = resolverToggleCargaRegalo({ dual: false, current: "venta", column: "closing", checked: true });
+if (b1.carga !== "closing_cost") fail("bono/resto sigue excluyente");
 
 const tours = byName.Tours;
 if (totalLineaRegalo(tours, { qty: 350 }) !== 350) fail("tours cantidad_es_monto");

@@ -1,14 +1,22 @@
-import { useMemo } from "react";
+import { Fragment, useMemo } from "react";
 import { AlertTriangle, CheckCircle2, Gift, ShoppingCart, Landmark } from "lucide-react";
 import {
   cantidadDefaultRegalo,
   cantidadEsEditable,
   cantidadRegalo,
+  cargaEsAmbos,
+  cargaIncluyeClosing,
+  cargaIncluyeVenta,
+  defaultSplitMontos,
   deltaMontoVsBottomLine,
+  escalarSplitMontos,
   evaluarRegaloWorksheet,
   lookupBottomLineByMonto,
   ordenarRegalosExcel,
+  permiteCargaDualRegalo,
+  resolverToggleCargaRegalo,
   restriccionesRegalo,
+  splitMontosValido,
   totalLineaRegalo,
   totalesRegalosAplicados,
 } from "@/lib/calculations/royal-holiday.js";
@@ -143,7 +151,7 @@ export function WorksheetRhVentaPanel({
       cuotaAnual: cuotaAnualNum,
       mxnToUsd,
     }),
-    [regalosCatalogo, form.regalosElegidos, form.regalosCantidad, hc, mv, cuotaAnualNum, moneda.ctx],
+    [regalosCatalogo, form.regalosElegidos, form.regalosCantidad, form.regalosSplit, hc, mv, cuotaAnualNum, moneda.ctx],
   );
 
   const cuotaAnual = bl?.cuota_anual_mfee != null ? fmtResult(bl.cuota_anual_mfee) : "—";
@@ -164,19 +172,62 @@ export function WorksheetRhVentaPanel({
     dirtyKeysRef?.current?.add(key);
   };
 
-  const setRegaloCarga = (regaloId, carga) => {
-    patchForm((f) => ({
-      ...f,
-      regalosElegidos: { ...f.regalosElegidos, [regaloId]: carga || "" },
-    }));
+  const setRegaloCarga = (regaloId, carga, split = undefined) => {
+    patchForm((f) => {
+      const next = {
+        ...f,
+        regalosElegidos: { ...f.regalosElegidos, [regaloId]: carga || "" },
+      };
+      if (split !== undefined) {
+        const regalosSplit = { ...(f.regalosSplit || {}) };
+        if (split) regalosSplit[regaloId] = split;
+        else delete regalosSplit[regaloId];
+        next.regalosSplit = regalosSplit;
+      }
+      return next;
+    });
+  };
+
+  const setRegaloSplitMonto = (regaloId, side, raw) => {
+    touchDirty(`regalo_split_${regaloId}`);
+    const n = raw === "" ? "" : Number(String(raw).replace(",", "."));
+    patchForm((f) => {
+      const prev = f.regalosSplit?.[regaloId] || { venta: 0, closing: 0 };
+      return {
+        ...f,
+        regalosSplit: {
+          ...(f.regalosSplit || {}),
+          [regaloId]: {
+            venta: side === "venta" ? n : prev.venta,
+            closing: side === "closing" ? n : prev.closing,
+          },
+        },
+      };
+    });
   };
 
   const setRegaloQty = (regalo, raw) => {
     touchDirty(`regalo_qty_${regalo.id}`);
-    patchForm((f) => ({
-      ...f,
-      regalosCantidad: { ...(f.regalosCantidad || {}), [regalo.id]: raw },
-    }));
+    patchForm((f) => {
+      const next = {
+        ...f,
+        regalosCantidad: { ...(f.regalosCantidad || {}), [regalo.id]: raw },
+      };
+      if (permiteCargaDualRegalo(regalo) && cargaEsAmbos(f.regalosElegidos?.[regalo.id])) {
+        const oldQty = cantidadRegalo(regalo, f.regalosCantidad);
+        const parsed = raw === "" || raw == null
+          ? cantidadDefaultRegalo(regalo)
+          : Number(String(raw).replace(",", "."));
+        const newQty = Number.isFinite(parsed) ? parsed : oldQty;
+        const oldLine = totalLineaRegalo(regalo, { qty: oldQty, cuotaAnual: cuotaAnualNum });
+        const newLine = totalLineaRegalo(regalo, { qty: newQty, cuotaAnual: cuotaAnualNum });
+        next.regalosSplit = {
+          ...(f.regalosSplit || {}),
+          [regalo.id]: escalarSplitMontos(f.regalosSplit?.[regalo.id], oldLine, newLine),
+        };
+      }
+      return next;
+    });
   };
 
   const commitRegaloQty = (regalo, raw) => {
@@ -191,23 +242,53 @@ export function WorksheetRhVentaPanel({
       qty = Number.isFinite(n) ? Math.max(1, Math.min(99, n)) : cantidadDefaultRegalo(regalo);
     }
     touchDirty(`regalo_qty_${regalo.id}`);
-    patchForm((f) => ({
-      ...f,
-      regalosCantidad: { ...(f.regalosCantidad || {}), [regalo.id]: qty },
-    }));
+    patchForm((f) => {
+      const next = {
+        ...f,
+        regalosCantidad: { ...(f.regalosCantidad || {}), [regalo.id]: qty },
+      };
+      if (permiteCargaDualRegalo(regalo) && cargaEsAmbos(f.regalosElegidos?.[regalo.id])) {
+        const oldQty = cantidadRegalo(regalo, f.regalosCantidad);
+        const newQty = qty === "" ? cantidadDefaultRegalo(regalo) : qty;
+        const oldLine = totalLineaRegalo(regalo, { qty: oldQty, cuotaAnual: cuotaAnualNum });
+        const newLine = totalLineaRegalo(regalo, { qty: newQty, cuotaAnual: cuotaAnualNum });
+        next.regalosSplit = {
+          ...(f.regalosSplit || {}),
+          [regalo.id]: escalarSplitMontos(f.regalosSplit?.[regalo.id], oldLine, newLine),
+        };
+      }
+      return next;
+    });
   };
 
-  const setRegaloColumnChecked = (regalo, ev, column, checked) => {
+  const setRegaloColumnChecked = (regalo, ev, column, checked, lineTotal) => {
     if (ev.estado !== "elegible") return;
-    if (!checked) {
-      setRegaloCarga(regalo.id, "");
-      return;
-    }
-    const carga = pickCargaForColumn(regalo.cargas_permitidas, column);
-    if (carga) setRegaloCarga(regalo.id, carga);
+    const dual = permiteCargaDualRegalo(regalo);
+    const tokenVenta = pickCargaForColumn(regalo.cargas_permitidas, "venta");
+    const tokenClosing = pickCargaForColumn(regalo.cargas_permitidas, "closing");
+    patchForm((f) => {
+      const next = resolverToggleCargaRegalo({
+        dual,
+        current: f.regalosElegidos?.[regalo.id],
+        column,
+        checked,
+        tokenVenta,
+        tokenClosing,
+        lineTotal,
+      });
+      const regalosElegidos = { ...(f.regalosElegidos || {}), [regalo.id]: next.carga || "" };
+      const out = { ...f, regalosElegidos };
+      if (next.split !== undefined) {
+        const regalosSplit = { ...(f.regalosSplit || {}) };
+        if (next.split) regalosSplit[regalo.id] = next.split;
+        else delete regalosSplit[regalo.id];
+        out.regalosSplit = regalosSplit;
+      }
+      return out;
+    });
   };
 
-  const renderCargaCell = (regalo, ev, column) => {
+  const renderCargaCell = (regalo, ev, column, lineTotal) => {
     const permite = column === "venta" ? ev.permiteVenta : ev.permiteClosing;
     if (!permite) {
       return <span className="rh-cell-na">—</span>;
@@ -221,17 +302,20 @@ export function WorksheetRhVentaPanel({
     }
 
     const carga = form.regalosElegidos[regalo.id];
-    const selected = column === "venta" ? isVentaCarga(carga) : isClosingCarga(carga);
+    const selected = column === "venta" ? cargaIncluyeVenta(carga) : cargaIncluyeClosing(carga);
     const label = column === "venta" ? "Cargar a venta" : "Cargar a closing";
+    const dual = permiteCargaDualRegalo(regalo);
+    const testId = dual ? `rh-carga-flyback-${column}` : `rh-carga-${column}`;
 
     return (
       <label className="rh-carga-check">
         <input
           type="checkbox"
           disabled={readOnly}
-          checked={selected}
+          checked={!!selected}
           aria-label={label}
-          onChange={(e) => setRegaloColumnChecked(regalo, ev, column, e.target.checked)}
+          data-testid={testId}
+          onChange={(e) => setRegaloColumnChecked(regalo, ev, column, e.target.checked, lineTotal)}
         />
       </label>
     );
@@ -353,6 +437,7 @@ export function WorksheetRhVentaPanel({
         <p className="muted rh-hint rh-regalos-sub">
           Selecciona los regalos que se darán y define en qué concepto se aplicará su costo.
           All inclusive + certificado de vuelo no pueden sumar más de $1,500 USD.
+          Flyback admite carga simultánea a venta y closing; el resto de regalos es una sola carga.
         </p>
         <p className="muted rh-hint rh-regalos-scroll-hint">
           Desliza horizontalmente para ver todas las columnas.
@@ -380,8 +465,13 @@ export function WorksheetRhVentaPanel({
                 const qtyEditable = cantidadEsEditable(g);
                 const includedSinCosto = isSinCostoCarga(form.regalosElegidos[g.id]);
                 const qtyValue = form.regalosCantidad?.[g.id];
+                const cargaActual = form.regalosElegidos[g.id];
+                const splitActivo = permiteCargaDualRegalo(g) && cargaEsAmbos(cargaActual);
+                const split = form.regalosSplit?.[g.id] || defaultSplitMontos(lineTotal);
+                const splitOk = splitMontosValido(split, lineTotal);
                 return (
-                  <tr key={g.id}>
+                  <Fragment key={g.id}>
+                  <tr>
                     <td className="rh-col-name">
                       <span className="rh-regalo-name">{g.nombre}</span>
                       {ev.bonoHc != null ? (
@@ -431,11 +521,56 @@ export function WorksheetRhVentaPanel({
                       </td>
                     ) : (
                       <>
-                        <td className="rh-col-closing">{renderCargaCell(g, ev, "closing")}</td>
-                        <td className="rh-col-venta">{renderCargaCell(g, ev, "venta")}</td>
+                        <td className="rh-col-closing">{renderCargaCell(g, ev, "closing", lineTotal)}</td>
+                        <td className="rh-col-venta">{renderCargaCell(g, ev, "venta", lineTotal)}</td>
                       </>
                     )}
                   </tr>
+                  {splitActivo ? (
+                    <tr className={`rh-flyback-split-row${splitOk ? "" : " rh-flyback-split-row--error"}`}>
+                      <td colSpan={6}>
+                        <div className="rh-flyback-split">
+                          <span className="rh-flyback-split-label">Dividir Flyback</span>
+                          <label className="rh-flyback-split-field">
+                            <span>Venta</span>
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              className="input input-compact rh-qty-input rh-qty-amount"
+                              disabled={readOnly}
+                              value={split.venta ?? ""}
+                              aria-label="Monto Flyback a venta"
+                              onChange={(e) => setRegaloSplitMonto(g.id, "venta", e.target.value)}
+                            />
+                          </label>
+                          <label className="rh-flyback-split-field">
+                            <span>Closing</span>
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              className="input input-compact rh-qty-input rh-qty-amount"
+                              disabled={readOnly}
+                              value={split.closing ?? ""}
+                              aria-label="Monto Flyback a closing"
+                              onChange={(e) => setRegaloSplitMonto(g.id, "closing", e.target.value)}
+                            />
+                          </label>
+                          <span className={`rh-flyback-split-sum${splitOk ? "" : " rh-warn-text"}`}>
+                            {splitOk
+                              ? `Suma ${fmtLineAmount(
+                                  (Number(split.venta) || 0) + (Number(split.closing) || 0),
+                                  ev,
+                                  fmtResult,
+                                )}`
+                              : `La suma debe ser exactamente ${fmtLineAmount(lineTotal, ev, fmtResult)}`}
+                          </span>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : null}
+                  </Fragment>
                 );
               })}
             </tbody>

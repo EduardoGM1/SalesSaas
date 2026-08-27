@@ -15,6 +15,7 @@ export const DEFAULT_RH_FORM = {
   costo_administrativo_usd: "",
   regalosElegidos: {},
   regalosCantidad: {},
+  regalosSplit: {},
   extrasDp: [],
   extrasCc: [],
   enganche_num_pagos: "3",
@@ -49,6 +50,9 @@ export function mergeRhForm(base, loaded) {
     regalosCantidad: loaded.regalosCantidad && typeof loaded.regalosCantidad === "object"
       ? loaded.regalosCantidad
       : base.regalosCantidad,
+    regalosSplit: loaded.regalosSplit && typeof loaded.regalosSplit === "object"
+      ? loaded.regalosSplit
+      : base.regalosSplit,
   };
 }
 
