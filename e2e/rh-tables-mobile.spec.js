@@ -121,6 +121,54 @@ async function mockRh(page) {
   });
 }
 
+async function assertMembershipStickyColumn(page) {
+  const table = page.locator(".rh-bl-membership-table");
+  const wrap = page.locator(".rh-bl-membership-scroll");
+  const sticky = await table.evaluate((el) => {
+    const thName = el.querySelector("thead th:first-child");
+    const tdName = el.querySelector("tbody td:first-child");
+    const thCuota = el.querySelector("thead th:last-child");
+    const tdCuota = el.querySelector("tbody td:last-child");
+    const cs = (node) => (node ? getComputedStyle(node) : null);
+    const nameTh = cs(thName);
+    const nameTd = cs(tdName);
+    const cuotaTh = cs(thCuota);
+    const cuotaTd = cs(tdCuota);
+    return {
+      nameThSticky: nameTh?.position === "sticky" && nameTh?.left === "0px",
+      nameTdSticky: nameTd?.position === "sticky" && nameTd?.left === "0px",
+      cuotaThStickyRight: cuotaTh?.position === "sticky" && cuotaTh?.right === "0px",
+      cuotaTdStickyRight: cuotaTd?.position === "sticky" && cuotaTd?.right === "0px",
+    };
+  });
+  expect(sticky.nameThSticky, "th Membresía sticky left").toBe(true);
+  expect(sticky.nameTdSticky, "td Membresía sticky left").toBe(true);
+  expect(sticky.cuotaThStickyRight, "th Cuota no debe ser sticky right").toBe(false);
+  expect(sticky.cuotaTdStickyRight, "td Cuota no debe ser sticky right").toBe(false);
+
+  const moved = await wrap.evaluate((el) => {
+    const name = el.querySelector("tbody td:first-child");
+    const cuota = el.querySelector("tbody td:last-child");
+    if (!name || !cuota) return { skipped: true };
+    const beforeName = name.getBoundingClientRect().x;
+    const beforeCuota = cuota.getBoundingClientRect().x;
+    if (el.scrollWidth <= el.clientWidth + 2) return { skipped: true };
+    el.scrollLeft = Math.min(80, el.scrollWidth - el.clientWidth);
+    const afterName = name.getBoundingClientRect().x;
+    const afterCuota = cuota.getBoundingClientRect().x;
+    el.scrollLeft = 0;
+    return {
+      skipped: false,
+      nameDelta: afterName - beforeName,
+      cuotaDelta: afterCuota - beforeCuota,
+    };
+  });
+  if (!moved.skipped) {
+    expect(Math.abs(moved.nameDelta), "Membresía permanece fija al scroll").toBeLessThan(2);
+    expect(moved.cuotaDelta, "Cuota se desplaza con el scroll").toBeLessThan(-8);
+  }
+}
+
 async function assertCellsFit(locator, label) {
   const overflow = await locator.evaluate((table) => {
     const issues = [];
@@ -172,6 +220,7 @@ test.describe("RH tablas móviles", () => {
       await expect(page.locator(".rh-bl-membership-table tbody tr.is-selected")).toContainText(/GOLD/);
       await assertCellsFit(membership, `membresías ${vp.name}`);
       await assertCellsFit(page.locator(".rh-bl-membership-table tbody tr.is-selected"), `GOLD ${vp.name}`);
+      await assertMembershipStickyColumn(page);
 
       await page.locator(".worksheet-rh-tabs .admin-subnav-item", { hasText: /Money Box/i }).click();
       const matrix = page.locator(".money-box-matrix");

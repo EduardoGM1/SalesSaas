@@ -9996,17 +9996,52 @@ body,
 }
 .worksheet-rh .rh-bl-membership-table th,
 .worksheet-rh .rh-bl-membership-table td,
-.worksheet-rh .rh-bl-membership-table th:nth-child(1),
-.worksheet-rh .rh-bl-membership-table td:nth-child(1),
 .worksheet-rh .rh-bl-membership-table th:nth-child(2),
 .worksheet-rh .rh-bl-membership-table td:nth-child(2),
 .worksheet-rh .rh-bl-membership-table th:nth-child(3),
-.worksheet-rh .rh-bl-membership-table td:nth-child(3),
-.worksheet-rh .rh-bl-membership-table th:last-child,
-.worksheet-rh .rh-bl-membership-table td:last-child {
+.worksheet-rh .rh-bl-membership-table td:nth-child(3) {
   width: auto;
   min-width: 0;
   white-space: nowrap;
+}
+/* Cuota no debe heredar sticky-right de .client-table (lista de clientes). */
+.worksheet-rh .rh-bl-membership-table th:last-child,
+.worksheet-rh .rh-bl-membership-table td:last-child {
+  position: static;
+  right: auto;
+  z-index: auto;
+  width: auto;
+  box-shadow: none;
+}
+/* Membresía queda fija a la izquierda al hacer scroll horizontal. */
+.worksheet-rh .rh-bl-membership-table th:first-child,
+.worksheet-rh .rh-bl-membership-table td:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  width: auto;
+  max-width: none;
+  min-width: 0;
+  white-space: nowrap;
+  background: var(--surface, #fff);
+  box-shadow: 4px 0 8px rgba(15, 32, 68, 0.05);
+}
+.worksheet-rh .rh-bl-membership-table thead th:first-child {
+  z-index: 3;
+  background: var(--surface, #fff);
+  box-shadow: 4px 0 8px rgba(15, 32, 68, 0.05), 0 1px 0 var(--border);
+}
+.worksheet-rh .rh-bl-membership-table tbody tr.rh-bl-row-selectable:hover td:first-child {
+  background: color-mix(in srgb, var(--blue, #1e5eff) 6%, var(--surface, #fff));
+}
+.worksheet-rh .rh-bl-membership-table tbody tr.is-selected td:first-child {
+  background: color-mix(in srgb, var(--blue, #1e5eff) 10%, var(--surface, #fff));
+}
+.worksheet-rh .rh-bl-membership-table tbody tr.rh-bl-row-selectable:hover td:last-child {
+  background: color-mix(in srgb, var(--blue, #1e5eff) 6%, var(--surface, #fff));
+}
+.worksheet-rh .rh-bl-membership-table tbody tr.is-selected td:last-child {
+  background: color-mix(in srgb, var(--blue, #1e5eff) 10%, var(--surface, #fff));
 }
 .worksheet-rh .rh-bl-membership-table .rh-col-num {
   min-width: 120px;
@@ -10048,10 +10083,10 @@ body,
 .rh-bl-membership-table .rh-col-num { text-align: right; white-space: nowrap; }
 .rh-bl-membership-table tbody tr.rh-bl-row-selectable { cursor: pointer; }
 .rh-bl-membership-table tbody tr.rh-bl-row-selectable:hover td {
-  background: color-mix(in srgb, var(--blue, #1e5eff) 6%, transparent);
+  background: color-mix(in srgb, var(--blue, #1e5eff) 6%, var(--surface, #fff));
 }
 .rh-bl-membership-table tbody tr.is-selected td {
-  background: color-mix(in srgb, var(--blue, #1e5eff) 10%, transparent);
+  background: color-mix(in srgb, var(--blue, #1e5eff) 10%, var(--surface, #fff));
   font-weight: 600;
 }
 .rh-regalos-sub { margin: 0 0 10px; }
