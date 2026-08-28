@@ -8,6 +8,8 @@ export {
   lookupComision,
   resolveComisionTier,
   plazosDisponibles,
+  plazosUnicosFinanciamiento,
+  lookupFinanciamientoPlazo,
   resolveFinanciamientoEngancheTier,
   calcularMensualidad,
   calcularMensualidadFinanciamiento,

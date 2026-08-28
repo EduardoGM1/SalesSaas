@@ -157,6 +157,28 @@ export function resolveFinanciamientoEngancheTier(financiamientoRows, { enganche
   };
 }
 
+/** Plazos distintos del catálogo para una nacionalidad (unión de todos los tiers). */
+export function plazosUnicosFinanciamiento(financiamientoRows, { nacionalidad } = {}) {
+  const nat = String(nacionalidad || "").toLowerCase();
+  const rows = (financiamientoRows || []).filter(
+    (r) => String(r.nacionalidad).toLowerCase() === nat,
+  );
+  return [...new Set(rows.map((r) => Number(r.plazo_meses)))]
+    .filter((n) => Number.isFinite(n) && n > 0)
+    .sort((a, b) => b - a);
+}
+
+/**
+ * Fila de Financiamiento para el tier de enganche ya resuelto × plazo × nacionalidad.
+ * Misma resolución que Datos Financiamiento; null si ese plazo no existe en el tier (N/A).
+ */
+export function lookupFinanciamientoPlazo(financiamientoRows, { enganchePct, nacionalidad, plazoMeses }) {
+  const { rows } = resolveFinanciamientoEngancheTier(financiamientoRows, { enganchePct, nacionalidad });
+  const plazo = Number(plazoMeses);
+  if (!plazo) return null;
+  return rows.find((r) => Number(r.plazo_meses) === plazo) || null;
+}
+
 /** Mensualidad = Ap × factor_mensual (Ap = monto a financiar, no venta bruta). */
 export function calcularMensualidad(montoAFfinanciar, factorMensual) {
   return (Number(montoAFfinanciar) || 0) * (Number(factorMensual) || 0);

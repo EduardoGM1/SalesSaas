@@ -59,6 +59,7 @@ try {
       "--platform=neutral",
       `--outfile="${out}"`,
       `--alias:@=${path.join(root, "apps/web/src").replace(/\\/g, "/")}`,
+      `--alias:@salesapp/shared=${path.join(root, "packages/shared/src").replace(/\\/g, "/")}`,
     ].join(" "),
     { cwd: root, stdio: "pipe" },
   );
@@ -402,7 +403,8 @@ try {
       terms: wsTerms,
     });
     assert(matrix.length === wsTerms.length, "matriz no oculta planes");
-    assert(matrix.some((p) => !p.feasible && p.reason.includes("mensualidad")), "motivo supera mensualidad");
+    assert(matrix.every((p) => p.available !== false), "plazos PMT siguen disponibles");
+    assert(matrix.some((p) => !p.feasible), "plan incumplidor (tope mensual) sigue visible");
 
     console.log("✓ CASO 5 OK");
   }

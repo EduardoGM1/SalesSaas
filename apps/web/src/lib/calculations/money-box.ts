@@ -1,5 +1,9 @@
 import { WS_DEFAULTS } from "@/lib/constants";
 import { ensureWSConfig } from "@/lib/calculations/worksheet";
+import {
+  lookupFinanciamientoPlazo,
+  plazosUnicosFinanciamiento,
+} from "@/lib/calculations/royal-holiday.js";
 
 export interface MoneyBoxTerm {
   months: number;
@@ -8,6 +12,11 @@ export interface MoneyBoxTerm {
   desc: string;
   /** Id estable para marcar plan de origen en matriz. */
   id?: string;
+  /**
+   * Lookup de catálogo RH: factor_mensual para un % de enganche (0–1).
+   * `null` = combinación N/A (no inventar ni caer a worksheetConfig).
+   */
+  resolveFactorMensual?: (downPct: number) => number | null;
 }
 
 export interface MoneyBoxScenario {
@@ -101,6 +110,41 @@ export function termsFromWorksheetConfig(
   });
 }
 
+function usesCatalogFactor(term: MoneyBoxTerm): boolean {
+  return typeof term.resolveFactorMensual === "function";
+}
+
+/** Plazos y factores del Catálogo RH (Financiamiento), no de settings.worksheetConfig. */
+export function termsFromRhFinanciamiento(
+  financiamientoRows: unknown[] | null | undefined,
+  nacionalidad: string | null | undefined,
+): MoneyBoxTerm[] {
+  const nat = nacionalidad || "mexicano";
+  const rows = (financiamientoRows || []) as Array<{
+    factor_mensual?: number;
+    plazo_meses?: number;
+    nacionalidad?: string;
+    enganche_pct?: number;
+  }>;
+  return plazosUnicosFinanciamiento(rows, { nacionalidad: nat }).map((months) => ({
+    months,
+    annualRate: 0,
+    label: `${months} meses`,
+    desc: "",
+    id: `rh_${months}`,
+    resolveFactorMensual: (downPct: number) => {
+      const row = lookupFinanciamientoPlazo(rows, {
+        enganchePct: downPct * 100,
+        nacionalidad: nat,
+        plazoMeses: months,
+      });
+      if (!row) return null;
+      const factor = Number(row.factor_mensual);
+      return Number.isFinite(factor) && factor > 0 ? factor : null;
+    },
+  }));
+}
+
 /**
  * Factor de pago (mensualidad = financiado * factor).
  * Equivale a 1/annuityFactor del prototipo HTML.
@@ -112,10 +156,25 @@ export function factorFor(months: number, annualRate: number): number {
   return r / (1 - Math.pow(1 + r, -months));
 }
 
+/** Factor mensual del plazo: catálogo RH (si hay lookup) o PMT de worksheetConfig. */
+export function factorForTerm(term: MoneyBoxTerm, downPct?: number): number | null {
+  if (usesCatalogFactor(term)) {
+    const factor = term.resolveFactorMensual?.(downPct ?? 0);
+    if (factor == null || !Number.isFinite(Number(factor)) || Number(factor) <= 0) return null;
+    return Number(factor);
+  }
+  const factor = factorFor(term.months, term.annualRate);
+  return factor > 0 ? factor : null;
+}
+
+function cargoFinanciablePara(term: MoneyBoxTerm, cargoFinanciableCents: number): number {
+  return usesCatalogFactor(term) ? 0 : cargoFinanciableCents;
+}
+
 /** Factor de anualidad (PV) — mismo que el HTML; financed / annuity = mensualidad. */
-export function annuityFactor(term: MoneyBoxTerm): number {
-  const f = factorFor(term.months, term.annualRate);
-  return f > 0 ? 1 / f : 0;
+export function annuityFactor(term: MoneyBoxTerm, downPct?: number): number {
+  const f = factorForTerm(term, downPct);
+  return f != null && f > 0 ? 1 / f : 0;
 }
 
 export function toCents(value: number | string): number {
@@ -147,6 +206,8 @@ export type MoneyBoxPolicyConfig = {
 export type PlanMatrixRow = MoneyBoxTerm & {
   id: string;
   monthlyCents: number;
+  /** false si el catálogo RH no tiene esa combinación enganche × plazo × nacionalidad. */
+  available: boolean;
   feasible: boolean;
   reason: string;
   origin: boolean;
@@ -175,10 +236,14 @@ export function mensualidadPara(
   engancheCents: number,
   cargoFinanciableCents: number,
   term: MoneyBoxTerm,
-): number {
-  const financed = Math.max(0, ventaCents - engancheCents + cargoFinanciableCents);
-  const factor = factorFor(term.months, term.annualRate);
-  if (factor <= 0) return 0;
+): number | null {
+  const downPct = ventaCents > 0 ? engancheCents / ventaCents : 0;
+  const factor = factorForTerm(term, downPct);
+  if (factor == null) return null;
+  const financed = Math.max(
+    0,
+    ventaCents - engancheCents + cargoFinanciablePara(term, cargoFinanciableCents),
+  );
   return Math.round(financed * factor);
 }
 
@@ -223,16 +288,19 @@ export function buildPlanMatrix({
 
   const rows = terms.map((term) => {
     const id = termId(term);
-    const monthlyCents = mensualidadPara(saleCents, downCents, config.ffCents, term);
-    const monthlyOk = monthlyCapCents <= 0 || monthlyCents <= monthlyCapCents;
+    const monthlyOrNull = mensualidadPara(saleCents, downCents, config.ffCents, term);
+    const available = monthlyOrNull != null;
+    const monthlyCents = monthlyOrNull ?? 0;
+    const monthlyOk = available && (monthlyCapCents <= 0 || monthlyCents <= monthlyCapCents);
     const cashOk = cashCapCents <= 0 || totalTodayCents <= cashCapCents;
     return {
       ...term,
       id,
       monthlyCents,
-      feasible: downPctOk && monthlyOk && cashOk,
-      reason: reasonText({ downPctOk, monthlyOk, cashOk }),
-      origin: id === originPlanId,
+      available,
+      feasible: available && downPctOk && monthlyOk && cashOk,
+      reason: available ? reasonText({ downPctOk, monthlyOk, cashOk }) : "N/A",
+      origin: available && id === originPlanId,
       best: false,
     };
   });
@@ -379,20 +447,20 @@ export function generateMonthlyProposals(
   const candidates: ProposalCandidate[] = [];
 
   for (const term of terms) {
-    const af = annuityFactor(term);
-    if (af <= 0) continue;
-    const balanceCapacity = monthlyCapCents * af;
-
     for (let pct = config.minDownPct; pct <= config.maxDownPct + 0.000001; pct += config.pctStep) {
+      const af = annuityFactor(term, pct);
+      if (af <= 0) continue;
+      const balanceCapacity = monthlyCapCents * af;
       const financedShare = 1 - pct;
       if (financedShare <= 0) continue;
 
-      const rawSale = (balanceCapacity - config.ffCents) / financedShare;
+      const extraFf = cargoFinanciablePara(term, config.ffCents);
+      const rawSale = (balanceCapacity - extraFf) / financedShare;
       const saleCents = roundSaleDown(Math.min(rawSale, config.maxSaleCents), config.roundStepCents);
       if (saleCents <= 0) continue;
 
       const downByPct = Math.ceil(saleCents * pct);
-      const downByMonthly = Math.ceil(saleCents + config.ffCents - balanceCapacity);
+      const downByMonthly = Math.ceil(saleCents + extraFf - balanceCapacity);
       const downByPolicy = Math.ceil(saleCents * config.minDownPct);
       const downCents = Math.max(0, downByPct, downByMonthly, downByPolicy);
       const actualPct = downCents / saleCents;
@@ -432,23 +500,23 @@ export function generateCombinedProposals(
   const candidates: ProposalCandidate[] = [];
 
   for (const term of terms) {
-    const af = annuityFactor(term);
-    if (af <= 0) continue;
-    const balanceCapacity = monthlyCapCents * af;
-
     for (let pct = config.minDownPct; pct <= config.maxDownPct + 0.000001; pct += config.pctStep) {
+      const af = annuityFactor(term, pct);
+      if (af <= 0) continue;
+      const balanceCapacity = monthlyCapCents * af;
       const financedShare = 1 - pct;
       if (financedShare <= 0) continue;
 
+      const extraFf = cargoFinanciablePara(term, config.ffCents);
       const saleByCash = usableCashCents / pct;
-      const saleByMonthly = (balanceCapacity - config.ffCents) / financedShare;
+      const saleByMonthly = (balanceCapacity - extraFf) / financedShare;
       const rawSale = Math.min(saleByCash, saleByMonthly, config.maxSaleCents);
       const saleCents = roundSaleDown(rawSale, config.roundStepCents);
       if (saleCents <= 0) continue;
 
       const downBySelectedPct = Math.ceil(saleCents * pct);
       const downByPolicy = Math.ceil(saleCents * config.minDownPct);
-      const downByMonthly = Math.ceil(saleCents + config.ffCents - balanceCapacity);
+      const downByMonthly = Math.ceil(saleCents + extraFf - balanceCapacity);
       const downCents = Math.max(0, downBySelectedPct, downByPolicy, downByMonthly);
       const actualPct = downCents / saleCents;
       const totalTodayCents = downCents + config.fcCents;
@@ -458,7 +526,7 @@ export function generateCombinedProposals(
         continue;
       }
       if (totalTodayCents > cashCents) continue;
-      if (originMonthly > monthlyCapCents) continue;
+      if (originMonthly == null || originMonthly > monthlyCapCents) continue;
 
       candidates.push({
         saleCents,

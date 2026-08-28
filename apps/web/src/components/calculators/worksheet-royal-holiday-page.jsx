@@ -450,7 +450,11 @@ export function WorksheetRoyalHolidayPage({ clientId, shared }) {
         )}
 
         {showMoneyBox && (
-          <WorksheetRhMoneyBoxPanel empresaId={empresaId} />
+          <WorksheetRhMoneyBoxPanel
+            empresaId={empresaId}
+            financiamiento={catalogo?.financiamiento}
+            nacionalidad={form.nacionalidad}
+          />
         )}
         </fieldset>
 
