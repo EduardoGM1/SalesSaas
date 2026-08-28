@@ -10,7 +10,17 @@ import {
 } from "@/lib/calculations/royal-holiday.js";
 import { parseMoney } from "@/lib/format/money";
 
-const PAGO_OPTS = [1, 2, 3, 4, 5, 6, 8, 10, 12];
+const PAGO_OPTS = [0, 2, 3, 4, 5, 6, 8, 10, 12];
+
+function pagoOptLabel(n) {
+  return `${n} ${n === 1 ? "pago" : "pagos"}`;
+}
+
+function pagoSelectOptions(current) {
+  const n = Number(current);
+  if (n === 1) return [0, 1, ...PAGO_OPTS.filter((x) => x !== 0)];
+  return PAGO_OPTS;
+}
 
 function roundMoney(n) {
   return Math.round((Number(n) || 0) * 100) / 100;
@@ -218,8 +228,8 @@ function PaymentCaptureBlock({
               value={numPagos}
               onChange={(e) => onNumPagosChange(e.target.value)}
             >
-              {PAGO_OPTS.map((n) => (
-                <option key={n} value={String(n)}>{n} {n === 1 ? "pago" : "pagos"}</option>
+              {pagoSelectOptions(numPagos).map((n) => (
+                <option key={n} value={String(n)}>{pagoOptLabel(n)}</option>
               ))}
             </select>
           </div>
@@ -235,8 +245,8 @@ function PaymentCaptureBlock({
             value={numPagos}
             onChange={(e) => onNumPagosChange(e.target.value)}
           >
-            {PAGO_OPTS.map((n) => (
-              <option key={n} value={String(n)}>{n} {n === 1 ? "pago" : "pagos"}</option>
+            {pagoSelectOptions(numPagos).map((n) => (
+              <option key={n} value={String(n)}>{pagoOptLabel(n)}</option>
             ))}
           </select>
         </div>
@@ -379,7 +389,6 @@ export function WorksheetRhFinancingPanel({
 
   useEffect(() => {
     const n = Number(form.enganche_num_pagos) || 0;
-    if (n <= 0) return;
     setForm((f) => {
       const next = syncPagos(f.enganche_pagos || [], saldoEnganche, n);
       const same = JSON.stringify(next) === JSON.stringify(f.enganche_pagos);
@@ -389,7 +398,6 @@ export function WorksheetRhFinancingPanel({
 
   useEffect(() => {
     const n = Number(form.gasto_num_pagos) || 0;
-    if (n <= 0) return;
     setForm((f) => {
       const next = syncPagos(f.gasto_pagos || [], saldoGasto, n);
       const same = JSON.stringify(next) === JSON.stringify(f.gasto_pagos);
