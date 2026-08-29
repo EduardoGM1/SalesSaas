@@ -215,15 +215,15 @@ export function EntryDialog({ open, onOpenChange, year, month, day }: EntryDialo
         )}
 
         </div>
+      </div>
 
-        <div className="btn-row entry-modal-actions">
-          <button type="button" className="btn btn-ghost" onClick={() => close(false)}>{t("common.cancel")}</button>
-          {!clientAction && (
-            <button type="button" className="btn btn-primary" id="entry-save-btn" onClick={handleSave}>
-              {t("common.save")}
-            </button>
-          )}
-        </div>
+      <div className="btn-row entry-modal-actions">
+        <button type="button" className="btn btn-ghost" onClick={() => close(false)}>{t("common.cancel")}</button>
+        {!clientAction && (
+          <button type="button" className="btn btn-primary" id="entry-save-btn" onClick={handleSave}>
+            {t("common.save")}
+          </button>
+        )}
       </div>
     </SalesModal>
   );

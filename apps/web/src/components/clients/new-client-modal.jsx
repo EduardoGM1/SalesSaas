@@ -9,7 +9,7 @@ import { createProspectFromName } from "@/actions/clients.js";
 import { adoptLibreToolsToClient } from "@/lib/tools/adopt-libre-tools";
 import { shallow } from "zustand/shallow";
 
-export function NewClientModal({ open, onOpenChange, onCreated, adoptLibreTools = false }) {
+export function NewClientModal({ open, onOpenChange, onCreated, adoptLibreTools = false, initialTourDate = "" }) {
   const { t } = useI18n();
   const tourTypes = useDbStore((s) => s.db.settings?.tourTypes ?? DEFAULT_TOUR_TYPES, shallow);
   const [name, setName] = useState("");
@@ -63,7 +63,7 @@ export function NewClientModal({ open, onOpenChange, onCreated, adoptLibreTools 
     }
     if (hasError) return;
 
-    const result = await createProspectFromName(name.trim(), tipoTour, tourCuantificable);
+    const result = await createProspectFromName(name.trim(), tipoTour, tourCuantificable, initialTourDate || undefined);
     if (!result.ok) {
       if (result.reason === "missing_name") {
         setMissingName(true);
@@ -126,6 +126,12 @@ export function NewClientModal({ open, onOpenChange, onCreated, adoptLibreTools 
         />
         {invalidName && <div className="field-inline-error">{t("clients.singleNameOnly")}</div>}
       </div>
+      {initialTourDate ? (
+        <div className="newclient-field">
+          <label>{t("exp.edit.tourDate")}</label>
+          <input id="nc-tour-date" type="date" value={initialTourDate} readOnly />
+        </div>
+      ) : null}
       <div className="newclient-field">
         <label>{t("clients.isTourQuantifiable")}</label>
         <div className="seg newclient-seg" role="group" aria-label={t("clients.isTourQuantifiable")}>

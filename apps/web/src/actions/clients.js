@@ -48,7 +48,7 @@ export function filterAndSortClients(clients, query) {
 /**
  * Online-first: persiste en PostgreSQL antes de confirmar éxito al usuario.
  */
-export async function createProspectFromName(name, tipoTour, tourCuantificable) {
+export async function createProspectFromName(name, tipoTour, tourCuantificable, tourDate) {
   const trimmed = String(name ?? "").trim();
   if (!trimmed) {
     toast.error(translate("toast.client.missingName"));
@@ -63,7 +63,7 @@ export async function createProspectFromName(name, tipoTour, tourCuantificable) 
     return { ok: false, reason: "missing_tour_type" };
   }
 
-  const draft = createEmptyClient(trimmed, undefined, tipoTour, tourCuantificable);
+  const draft = createEmptyClient(trimmed, tourDate || undefined, tipoTour, tourCuantificable);
   draft.updatedAt = Date.now();
 
   if (isCloudAvailable()) {

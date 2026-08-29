@@ -128,6 +128,18 @@ function prospectRowToClient(p, existing) {
 
 const CLIENTS_PAGE_SIZE = 50;
 
+/** YYYY-MM-DD calendario (rechaza 2026-13-01, 2026-02-31, etc.). */
+function parseAgendaTourDate(raw) {
+  const value = String(raw || "").trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
+  const year = Number(value.slice(0, 4));
+  const month = Number(value.slice(5, 7));
+  const day = Number(value.slice(8, 10));
+  const dt = new Date(year, month - 1, day);
+  if (dt.getFullYear() !== year || dt.getMonth() !== month - 1 || dt.getDate() !== day) return null;
+  return value;
+}
+
 export function ClientsPage() {
   const { t, lang, months } = useI18n();
   const navigate = useNavigate();
@@ -139,6 +151,7 @@ export function ClientsPage() {
   const saveClient = useDbStore((s) => s.saveClient);
   const getClient = useDbStore((s) => s.getClient);
   const [open, setOpen] = useState(false);
+  const [agendaTourDate, setAgendaTourDate] = useState("");
   const [query, setQuery] = useState("");
   const [shareClient, setShareClient] = useState(null);
   const [pinned, setPinned] = useState([]);
@@ -364,6 +377,26 @@ export function ClientsPage() {
   useEffect(() => {
     setVisibleLimit(CLIENTS_PAGE_SIZE);
   }, [query, location.key]);
+
+  // Agenda (entry-dialog) navega a /clients?tourDate=YYYY-MM-DD&from=agenda
+  // con la MISMA URL para "Crear nuevo cliente" y "Cliente que ya existe".
+  // Sin un param distinto no se puede ramificar: from=agenda + fecha válida
+  // abre el alta existente. Al consumir la query, Cancelar no reabre el modal.
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get("from") !== "agenda") return;
+
+    const parsed = parseAgendaTourDate(params.get("tourDate"));
+    if (parsed) {
+      setAgendaTourDate(parsed);
+      setOpen(true);
+    }
+
+    params.delete("from");
+    params.delete("tourDate");
+    const rest = params.toString();
+    navigate({ pathname: "/clients", search: rest ? `?${rest}` : "" }, { replace: true });
+  }, [location.search, navigate]);
 
   const loadMore = async () => {
     const nextVisible = visibleLimit + CLIENTS_PAGE_SIZE;
@@ -606,7 +639,11 @@ export function ClientsPage() {
 
       <NewClientModal
         open={open}
-        onOpenChange={setOpen}
+        initialTourDate={agendaTourDate}
+        onOpenChange={(next) => {
+          setOpen(next);
+          if (!next) setAgendaTourDate("");
+        }}
         onCreated={(client) => navigate(`/clients/${client.id}`)}
       />
     </>

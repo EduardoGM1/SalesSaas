@@ -735,14 +735,14 @@ textarea::placeholder{
   flex-shrink:0;
 }
 #m-entry.modal{
-  min-height:580px;
+  min-height:0;
 }
 #m-entry.modal #ef-venta,
 #m-entry.modal #ef-nota,
 #m-entry.modal #ef-follow,
 #m-entry.modal #ef-descanso,
 #m-entry.modal #ef-no-tour{
-  min-height:320px;
+  min-height:0;
   transition:opacity .16s ease;
 }
 #m-entry textarea{
