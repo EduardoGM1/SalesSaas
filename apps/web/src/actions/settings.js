@@ -2,6 +2,8 @@ import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { translate } from "@/lib/i18n.js";
 import { useDbStore } from "@/stores/db-store";
 import { toast } from "@/lib/toast";
+import { buildProfileSettingsBody } from "@/lib/storage/settings-scope.js";
+import { getActiveWorkspaceId, getStoredWorkspacesMap } from "@/lib/storage/local-storage-adapter";
 
 export function buildSettingsPayload(settings, fullName) {
   return {
@@ -36,7 +38,11 @@ export async function saveProfileRemote({ fullName, phone, avatarUrl, settings }
       fullName: resolvedName && resolvedName.toLowerCase() !== "usuario" ? resolvedName : fullName,
       phone,
       avatarUrl: avatarUrl || null,
-      settings: nextSettings,
+      settings: buildProfileSettingsBody(
+        nextSettings,
+        getActiveWorkspaceId(),
+        getStoredWorkspacesMap(),
+      ),
     }),
   });
   const body = await res.json().catch(() => ({}));
@@ -63,7 +69,13 @@ export async function saveSettingsPatchRemote(settingsPatch, { silent = false } 
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     credentials: "include",
-    body: JSON.stringify({ settings: nextSettings }),
+    body: JSON.stringify({
+      settings: buildProfileSettingsBody(
+        nextSettings,
+        getActiveWorkspaceId(),
+        getStoredWorkspacesMap(),
+      ),
+    }),
   });
   const body = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(body.error ?? "No se pudo guardar la configuración.");

@@ -7,8 +7,7 @@ import { useI18n } from "@/hooks/use-i18n.js";
 import { cn } from "@/lib/utils";
 import { confirmDialog } from "@/lib/confirm";
 import { toast } from "@/lib/toast";
-import { emptyDatabase } from "@/lib/storage/types";
-import { useDbStore } from "@/stores/db-store";
+import { applyWorkspaceLocalDatabase } from "@/lib/workspace-local-cache.js";
 import { requestSyncRefresh } from "@/lib/sync-refresh.js";
 import { fetchSession, notifyAuthChanged } from "@/lib/session-api.js";
 import {
@@ -41,15 +40,14 @@ async function performLeaveSala(t) {
   publishWorkspaceTransition({ switching: true, target: null });
   try {
     await leaveActiveSala();
-    const previousSettings = useDbStore.getState().db?.settings || {};
-    useDbStore.getState().replaceDb({ ...emptyDatabase(), settings: previousSettings });
-    notifyAuthChanged();
     const nextSession = await fetchSession();
+    const workspaceId = nextSession?.workspace_activo_id || nextSession?.workspace_activo?.id || null;
+    applyWorkspaceLocalDatabase(workspaceId);
+    notifyAuthChanged();
     window.dispatchEvent(new Event("workspace:changed"));
     await stopDashboardDataRealtime();
     await requestSyncRefresh({ force: true, reason: "workspace-leave" });
     const userId = nextSession?.user?.id || nextSession?.profile?.id;
-    const workspaceId = nextSession?.workspace_activo_id || nextSession?.workspace_activo?.id || null;
     if (userId) await startDashboardDataRealtime(userId, { workspaceId, force: true });
     toast.success(t("workspace.leaveOk"));
   } finally {

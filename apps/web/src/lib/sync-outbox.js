@@ -1,13 +1,20 @@
 /**
  * Outbox durable: sobrevive kill/background de la PWA.
- * Flag en localStorage aparte del blob CRM (sts4_v1).
+ * Flag en localStorage aparte del blob CRM, namespaced por workspace
+ * (`sts4_outbound_v1:{workspaceId}`) para no empujar mutaciones de una sala a otra.
  */
-import { OUTBOX_KEY } from "@/lib/storage/keys";
+import { OUTBOX_LEGACY_PENDING_KEY, outboxStorageKey } from "@/lib/storage/keys";
+import { getActiveWorkspaceId } from "@/lib/storage/local-storage-adapter";
+
+function storageKey() {
+  const ws = getActiveWorkspaceId();
+  return ws ? outboxStorageKey(ws) : OUTBOX_LEGACY_PENDING_KEY;
+}
 
 function readRaw() {
   if (typeof window === "undefined") return null;
   try {
-    const raw = localStorage.getItem(OUTBOX_KEY);
+    const raw = localStorage.getItem(storageKey());
     if (!raw) return null;
     return JSON.parse(raw);
   } catch {
@@ -18,7 +25,7 @@ function readRaw() {
 function writeRaw(state) {
   if (typeof window === "undefined") return;
   try {
-    localStorage.setItem(OUTBOX_KEY, JSON.stringify(state));
+    localStorage.setItem(storageKey(), JSON.stringify(state));
   } catch {
     // Quota / private mode: best-effort
   }

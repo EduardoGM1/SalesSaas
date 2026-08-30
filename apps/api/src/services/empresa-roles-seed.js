@@ -8,6 +8,16 @@ const LINER_FLAG_MATCH = (clave) =>
   || String(clave).startsWith("survey.tab.")
   || clave === "proyeccion_vacaciones";
 
+/** Hijos Premanifiesto: no van en operacion-base/cierre/liner (solo paquetes dedicados). */
+const PREMANIFIESTO_CHILD_FLAGS = new Set([
+  "rh.tool.premanifiesto.marketing",
+  "rh.tool.premanifiesto.opc",
+  "rh.tool.premanifiesto.rep",
+  "rh.tool.premanifiesto.csi",
+]);
+
+const BASE_PACKAGE_FLAG_FILTER = (clave) => !PREMANIFIESTO_CHILD_FLAGS.has(clave);
+
 /**
  * Idempotente por (empresa_id, slug): paquetes + puestos operativos
  * (Gerente, Liner, Cerrador) **por empresa**.
@@ -25,19 +35,41 @@ export async function ensureEmpresaOperationalRoles(admin, empresaId) {
       slug: "operacion-base",
       nombre: "Operación base",
       descripcion: "Módulos base de sala de ventas.",
-      flagFilter: null,
+      flagFilter: BASE_PACKAGE_FLAG_FILTER,
     },
     {
       slug: "cierre",
       nombre: "Cierre",
       descripcion: "Todos los módulos, incluyendo Money Box.",
-      flagFilter: null,
+      flagFilter: BASE_PACKAGE_FLAG_FILTER,
     },
     {
       slug: "liner",
       nombre: "Liner",
       descripcion: "Survey completo + Proyección de Vacaciones.",
-      flagFilter: LINER_FLAG_MATCH,
+      flagFilter: (clave) => LINER_FLAG_MATCH(clave) && BASE_PACKAGE_FLAG_FILTER(clave),
+    },
+    {
+      slug: "marketing",
+      nombre: "Marketing",
+      descripcion: "Premanifiesto RH — calendario y olas.",
+      flagFilter: (clave) =>
+        clave === "worksheet"
+        || clave === "worksheet.royal_holiday"
+        || clave === "rh.tool.ops"
+        || clave === "rh.tool.premanifiesto"
+        || clave === "rh.tool.premanifiesto.marketing",
+    },
+    {
+      slug: "opc-lobby",
+      nombre: "OPC Lobby",
+      descripcion: "Premanifiesto RH — invitación desde lobby.",
+      flagFilter: (clave) =>
+        clave === "worksheet"
+        || clave === "worksheet.royal_holiday"
+        || clave === "rh.tool.ops"
+        || clave === "rh.tool.premanifiesto"
+        || clave === "rh.tool.premanifiesto.opc",
     },
   ];
 
@@ -96,6 +128,8 @@ export async function ensureEmpresaOperationalRoles(admin, empresaId) {
     { slug: "gerente", nombre: "Gerente", packageSlug: "operacion-base", scope: "workspace" },
     { slug: "liner", nombre: "Liner", packageSlug: "liner", scope: "workspace" },
     { slug: "cerrador", nombre: "Cerrador", packageSlug: "cierre", scope: "workspace" },
+    { slug: "marketing", nombre: "Marketing", packageSlug: "marketing", scope: "workspace" },
+    { slug: "opc", nombre: "OPC", packageSlug: "opc-lobby", scope: "workspace" },
     { slug: "asistente_sala", nombre: "Asistente de Sala", packageSlug: null, scope: "workspace", delegatedOnly: true },
     { slug: "asistente_empresa", nombre: "Asistente de Empresa", packageSlug: null, scope: "empresa", delegatedOnly: true },
   ];

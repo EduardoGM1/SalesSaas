@@ -1,5 +1,6 @@
 import { registerSW } from "virtual:pwa-register";
 import { purgeAppCaches } from "@/lib/purge-app-caches.js";
+import { ensureFreshBuild } from "@/lib/ensure-fresh-build.js";
 
 let reloading = false;
 
@@ -53,6 +54,7 @@ export function initPwaUpdates() {
 
       const check = () => {
         registration.update().then(askWaitingToActivate).catch(() => {});
+        void ensureFreshBuild();
       };
 
       askWaitingToActivate();
@@ -62,6 +64,9 @@ export function initPwaUpdates() {
         if (document.visibilityState === "visible") check();
       });
       window.addEventListener("focus", check);
+      window.addEventListener("pageshow", (event) => {
+        if (event.persisted) check();
+      });
       window.setInterval(check, 15 * 60 * 1000);
     },
     onNeedRefresh() {

@@ -7,6 +7,7 @@ import {
   requireWorkspacePermission,
   scopeByWorkspace,
 } from "../lib/workspace-scope.js";
+import { rpcEffectiveWorkspacePermissions } from "../lib/workspace-permission-rpc.js";
 import { canEditProspectRecord } from "../lib/prospect-edit-access.js";
 
 export async function listProspects(supabase, userId, { limit, offset, status }) {
@@ -121,11 +122,8 @@ export async function updateProspect(supabase, userId, id, body) {
   if (loadErr) throw new ServiceError(loadErr.message, 500);
   if (!prospect) throw new ServiceError("Expediente no encontrado.", 404);
 
-  const [{ data: permissionKeys }, { data: member }] = await Promise.all([
-    supabase.rpc("effective_workspace_permissions", {
-      p_usuario_id: userId,
-      p_workspace_id: ctx.workspaceId,
-    }),
+  const [permissionKeys, { data: member }] = await Promise.all([
+    rpcEffectiveWorkspacePermissions(supabase, userId, ctx.workspaceId),
     supabase
       .from("workspace_miembros")
       .select("rol_en_workspace")
@@ -133,7 +131,7 @@ export async function updateProspect(supabase, userId, id, body) {
       .eq("usuario_id", userId)
       .maybeSingle(),
   ]);
-  const permissions = new Set(Array.isArray(permissionKeys) ? permissionKeys : []);
+  const permissions = new Set(permissionKeys);
 
   const { data: workflow } = await supabase
     .from("prospect_workflows")

@@ -60,14 +60,10 @@ export default defineConfig({
         ],
       },
       workbox: {
-        navigateFallback: "/index.html",
-        // No interceptar el SW de OneSignal ni auth/api (evita servir index.html / precache).
-        navigateFallbackDenylist: [
-          /^\/api/,
-          /^\/auth/,
-          /^\/onesignal\//,
-          /OneSignalSDKWorker\.js$/,
-        ],
+        // Nginx ya hace try_files → index.html. Un NavigationRoute de Workbox
+        // puede rehidratar un shell cacheado (index-DS5s4Hkv.js / Cloud).
+        navigateFallback: null,
+        navigateFallbackDenylist: [/.*/],
         cleanupOutdatedCaches: true,
         skipWaiting: true,
         clientsClaim: true,
@@ -97,13 +93,22 @@ export default defineConfig({
             handler: "NetworkOnly",
           },
           {
+            // sw.js cacheado deja al cliente en un precache viejo (p. ej. index-DS5s4Hkv.js de Cloud).
+            urlPattern: ({ url }) =>
+              url.pathname === "/sw.js"
+              || /\/workbox-[^/]+\.js$/i.test(url.pathname),
+            handler: "NetworkOnly",
+          },
+          {
+            // Nunca caer al cache si el entry hash ya no existe en disco: un 404
+            // con NetworkFirst rehidrata el bundle Cloud retirado.
             urlPattern: ({ url }) => /\/assets\/index-[^/]+\.js$/i.test(url.pathname),
-            handler: "NetworkFirst",
-            options: {
-              cacheName: "app-entry-js",
-              networkTimeoutSeconds: 3,
-              expiration: { maxEntries: 2, maxAgeSeconds: 60 * 60 },
-            },
+            handler: "NetworkOnly",
+          },
+          {
+            urlPattern: ({ url }) =>
+              url.pathname === "/index.html" || url.pathname === "/",
+            handler: "NetworkOnly",
           },
           {
             urlPattern: ({ request, url }) =>
@@ -127,13 +132,10 @@ export default defineConfig({
             },
           },
           {
+            // HTML siempre de red: NetworkFirst+3s servía index.html cacheado que
+            // apuntaba a index-DS5s4Hkv.js (Cloud) aunque prod ya no lo tuviera.
             urlPattern: ({ request }) => request.mode === "navigate",
-            handler: "NetworkFirst",
-            options: {
-              cacheName: "html-navigate",
-              networkTimeoutSeconds: 3,
-              expiration: { maxEntries: 4, maxAgeSeconds: 60 * 5 },
-            },
+            handler: "NetworkOnly",
           },
           {
             urlPattern: ({ url }) =>

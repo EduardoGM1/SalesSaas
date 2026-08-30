@@ -18,6 +18,7 @@ import { useToolSession } from "@/hooks/use-tool-session.js";
 import { useFlushLibreToolOnLeave } from "@/hooks/use-flush-libre-tool-on-leave.js";
 import { useFlag } from "@/hooks/use-flag.js";
 import { WORKSHEET_ROYAL_HOLIDAY_FLAG } from "@/lib/auth/tool-flags.js";
+import { PermissionsUnavailableNotice } from "@/components/auth/permissions-unavailable-notice.jsx";
 import { CalcCardSkeleton } from "@/components/ui/content-skeleton.jsx";
 import { CollabField, collabFieldId } from "@/components/clients/collab-field.jsx";
 import { SelectorMoneda } from "@/components/currency/selector-moneda.jsx";
@@ -38,6 +39,17 @@ export function WorksheetPage({ clientId, shared }) {
           <div className="page-toolbar"><PageBack inline href="/tools" /></div>
           <CalcCardSkeleton rows={4} boxes={3} />
           <div style={{ marginTop: 12 }}><CalcCardSkeleton rows={3} boxes={2} /></div>
+        </div>
+      </>
+    );
+  }
+  if (rhFlag.flagsStatus === "unavailable") {
+    return (
+      <>
+        <Topbar title="Worksheet" subtitle="" />
+        <div className="sales-page tool-calc-page">
+          <div className="page-toolbar"><PageBack inline href="/tools" /></div>
+          <PermissionsUnavailableNotice variant="panel" kind="flags" />
         </div>
       </>
     );

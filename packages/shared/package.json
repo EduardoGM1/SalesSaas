@@ -5,6 +5,7 @@
   "type": "module",
   "exports": {
     "./supabase/config.js": "./src/supabase/config.js",
+    "./supabase/public-url.js": "./src/supabase/public-url.js",
     "./data/sync.js": "./src/data/sync.js",
     "./data/sync-columns.js": "./src/data/sync-columns.js",
     "./data/mappers.js": "./src/data/mappers.js",

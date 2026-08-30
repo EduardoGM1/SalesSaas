@@ -10,7 +10,7 @@ import { useWorkspace } from "@/hooks/use-workspace.js";
  */
 export function useCustomModules(punto = null) {
   const { active } = useWorkspace();
-  const { flags, hasCatalog } = useFlags();
+  const { flags, hasCatalog, flagsStatus } = useFlags();
   const [modules, setModules] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -32,9 +32,11 @@ export function useCustomModules(punto = null) {
       .then((rows) => {
         if (cancelled) return;
         const list = Array.isArray(rows) ? rows : [];
-        const filtered = hasCatalog
-          ? list.filter((m) => !m.clave || flags[m.clave] === true)
-          : list;
+        const filtered = flagsStatus === "unavailable"
+          ? []
+          : hasCatalog
+            ? list.filter((m) => !m.clave || flags[m.clave] === true)
+            : list;
         setModules(punto ? modulesForExtensionPoint(filtered, punto) : filtered);
       })
       .catch((err) => {
@@ -47,7 +49,7 @@ export function useCustomModules(punto = null) {
         if (!cancelled) setLoading(false);
       });
     return () => { cancelled = true; };
-  }, [workspaceId, isSala, punto, hasCatalog, flags]);
+  }, [workspaceId, isSala, punto, hasCatalog, flags, flagsStatus]);
 
   return { modules, loading, error, ready: !loading };
 }

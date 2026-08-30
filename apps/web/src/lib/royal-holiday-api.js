@@ -35,8 +35,33 @@ export const royalHolidayApi = {
   getOpsConfig: (empresaId) => apiFetch(`/royal-holiday/${empresaId}/ops-config`),
   saveOpsConfig: (empresaId, config) =>
     apiFetch(`/royal-holiday/${empresaId}/ops-config`, { method: "PUT", body: JSON.stringify({ config }) }),
+  getMoneyBoxConfig: (empresaId) => apiFetch(`/royal-holiday/${empresaId}/money-box-config`),
+  saveMoneyBoxRestrictions: (empresaId, restrictions) =>
+    apiFetch(`/royal-holiday/${empresaId}/money-box-config`, {
+      method: "PUT",
+      body: JSON.stringify({ restrictions }),
+    }),
   listPremanifiesto: (empresaId, params) =>
     apiFetch(`/royal-holiday/${empresaId}/premanifiesto${qs(params)}`),
+  getPremanifiestoDia: (empresaId, params) =>
+    apiFetch(`/royal-holiday/${empresaId}/premanifiesto/dia${qs(params)}`),
+  getPremanifiestoCupos: (empresaId, params) =>
+    apiFetch(`/royal-holiday/${empresaId}/premanifiesto/cupos${qs(params)}`),
+  registrarPremanifiestoPareja: (empresaId, body) =>
+    apiFetch(`/royal-holiday/${empresaId}/premanifiesto/registrar`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  tomarCasoPremanifiesto: (empresaId, rowId, body) =>
+    apiFetch(`/royal-holiday/${empresaId}/premanifiesto/${rowId}/tomar-caso`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  actualizarPremanifiesto: (empresaId, rowId, body) =>
+    apiFetch(`/royal-holiday/${empresaId}/premanifiesto/${rowId}`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
   savePremanifiesto: (empresaId, body) =>
     apiFetch(`/royal-holiday/${empresaId}/premanifiesto`, { method: "POST", body: JSON.stringify(body) }),
   listAsignacion: (empresaId, params) =>

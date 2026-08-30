@@ -87,9 +87,10 @@ def build_env_content(local_env, cron_secret):
         ("SUPABASE_URL", local_env.get("SUPABASE_URL", "")),
         ("SUPABASE_ANON_KEY", local_env.get("SUPABASE_ANON_KEY", "")),
         ("SUPABASE_SERVICE_ROLE_KEY", local_env.get("SUPABASE_SERVICE_ROLE_KEY", "")),
-        ("NEXT_PUBLIC_SUPABASE_URL", local_env.get("NEXT_PUBLIC_SUPABASE_URL", local_env.get("SUPABASE_URL", ""))),
+        # El SPA se sirve en WEB_ORIGIN; nunca bakear Supabase Cloud aquí.
+        ("NEXT_PUBLIC_SUPABASE_URL", WEB_ORIGIN),
         ("NEXT_PUBLIC_SUPABASE_ANON_KEY", local_env.get("NEXT_PUBLIC_SUPABASE_ANON_KEY", local_env.get("SUPABASE_ANON_KEY", ""))),
-        ("VITE_SUPABASE_URL", local_env.get("VITE_SUPABASE_URL", local_env.get("SUPABASE_URL", ""))),
+        ("VITE_SUPABASE_URL", WEB_ORIGIN),
         ("VITE_SUPABASE_ANON_KEY", local_env.get("VITE_SUPABASE_ANON_KEY", local_env.get("SUPABASE_ANON_KEY", ""))),
         ("ONESIGNAL_APP_ID", local_env.get("ONESIGNAL_APP_ID", "")),
         ("ONESIGNAL_REST_API_KEY", local_env.get("ONESIGNAL_REST_API_KEY", "")),

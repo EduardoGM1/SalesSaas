@@ -23,6 +23,7 @@ import {
   processBrandingImage,
 } from "@/lib/branding-image.js";
 import { toast } from "@/lib/toast";
+import { WS_DEFAULTS } from "@/lib/constants";
 
 const TABS = [
   { id: "summary", label: "Resumen", icon: Building2 },
@@ -835,7 +836,10 @@ export function TenantCompanyAdministration({
         ) : null}
 
         {tab === "catalogo-rh" ? (
-          <RoyalHolidayCatalogPanel companyId={companyId} companyName={selectedCompany?.nombre} />
+          <div className="admin-company-layout">
+            <RoyalHolidayMoneyBoxPlansPanel companyId={companyId} companyName={selectedCompany?.nombre} />
+            <RoyalHolidayCatalogPanel companyId={companyId} companyName={selectedCompany?.nombre} />
+          </div>
         ) : null}
 
         {tab === "branding" ? (
@@ -1014,6 +1018,115 @@ export function TenantCompanyAdministration({
 function editCell(rows, idx, key, value) {
   const next = rows.map((r, i) => (i === idx ? { ...r, [key]: value } : r));
   return next;
+}
+
+function RoyalHolidayMoneyBoxPlansPanel({ companyId, companyName }) {
+  const [plans, setPlans] = useState({ ...WS_DEFAULTS });
+  const [loading, setLoading] = useState(true);
+  const [pending, setPending] = useState(false);
+  const [err, setErr] = useState("");
+
+  useEffect(() => {
+    if (!companyId) return;
+    let cancelled = false;
+    setLoading(true);
+    setErr("");
+    (async () => {
+      try {
+        const data = await adminJson(`tenant/empresas/${companyId}/money-box-config`);
+        if (!cancelled) {
+          setPlans({ ...WS_DEFAULTS, ...(data?.plans || {}) });
+        }
+      } catch (e) {
+        if (!cancelled) setErr(e.message || "No se pudo cargar Money Box RH.");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [companyId]);
+
+  const savePlans = async () => {
+    setPending(true);
+    try {
+      const data = await adminJson(`tenant/empresas/${companyId}/money-box-config`, {
+        method: "PUT",
+        body: { plans },
+      });
+      setPlans({ ...WS_DEFAULTS, ...(data?.plans || plans) });
+      toast.success("Planes Money Box RH guardados");
+    } catch (e) {
+      toast.error(e.message);
+    } finally {
+      setPending(false);
+    }
+  };
+
+  if (!companyId) return null;
+
+  return (
+    <AdminCard
+      title="Money Box — Planes de financiamiento"
+      subtitle={`Royal Holiday · ${companyName || ""}`.trim()}
+    >
+      {loading ? <AdminPageState loading /> : null}
+      {err ? <p className="auth-error">{err}</p> : null}
+      {!loading && !err ? (
+        <>
+          <p className="admin-card-muted">
+            Tres opciones de plazo e interés (motor PMT). Aplica a todos los vendedores de la empresa en la pestaña Money Box del Worksheet RH.
+          </p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 14, marginTop: 12 }}>
+            {[1, 2, 3].map((n) => (
+              <div key={n} className="opt-block" style={{ marginTop: 0 }}>
+                <div className="opt-head">
+                  <div>
+                    <div className="opt-tag">Opción {n}</div>
+                  </div>
+                </div>
+                <div className="opt-body worksheet-opt-body">
+                  <div className="opt-field">
+                    <label>Meses</label>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      className="auth-input"
+                      value={plans[`wo${n}m`] ?? ""}
+                      onChange={(e) => setPlans((cur) => ({
+                        ...cur,
+                        [`wo${n}m`]: e.target.value.replace(/[^\d]/g, ""),
+                      }))}
+                    />
+                  </div>
+                  <div className="opt-field">
+                    <label>Interés anual %</label>
+                    <span className="settings-pct-field">
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        className="auth-input"
+                        value={plans[`wo${n}r`] ?? ""}
+                        onChange={(e) => setPlans((cur) => ({
+                          ...cur,
+                          [`wo${n}r`]: e.target.value.replace(/[^\d.]/g, ""),
+                        }))}
+                      />
+                      <span className="settings-pct-suffix">%</span>
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="btn-row" style={{ marginTop: 16 }}>
+            <button type="button" className="btn btn-primary" disabled={pending} onClick={() => void savePlans()}>
+              {pending ? "Guardando…" : "Guardar planes"}
+            </button>
+          </div>
+        </>
+      ) : null}
+    </AdminCard>
+  );
 }
 
 function RoyalHolidayCatalogPanel({ companyId, companyName }) {

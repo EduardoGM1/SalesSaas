@@ -5,19 +5,28 @@ import { hasResolvedPermission } from "@salesapp/shared/auth/resolve-permissions
 
 /**
  * Permisos resueltos (rol + overrides) desde la sesión.
+ * Si el RPC de sala no respondió, keys=[] y permissionsStatus="unavailable"
+ * (fail-closed: can() = false; la UI de reintento es aparte).
  */
 export function useUserPermissions() {
   const [profile, setProfile] = useState(null);
+  const [permissionsStatus, setPermissionsStatus] = useState("ok");
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
     if (!isSupabaseConfigured()) {
       setProfile(null);
+      setPermissionsStatus("ok");
       setReady(true);
       return undefined;
     }
     return watchSession((session) => {
       setProfile(session?.profile ?? null);
+      setPermissionsStatus(
+        session?.permissions_status
+          || session?.profile?.permissions_status
+          || "ok",
+      );
       setReady(true);
     });
   }, []);
@@ -30,10 +39,11 @@ export function useUserPermissions() {
   return {
     keys,
     ready,
+    permissionsStatus,
     can: (clave) => {
       if (!profile) return true;
-      // Sin catálogo en sesión → compat (no bloquear)
-      if (!Array.isArray(profile.permission_keys)) return true;
+      if (permissionsStatus === "unavailable") return false;
+      if (!Array.isArray(profile.permission_keys)) return false;
       return hasResolvedPermission(keys, clave);
     },
     profile,

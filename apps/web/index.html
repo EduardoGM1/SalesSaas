@@ -38,10 +38,11 @@
             var match = html.match(/\/assets\/index-[^"']+\.js/);
             if (!match || !match[0] || currentSrc.indexOf(match[0]) !== -1) return;
             console.warn("[pwa] outdated shell detected, clearing SW caches", currentSrc, match[0]);
-            var reloadKey = "app:shell-reload";
+            var reloadKey = "app:shell-reload:" + match[0];
             try {
-              if (sessionStorage.getItem(reloadKey) === match[0]) return;
-              sessionStorage.setItem(reloadKey, match[0]);
+              var n = Number(sessionStorage.getItem(reloadKey) || 0);
+              if (n >= 3) return;
+              sessionStorage.setItem(reloadKey, String(n + 1));
             } catch (e) {}
             var done = function () { location.reload(); };
             if (!("serviceWorker" in navigator)) return done();

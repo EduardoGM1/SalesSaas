@@ -24,7 +24,7 @@ export const RhCreditosPage = namedLazy(() => import("@/pages/rh/RhCreditosPage.
 export const RhCalendarioComisionesPage = namedLazy(() => import("@/pages/rh/RhCalendarioComisionesPage.jsx"), "RhCalendarioComisionesPage");
 export const RhDiasDescansoPage = namedLazy(() => import("@/pages/rh/RhDiasDescansoPage.jsx"), "RhDiasDescansoPage");
 export const RhOpsHubPage = namedLazy(() => import("@/pages/rh/RhOpsHubPage.jsx"), "RhOpsHubPage");
-export const RhPremanifiestoPage = namedLazy(() => import("@/pages/rh/RhOpsModulesPage.jsx"), "RhPremanifiestoPage");
+export const RhPremanifiestoPage = namedLazy(() => import("@/pages/rh/RhPremanifiestoPage.jsx"), "RhPremanifiestoPage");
 export const RhLineaPage = namedLazy(() => import("@/pages/rh/RhOpsModulesPage.jsx"), "RhLineaPage");
 export const RhResumenOpsPage = namedLazy(() => import("@/pages/rh/RhOpsModulesPage.jsx"), "RhResumenOpsPage");
 export const RhEstadisticosPage = namedLazy(() => import("@/pages/rh/RhOpsModulesPage.jsx"), "RhEstadisticosPage");

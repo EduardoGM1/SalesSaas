@@ -4,6 +4,13 @@ import { ilikeOrFilter } from "../lib/ilike.js";
 import { assertPublicHttpUrl } from "../lib/safe-url.js";
 import { isSuperAdmin } from "@salesapp/shared/auth/permissions.js";
 import { SUPERADMIN_ONLY_KEYS } from "@salesapp/shared/auth/permission-catalog.js";
+import { rpcEffectiveWorkspacePermissions } from "../lib/workspace-permission-rpc.js";
+import {
+  buildPublicStorageUrl,
+  rewriteBrandingLogoFields,
+  rewriteBrandingLogoList,
+  rewriteSupabasePublicUrl,
+} from "@salesapp/shared/supabase/public-url.js";
 import { ADMIN_AUDIT_ACTIONS, writeAdminLog } from "./admin-audit-service.js";
 
 export const CROSS_BOUNDARY_MSG =
@@ -18,11 +25,11 @@ const SALETSE_DEFAULT_BRAND = {
 };
 
 function resolveWorkspaceLogoPrincipal(workspace, empresa) {
-  return workspace?.logo_url || empresa?.logo_url || null;
+  return rewriteSupabasePublicUrl(workspace?.logo_url || empresa?.logo_url || null);
 }
 
 function resolveWorkspaceLogoIcon(workspace, empresa) {
-  return workspace?.logo_icono_url || empresa?.logo_icono_url || null;
+  return rewriteSupabasePublicUrl(workspace?.logo_icono_url || empresa?.logo_icono_url || null);
 }
 
 function flagsMissing(error) {
@@ -222,7 +229,7 @@ export async function listEmpresas(adminProfile) {
     .select("id, nombre, logo_url, logo_icono_url, colores_marca, plan_paquete, estado, created_at")
     .order("nombre");
   if (error) throw new ServiceError(error.message, 500);
-  return data ?? [];
+  return rewriteBrandingLogoList(data ?? []);
 }
 
 export async function createEmpresa(adminProfile, body) {
@@ -275,7 +282,7 @@ export async function updateEmpresa(adminProfile, id, body) {
   if (body.estado != null) patch.estado = body.estado;
   const { data, error } = await admin.from("empresas").update(patch).eq("id", id).select().maybeSingle();
   if (error) throw new ServiceError(error.message, 400);
-  return assertFound(data, "Empresa no encontrada.");
+  return rewriteBrandingLogoFields(assertFound(data, "Empresa no encontrada."));
 }
 
 export async function createSala(adminProfile, body) {
@@ -357,7 +364,7 @@ export async function updateSala(adminProfile, id, body) {
     .select()
     .maybeSingle();
   if (error) throw new ServiceError(error.message, 400);
-  return assertFound(data, "Sala no encontrada.");
+  return rewriteBrandingLogoFields(assertFound(data, "Sala no encontrada."));
 }
 
 export async function listSalas(adminProfile, empresaId = null) {
@@ -372,7 +379,7 @@ export async function listSalas(adminProfile, empresaId = null) {
   if (empresaId) q = q.eq("empresa_id", empresaId);
   const { data, error } = await q;
   if (error) throw new ServiceError(error.message, 500);
-  return data ?? [];
+  return rewriteBrandingLogoList(data ?? []);
 }
 
 async function assertSoleGerenteSafe(admin, workspaceId, usuarioId) {
@@ -761,11 +768,8 @@ export async function searchCloserCandidates(supabase, userId, rawQuery) {
   for (const row of members || []) {
     const profile = row.profiles;
     if (!profile?.id) continue;
-    const { data: permissionKeys } = await admin.rpc("effective_workspace_permissions", {
-      p_usuario_id: profile.id,
-      p_workspace_id: active.id,
-    });
-    const permissions = new Set(Array.isArray(permissionKeys) ? permissionKeys : []);
+    const permissionKeys = await rpcEffectiveWorkspacePermissions(admin, profile.id, active.id);
+    const permissions = new Set(permissionKeys);
     const isCloser = row.roles?.slug === "cerrador" || permissions.has("workflow:cerrar");
     if (!isCloser) continue;
     eligible.push({
@@ -805,11 +809,8 @@ export async function searchRepresentanteCandidates(supabase, userId, rawQuery) 
     const profile = row.profiles;
     if (!profile?.id) continue;
     if (row.rol_en_workspace === "gerente") continue;
-    const { data: permissionKeys } = await admin.rpc("effective_workspace_permissions", {
-      p_usuario_id: profile.id,
-      p_workspace_id: active.id,
-    });
-    const permissions = new Set(Array.isArray(permissionKeys) ? permissionKeys : []);
+    const permissionKeys = await rpcEffectiveWorkspacePermissions(admin, profile.id, active.id);
+    const permissions = new Set(permissionKeys);
     const isCloserOnly = (row.roles?.slug === "cerrador" || permissions.has("workflow:cerrar"))
       && !permissions.has("expedientes:crear")
       && row.rol_en_workspace !== "vendedor";
@@ -933,8 +934,7 @@ async function uploadLogoBuffer(admin, { tipo, id, buffer, mime, slot = "princip
     }
     throw new ServiceError(msg, 400);
   }
-  const { data: pub } = admin.storage.from("workspace-branding").getPublicUrl(path);
-  const logoUrl = pub?.publicUrl || null;
+  const logoUrl = buildPublicStorageUrl("workspace-branding", path);
   if (!logoUrl) throw new ServiceError("No se pudo resolver la URL pública del logo.", 500);
   return logoUrl;
 }
@@ -947,7 +947,7 @@ async function resolvePersistedLogoUrl(admin, { tipo, id, logoUrl, slot = "princ
   if (logoUrl == null || logoUrl === "") return null;
   const url = String(logoUrl).trim();
   if (!url) return null;
-  if (isOurBrandingUrl(url)) return url;
+  if (isOurBrandingUrl(url)) return rewriteSupabasePublicUrl(url);
 
   if (/^data:image\//i.test(url)) {
     const match = /^data:(image\/(?:png|jpeg|jpg|webp));base64,(.+)$/i.exec(url);
@@ -1042,7 +1042,7 @@ export async function uploadWorkspaceLogo(adminProfile, { tipo, id, dataUrl, slo
       .select()
       .maybeSingle();
     if (error) throw new ServiceError(error.message, 400);
-    return assertFound(data, "Sala no encontrada.");
+    return rewriteBrandingLogoFields(assertFound(data, "Sala no encontrada."));
   }
   const { data, error } = await admin
     .from("empresas")
@@ -1051,7 +1051,7 @@ export async function uploadWorkspaceLogo(adminProfile, { tipo, id, dataUrl, slo
     .select()
     .maybeSingle();
   if (error) throw new ServiceError(error.message, 400);
-  return assertFound(data, "Empresa no encontrada.");
+  return rewriteBrandingLogoFields(assertFound(data, "Empresa no encontrada."));
 }
 
 /** Roles asignables en la sala activa (scope=workspace de la empresa). Solo lectura para Gerente. */

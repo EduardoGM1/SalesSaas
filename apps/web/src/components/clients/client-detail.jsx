@@ -64,13 +64,14 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
   const { fmt } = useMoney();
   const { t, lang } = useI18n();
   const { can, ready: permReady } = useUserPermissions();
-  const { isEnabled, hasCatalog, ready: flagsReady } = useFlags();
+  const { isEnabled, hasCatalog, ready: flagsReady, flagsStatus } = useFlags();
   const toolsReady = flagsReady && permReady;
   const { active } = useWorkspace();
   const { modules: customExpedienteModules } = useCustomModules(EXTENSION_POINTS.EXPEDIENTE_TAB);
   const isPersonalWorkspace = !active || active.tipo === "personal";
   const isGerenteSala = active?.tipo === "sala_de_venta" && active?.rol_en_workspace === "gerente";
   const toolAllowed = (toolKey) => {
+    if (flagsStatus === "unavailable") return false;
     const flagKey = TOOL_FLAG_KEYS[toolKey];
     if (hasCatalog && flagKey) return isEnabled(flagKey) === true;
     return can(TOOL_PERMISSION_KEYS[toolKey]);

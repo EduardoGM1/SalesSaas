@@ -1,6 +1,9 @@
+/**
+ * Rutas /api/v1/admin: plataforma (users, flags, métricas) y tenant (empresas/salas).
+ * Guards en admin-helpers.js — no duplicar ni relajar.
+ */
 import { Router } from "express";
 import { authenticateApi } from "../middleware/auth.js";
-import { requireApiAdmin } from "../middleware/admin-auth.js";
 import { apiError, json } from "../lib/http.js";
 import {
   adminPermissionSetHas,
@@ -20,6 +23,7 @@ import {
   getToolsUsage,
 } from "../lib/admin/data.js";
 import { parseJsonBody, runService, internalErrorMessage } from "./route-utils.js";
+import { adminAuth, requireSuperAdminApi } from "./admin-helpers.js";
 import { rateLimit } from "../middleware/rate-limit.js";
 import * as adminUsersService from "../services/admin-users-service.js";
 import * as supportService from "../services/support-service.js";
@@ -36,39 +40,6 @@ import * as royalHolidayService from "../services/royal-holiday-service.js";
 import { requireEmpresaAdmin } from "../lib/tenant-access.js";
 
 const router = Router();
-
-async function adminAuth(req, res, perm) {
-  const base = await authenticateApi(req, res);
-  if (!base.ok) {
-    apiError(res, base.message, base.status);
-    return null;
-  }
-  const a = await requireApiAdmin(base, perm);
-  if (!a.ok) {
-    apiError(res, a.message, a.status);
-    return null;
-  }
-  return a;
-}
-
-/** Roles CRUD / role_id: solo Superadmin. */
-async function requireSuperAdminApi(req, res) {
-  const base = await authenticateApi(req, res);
-  if (!base.ok) {
-    apiError(res, base.message, base.status);
-    return null;
-  }
-  const { data: profile } = await base.supabase
-    .from("profiles")
-    .select("id, role, is_super_admin, admin_permissions")
-    .eq("id", base.userId)
-    .single();
-  if (!profile || !isSuperAdmin(profile)) {
-    apiError(res, "No autorizado.", 403);
-    return null;
-  }
-  return { ...base, profile };
-}
 
 router.get("/me", async (req, res) => {
   const base = await authenticateApi(req, res);
@@ -440,6 +411,54 @@ router.post("/tenant/empresas/:empresaId/catalogo-rh/publish", async (req, res) 
     const admin = await requireEmpresaAdmin(a.userId, req.params.empresaId);
     return royalHolidayService.publishNuevaVersion(admin, req.params.empresaId, a.userId, body);
   }, { wrap: "data", successStatus: 201 });
+});
+
+router.get("/tenant/empresas/:empresaId/money-box-config", async (req, res) => {
+  const a = await tenantActor(req, res);
+  if (!a) return;
+  await runService(res, async () => {
+    const admin = await requireEmpresaAdmin(a.userId, req.params.empresaId);
+    return royalHolidayService.getRhMoneyBoxConfig(admin, req.params.empresaId);
+  }, { wrap: "data" });
+});
+
+router.put("/tenant/empresas/:empresaId/money-box-config", async (req, res) => {
+  const a = await tenantActor(req, res);
+  if (!a) return;
+  const body = parseJsonBody(req, res);
+  if (!body) return;
+  await runService(res, async () => {
+    const admin = await requireEmpresaAdmin(a.userId, req.params.empresaId);
+    return royalHolidayService.saveRhMoneyBoxConfig(admin, a.userId, req.params.empresaId, {
+      plans: body.plans,
+      restrictions: body.restrictions,
+    });
+  }, { wrap: "data" });
+});
+
+router.get("/tenant/empresas/:empresaId/premanifiesto-olas", async (req, res) => {
+  const a = await tenantActor(req, res);
+  if (!a) return;
+  await runService(res, async () => {
+    const admin = await requireEmpresaAdmin(a.userId, req.params.empresaId);
+    return royalHolidayService.getPremanifiestoOlaConfig(admin, req.params.empresaId);
+  }, { wrap: "data" });
+});
+
+router.put("/tenant/empresas/:empresaId/premanifiesto-olas", async (req, res) => {
+  const a = await tenantActor(req, res);
+  if (!a) return;
+  const body = parseJsonBody(req, res);
+  if (!body) return;
+  await runService(res, async () => {
+    const admin = await requireEmpresaAdmin(a.userId, req.params.empresaId);
+    return royalHolidayService.savePremanifiestoOlaConfig(
+      admin,
+      a.userId,
+      req.params.empresaId,
+      body.olas || body,
+    );
+  }, { wrap: "data" });
 });
 
 router.get("/tenant/empresas/:empresaId/modulos-custom", async (req, res) => {

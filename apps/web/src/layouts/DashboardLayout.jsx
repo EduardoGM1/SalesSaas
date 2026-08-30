@@ -9,7 +9,10 @@ import { AutoPushCoordinator } from "@/components/notifications/auto-push-coordi
 import { InAppNotificationsCoordinator } from "@/components/notifications/in-app-notifications-coordinator.jsx";
 import { SidebarClient } from "@/components/layout/sidebar-client.jsx";
 import { BottomNav } from "@/components/layout/bottom-nav.jsx";
+import { PermissionsUnavailableNotice } from "@/components/auth/permissions-unavailable-notice.jsx";
 import { useWorkspace } from "@/hooks/use-workspace.js";
+import { useUserPermissions } from "@/hooks/use-user-permissions.js";
+import { useFlags } from "@/hooks/use-flag.js";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { LoaderCircle } from "lucide-react";
 
@@ -33,6 +36,10 @@ function WorkspaceSwitchOverlay() {
 }
 
 export function DashboardLayout() {
+  const { permissionsStatus } = useUserPermissions();
+  const { flagsStatus } = useFlags();
+  const accessUnavailable = permissionsStatus === "unavailable" || flagsStatus === "unavailable";
+  const noticeKind = permissionsStatus === "unavailable" ? "permissions" : "flags";
   return (
     <StoreHydration>
       <SyncProvider>
@@ -46,6 +53,7 @@ export function DashboardLayout() {
               </div>
               <BottomNav />
               <WorkspaceSwitchOverlay />
+              {accessUnavailable ? <PermissionsUnavailableNotice kind={noticeKind} /> : null}
             </div>
             <PushPermissionPrompt />
             <AutoPushCoordinator />

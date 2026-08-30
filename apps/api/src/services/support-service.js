@@ -1,6 +1,7 @@
 import { ServiceError } from "../lib/service-error.js";
 import { createServiceSupabaseClient } from "../lib/supabase-server.js";
 import { reportServerIssue } from "../lib/observability.js";
+import { rewriteSupabasePublicUrl } from "@salesapp/shared/supabase/public-url.js";
 import { sendSupportTicketEmail } from "./support-email.js";
 import {
   SUPPORT_AREA_IDS,
@@ -79,7 +80,7 @@ async function createSignedUrl(serviceSb, path, expiresIn) {
     const { data, error } = await serviceSb.storage
       .from(bucket)
       .createSignedUrl(path, expiresIn);
-    if (!error && data?.signedUrl) return data.signedUrl;
+    if (!error && data?.signedUrl) return rewriteSupabasePublicUrl(data.signedUrl);
   }
   return null;
 }

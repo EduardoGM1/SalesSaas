@@ -35,8 +35,26 @@ export async function runService(res, handler, { successStatus, wrap } = {}) {
     if (wrap === "sync") return json(res, { data: result, syncedAt: new Date().toISOString() }, successStatus);
     return json(res, result, successStatus);
   } catch (err) {
-    if (err instanceof ServiceError) return apiError(res, err.message, err.status);
+    if (err instanceof ServiceError) return apiError(res, err.message, err.status, err.code);
     console.error("[runService]", err);
     return apiError(res, internalErrorMessage(err), 500);
   }
+}
+
+/**
+ * Ruta autenticada delgada: auth (+ body JSON opcional) → controlador → runService.
+ * El rate limit y otros middleware se declaran en el router, no aquí.
+ */
+export function rutaAutenticada(manejador, opciones = {}) {
+  const { cuerpo = false, ...runOpts } = opciones;
+  return async (req, res) => {
+    const auth = await requireAuth(req, res);
+    if (!auth) return;
+    if (cuerpo) {
+      const body = parseJsonBody(req, res);
+      if (!body) return;
+      return runService(res, () => manejador(auth, req, body), runOpts);
+    }
+    return runService(res, () => manejador(auth, req), runOpts);
+  };
 }

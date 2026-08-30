@@ -603,38 +603,128 @@ async function listByFecha(client, table, empresaId, workspaceId, fecha) {
   return data || [];
 }
 
+function mapPremanifiestoRpcError(error) {
+  const msg = String(error?.message || "");
+  if (msg.includes("PM_CUPO_LLENO")) {
+    throw new ServiceError("Cupo de la ola lleno.", 409);
+  }
+  if (error?.code === "42501" || msg.includes("No autorizado")) {
+    throw new ServiceError("No autorizado.", 403);
+  }
+  throw new ServiceError(msg || "Error Premanifiesto.", 400);
+}
+
+/** @deprecated Use getPremanifiestoDia — mantiene compat mínima sin CSI en claro. */
 export async function listPremanifiesto(client, empresaId, opts) {
+  if (opts?.fecha && opts?.workspaceId) {
+    return getPremanifiestoDia(client, empresaId, opts.workspaceId, opts.fecha, opts.userId);
+  }
   return listByFecha(client, "rh_premanifiesto", empresaId, opts?.workspaceId, opts?.fecha);
 }
 
-export async function upsertPremanifiesto(client, userId, body) {
+export async function getPremanifiestoDia(client, empresaId, workspaceId, fecha, userId) {
   if (!client) throw new ServiceError("Cliente Supabase requerido.", 500);
-  const row = {
-    empresa_id: body.empresa_id,
-    workspace_id: body.workspace_id,
-    fecha: body.fecha,
-    prospect_nombre: body.prospect_nombre || null,
-    prospect_id: body.prospect_id || null,
-    show_time: body.show_time || null,
-    notes: body.notes || null,
-    status: body.status || "pendiente",
-    created_by: userId,
-  };
-  if (body.id) {
-    const { data, error } = await client
-      .from("rh_premanifiesto")
-      .update(row)
-      .eq("id", body.id)
-      .eq("empresa_id", body.empresa_id)
-      .select()
-      .maybeSingle();
-    if (error) throw new ServiceError(error.message, 400);
-    if (!data) throw new ServiceError("No autorizado.", 403);
-    return data;
-  }
-  const { data, error } = await client.from("rh_premanifiesto").insert(row).select().single();
-  if (error) throw new ServiceError(error.message, 400);
+  const { data, error } = await client.rpc("rh_premanifiesto_dia", {
+    p_empresa_id: empresaId,
+    p_workspace_id: workspaceId,
+    p_fecha: fecha,
+    p_user_id: userId,
+  });
+  if (error) mapPremanifiestoRpcError(error);
   return data;
+}
+
+export async function registrarPremanifiestoPareja(client, userId, body) {
+  if (!client) throw new ServiceError("Cliente Supabase requerido.", 500);
+  const { data, error } = await client.rpc("rh_premanifiesto_registrar_pareja", {
+    p_empresa_id: body.empresa_id,
+    p_workspace_id: body.workspace_id,
+    p_fecha: body.fecha,
+    p_ola_config_id: body.ola_config_id,
+    p_origen: body.origen,
+    p_prospect_nombre: body.prospect_nombre,
+    p_user_id: userId,
+    p_estado_procedencia: body.estado_procedencia ?? null,
+    p_agencia: body.agencia ?? null,
+    p_contrato: body.contrato ?? null,
+    p_check_in: body.check_in ?? null,
+    p_check_out: body.check_out ?? null,
+    p_room_type: body.room_type ?? null,
+    p_room_number: body.room_number ?? null,
+    p_nights: body.nights ?? null,
+    p_notas_csi: body.notas_csi ?? null,
+    p_notes: body.notes ?? null,
+  });
+  if (error) mapPremanifiestoRpcError(error);
+  return data;
+}
+
+export async function tomarCasoPremanifiesto(client, userId, empresaId, rowId, prospectId) {
+  if (!client) throw new ServiceError("Cliente Supabase requerido.", 500);
+  const { data, error } = await client.rpc("rh_premanifiesto_tomar_caso", {
+    p_empresa_id: empresaId,
+    p_row_id: rowId,
+    p_prospect_id: prospectId ?? null,
+    p_user_id: userId,
+  });
+  if (error) mapPremanifiestoRpcError(error);
+  return data;
+}
+
+export async function actualizarPremanifiesto(client, userId, empresaId, rowId, patch) {
+  if (!client) throw new ServiceError("Cliente Supabase requerido.", 500);
+  const { data, error } = await client.rpc("rh_premanifiesto_actualizar", {
+    p_empresa_id: empresaId,
+    p_row_id: rowId,
+    p_patch: patch || {},
+    p_user_id: userId,
+  });
+  if (error) mapPremanifiestoRpcError(error);
+  return data;
+}
+
+export async function getPremanifiestoOlaConfig(client, empresaId) {
+  if (!client) throw new ServiceError("Cliente Supabase requerido.", 500);
+  const { data, error } = await client
+    .from("rh_premanifiesto_ola_config")
+    .select("*")
+    .eq("empresa_id", empresaId)
+    .order("orden", { ascending: true });
+  if (error) throw new ServiceError(error.message, 400);
+  return data || [];
+}
+
+export async function savePremanifiestoOlaConfig(client, userId, empresaId, olas) {
+  if (!client) throw new ServiceError("Cliente Supabase requerido.", 500);
+  const rows = (olas || []).map((o) => ({
+    empresa_id: empresaId,
+    orden: Number(o.orden),
+    etiqueta: String(o.etiqueta || `OLA ${o.orden}`),
+    hora: o.hora,
+    cupo_max: Math.max(1, Number(o.cupo_max) || 1),
+    activo: o.activo !== false,
+    updated_at: new Date().toISOString(),
+    updated_by: userId,
+  }));
+  const { data, error } = await client
+    .from("rh_premanifiesto_ola_config")
+    .upsert(rows, { onConflict: "empresa_id,orden" })
+    .select()
+    .order("orden", { ascending: true });
+  if (error) throw new ServiceError(error.message, 400);
+  return data || [];
+}
+
+/** @deprecated Use registrarPremanifiestoPareja / actualizarPremanifiesto */
+export async function upsertPremanifiesto(client, userId, body) {
+  if (body.id) {
+    return actualizarPremanifiesto(client, userId, body.empresa_id, body.id, body);
+  }
+  return registrarPremanifiestoPareja(client, userId, {
+    ...body,
+    origen: body.origen || "marketing",
+    ola_config_id: body.ola_config_id,
+  });
 }
 
 export async function listLineaAsignacion(client, empresaId, opts) {
@@ -790,4 +880,70 @@ export async function resumenVentas(client, empresaId, { workspaceId, from, to }
     byPos[k] = (byPos[k] || 0) + 1;
   }
   return { count: rows.length, total_monto: totalMonto, by_posicion: byPos, rows };
+}
+
+const RH_MONEY_BOX_DEFAULT_PLANS = {
+  wo1m: "60",
+  wo1r: "12.99",
+  wo2m: "48",
+  wo2r: "8.90",
+  wo3m: "12",
+  wo3r: "0",
+};
+
+const RH_MONEY_BOX_DEFAULT_RESTRICTIONS = {
+  minDownPct: "30",
+  maxDownPct: "50",
+  fc: "0",
+  ff: "0",
+  maxSale: "150,000.00",
+  roundStep: "0.01",
+};
+
+function mergeRhMoneyBoxRow(data, empresaId) {
+  return {
+    empresa_id: empresaId,
+    plans: { ...RH_MONEY_BOX_DEFAULT_PLANS, ...(data?.plans || {}) },
+    restrictions: { ...RH_MONEY_BOX_DEFAULT_RESTRICTIONS, ...(data?.restrictions || {}) },
+    updated_at: data?.updated_at || null,
+    updated_by: data?.updated_by || null,
+  };
+}
+
+export async function getRhMoneyBoxConfig(client, empresaId) {
+  if (!client) throw new ServiceError("Cliente Supabase requerido.", 500);
+  const { data, error } = await client
+    .from("rh_money_box_config")
+    .select("*")
+    .eq("empresa_id", empresaId)
+    .maybeSingle();
+  if (error) throw new ServiceError(error.message, 400);
+  return mergeRhMoneyBoxRow(data, empresaId);
+}
+
+export async function saveRhMoneyBoxConfig(client, userId, empresaId, patch = {}) {
+  if (!client) throw new ServiceError("Cliente Supabase requerido.", 500);
+  const current = await getRhMoneyBoxConfig(client, empresaId);
+  const nextPlans = patch.plans != null
+    ? { ...RH_MONEY_BOX_DEFAULT_PLANS, ...patch.plans }
+    : current.plans;
+  const nextRestrictions = patch.restrictions != null
+    ? { ...RH_MONEY_BOX_DEFAULT_RESTRICTIONS, ...patch.restrictions }
+    : current.restrictions;
+  const { data, error } = await client
+    .from("rh_money_box_config")
+    .upsert(
+      {
+        empresa_id: empresaId,
+        plans: nextPlans,
+        restrictions: nextRestrictions,
+        updated_at: new Date().toISOString(),
+        updated_by: userId,
+      },
+      { onConflict: "empresa_id" },
+    )
+    .select()
+    .single();
+  if (error) throw new ServiceError(error.message, 400);
+  return mergeRhMoneyBoxRow(data, empresaId);
 }

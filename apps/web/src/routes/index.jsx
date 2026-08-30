@@ -13,7 +13,9 @@ import { ExpedienteLinkPage } from "@/pages/ExpedienteLinkPage.jsx";
 import { ExpedienteInvitePage } from "@/pages/ExpedienteInvitePage.jsx";
 import { CalendarPage } from "@/components/calendar/calendar-page.jsx";
 import { AdminSection } from "@/layouts/AdminSection.jsx";
+import { RhPremanifiestoGate } from "@/components/auth/RhPremanifiestoGate.jsx";
 import { ToolPermissionGate } from "@/components/auth/ToolPermissionGate.jsx";
+import { FlagsUnavailableGate } from "@/components/auth/FlagsUnavailableGate.jsx";
 import {
   SurveyPage,
   VacacionesPage,
@@ -68,6 +70,10 @@ function ClientDetailRoute() {
 function gatedTool(tool, page) {
   if (tool === "money-box") return page;
   return <ToolPermissionGate tool={tool}>{page}</ToolPermissionGate>;
+}
+
+function gatedRh(page) {
+  return <FlagsUnavailableGate>{page}</FlagsUnavailableGate>;
 }
 
 function ClientToolRoute({ tool }) {
@@ -153,19 +159,19 @@ export function AppRoutes() {
         <Route path="tools/vacaciones" element={gatedTool("vacaciones", <Lazy><VacacionesPage /></Lazy>)} />
         <Route path="tools/worksheet" element={gatedTool("worksheet", <Lazy><WorksheetPage /></Lazy>)} />
         <Route path="tools/money-box" element={<Lazy><MoneyBoxPage /></Lazy>} />
-        <Route path="tools/rh/bottom-lines" element={<Lazy><RhBottomLinesPage /></Lazy>} />
-        <Route path="tools/rh/comisiones" element={<Lazy><RhComisionesPage /></Lazy>} />
-        <Route path="tools/rh/creditos" element={<Lazy><RhCreditosPage /></Lazy>} />
-        <Route path="tools/rh/calendario-comisiones" element={<Lazy><RhCalendarioComisionesPage /></Lazy>} />
-        <Route path="tools/rh/dias-descanso" element={<Lazy><RhDiasDescansoPage /></Lazy>} />
-        <Route path="ops/rh" element={<Lazy><RhOpsHubPage /></Lazy>} />
-        <Route path="ops/rh/premanifiesto" element={<Lazy><RhPremanifiestoPage /></Lazy>} />
-        <Route path="ops/rh/linea" element={<Lazy><RhLineaPage /></Lazy>} />
-        <Route path="ops/rh/resumen" element={<Lazy><RhResumenOpsPage /></Lazy>} />
-        <Route path="ops/rh/estadisticos" element={<Lazy><RhEstadisticosPage /></Lazy>} />
-        <Route path="ops/rh/okr" element={<Lazy><RhOkrPage /></Lazy>} />
-        <Route path="ops/rh/calendario-descansos" element={<Lazy><RhCalendarioDescansosPage /></Lazy>} />
-        <Route path="ops/rh/propinas" element={<Lazy><RhPropinasPage /></Lazy>} />
+        <Route path="tools/rh/bottom-lines" element={gatedRh(<Lazy><RhBottomLinesPage /></Lazy>)} />
+        <Route path="tools/rh/comisiones" element={gatedRh(<Lazy><RhComisionesPage /></Lazy>)} />
+        <Route path="tools/rh/creditos" element={gatedRh(<Lazy><RhCreditosPage /></Lazy>)} />
+        <Route path="tools/rh/calendario-comisiones" element={gatedRh(<Lazy><RhCalendarioComisionesPage /></Lazy>)} />
+        <Route path="tools/rh/dias-descanso" element={gatedRh(<Lazy><RhDiasDescansoPage /></Lazy>)} />
+        <Route path="ops/rh" element={gatedRh(<Lazy><RhOpsHubPage /></Lazy>)} />
+        <Route path="ops/rh/premanifiesto" element={gatedRh(<Lazy><RhPremanifiestoGate><RhPremanifiestoPage /></RhPremanifiestoGate></Lazy>)} />
+        <Route path="ops/rh/linea" element={gatedRh(<Lazy><RhLineaPage /></Lazy>)} />
+        <Route path="ops/rh/resumen" element={gatedRh(<Lazy><RhResumenOpsPage /></Lazy>)} />
+        <Route path="ops/rh/estadisticos" element={gatedRh(<Lazy><RhEstadisticosPage /></Lazy>)} />
+        <Route path="ops/rh/okr" element={gatedRh(<Lazy><RhOkrPage /></Lazy>)} />
+        <Route path="ops/rh/calendario-descansos" element={gatedRh(<Lazy><RhCalendarioDescansosPage /></Lazy>)} />
+        <Route path="ops/rh/propinas" element={gatedRh(<Lazy><RhPropinasPage /></Lazy>)} />
         <Route path="settings" element={<Lazy><SettingsPage /></Lazy>} />
         <Route path="admin" element={<AdminSection />}>
           <Route index element={<Lazy><AdminOverviewPage /></Lazy>} />

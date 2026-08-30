@@ -144,6 +144,65 @@ for (const pack of packs || []) {
 }
 console.log("✓ Flag en paquetes de la empresa");
 
+// Pestaña Money Box (hijo de worksheet.royal_holiday)
+let { data: mbFlag } = await admin
+  .from("flags")
+  .select("id, clave")
+  .eq("empresa_id", empresa.id)
+  .eq("clave", "worksheet.royal_holiday.money_box")
+  .maybeSingle();
+
+if (!mbFlag) {
+  const { data: created, error } = await admin
+    .from("flags")
+    .insert({
+      clave: "worksheet.royal_holiday.money_box",
+      nombre_visible: "Money Box (Worksheet RH)",
+      flag_padre: rhFlag.id,
+      default_global: true,
+      tipo: "custom",
+      empresa_id: empresa.id,
+      punto_extension: "worksheet.tab",
+    })
+    .select("id, clave")
+    .single();
+  if (error) throw new Error(error.message);
+  mbFlag = created;
+  console.log("✓ Flag worksheet.royal_holiday.money_box creado");
+} else {
+  console.log("✓ Flag money_box tab ya existía");
+}
+
+for (const pack of packs || []) {
+  await admin.from("paquete_flags").upsert(
+    { paquete_id: pack.id, flag_id: mbFlag.id, activo: true },
+    { onConflict: "paquete_id,flag_id" },
+  );
+}
+console.log("✓ Tab Money Box en paquetes RH");
+
+// Flags rh.tool.* (incl. Premanifiesto) + paquetes marketing/opc
+const { execSync } = await import("child_process");
+try {
+  execSync("node scripts/seed-rh-tool-flags.mjs", { cwd: root, stdio: "inherit" });
+} catch {
+  console.warn("seed-rh-tool-flags.mjs falló — revisar manualmente");
+}
+
+// Olás Premanifiesto (idempotente; migración 0087 también las siembra)
+const olasSeed = [
+  { orden: 1, etiqueta: "OLA 1", hora: "09:00:00", cupo_max: 10 },
+  { orden: 2, etiqueta: "OLA 2", hora: "10:30:00", cupo_max: 5 },
+  { orden: 3, etiqueta: "OLA 3", hora: "12:30:00", cupo_max: 5 },
+];
+for (const o of olasSeed) {
+  await admin.from("rh_premanifiesto_ola_config").upsert(
+    { empresa_id: empresa.id, ...o, activo: true },
+    { onConflict: "empresa_id,orden" },
+  );
+}
+console.log("✓ Olás Premanifiesto default");
+
 // empresa_miembros: gerente como admin empresa para Back Office
 await admin.from("empresa_miembros").upsert(
   { empresa_id: empresa.id, usuario_id: gerente.id, es_admin: true },

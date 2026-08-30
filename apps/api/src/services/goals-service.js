@@ -1,32 +1,32 @@
+/**
+ * Metas mensuales del vendedor en el workspace activo.
+ * Autorización: metas:ver_editar_propias (fail-closed vía requireWorkspacePermission).
+ */
 import { bodyToGoalUpsert } from "@salesapp/shared/api/validators.js";
 import { ServiceError } from "../lib/service-error.js";
-import { requireWorkspacePermission, scopeByWorkspace } from "../lib/workspace-scope.js";
+import { requireWorkspacePermission } from "../lib/workspace-scope.js";
+import * as metasRepo from "../repositories/goals-repository.js";
 
-export async function listGoals(supabase, userId, year) {
+export async function listarMetas(supabase, userId, year) {
   const workspaceId = await requireWorkspacePermission(supabase, userId, "metas:ver_editar_propias");
-  let q = supabase.from("goals").select("*").eq("user_id", userId);
-  q = scopeByWorkspace(q, workspaceId);
-  if (year) q = q.eq("year", Number(year));
-  const { data, error } = await q;
-  if (error) throw new ServiceError(error.message, 500);
-  return data ?? [];
+  return metasRepo.listarMetasDeUsuario(supabase, { userId, workspaceId, year });
 }
 
-export async function upsertGoal(supabase, userId, body) {
+export async function guardarMeta(supabase, userId, body) {
   const workspaceId = await requireWorkspacePermission(supabase, userId, "metas:ver_editar_propias");
   const row = bodyToGoalUpsert(body, userId, workspaceId);
   if (!row) throw new ServiceError("year y month son requeridos.");
-  const { data, error } = await supabase.from("goals").upsert(row, { onConflict: "user_id,year,month" }).select().single();
-  if (error) throw new ServiceError(error.message, 400);
-  return data;
+  return metasRepo.guardarMetaDeUsuario(supabase, row);
 }
 
-export async function deleteGoal(supabase, userId, year, month) {
+export async function eliminarMeta(supabase, userId, year, month) {
   if (!year || month < 0 || month > 11) throw new ServiceError("year y month requeridos.");
   const workspaceId = await requireWorkspacePermission(supabase, userId, "metas:ver_editar_propias");
-  let q = supabase.from("goals").delete().eq("user_id", userId).eq("year", year).eq("month", month);
-  q = scopeByWorkspace(q, workspaceId);
-  const { error } = await q;
-  if (error) throw new ServiceError(error.message, 400);
+  await metasRepo.eliminarMetaDeUsuario(supabase, { userId, workspaceId, year, month });
   return { ok: true };
 }
+
+/** Alias de compatibilidad interna. */
+export const listGoals = listarMetas;
+export const upsertGoal = guardarMeta;
+export const deleteGoal = eliminarMeta;

@@ -4,6 +4,7 @@
 import { ServiceError, assertFound } from "../lib/service-error.js";
 import { adminClient, requireEmpresaAdmin, empresaFromWorkspace } from "../lib/tenant-access.js";
 import { createServiceSupabaseClient } from "../lib/supabase-server.js";
+import { rpcEffectiveWorkspacePermissions } from "../lib/workspace-permission-rpc.js";
 
 async function keysToPermisoIds(admin, keys) {
   const list = [...new Set((keys || []).filter((k) => typeof k === "string" && k.length))];
@@ -20,12 +21,8 @@ async function keysToPermisoIds(admin, keys) {
 
 async function effectiveKeysForActor(admin, actorId, { empresaId, salaId }) {
   if (salaId) {
-    const { data, error } = await admin.rpc("effective_workspace_permissions", {
-      p_usuario_id: actorId,
-      p_workspace_id: salaId,
-    });
-    if (error) throw new ServiceError(error.message, 500);
-    return new Set(Array.isArray(data) ? data : []);
+    const data = await rpcEffectiveWorkspacePermissions(admin, actorId, salaId);
+    return new Set(data);
   }
   // Admin de empresa: techo = catálogo completo (mismo que user_is_empresa_admin).
   const { data: isAdmin } = await admin.rpc("user_is_empresa_admin", {

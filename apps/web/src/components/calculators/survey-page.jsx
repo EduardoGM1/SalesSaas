@@ -58,7 +58,7 @@ interface SurveyPageProps {
 
 export function SurveyPage({ clientId, shared }: SurveyPageProps) {
   const { t } = useI18n();
-  const { flags, hasCatalog } = useFlags();
+  const { flags, hasCatalog, flagsStatus } = useFlags();
   const session = useToolSession({ clientId, shared, section: "survey" });
   const {
     ready, readOnly, backHref, getBucket, saveBucket, syncProspectFields,
@@ -172,12 +172,13 @@ export function SurveyPage({ clientId, shared }: SurveyPageProps) {
   const progressPct = totalQuestions ? Math.round((answered / totalQuestions) * 100) : 0;
 
   const visibleTabs = useMemo(() => {
+    if (flagsStatus === "unavailable") return [];
     if (!hasCatalog) return TABS;
     return TABS.filter((item) => {
       const flagKey = SURVEY_TAB_FLAGS[item.id];
       return !flagKey || flags[flagKey] === true;
     });
-  }, [hasCatalog, flags]);
+  }, [hasCatalog, flags, flagsStatus]);
 
   useEffect(() => {
     if (!visibleTabs.length) return;

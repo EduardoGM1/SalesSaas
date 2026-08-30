@@ -12,12 +12,26 @@ import { MONEY_BOX_FLAG } from "@/lib/auth/tool-flags.js";
 export function useFeatureAccess(featureKey) {
   const { plan, status, premiumFeatures, ready: planReady, loading: planLoading } = useUserPlan();
   const flagClave = featureKey === "money_box" ? MONEY_BOX_FLAG : featureKey;
-  const { enabled, loading: flagLoading, legacy, ready: flagReady } = useFlag(flagClave);
+  const { enabled, loading: flagLoading, legacy, ready: flagReady, flagsStatus } = useFlag(flagClave);
 
   return useMemo(() => {
     const feature = (premiumFeatures || []).find((f) => f.clave === featureKey) || null;
     const requiredPlan = feature?.plan_minimo || (featureKey ? "pro" : "basico");
 
+    if (flagsStatus === "unavailable") {
+      return {
+        allowed: false,
+        locked: true,
+        loading: false,
+        ready: true,
+        unavailable: true,
+        plan,
+        status,
+        requiredPlan,
+        feature,
+        via: "unavailable",
+      };
+    }
     if (!legacy && flagReady) {
       const allowed = enabled;
       const locked = !allowed;
@@ -26,6 +40,7 @@ export function useFeatureAccess(featureKey) {
         locked,
         loading: Boolean(flagLoading),
         ready: true,
+        unavailable: false,
         plan,
         status,
         requiredPlan,
@@ -42,6 +57,7 @@ export function useFeatureAccess(featureKey) {
       locked,
       loading: Boolean(planLoading) || !ready,
       ready: Boolean(ready),
+      unavailable: false,
       plan,
       status,
       requiredPlan,
@@ -59,5 +75,6 @@ export function useFeatureAccess(featureKey) {
     flagLoading,
     flagReady,
     legacy,
+    flagsStatus,
   ]);
 }

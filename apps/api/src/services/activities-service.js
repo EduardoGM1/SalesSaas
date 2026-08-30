@@ -1,72 +1,67 @@
+/**
+ * Actividades ligadas a expedientes. Lectura de equipo vs propias según teamScope.
+ */
 import { isUuid } from "@salesapp/shared/data/mappers.js";
 import { bodyToActivityInsert } from "@salesapp/shared/api/validators.js";
-import { ACTIVITY_LIST_COLUMNS } from "@salesapp/shared/data/sync-columns.js";
-import { ServiceError, assertFound } from "../lib/service-error.js";
+import { ServiceError } from "../lib/service-error.js";
 import {
   getRequestWorkspaceContext,
   requireWorkspacePermission,
-  scopeByWorkspace,
 } from "../lib/workspace-scope.js";
+import * as actividadesRepo from "../repositories/activities-repository.js";
 
-export async function listActivities(supabase, userId, { limit, offset, prospect_id }) {
+export async function listarActividades(supabase, userId, { limit, offset, prospect_id }) {
   const ctx = await getRequestWorkspaceContext(supabase, userId);
   const required = ctx.teamScope ? "expedientes:ver_equipo" : "expedientes:ver_propios";
   await requireWorkspacePermission(supabase, userId, required, ctx.workspaceId);
-  let q = supabase
-    .from("activities")
-    .select(ACTIVITY_LIST_COLUMNS, { count: "exact" })
-    .order("created_at", { ascending: false })
-    .range(offset, offset + limit - 1);
-  q = scopeByWorkspace(q, ctx.workspaceId);
-  if (!ctx.teamScope) q = q.eq("user_id", userId);
-  if (prospect_id && isUuid(prospect_id)) q = q.eq("prospect_id", prospect_id);
-  const { data, error, count } = await q;
-  if (error) throw new ServiceError(error.message, 500);
-  return { data: data ?? [], total: count ?? 0, limit, offset };
+  return actividadesRepo.listarActividades(supabase, {
+    userId,
+    workspaceId: ctx.workspaceId,
+    teamScope: ctx.teamScope,
+    limit,
+    offset,
+    prospect_id,
+  });
 }
 
-export async function createActivity(supabase, userId, body) {
+export async function crearActividad(supabase, userId, body) {
   const workspaceId = await requireWorkspacePermission(supabase, userId, "expedientes:editar");
   const row = bodyToActivityInsert(body, userId, workspaceId);
   if (!row) throw new ServiceError("type es requerido.");
-  const { data, error } = await supabase.from("activities").insert(row).select().single();
-  if (error) throw new ServiceError(error.message, 400);
-  return data;
+  return actividadesRepo.insertarActividad(supabase, row);
 }
 
-export async function getActivity(supabase, userId, id) {
+export async function obtenerActividad(supabase, userId, id) {
   if (!isUuid(id)) throw new ServiceError("ID inválido.");
   const ctx = await getRequestWorkspaceContext(supabase, userId);
   const required = ctx.teamScope ? "expedientes:ver_equipo" : "expedientes:ver_propios";
   await requireWorkspacePermission(supabase, userId, required, ctx.workspaceId);
-  let q = supabase.from("activities").select(ACTIVITY_LIST_COLUMNS).eq("id", id);
-  q = scopeByWorkspace(q, ctx.workspaceId);
-  if (!ctx.teamScope) q = q.eq("user_id", userId);
-  const { data, error } = await q.maybeSingle();
-  if (error) throw new ServiceError(error.message, 500);
-  return assertFound(data, "Actividad no encontrada.");
+  return actividadesRepo.obtenerActividad(supabase, {
+    id,
+    userId,
+    workspaceId: ctx.workspaceId,
+    teamScope: ctx.teamScope,
+  });
 }
 
-export async function updateActivity(supabase, userId, id, body) {
+export async function actualizarActividad(supabase, userId, id, body) {
   if (!isUuid(id)) throw new ServiceError("ID inválido.");
   const patch = { ...body };
   delete patch.id;
   delete patch.user_id;
   const workspaceId = await requireWorkspacePermission(supabase, userId, "expedientes:editar");
-  let q = supabase.from("activities").update(patch).eq("id", id).eq("user_id", userId);
-  q = scopeByWorkspace(q, workspaceId);
-  const { data, error } = await q.select().maybeSingle();
-  if (error) throw new ServiceError(error.message, 400);
-  return assertFound(data, "Actividad no encontrada.");
+  return actividadesRepo.actualizarActividad(supabase, { id, userId, workspaceId, patch });
 }
 
-export async function deleteActivity(supabase, userId, id) {
+export async function eliminarActividad(supabase, userId, id) {
   if (!isUuid(id)) throw new ServiceError("ID inválido.");
   const workspaceId = await requireWorkspacePermission(supabase, userId, "expedientes:editar");
-  let q = supabase.from("activities").delete({ count: "exact" }).eq("id", id).eq("user_id", userId);
-  q = scopeByWorkspace(q, workspaceId);
-  const { error, count } = await q;
-  if (error) throw new ServiceError(error.message, 400);
-  if (!count) throw new ServiceError("Actividad no encontrada.", 404);
+  await actividadesRepo.eliminarActividad(supabase, { id, userId, workspaceId });
   return { ok: true };
 }
+
+export const listActivities = listarActividades;
+export const createActivity = crearActividad;
+export const getActivity = obtenerActividad;
+export const updateActivity = actualizarActividad;
+export const deleteActivity = eliminarActividad;

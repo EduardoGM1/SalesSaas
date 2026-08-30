@@ -1,4 +1,7 @@
-import * as delegacionService from "../services/delegacion-service.js";
+/**
+ * Controller de delegación de permisos (techo, asistente, acceso cruzado).
+ * No relaja requireWorkspacePermission: eso vive en delegacion-service.
+ */
 
 export async function listarTechoDelegacion(auth, query) {
   return delegacionService.listCeilingKeys(auth.userId, {

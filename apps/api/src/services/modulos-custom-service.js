@@ -6,6 +6,7 @@ import { ServiceError, assertFound } from "../lib/service-error.js";
 import { createServiceSupabaseClient } from "../lib/supabase-server.js";
 import { requireEmpresaAdmin } from "../lib/tenant-access.js";
 import { getRequestWorkspaceId } from "../lib/workspace-scope.js";
+import { rpcResolverWorkspaceFlag } from "../lib/workspace-permission-rpc.js";
 
 const PUNTOS_EXTENSION = new Set([
   "expediente.tab",
@@ -206,13 +207,8 @@ async function assertWorkspaceEmpresaAccess(supabase, userId, workspaceId) {
 }
 
 async function assertModuleEnabledInWorkspace(supabase, userId, workspaceId, modulo) {
-  const { data, error } = await supabase.rpc("resolver_workspace_flag", {
-    p_clave: modulo.clave,
-    p_usuario_id: userId,
-    p_workspace_id: workspaceId,
-  });
-  if (error) throw new ServiceError(error.message, 500);
-  if (data !== true) throw new ServiceError("Módulo no habilitado en este workspace.", 403);
+  const enabled = await rpcResolverWorkspaceFlag(supabase, userId, workspaceId, modulo.clave);
+  if (enabled !== true) throw new ServiceError("Módulo no habilitado en este workspace.", 403);
 }
 
 /** Módulos custom habilitados en el workspace activo (operacional, no admin). */
@@ -230,11 +226,7 @@ export async function listEnabledCustomModulesForWorkspace(supabase, userId, { p
   const out = [];
   for (const mod of mods ?? []) {
     if (punto && mod.punto_extension !== punto) continue;
-    const { data: enabled } = await supabase.rpc("resolver_workspace_flag", {
-      p_clave: mod.clave,
-      p_usuario_id: userId,
-      p_workspace_id: workspaceId,
-    });
+    const enabled = await rpcResolverWorkspaceFlag(supabase, userId, workspaceId, mod.clave);
     if (enabled === true) out.push(mod);
   }
   return out;

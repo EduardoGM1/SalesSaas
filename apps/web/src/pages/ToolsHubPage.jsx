@@ -15,6 +15,7 @@ import { useUserPermissions } from "@/hooks/use-user-permissions.js";
 import { useFlags } from "@/hooks/use-flag.js";
 import { TOOL_PERMISSION_KEYS } from "@/lib/auth/tool-permissions.js";
 import { TOOL_FLAG_KEYS, WORKSHEET_ROYAL_HOLIDAY_FLAG, RH_TOOL_FLAGS } from "@/lib/auth/tool-flags.js";
+import { PermissionsUnavailableNotice } from "@/components/auth/permissions-unavailable-notice.jsx";
 
 function ToolLink({ href, label, desc, icon: Icon, tone, onClick }) {
   return (
@@ -81,12 +82,14 @@ export function ToolsHubPage() {
   const setToolMode = useAppStore((s) => s.setToolMode);
   const { t } = useI18n();
   const { can, ready: permReady } = useUserPermissions();
-  const { isEnabled, hasCatalog, ready: flagsReady } = useFlags();
+  const { isEnabled, hasCatalog, ready: flagsReady, flagsStatus } = useFlags();
   const hubReady = flagsReady && permReady;
-  const rhEnabled = hubReady && isEnabled(WORKSHEET_ROYAL_HOLIDAY_FLAG) === true;
+  const flagsUnavailable = flagsStatus === "unavailable";
+  const rhEnabled = hubReady && !flagsUnavailable && isEnabled(WORKSHEET_ROYAL_HOLIDAY_FLAG) === true;
   const [newClientOpen, setNewClientOpen] = useState(false);
 
   const toolAllowed = (tool) => {
+    if (flagsUnavailable) return false;
     const flagKey = TOOL_FLAG_KEYS[tool];
     if (hasCatalog && flagKey) return isEnabled(flagKey) === true;
     return can(TOOL_PERMISSION_KEYS[tool]);
@@ -128,6 +131,8 @@ export function ToolsHubPage() {
 
         {!hubReady ? (
           <ToolsHubSkeleton {...skeletonSpec} />
+        ) : flagsUnavailable ? (
+          <PermissionsUnavailableNotice variant="panel" kind="flags" />
         ) : (
           <ContentFade className="tools-hub-ready">
             {rhEnabled && (

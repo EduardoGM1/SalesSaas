@@ -8,6 +8,8 @@ import {
   hasPendingDeletes,
   mergePendingDeletes,
 } from "@/lib/sync-pending-deletes.js";
+import { mergeSettingsForWorkspace } from "@/lib/storage/settings-scope.js";
+import { getActiveWorkspaceId } from "@/lib/storage/local-storage-adapter";
 
 function tsOfClient(c) {
   return Number(c?.updatedAt || c?.createdAt || 0) || 0;
@@ -282,12 +284,13 @@ function cloudHasTool(bucket) {
 /**
  * @param {import("@/lib/storage/types").AppDatabase} local
  * @param {import("@/lib/storage/types").AppDatabase} remote
- * @param {{ localSettings?: object }} [opts]
+ * @param {{ localSettings?: object, workspaceId?: string|null }} [opts]
  */
 export function mergeSyncDatabases(local, remote, opts = {}) {
   const baseRemote = remote && typeof remote === "object" ? remote : {};
   const baseLocal = local && typeof local === "object" ? local : {};
   const localSettings = opts.localSettings ?? baseLocal.settings ?? {};
+  const workspaceId = opts.workspaceId ?? getActiveWorkspaceId();
 
   return {
     clients: mergeClients(baseLocal.clients, baseRemote.clients),
@@ -296,7 +299,7 @@ export function mergeSyncDatabases(local, remote, opts = {}) {
     goals: mergeGoals(baseLocal.goals, baseRemote.goals),
     libre: mergeLibre(baseLocal.libre, baseRemote.libre),
     userActivities: mergeUserActivities(baseLocal.userActivities, baseRemote.userActivities),
-    settings: { ...(baseRemote.settings || {}), ...localSettings },
+    settings: mergeSettingsForWorkspace(localSettings, baseRemote.settings, workspaceId),
     pendingDeletes: mergePendingDeletes(
       baseLocal.pendingDeletes || emptyPendingDeletes(),
       baseRemote.pendingDeletes,

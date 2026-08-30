@@ -16,54 +16,6 @@ function ModuleShell({ title, children }) {
   );
 }
 
-export function RhPremanifiestoPage() {
-  const { empresaId, workspaceId, ready } = useRhEmpresa();
-  const [fecha, setFecha] = useState(today);
-  const [rows, setRows] = useState([]);
-  const [nombre, setNombre] = useState("");
-
-  const reload = () => {
-    if (!empresaId) return;
-    royalHolidayApi.listPremanifiesto(empresaId, { workspaceId, fecha }).then(setRows).catch((e) => toast.error(e.message));
-  };
-  useEffect(() => { if (ready && empresaId) reload(); }, [empresaId, workspaceId, fecha, ready]);
-
-  const add = async () => {
-    try {
-      await royalHolidayApi.savePremanifiesto(empresaId, {
-        workspace_id: workspaceId,
-        fecha,
-        prospect_nombre: nombre,
-      });
-      setNombre("");
-      reload();
-    } catch (e) {
-      toast.error(e.message);
-    }
-  };
-
-  if (!ready) return <RhToolLoading title="Premanifiesto" backHref="/ops/rh" />;
-  return (
-    <ModuleShell title="Premanifiesto">
-      <div className="card tool-calc-card">
-        <div className="frow tool-frow"><div className="flabel">Fecha</div>
-          <input className="input" type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} /></div>
-        <div className="frow tool-frow"><div className="flabel">Prospecto</div>
-          <input className="input" value={nombre} onChange={(e) => setNombre(e.target.value)} /></div>
-        <div className="save-footer"><button type="button" className="btn btn-primary" onClick={add}>Agregar</button></div>
-        <table className="client-table" style={{ marginTop: 12 }}>
-          <thead><tr><th>Nombre</th><th>Status</th><th>Notas</th></tr></thead>
-          <tbody>
-            {rows.map((r) => (
-              <tr key={r.id}><td>{r.prospect_nombre}</td><td>{r.status}</td><td>{r.notes || "—"}</td></tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </ModuleShell>
-  );
-}
-
 export function RhLineaPage() {
   const { empresaId, workspaceId, ready } = useRhEmpresa();
   const [fecha, setFecha] = useState(today);

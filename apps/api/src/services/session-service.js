@@ -1,9 +1,9 @@
 import { ServiceError } from "../lib/service-error.js";
 import { getCurrentMembership, listPremiumFeatures } from "./membership-service.js";
 import { resolveUserPermissions } from "@salesapp/shared/auth/resolve-permissions.js";
-import { VENDEDOR_DEFAULT_PERMISSIONS } from "@salesapp/shared/auth/permission-catalog.js";
 import { resolveSessionFlags } from "./flags-service.js";
 import * as workspaceService from "./workspace-service.js";
+import { resolveSalaSessionPermissionKeys } from "../lib/workspace-permission-rpc.js";
 
 async function loadRolePermissionKeys(supabase, roleId) {
   if (!roleId) return [];
@@ -16,74 +16,29 @@ async function loadRolePermissionKeys(supabase, roleId) {
 
 /**
  * Fuente única de permisos de sesión:
- * - Sala: workspace_miembros.role_id + overrides de sala (vía RPC o fallback)
- * - Personal / plataforma: profiles.role_id + overrides globales aditivos
- * Superadmin/Soporte (plataforma) siguen usando el perfil global.
+ * - Sala: solo effective_workspace_permissions. Si el RPC falla → keys [] + unavailable
+ *   (nunca profiles.role_id ni resolve_user_permission_keys).
+ * - Personal / plataforma: profiles.role_id + overrides globales aditivos.
+ * Superadmin de plataforma sigue usando el perfil global (justificado: no es tenant de sala).
  */
 async function resolveSessionPermissionKeys(supabase, userId, profile, workspaceActivo) {
   if (profile?.is_super_admin === true && profile?.role === "admin") {
-    return [...resolveUserPermissions({
-      is_super_admin: true,
-      role: "admin",
-    })];
+    return {
+      keys: [...resolveUserPermissions({
+        is_super_admin: true,
+        role: "admin",
+      })],
+      status: "ok",
+    };
   }
 
   const isSala = workspaceActivo?.tipo === "sala_de_venta" && workspaceActivo?.id;
   if (isSala) {
-    const { data: rpcKeys, error: rpcErr } = await supabase.rpc("effective_workspace_permissions", {
-      p_usuario_id: userId,
-      p_workspace_id: workspaceActivo.id,
-    });
-    if (!rpcErr && Array.isArray(rpcKeys)) {
-      return rpcKeys;
-    }
-
-    const { data: membership } = await supabase
-      .from("workspace_miembros")
-      .select("role_id, rol_en_workspace")
-      .eq("workspace_id", workspaceActivo.id)
-      .eq("usuario_id", userId)
-      .maybeSingle();
-
-    let rolePermissionKeys = await loadRolePermissionKeys(supabase, membership?.role_id);
-    if (!rolePermissionKeys.length && profile?.role_id) {
-      rolePermissionKeys = await loadRolePermissionKeys(supabase, profile.role_id);
-    }
-
-    const { data: ovRows } = await supabase
-      .from("workspace_usuario_permisos_override")
-      .select("otorgado, permisos(clave)")
-      .eq("workspace_id", workspaceActivo.id)
-      .eq("usuario_id", userId);
-
-    const overrides = (ovRows ?? [])
-      .map((r) => ({ clave: r.permisos?.clave, otorgado: r.otorgado === true }))
-      .filter((o) => o.clave);
-
-    const resolved = resolveUserPermissions({
-      is_super_admin: false,
-      role: profile?.role,
-      role_permission_keys: rolePermissionKeys.length ? rolePermissionKeys : undefined,
-      overrides,
-      admin_permissions: profile?.admin_permissions ?? [],
-      user_permissions: profile?.user_permissions ?? [],
-    });
-
-    if (membership?.rol_en_workspace === "gerente") {
-      for (const k of [
-        "expedientes:ver_equipo",
-        "ventas:ver_equipo",
-        "dashboard:ver_equipo",
-        "metas:ver_equipo",
-      ]) {
-        resolved.add(k);
-      }
-    }
-    return [...resolved];
+    return resolveSalaSessionPermissionKeys(supabase, userId, workspaceActivo.id);
   }
 
   // Workspace personal o sin sala: rol de plataforma en profiles.
-  let rolePermissionKeys = await loadRolePermissionKeys(supabase, profile?.role_id);
+  const rolePermissionKeys = await loadRolePermissionKeys(supabase, profile?.role_id);
   const { data: ovRows } = await supabase
     .from("usuario_permisos_override")
     .select("otorgado, permisos(clave)")
@@ -92,14 +47,17 @@ async function resolveSessionPermissionKeys(supabase, userId, profile, workspace
     .map((r) => ({ clave: r.permisos?.clave, otorgado: r.otorgado === true }))
     .filter((o) => o.clave);
 
-  return [...resolveUserPermissions({
-    is_super_admin: profile?.is_super_admin === true,
-    role: profile?.role,
-    role_permission_keys: rolePermissionKeys.length ? rolePermissionKeys : undefined,
-    overrides,
-    admin_permissions: profile?.admin_permissions ?? [],
-    user_permissions: profile?.user_permissions ?? [],
-  })];
+  return {
+    keys: [...resolveUserPermissions({
+      is_super_admin: profile?.is_super_admin === true,
+      role: profile?.role,
+      role_permission_keys: rolePermissionKeys.length ? rolePermissionKeys : undefined,
+      overrides,
+      admin_permissions: profile?.admin_permissions ?? [],
+      user_permissions: profile?.user_permissions ?? [],
+    })],
+    status: "ok",
+  };
 }
 
 export async function getSession(supabase, userId) {
@@ -157,24 +115,41 @@ export async function getSession(supabase, userId) {
     workspaceActivo = null;
   }
 
-  let permissionKeys = [...VENDEDOR_DEFAULT_PERMISSIONS];
+  let permissionKeys = [];
+  let permissionsStatus = "ok";
   try {
-    permissionKeys = await resolveSessionPermissionKeys(supabase, userId, profile, workspaceActivo);
+    const resolved = await resolveSessionPermissionKeys(supabase, userId, profile, workspaceActivo);
+    permissionKeys = Array.isArray(resolved.keys) ? resolved.keys : [];
+    permissionsStatus = resolved.status || "ok";
   } catch {
-    permissionKeys = [...resolveUserPermissions({
-      is_super_admin: profile?.is_super_admin === true,
-      role: profile?.role,
-      admin_permissions: profile?.admin_permissions ?? [],
-      user_permissions: profile?.user_permissions ?? [],
-    })];
+    const isSala = workspaceActivo?.tipo === "sala_de_venta" && workspaceActivo?.id;
+    if (isSala) {
+      permissionKeys = [];
+      permissionsStatus = "unavailable";
+    } else {
+      permissionKeys = [...resolveUserPermissions({
+        is_super_admin: profile?.is_super_admin === true,
+        role: profile?.role,
+        admin_permissions: profile?.admin_permissions ?? [],
+        user_permissions: profile?.user_permissions ?? [],
+      })];
+      permissionsStatus = "ok";
+    }
   }
 
   let flags = {};
+  let flagsStatus = "ok";
   try {
-    // Tenant-aware: estándar + custom de la empresa del workspace activo (nunca otros tenants).
-    flags = await resolveSessionFlags(supabase, userId, workspaceActivoId);
+    const resolved = await resolveSessionFlags(supabase, userId, workspaceActivoId, {
+      tipo: workspaceActivo?.tipo || null,
+      isSuperAdmin: profile?.is_super_admin === true && profile?.role === "admin",
+    });
+    flags = resolved?.flags && typeof resolved.flags === "object" ? resolved.flags : {};
+    flagsStatus = resolved?.status || "ok";
   } catch {
+    const isSala = workspaceActivo?.tipo === "sala_de_venta" && workspaceActivo?.id;
     flags = {};
+    flagsStatus = isSala ? "unavailable" : "ok";
   }
 
   const enriched = profile
@@ -185,7 +160,9 @@ export async function getSession(supabase, userId) {
         membership_fecha_inicio: membership.fecha_inicio,
         membership_fecha_proximo_cobro: membership.fecha_proximo_cobro,
         permission_keys: permissionKeys,
+        permissions_status: permissionsStatus,
         flags,
+        flags_status: flagsStatus,
         workspace_activo_id: workspaceActivoId,
       }
     : null;
@@ -196,7 +173,9 @@ export async function getSession(supabase, userId) {
     membership,
     premiumFeatures,
     permission_keys: permissionKeys,
+    permissions_status: permissionsStatus,
     flags,
+    flags_status: flagsStatus,
     workspaces,
     workspace_activo_id: workspaceActivoId,
     workspace_activo: workspaceActivo,

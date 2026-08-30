@@ -27,15 +27,15 @@ test.describe("Egress — columnas de sync (estático)", () => {
 
   test("listados REST de sales/activities/calendar no usan select('*')", () => {
     const sales = fs.readFileSync(
-      path.join(root, "apps/api/src/services/sales-service.js"),
+      path.join(root, "apps/api/src/repositories/sales-repository.js"),
       "utf8",
     );
     const activities = fs.readFileSync(
-      path.join(root, "apps/api/src/services/activities-service.js"),
+      path.join(root, "apps/api/src/repositories/activities-repository.js"),
       "utf8",
     );
     const calendar = fs.readFileSync(
-      path.join(root, "apps/api/src/services/calendar-service.js"),
+      path.join(root, "apps/api/src/repositories/calendar-repository.js"),
       "utf8",
     );
     expect(sales).toMatch(/SALE_LIST_COLUMNS/);

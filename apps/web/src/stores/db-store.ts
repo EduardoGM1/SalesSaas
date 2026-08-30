@@ -249,7 +249,7 @@ function ensureSaleInClientAndAgenda(db: AppDatabase, clientId: string, sale: Sa
 }
 
 export const useDbStore = create<DbState>((set, get) => ({
-  db: emptyDatabase(),
+  db: typeof window !== "undefined" ? loadDatabase() : emptyDatabase(),
 
   hydrate: () => set({ db: loadDatabase() }),
 

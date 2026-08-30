@@ -7,10 +7,11 @@ import { useI18n } from "@/hooks/use-i18n.js";
 import { MoneyBoxCalculator } from "@/components/calculators/money-box-calculator.jsx";
 import { useDbStore } from "@/stores/db-store";
 import { shallow } from "zustand/shallow";
+import { PermissionsUnavailableNotice } from "@/components/auth/permissions-unavailable-notice.jsx";
 
 export function MoneyBoxPage({ clientId, shared }) {
   const { t } = useI18n();
-  const { allowed, locked, loading, ready } = useFeatureAccess("money_box");
+  const { allowed, locked, loading, ready, unavailable } = useFeatureAccess("money_box");
   const worksheetConfig = useDbStore((s) => s.db.settings?.worksheetConfig, shallow);
   const moneyBoxConfig = useDbStore((s) => s.db.settings?.moneyBoxConfig, shallow);
 
@@ -30,6 +31,20 @@ export function MoneyBoxPage({ clientId, shared }) {
           </div>
           <CalcCardSkeleton rows={3} boxes={2} />
           <div style={{ marginTop: 12 }}><CalcCardSkeleton rows={4} boxes={0} /></div>
+        </div>
+      </>
+    );
+  }
+
+  if (unavailable) {
+    return (
+      <>
+        <Topbar title={t("moneyBox.title")} subtitle={t("moneyBox.subtitle")} />
+        <div className="sales-page tool-calc-page">
+          <div className="page-toolbar">
+            <PageBack inline href={backHref} fallback={backHref} />
+          </div>
+          <PermissionsUnavailableNotice variant="panel" kind="flags" />
         </div>
       </>
     );

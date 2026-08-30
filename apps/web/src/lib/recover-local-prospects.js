@@ -5,7 +5,8 @@
  * 2) POST /prospects por cada faltante
  * 3) PUT /sync si Outbox dirty, local-ahead o hubo altas
  */
-import { loadDatabase } from "@/lib/storage/local-storage-adapter";
+import { loadDatabase, getActiveWorkspaceId } from "@/lib/storage/local-storage-adapter";
+import { mergeSettingsForWorkspace } from "@/lib/storage/settings-scope.js";
 import { pullViaApi, reconcileViaApi } from "@/lib/sync-api.js";
 import { isEmptyDb, normalizeIds } from "@/lib/data/mappers";
 import { localNeedsOutboundPush } from "@/lib/sync-merge.js";
@@ -131,7 +132,11 @@ export async function recoverLocalProspectsToCloud(opts = {}) {
         runWithoutOutboundSync(() => {
           useDbStore.getState().replaceDb({
             ...remote,
-            settings: { ...(remote.settings || {}), ...localSettings },
+            settings: mergeSettingsForWorkspace(
+              localSettings,
+              remote.settings,
+              getActiveWorkspaceId(),
+            ),
             pendingDeletes: {
               prospects: [],
               sales: [],

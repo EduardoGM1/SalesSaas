@@ -15,7 +15,16 @@ function pruneExpired(now) {
   }
 }
 
-export function rateLimit({ windowMs = 60_000, max = 30, name = "default" } = {}) {
+export function resetRateLimitStore() {
+  buckets.clear();
+}
+
+export function rateLimit({
+  windowMs = 60_000,
+  max = 30,
+  name = "default",
+  message = "Demasiadas solicitudes. Intenta de nuevo en unos segundos.",
+} = {}) {
   return (req, res, next) => {
     const now = Date.now();
     pruneExpired(now);
@@ -28,7 +37,7 @@ export function rateLimit({ windowMs = 60_000, max = 30, name = "default" } = {}
     bucket.count += 1;
     if (bucket.count > max) {
       res.setHeader("Retry-After", String(Math.ceil((bucket.resetAt - now) / 1000)));
-      return apiError(res, "Demasiadas solicitudes. Intenta de nuevo en unos segundos.", 429);
+      return apiError(res, message, 429);
     }
     next();
   };

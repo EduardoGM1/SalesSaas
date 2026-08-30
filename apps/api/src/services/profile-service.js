@@ -1,14 +1,14 @@
+/**
+ * Perfil del usuario autenticado. Merge profundo de settings.workspaces para no pisar otras salas.
+ */
 import { ServiceError } from "../lib/service-error.js";
+import * as perfilRepo from "../repositories/profile-repository.js";
 
-const PROFILE_SELECT = "id, email, full_name, role, phone, avatar_url, settings, created_at, updated_at";
-
-export async function getProfile(supabase, userId) {
-  const { data, error } = await supabase.from("profiles").select(PROFILE_SELECT).eq("id", userId).single();
-  if (error) throw new ServiceError(error.message, 500);
-  return data;
+export async function obtenerPerfil(supabase, userId) {
+  return perfilRepo.obtenerPerfilPorId(supabase, userId);
 }
 
-export function buildProfilePatch(body) {
+export function armarParchePerfil(body) {
   const patch = {};
   if (body.full_name !== undefined || body.fullName !== undefined) patch.full_name = body.full_name ?? body.fullName;
   if (body.phone !== undefined) patch.phone = body.phone;
@@ -20,17 +20,25 @@ export function buildProfilePatch(body) {
   return patch;
 }
 
-export async function updateProfile(supabase, userId, body) {
-  const patch = buildProfilePatch(body);
-  const { data: current, error: readErr } = await supabase
-    .from("profiles")
-    .select("full_name, settings")
-    .eq("id", userId)
-    .maybeSingle();
-  if (readErr) throw new ServiceError(readErr.message, 500);
+export async function actualizarPerfil(supabase, userId, body) {
+  const patch = armarParchePerfil(body);
+  const current = await perfilRepo.obtenerNombreYSettings(supabase, userId);
 
   if (patch.settings) {
-    patch.settings = { ...(current?.settings ?? {}), ...patch.settings };
+    const currentSettings = current?.settings ?? {};
+    const nextSettings = { ...currentSettings, ...patch.settings };
+    if (
+      patch.settings.workspaces
+      && typeof patch.settings.workspaces === "object"
+      && currentSettings.workspaces
+      && typeof currentSettings.workspaces === "object"
+    ) {
+      nextSettings.workspaces = {
+        ...currentSettings.workspaces,
+        ...patch.settings.workspaces,
+      };
+    }
+    patch.settings = nextSettings;
   }
 
   // Evita cuentas con settings.userName real pero full_name vacío → se ven como "Usuario".
@@ -41,29 +49,20 @@ export async function updateProfile(supabase, userId, body) {
     patch.full_name = settingsName;
   }
 
-  const { data, error } = await supabase
-    .from("profiles")
-    .update(patch)
-    .eq("id", userId)
-    .select(PROFILE_SELECT)
-    .single();
-  if (error) throw new ServiceError(error.message, 400);
-  return data;
+  return perfilRepo.actualizarPerfilPorId(supabase, userId, patch);
 }
 
-export async function markPresenceOffline(supabase, userId) {
+export async function marcarPresenciaOffline(supabase, userId) {
   const now = new Date().toISOString();
   try {
     await supabase.rpc("platform_session_end", { p_user_id: userId });
   } catch {
     // fallback: solo last_seen si la migración aún no está aplicada
   }
-  const { data, error } = await supabase
-    .from("profiles")
-    .update({ last_seen_at: now })
-    .eq("id", userId)
-    .select("id, last_seen_at")
-    .single();
-  if (error) throw new ServiceError(error.message, 400);
-  return data;
+  return perfilRepo.actualizarPresenciaOffline(supabase, userId, now);
 }
+
+export const getProfile = obtenerPerfil;
+export const buildProfilePatch = armarParchePerfil;
+export const updateProfile = actualizarPerfil;
+export const markPresenceOffline = marcarPresenciaOffline;

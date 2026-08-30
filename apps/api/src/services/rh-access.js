@@ -13,7 +13,23 @@ export const RH_FLAGS = {
   creditos: "rh.tool.creditos",
   diasDescanso: "rh.tool.dias_descanso",
   ops: "rh.tool.ops",
+  moneyBox: "worksheet.royal_holiday.money_box",
+  premanifiesto: "rh.tool.premanifiesto",
+  premanifiestoMarketing: "rh.tool.premanifiesto.marketing",
+  premanifiestoOpc: "rh.tool.premanifiesto.opc",
+  premanifiestoRep: "rh.tool.premanifiesto.rep",
+  premanifiestoCsi: "rh.tool.premanifiesto.csi",
 };
+
+/** Lectura calendario/olas: gerente vía ops o cualquier flag del módulo. */
+export const RH_PREMANIFIESTO_READ_FLAGS = [
+  RH_FLAGS.ops,
+  RH_FLAGS.premanifiesto,
+  RH_FLAGS.premanifiestoMarketing,
+  RH_FLAGS.premanifiestoOpc,
+  RH_FLAGS.premanifiestoRep,
+  RH_FLAGS.premanifiestoCsi,
+];
 
 /** Catálogo/preview compartidos por worksheet y calculadoras /tools/rh/* */
 export const RH_CATALOG_FLAGS = [

@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:storage": "node --test src/lib/storage/settings-scope.test.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",

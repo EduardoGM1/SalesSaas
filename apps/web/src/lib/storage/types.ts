@@ -175,6 +175,7 @@ export interface AppDatabase {
 }
 
 export interface UserSettings {
+  /** Prefs globales al usuario (siguen al cambiar de workspace). */
   language?: "es" | "en";
   currency?: "USD" | "MXN" | "CAD" | "EUR";
   exchangeRate?: number;
@@ -187,8 +188,9 @@ export interface UserSettings {
   activeCaptureCurrency?: "USD" | "MXN";
   userName?: string;
   userInitials?: string;
+  /** Por workspace: plazos/intereses de Worksheet. */
   worksheetConfig?: Record<string, string>;
-  /** Defaults Money Box (restricciones) por cuenta — no por cliente. */
+  /** Por workspace: defaults Money Box (restricciones de la sala). */
   moneyBoxConfig?: {
     minDownPct?: string;
     maxDownPct?: string;
@@ -197,6 +199,7 @@ export interface UserSettings {
     maxSale?: string;
     roundStep?: string;
   };
+  /** Por workspace: tipos de tour al crear cliente. */
   tourTypes?: string[];
   notifications?: {
     messages?: boolean;

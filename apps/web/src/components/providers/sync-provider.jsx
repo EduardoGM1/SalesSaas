@@ -2,8 +2,10 @@ import { useEffect, useRef } from "react";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { isEmptyDb, normalizeIds } from "@/lib/data/mappers";
 import { pullViaApi, reconcileViaApi } from "@/lib/sync-api.js";
-import { loadDatabase } from "@/lib/storage/local-storage-adapter";
-import { STORAGE_KEY } from "@/lib/storage/keys";
+import { loadDatabase, getActiveWorkspaceId, isCurrentWorkspaceStorageEvent } from "@/lib/storage/local-storage-adapter";
+import { USER_PREFS_KEY } from "@/lib/storage/keys";
+import { applyWorkspaceLocalDatabase } from "@/lib/workspace-local-cache.js";
+import { mergeSettingsForWorkspace } from "@/lib/storage/settings-scope.js";
 import { emptyDatabase } from "@/lib/storage/types";
 import { watchSession } from "@/lib/session-api.js";
 import { registerSyncRefresh, unregisterSyncRefresh } from "@/lib/sync-refresh.js";
@@ -85,7 +87,7 @@ export function SyncProvider({ children }) {
       suspendCloudPersist(true);
       useDbStore.getState().replaceDb({
         ...db,
-        settings: { ...(db.settings || {}), ...localSettings },
+        settings: mergeSettingsForWorkspace(localSettings, db.settings, workspaceIdRef.current),
         pendingDeletes: pending,
       });
       suspendRef.current = false;
@@ -209,6 +211,7 @@ export function SyncProvider({ children }) {
             || localNeedsOutboundPush(local, cloudDb);
           const merged = mergeSyncDatabases(local, cloudDb, {
             localSettings: local.settings,
+            workspaceId: workspaceIdRef.current,
           });
           suspendRef.current = true;
           suspendCloudPersist(true);
@@ -271,6 +274,10 @@ export function SyncProvider({ children }) {
       useSyncStore.getState().refreshPendingFromOutbox();
 
       const account = typeof window !== "undefined" ? localStorage.getItem(ACCOUNT_KEY) : null;
+      const sessionWorkspaceId = workspaceIdRef.current;
+      if (sessionWorkspaceId && sessionWorkspaceId !== getActiveWorkspaceId()) {
+        applyWorkspaceLocalDatabase(sessionWorkspaceId);
+      }
       let localDb = loadDatabase();
       const hadLocalToRecover = !isEmptyDb(localDb) || isOutboxDirty();
 
@@ -323,6 +330,7 @@ export function SyncProvider({ children }) {
       if (!isEmptyDb(cloudDb)) {
         const merged = mergeSyncDatabases(localDb, cloudDb, {
           localSettings: localDb.settings,
+          workspaceId: workspaceIdRef.current,
         });
         applyRemote(merged, { clearPendingDeletes: !hasPendingDeletes(localDb) });
         localStorage.setItem(ACCOUNT_KEY, userId);
@@ -388,7 +396,11 @@ export function SyncProvider({ children }) {
 
     const unsubSession = watchSession((session) => {
       const userId = session?.user?.id;
-      workspaceIdRef.current = session?.workspace_activo_id || session?.workspace_activo?.id || null;
+      const wsId = session?.workspace_activo_id || session?.workspace_activo?.id || null;
+      workspaceIdRef.current = wsId;
+      if (userId && wsId && wsId !== getActiveWorkspaceId()) {
+        applyWorkspaceLocalDatabase(wsId);
+      }
       if (userId) void initForUser(userId);
       else stopForUser();
     });
@@ -453,21 +465,11 @@ export function SyncProvider({ children }) {
     };
 
     const onStorage = (event) => {
-      if (event.key !== STORAGE_KEY || !event.newValue) return;
+      const isPrefs = event.key === USER_PREFS_KEY;
+      if ((!isCurrentWorkspaceStorageEvent(event.key) && !isPrefs) || !event.newValue) return;
       if (!enabledRef.current || suspendRef.current) return;
       try {
-        const parsed = JSON.parse(event.newValue);
-        if (!parsed || typeof parsed !== "object") return;
-        const next = {
-          clients: parsed.clients ?? {},
-          libre: parsed.libre ?? {},
-          cal: parsed.cal ?? {},
-          goals: parsed.goals ?? {},
-          sales: parsed.sales ?? {},
-          userActivities: parsed.userActivities ?? [],
-          settings: parsed.settings ?? emptyDatabase().settings,
-          pendingDeletes: parsed.pendingDeletes ?? emptyPendingDeletes(),
-        };
+        const next = loadDatabase();
         suspendRef.current = true;
         suspendCloudPersist(true);
         useDbStore.getState().replaceDb(next);

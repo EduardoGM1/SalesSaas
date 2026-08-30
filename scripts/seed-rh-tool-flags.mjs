@@ -34,13 +34,25 @@ if (!url || !key) {
 
 const admin = createClient(url, key, { auth: { persistSession: false } });
 
+const PREMANIFIESTO_CHILDREN = new Set([
+  "rh.tool.premanifiesto.marketing",
+  "rh.tool.premanifiesto.opc",
+  "rh.tool.premanifiesto.rep",
+  "rh.tool.premanifiesto.csi",
+]);
+
 const FLAGS = [
-  { clave: "rh.tool.bottom_lines", nombre: "Calculadora B. Lines" },
-  { clave: "rh.tool.comisiones", nombre: "Calculadora Comisiones" },
-  { clave: "rh.tool.calendario_comisiones", nombre: "Calendario comisiones" },
-  { clave: "rh.tool.creditos", nombre: "Calculadora de Créditos" },
-  { clave: "rh.tool.dias_descanso", nombre: "Días de descanso" },
-  { clave: "rh.tool.ops", nombre: "Administrativo operaciones RH" },
+  { clave: "rh.tool.bottom_lines", nombre: "Calculadora B. Lines", padre: "worksheet.royal_holiday" },
+  { clave: "rh.tool.comisiones", nombre: "Calculadora Comisiones", padre: "worksheet.royal_holiday" },
+  { clave: "rh.tool.calendario_comisiones", nombre: "Calendario comisiones", padre: "worksheet.royal_holiday" },
+  { clave: "rh.tool.creditos", nombre: "Calculadora de Créditos", padre: "worksheet.royal_holiday" },
+  { clave: "rh.tool.dias_descanso", nombre: "Días de descanso", padre: "worksheet.royal_holiday" },
+  { clave: "rh.tool.ops", nombre: "Administrativo operaciones RH", padre: "worksheet.royal_holiday" },
+  { clave: "rh.tool.premanifiesto", nombre: "Premanifiesto RH", padre: "rh.tool.ops" },
+  { clave: "rh.tool.premanifiesto.marketing", nombre: "Premanifiesto — Marketing", padre: "rh.tool.premanifiesto" },
+  { clave: "rh.tool.premanifiesto.opc", nombre: "Premanifiesto — OPC", padre: "rh.tool.premanifiesto" },
+  { clave: "rh.tool.premanifiesto.rep", nombre: "Premanifiesto — Rep", padre: "rh.tool.premanifiesto" },
+  { clave: "rh.tool.premanifiesto.csi", nombre: "Premanifiesto — CSI (delegación)", padre: "rh.tool.premanifiesto" },
 ];
 
 const { data: empresa, error: eErr } = await admin
@@ -54,32 +66,39 @@ if (!empresa) {
   process.exit(1);
 }
 
-const { data: parent } = await admin
-  .from("flags")
-  .select("id")
-  .eq("clave", "worksheet.royal_holiday")
-  .eq("empresa_id", empresa.id)
-  .maybeSingle();
+const flagIdsByClave = {};
 
-const createdIds = [];
-for (const f of FLAGS) {
+async function ensureFlag({ clave, nombre, padre }) {
   const { data: existing } = await admin
     .from("flags")
     .select("id")
     .eq("empresa_id", empresa.id)
-    .eq("clave", f.clave)
+    .eq("clave", clave)
     .maybeSingle();
   if (existing) {
-    createdIds.push(existing.id);
-    console.log("✓", f.clave);
-    continue;
+    flagIdsByClave[clave] = existing.id;
+    console.log("✓", clave);
+    return existing.id;
+  }
+  let padreId = null;
+  if (padre) {
+    padreId = flagIdsByClave[padre];
+    if (!padreId) {
+      const { data: pRow } = await admin
+        .from("flags")
+        .select("id")
+        .eq("empresa_id", empresa.id)
+        .eq("clave", padre)
+        .maybeSingle();
+      padreId = pRow?.id || null;
+    }
   }
   const { data, error } = await admin
     .from("flags")
     .insert({
-      clave: f.clave,
-      nombre_visible: f.nombre,
-      flag_padre: parent?.id || null,
+      clave,
+      nombre_visible: nombre,
+      flag_padre: padreId,
       default_global: true,
       tipo: "custom",
       empresa_id: empresa.id,
@@ -87,19 +106,42 @@ for (const f of FLAGS) {
     })
     .select("id")
     .single();
-  if (error) throw new Error(`${f.clave}: ${error.message}`);
-  createdIds.push(data.id);
-  console.log("+", f.clave);
+  if (error) throw new Error(`${clave}: ${error.message}`);
+  flagIdsByClave[clave] = data.id;
+  console.log("+", clave);
+  return data.id;
 }
+
+for (const f of FLAGS) {
+  await ensureFlag(f);
+}
+
+const { ensureEmpresaOperationalRoles } = await import("../apps/api/src/services/empresa-roles-seed.js");
+await ensureEmpresaOperationalRoles(admin, empresa.id);
 
 const { data: packs } = await admin
   .from("paquetes_acceso")
   .select("id, slug")
   .eq("empresa_id", empresa.id)
-  .in("slug", ["operacion-base", "cierre", "liner"]);
+  .in("slug", ["operacion-base", "cierre", "liner", "marketing", "opc-lobby"]);
+
+const basePackSlugs = ["operacion-base", "cierre", "liner"];
+const marketingFlags = ["worksheet", "worksheet.royal_holiday", "rh.tool.ops", "rh.tool.premanifiesto", "rh.tool.premanifiesto.marketing"];
+const opcFlags = ["worksheet", "worksheet.royal_holiday", "rh.tool.ops", "rh.tool.premanifiesto", "rh.tool.premanifiesto.opc"];
+
+function flagsForPack(slug) {
+  if (basePackSlugs.includes(slug)) {
+    return Object.keys(flagIdsByClave).filter((k) => !PREMANIFIESTO_CHILDREN.has(k));
+  }
+  if (slug === "marketing") return marketingFlags;
+  if (slug === "opc-lobby") return opcFlags;
+  return [];
+}
 
 for (const pack of packs || []) {
-  for (const flagId of createdIds) {
+  for (const clave of flagsForPack(pack.slug)) {
+    const flagId = flagIdsByClave[clave];
+    if (!flagId) continue;
     await admin.from("paquete_flags").upsert(
       { paquete_id: pack.id, flag_id: flagId, activo: true },
       { onConflict: "paquete_id,flag_id" },

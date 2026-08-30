@@ -1,12 +1,14 @@
 import { ServiceError, assertFound } from "../lib/service-error.js";
 import { isSuperAdmin } from "@salesapp/shared/auth/permissions.js";
 import { createServiceSupabaseClient } from "../lib/supabase-server.js";
+import { flagsUnavailableError } from "../lib/workspace-permission-rpc.js";
 
 export const FLAG_CLAVES = {
   SURVEY: "survey",
   VACACIONES: "proyeccion_vacaciones",
   WORKSHEET: "worksheet",
   MONEY_BOX: "worksheet.money_box",
+  WORKSHEET_RH_MONEY_BOX: "worksheet.royal_holiday.money_box",
   ANALYSIS: "analysis",
   TAB_MOTIVACIONES: "survey.tab.motivaciones",
   TAB_TIMESHARE: "survey.tab.timeshare_information",
@@ -54,30 +56,43 @@ export async function resolveAllFlags(supabase, userId) {
 
 /**
  * Flags de sesión tenant-aware: estándar + custom de la empresa del workspace.
- * Fallback a resolver_all_flags si 0072 aún no está aplicada.
+ * Sala: si el RPC falla → { flags: {}, status: "unavailable" } (nunca resolver_all_flags).
+ * Personal / superadmin de plataforma: sí puede usar el catálogo global de perfil.
  */
-export async function resolveSessionFlags(supabase, userId, workspaceId = null) {
-  if (!userId) return {};
+export async function resolveSessionFlags(supabase, userId, workspaceId = null, opts = {}) {
+  if (!userId) return { flags: {}, status: "ok" };
+  const isSala = opts.tipo === "sala_de_venta" && workspaceId;
+  const allowGlobalCatalog = !isSala || opts.isSuperAdmin === true;
+
   try {
     const { data, error } = await supabase.rpc("resolver_session_flags", {
       p_usuario_id: userId,
       p_workspace_id: workspaceId || null,
     });
-    if (error) {
-      if (flagsMissing(error) || error.code === "PGRST202" || error.code === "42883") {
-        return resolveAllFlags(supabase, userId);
-      }
+    if (!error && data && typeof data === "object" && !Array.isArray(data)) {
+      return { flags: data, status: "ok" };
+    }
+    if (error && !flagsMissing(error) && error.code !== "PGRST202" && error.code !== "42883") {
       throw new ServiceError(error.message, 500);
     }
-    return data && typeof data === "object" ? data : {};
+    if (!allowGlobalCatalog) {
+      return { flags: {}, status: "unavailable" };
+    }
+    const all = await resolveAllFlags(supabase, userId);
+    return { flags: all, status: "ok" };
   } catch (err) {
     if (err instanceof ServiceError) throw err;
-    return resolveAllFlags(supabase, userId);
+    if (!allowGlobalCatalog) {
+      return { flags: {}, status: "unavailable" };
+    }
+    const all = await resolveAllFlags(supabase, userId);
+    return { flags: all, status: "ok" };
   }
 }
 
-export async function resolveFlag(supabase, userId, clave, workspaceId = null) {
+export async function resolveFlag(supabase, userId, clave, workspaceId = null, opts = {}) {
   if (!userId || !clave) return false;
+  const isSala = opts.tipo === "sala_de_venta" && workspaceId;
   try {
     if (workspaceId) {
       const { data, error } = await supabase.rpc("resolver_workspace_flag", {
@@ -88,6 +103,9 @@ export async function resolveFlag(supabase, userId, clave, workspaceId = null) {
       if (!error) return data === true;
       if (!flagsMissing(error) && error.code !== "PGRST202" && error.code !== "42883") {
         throw new ServiceError(error.message, 500);
+      }
+      if (isSala && opts.isSuperAdmin !== true) {
+        throw flagsUnavailableError();
       }
     }
     const { data, error } = await supabase.rpc("resolver_flag", {
@@ -101,6 +119,7 @@ export async function resolveFlag(supabase, userId, clave, workspaceId = null) {
     return data === true;
   } catch (err) {
     if (err instanceof ServiceError) throw err;
+    if (isSala && opts.isSuperAdmin !== true) throw flagsUnavailableError();
     return false;
   }
 }

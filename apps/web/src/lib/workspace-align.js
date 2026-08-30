@@ -3,9 +3,7 @@
  * cuando otro dispositivo cambió de sala/workspace.
  */
 import { fetchSession, notifyAuthChanged } from "@/lib/session-api.js";
-import { emptyDatabase } from "@/lib/storage/types";
-import { useDbStore } from "@/stores/db-store";
-import { runWithoutOutboundSync } from "@/lib/sync-suspend.js";
+import { applyWorkspaceLocalDatabase } from "@/lib/workspace-local-cache.js";
 import { toast } from "@/lib/toast";
 
 const FALLBACK_BRAND = { primary: "#1e5eff", accent: "#0f2044", nombre: "Saletse" };
@@ -57,13 +55,7 @@ export async function alignWorkspaceWithServer(localWorkspaceId) {
   }
 
   applyBrand(session.workspace_activo?.brand);
-  const prevSettings = useDbStore.getState().db?.settings || {};
-  runWithoutOutboundSync(() => {
-    useDbStore.getState().replaceDb({
-      ...emptyDatabase(),
-      settings: prevSettings,
-    });
-  });
+  applyWorkspaceLocalDatabase(remoteId);
   notifyAuthChanged();
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("workspace:changed"));

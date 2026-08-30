@@ -7,6 +7,7 @@ import { createServiceSupabaseClient } from "../lib/supabase-server.js";
 import { getRequestWorkspaceId } from "../lib/workspace-scope.js";
 import { canEditProspectRecord } from "../lib/prospect-edit-access.js";
 import { notifyCloserAssigned } from "./push-notifications-service.js";
+import { rpcEffectiveWorkspacePermissions } from "../lib/workspace-permission-rpc.js";
 
 function adminClient() {
   const client = createServiceSupabaseClient();
@@ -51,11 +52,8 @@ async function loadAccess(actorId, prospectId) {
     throw new ServiceError("No puedes acceder a este expediente.", 403);
   }
 
-  const { data: permissionKeys } = await admin.rpc("effective_workspace_permissions", {
-    p_usuario_id: actorId,
-    p_workspace_id: prospect.workspace_id,
-  });
-  const permissions = new Set(Array.isArray(permissionKeys) ? permissionKeys : []);
+  const permissionKeys = await rpcEffectiveWorkspacePermissions(admin, actorId, prospect.workspace_id);
+  const permissions = new Set(permissionKeys);
   const roleSlug = member?.roles?.slug || member?.rol_en_workspace || null;
   return {
     admin,
@@ -207,13 +205,14 @@ export async function assignCloser(_supabase, actorId, prospectId, closerId) {
     .maybeSingle();
   if (!member) throw new ServiceError("El Cerrador debe pertenecer a la misma sala.", 400);
 
-  const { data: permissionKeys } = await access.admin.rpc("effective_workspace_permissions", {
-    p_usuario_id: closerId,
-    p_workspace_id: access.prospect.workspace_id,
-  });
+  const permissionKeys = await rpcEffectiveWorkspacePermissions(
+    access.admin,
+    closerId,
+    access.prospect.workspace_id,
+  );
   if (
     member.roles?.slug !== "cerrador"
-    && !(Array.isArray(permissionKeys) && permissionKeys.includes("workflow:cerrar"))
+    && !permissionKeys.includes("workflow:cerrar")
   ) {
     throw new ServiceError("El usuario seleccionado no tiene capacidad de Cerrador.", 400);
   }
@@ -269,11 +268,12 @@ export async function assignRepresentante(_supabase, actorId, prospectId, repres
     throw new ServiceError("El gerente de la sala no puede ser asignado como Vendedor.", 400);
   }
 
-  const { data: permissionKeys } = await access.admin.rpc("effective_workspace_permissions", {
-    p_usuario_id: representanteId,
-    p_workspace_id: access.prospect.workspace_id,
-  });
-  const permissions = new Set(Array.isArray(permissionKeys) ? permissionKeys : []);
+  const permissionKeys = await rpcEffectiveWorkspacePermissions(
+    access.admin,
+    representanteId,
+    access.prospect.workspace_id,
+  );
+  const permissions = new Set(permissionKeys);
   const isCloserOnly = (member.roles?.slug === "cerrador" || permissions.has("workflow:cerrar"))
     && !permissions.has("expedientes:crear")
     && member.rol_en_workspace !== "vendedor";
@@ -305,12 +305,9 @@ export async function listActiveProspects(supabase, actorId) {
     .eq("workspace_id", workspaceId)
     .eq("usuario_id", actorId)
     .maybeSingle();
-  if (!member) throw new ServiceError("No perteneces a esta sala.", 403);
-  const { data: permissionKeys } = await admin.rpc("effective_workspace_permissions", {
-    p_usuario_id: actorId,
-    p_workspace_id: workspaceId,
-  });
-  const permissions = new Set(Array.isArray(permissionKeys) ? permissionKeys : []);
+  if (!member) throw new ServiceError("No perteneces a esta sala.", 403, "WORKSPACE_ACCESS_DENIED");
+  const permissionKeys = await rpcEffectiveWorkspacePermissions(admin, actorId, workspaceId);
+  const permissions = new Set(permissionKeys);
   const isManager = member.rol_en_workspace === "gerente" || permissions.has("expedientes:ver_equipo");
 
   let query = admin

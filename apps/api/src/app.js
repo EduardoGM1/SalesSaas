@@ -5,12 +5,14 @@ import cookieParser from "cookie-parser";
 import v1Router from "./routes/v1.js";
 import authRouter from "./routes/auth.js";
 import { webOrigins } from "./lib/origins.js";
+import { JSON_BODY_LIMIT } from "./lib/http-limits.js";
 import { isSupabaseConfigured } from "@salesapp/shared/supabase/config.js";
 import { probeSupabaseAuth } from "./lib/supabase-server.js";
 
 export function createApp() {
   const app = express();
 
+  app.disable("x-powered-by");
   app.set("trust proxy", 1);
 
   const origins = webOrigins();
@@ -21,7 +23,7 @@ export function createApp() {
     origin: origins.length ? origins : (isProd ? false : true),
     credentials: true,
   }));
-  app.use(express.json({ limit: "15mb" }));
+  app.use(express.json({ limit: JSON_BODY_LIMIT }));
   app.use(cookieParser());
 
   app.get("/health", (_req, res) => {
@@ -46,6 +48,9 @@ export function createApp() {
   app.use("/auth", authRouter);
 
   app.use((err, _req, res, _next) => {
+    if (err?.type === "entity.too.large" || err?.status === 413) {
+      return res.status(413).json({ error: "El cuerpo de la solicitud es demasiado grande." });
+    }
     console.error(err);
     res.status(500).json({ error: "Error interno del servidor." });
   });

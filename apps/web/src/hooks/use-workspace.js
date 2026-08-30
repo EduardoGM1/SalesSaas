@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { fetchSession, watchSession, notifyAuthChanged } from "@/lib/session-api.js";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
-import { emptyDatabase } from "@/lib/storage/types";
-import { useDbStore } from "@/stores/db-store";
+import { applyWorkspaceLocalDatabase } from "@/lib/workspace-local-cache.js";
 import { requestSyncRefresh } from "@/lib/sync-refresh.js";
 import {
   startDashboardDataRealtime,
@@ -94,12 +93,9 @@ export function useWorkspace() {
       const nextSession = await fetchSession();
       applyWorkspaceBrand(nextSession?.workspace_activo?.brand);
 
-      // Evitar mezclar datos del workspace anterior
-      const prevSettings = useDbStore.getState().db?.settings || {};
-      useDbStore.getState().replaceDb({
-        ...emptyDatabase(),
-        settings: prevSettings,
-      });
+      applyWorkspaceLocalDatabase(
+        nextSession?.workspace_activo_id || nextSession?.workspace_activo?.id || workspaceId,
+      );
 
       notifyAuthChanged();
       window.dispatchEvent(new Event("workspace:changed"));

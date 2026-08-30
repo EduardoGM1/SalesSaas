@@ -2,6 +2,10 @@ import { ServiceError } from "../lib/service-error.js";
 import { ilikeOrFilter } from "../lib/ilike.js";
 import { adminClient, requireEmpresaAdmin } from "../lib/tenant-access.js";
 import { persistBrandingLogo } from "./workspace-service.js";
+import {
+  rewriteBrandingLogoFields,
+  rewriteBrandingLogoList,
+} from "@salesapp/shared/supabase/public-url.js";
 
 export async function getHierarchicalAdminContext(userId) {
   const admin = adminClient();
@@ -239,7 +243,7 @@ export async function listScopedSalas(actorId, empresaId) {
     .eq("tipo", "sala_de_venta")
     .order("nombre");
   if (error) throw new ServiceError(error.message, 500);
-  return data ?? [];
+  return rewriteBrandingLogoList(data ?? []);
 }
 
 export async function updateScopedEmpresa(actorId, empresaId, body) {
@@ -272,7 +276,7 @@ export async function updateScopedEmpresa(actorId, empresaId, body) {
     .maybeSingle();
   if (error) throw new ServiceError(error.message, 400);
   if (!data) throw new ServiceError("Empresa no encontrada.", 404);
-  return data;
+  return rewriteBrandingLogoFields(data);
 }
 
 /** Sube logo de empresa (Admin empresa o Superadmin) desde data URL. slot: icon | principal */
@@ -298,7 +302,7 @@ export async function uploadScopedEmpresaLogo(actorId, empresaId, dataUrl, slot 
     .maybeSingle();
   if (error) throw new ServiceError(error.message, 400);
   if (!data) throw new ServiceError("Empresa no encontrada.", 404);
-  return data;
+  return rewriteBrandingLogoFields(data);
 }
 
 export async function createScopedSala(actorId, empresaId, body) {
