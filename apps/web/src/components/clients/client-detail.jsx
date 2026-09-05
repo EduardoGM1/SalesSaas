@@ -365,32 +365,33 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
         onClick: () => toggleFolder(EXPEDIENTE_TABS.notas),
       }
     : null;
+  const toolFolders = TOOL_DEFS
+    .filter((tool) => toolAllowed(tool.key))
+    .map((tool) => ({
+      id: tool.key,
+      label: t(tool.labelKey),
+      desc: t(tool.descKey),
+      icon: tool.icon,
+      tone: tool.tone,
+      onClick: () => {
+        if (sharedRemote && !contactId) return;
+        if (!sharedRemote) setToolMode("client", id);
+        if (folderTab === tool.key) {
+          setFolder("");
+          return;
+        }
+        if (tool.key === "worksheet" && worksheetRhActive) {
+          setFolder("worksheet", "financiamiento");
+        } else {
+          setFolder(tool.key);
+        }
+      },
+    }));
   const folderCards = isQuick
     ? [ventaFolder, notasFolder].filter(Boolean)
     : [
-        ...TOOL_DEFS
-          .filter((tool) => toolAllowed(tool.key))
-          .map((tool) => ({
-            id: tool.key,
-            label: t(tool.labelKey),
-            desc: t(tool.descKey),
-            icon: tool.icon,
-            tone: tool.tone,
-            onClick: () => {
-              if (sharedRemote && !contactId) return;
-              if (!sharedRemote) setToolMode("client", id);
-              if (folderTab === tool.key) {
-                setFolder("");
-                return;
-              }
-              if (tool.key === "worksheet" && worksheetRhActive) {
-                setFolder("worksheet", "financiamiento");
-              } else {
-                setFolder(tool.key);
-              }
-            },
-          })),
         clienteFolder,
+        ...toolFolders,
         ...(ventaFolder ? [ventaFolder] : []),
         ...(notasFolder ? [notasFolder] : []),
       ];
@@ -487,12 +488,18 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
 
         <div className={`exp-layout exp-layout--folders${validFolder ? " exp-layout--folder-open" : ""}`}>
           <div className="exp-folders-rail">
-            <div className="section-label" id="exp-tool-section-label">{t("exp.section.info")}</div>
+            {!validFolder && (
+              <div className="section-label" id="exp-tool-section-label">{t("exp.section.info")}</div>
+            )}
             <div className="exp-tool-list" id="exp-tool-list">
               {!toolsReady ? (
                 Array.from({ length: isQuick ? 2 : 3 }, (_, i) => <ToolCardSkeleton key={`exp-skel-${i}`} />)
               ) : (
-                <ClientFolderStrip folders={folderCards} activeTab={validFolder} />
+                <ClientFolderStrip
+                  folders={folderCards}
+                  activeTab={validFolder}
+                  variant={validFolder ? "shelf" : "list"}
+                />
               )}
               {toolsReady && !validFolder && !isQuick && !folderCards.some((card) => card.id === "worksheet") && !worksheetRhActive && (
                 <div className="tool-card-stack">{moneyBoxCard}</div>
