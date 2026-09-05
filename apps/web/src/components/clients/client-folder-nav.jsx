@@ -1,8 +1,8 @@
 /**
  * Shell de carpetas (Nivel 1) + bandeja de sub-tabs (Nivel 2).
  *
- * Sin carpeta activa: lista vertical (vista inicial).
- * Con carpeta activa: franja de cards grandes (diseño de estantería), nunca chips.
+ * Nivel 1 es SIEMPRE lista vertical de cards (vista inicial y con carpeta abierta).
+ * Nunca fila/estantería ni chips. La card activa se marca con borde.
  * Nivel 2 SOLO en Worksheet con flag worksheet.royal_holiday.
  *
  * Pendientes de producto (no decidir ni implementar aquí):
@@ -11,13 +11,10 @@
  * - Límite de carpetas en mobile
  */
 
-import { ChevronDown } from "lucide-react";
-
-export function ClientFolderStrip({ folders, activeTab, variant = "list" }) {
-  const shelf = variant === "shelf";
+export function ClientFolderStrip({ folders, activeTab }) {
   return (
     <div
-      className={`exp-folder-strip${shelf ? " exp-folder-strip--shelf" : ""}`}
+      className="exp-folder-strip"
       role="tablist"
       aria-label="Carpetas del expediente"
     >
@@ -31,15 +28,15 @@ export function ClientFolderStrip({ folders, activeTab, variant = "list" }) {
             type="button"
             role="tab"
             aria-selected={selected}
-            className={`exp-folder-card tone-${tone}${selected ? " is-active" : ""}${shelf ? " exp-folder-card--shelf" : ""}`}
+            className={`exp-folder-card${selected ? " is-active" : ""}`}
             onClick={folder.onClick}
           >
-            <div className={`tool-icon ${tone}`}><Icon size={shelf ? 18 : 20} /></div>
-            {shelf ? <ChevronDown className="exp-folder-chevron" size={16} aria-hidden /> : <div className="exp-folder-chevron">›</div>}
+            <div className={`tool-icon ${tone}`}><Icon size={20} /></div>
             <div className="exp-folder-card-text">
               <div className="tool-name">{folder.label}</div>
               {folder.desc ? <div className="tool-desc">{folder.desc}</div> : null}
             </div>
+            <div className="exp-folder-chevron">›</div>
           </button>
         );
       })}

@@ -488,18 +488,12 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
 
         <div className={`exp-layout exp-layout--folders${validFolder ? " exp-layout--folder-open" : ""}`}>
           <div className="exp-folders-rail">
-            {!validFolder && (
-              <div className="section-label" id="exp-tool-section-label">{t("exp.section.info")}</div>
-            )}
+            <div className="section-label" id="exp-tool-section-label">{t("exp.section.info")}</div>
             <div className="exp-tool-list" id="exp-tool-list">
               {!toolsReady ? (
                 Array.from({ length: isQuick ? 2 : 3 }, (_, i) => <ToolCardSkeleton key={`exp-skel-${i}`} />)
               ) : (
-                <ClientFolderStrip
-                  folders={folderCards}
-                  activeTab={validFolder}
-                  variant={validFolder ? "shelf" : "list"}
-                />
+                <ClientFolderStrip folders={folderCards} activeTab={validFolder} />
               )}
               {toolsReady && !validFolder && !isQuick && !folderCards.some((card) => card.id === "worksheet") && !worksheetRhActive && (
                 <div className="tool-card-stack">{moneyBoxCard}</div>
