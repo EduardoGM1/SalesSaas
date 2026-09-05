@@ -75,6 +75,13 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
   const rhWorksheetFlag = useFlag(WORKSHEET_ROYAL_HOLIDAY_FLAG);
   const rhMoneyBoxFlag = useFlag(WORKSHEET_RH_MONEY_BOX_TAB_FLAG);
   const { tab: folderTab, sub: folderSub, setFolder, setSub } = useExpedienteFolderNav();
+  const toggleFolder = (nextTab, nextSub) => {
+    if (folderTab === nextTab) {
+      setFolder("");
+      return;
+    }
+    setFolder(nextTab, nextSub);
+  };
   const toolsReady = flagsReady && permReady;
   const worksheetRhActive = rhWorksheetFlag.enabled === true;
   const { active } = useWorkspace();
@@ -336,7 +343,7 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
     desc: t("exp.folder.clienteDesc"),
     icon: User,
     tone: "blue",
-    onClick: () => setFolder(EXPEDIENTE_TABS.cliente),
+    onClick: () => toggleFolder(EXPEDIENTE_TABS.cliente),
   };
   const ventaFolder = (canEdit || sharedRemote)
     ? {
@@ -345,7 +352,7 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
         desc: t("exp.card.saleDesc"),
         icon: DollarSign,
         tone: "green",
-        onClick: () => setFolder(EXPEDIENTE_TABS.venta),
+        onClick: () => toggleFolder(EXPEDIENTE_TABS.venta),
       }
     : null;
   const notasFolder = (canComment || sharedRemote)
@@ -355,7 +362,7 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
         desc: t("exp.card.notesDesc"),
         icon: MessageSquare,
         tone: "blue",
-        onClick: () => setFolder(EXPEDIENTE_TABS.notas),
+        onClick: () => toggleFolder(EXPEDIENTE_TABS.notas),
       }
     : null;
   const folderCards = isQuick
@@ -372,6 +379,10 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
             onClick: () => {
               if (sharedRemote && !contactId) return;
               if (!sharedRemote) setToolMode("client", id);
+              if (folderTab === tool.key) {
+                setFolder("");
+                return;
+              }
               if (tool.key === "worksheet" && worksheetRhActive) {
                 setFolder("worksheet", "financiamiento");
               } else {
@@ -474,14 +485,14 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
           onCapabilities={setSalaCapabilities}
         />
 
-        <div className="exp-layout exp-layout--folders">
-          <div>
+        <div className={`exp-layout exp-layout--folders${validFolder ? " exp-layout--folder-open" : ""}`}>
+          <div className="exp-folders-rail">
             <div className="section-label" id="exp-tool-section-label">{t("exp.section.info")}</div>
             <div className="exp-tool-list" id="exp-tool-list">
               {!toolsReady ? (
                 Array.from({ length: isQuick ? 2 : 3 }, (_, i) => <ToolCardSkeleton key={`exp-skel-${i}`} />)
               ) : (
-                <ClientFolderStrip folders={folderCards} activeTab={validFolder} compact={!!validFolder} />
+                <ClientFolderStrip folders={folderCards} activeTab={validFolder} />
               )}
               {toolsReady && !validFolder && !isQuick && !folderCards.some((card) => card.id === "worksheet") && !worksheetRhActive && (
                 <div className="tool-card-stack">{moneyBoxCard}</div>
@@ -500,17 +511,18 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
                 </button>
               )}
             </div>
+          </div>
 
-            {showRhSubnav && (
-              <ClientFolderSubnav
-                tabs={rhSubTabs}
-                activeId={activeRhSub}
-                onSelect={(next) => setSub(next)}
-                ariaLabel="Pestañas worksheet"
-              />
-            )}
-
-            {validFolder ? (
+          {validFolder ? (
+            <div className="exp-folder-stage">
+              {showRhSubnav && (
+                <ClientFolderSubnav
+                  tabs={rhSubTabs}
+                  activeId={activeRhSub}
+                  onSelect={(next) => setSub(next)}
+                  ariaLabel="Pestañas worksheet"
+                />
+              )}
               <div className="exp-folder-panel" data-testid="exp-folder-panel">
                 <Suspense fallback={<ToolCardSkeleton />}>
                   {validFolder === "survey" && (
@@ -628,10 +640,8 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
                   </div>
                 )}
               </div>
-            ) : null}
-          </div>
-
-          {!validFolder && (
+            </div>
+          ) : (
             <CollapsibleSection
               defaultOpen={
                 typeof window !== "undefined"

@@ -11499,24 +11499,40 @@ body,
   border-color: var(--blue);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--blue) 18%, transparent);
 }
-.exp-folder-card-text { min-width: 0; flex: 1; }
+.exp-folder-card-text { min-width: 0; flex: 1; overflow-wrap: anywhere; }
 .exp-folder-chevron { color: var(--muted2); margin-left: auto; font-size: 18px; }
-.exp-folder-strip--compact {
-  flex-direction: row;
+.exp-layout--folders.exp-layout--folder-open {
+  grid-template-columns: minmax(220px, 30%) minmax(0, 70%);
+}
+.exp-folders-rail { min-width: 0; }
+.exp-folder-stage { min-width: 0; }
+.exp-folder-subnav {
+  display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 12px;
+  overflow: visible;
+  gap: 6px;
+  margin: 0 0 16px;
+  padding: 6px;
 }
-.exp-folder-card--compact {
-  width: auto;
-  flex: 1 1 140px;
-  padding: 10px 12px;
-  min-height: 48px;
-  gap: 10px;
+.exp-folder-subnav .admin-subnav-item {
+  white-space: normal;
+  text-align: center;
+  line-height: 1.3;
+  font-size: 13px;
+  flex: 1 1 auto;
+  min-width: min(100%, 9.5rem);
 }
-.exp-folder-card--compact .tool-name { font-size: 13px; }
-.exp-folder-subnav { margin: 4px 0 16px; }
 .exp-folder-panel { min-width: 0; }
+@media (max-width: 1000px) {
+  .exp-layout--folders.exp-layout--folder-open {
+    grid-template-columns: minmax(220px, 30%) minmax(0, 70%);
+  }
+}
+@media (max-width: 899px) {
+  .exp-layout--folders.exp-layout--folder-open {
+    grid-template-columns: 1fr;
+  }
+}
 .exp-folder-panel-actions { margin: 8px 0 12px; }
 .exp-embedded-tool { min-width: 0; }
 .exp-embedded-toolbar { justify-content: flex-end; margin-bottom: 8px; }

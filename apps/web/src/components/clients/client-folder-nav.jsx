@@ -1,8 +1,8 @@
 /**
  * Shell de carpetas (Nivel 1) + bandeja de sub-tabs (Nivel 2).
  *
+ * Nivel 1 siempre es lista vertical de cards (nunca chips/tabs).
  * Nivel 2 SOLO en Worksheet con flag worksheet.royal_holiday.
- * Carpetas sin hijos (y Worksheet regular) = panel inline, sin bandeja.
  *
  * Pendientes de producto (no decidir ni implementar aquí):
  * - Si las carpetas Venta / Notas tendrán sub-tabs a futuro
@@ -10,10 +10,10 @@
  * - Límite de carpetas en mobile
  */
 
-export function ClientFolderStrip({ folders, activeTab, compact }) {
+export function ClientFolderStrip({ folders, activeTab }) {
   return (
     <div
-      className={`exp-folder-strip${compact ? " exp-folder-strip--compact" : ""}`}
+      className="exp-folder-strip"
       role="tablist"
       aria-label="Carpetas del expediente"
     >
@@ -26,15 +26,15 @@ export function ClientFolderStrip({ folders, activeTab, compact }) {
             type="button"
             role="tab"
             aria-selected={selected}
-            className={`exp-folder-card${selected ? " is-active" : ""}${compact ? " exp-folder-card--compact" : ""}`}
+            className={`exp-folder-card${selected ? " is-active" : ""}`}
             onClick={folder.onClick}
           >
-            <div className={`tool-icon ${folder.tone}`}><Icon size={compact ? 16 : 20} /></div>
+            <div className={`tool-icon ${folder.tone}`}><Icon size={20} /></div>
             <div className="exp-folder-card-text">
               <div className="tool-name">{folder.label}</div>
-              {!compact && folder.desc ? <div className="tool-desc">{folder.desc}</div> : null}
+              {folder.desc ? <div className="tool-desc">{folder.desc}</div> : null}
             </div>
-            {!compact && <div className="exp-folder-chevron">›</div>}
+            <div className="exp-folder-chevron">›</div>
           </button>
         );
       })}
