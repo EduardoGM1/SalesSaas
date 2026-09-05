@@ -7,9 +7,20 @@ import { DEFAULT_TOUR_TYPES } from "@/lib/store-empty.js";
 import { useDbStore } from "@/stores/db-store";
 import { useRhEmpresa, readRhEmpresaFromSession } from "@/hooks/use-rh-empresa.js";
 import { royalHolidayApi } from "@/lib/royal-holiday-api.js";
+import { persistProspectOnlineFirst } from "@/lib/prospects-persist.js";
 import { toast } from "@/lib/toast";
 import { selectOnFocus } from "@/lib/focus-select.js";
-import { defaultOpcForm, firstSingleName, matchOlaByHora, normalizeHora } from "@/lib/opc-expediente.js";
+import {
+  buildOpcSnapshot,
+  computeStayTotal,
+  defaultOpcForm,
+  firstSingleName,
+  formatOpcFechaMeta,
+  formatOpcNotes,
+  matchOlaByHora,
+  normalizeHora,
+  opcDisplayName,
+} from "@/lib/opc-expediente.js";
 
 const TABS = [
   { id: "cliente", label: "Información cliente" },
@@ -17,50 +28,91 @@ const TABS = [
   { id: "invitacion", label: "Invitación" },
 ];
 
-function emptyNino() {
-  return { nombre: "", edad: "" };
+const PERSON_ROWS = [
+  ["nombre", "Nombre"],
+  ["apellido", "Apellido"],
+  ["nacionalidad", "Nacionalidad"],
+  ["edad", "Edad"],
+  ["ocupacion", "Ocupación"],
+];
+
+function FieldRow({ label, testId, children }) {
+  return (
+    <div className="frow tool-frow">
+      <div className="flabel">{label}</div>
+      {children}
+    </div>
+  );
+}
+
+function TextField({ label, value, onChange, testId, type = "text" }) {
+  return (
+    <FieldRow label={label}>
+      <input
+        className="input"
+        type={type}
+        data-testid={testId}
+        value={value}
+        onFocus={selectOnFocus}
+        onChange={(e) => onChange(e.target.value)}
+      />
+    </FieldRow>
+  );
+}
+
+function NotesField({ label, value, onChange, testId, placeholder }) {
+  return (
+    <div className="frow tool-frow tool-frow--notes">
+      <div className="flabel">{label}</div>
+      <textarea
+        className="input"
+        rows={3}
+        data-testid={testId}
+        placeholder={placeholder}
+        value={value}
+        onFocus={selectOnFocus}
+        onChange={(e) => onChange(e.target.value)}
+      />
+    </div>
+  );
 }
 
 function IntegrantesTable({ form, setForm }) {
-  const patch = (key, value) => setForm((f) => ({ ...f, [key]: value }));
-  const setNino = (idx, key, value) => {
-    setForm((f) => {
-      const ninos = [...(f.ninos || [])];
-      ninos[idx] = { ...ninos[idx], [key]: value };
-      return { ...f, ninos };
-    });
+  const setPerson = (who, key, value) => {
+    setForm((f) => ({ ...f, [who]: { ...f[who], [key]: value } }));
   };
   return (
     <div className="card tool-calc-card">
       <div className="card-heading">Integrantes</div>
-      <div className="opc-int-grid">
-        <div className="opc-int-row opc-int-head">
-          <span />
-          <span>Nombre</span>
-          <span>Apellido / edad</span>
-        </div>
-        <div className="opc-int-row">
-          <span className="opc-int-role">Hombre</span>
-          <input className="input" value={form.hombreNombre} onFocus={selectOnFocus} onChange={(e) => patch("hombreNombre", e.target.value)} />
-          <input className="input" value={form.hombreApellido} onFocus={selectOnFocus} onChange={(e) => patch("hombreApellido", e.target.value)} />
-        </div>
-        <div className="opc-int-row">
-          <span className="opc-int-role">Mujer</span>
-          <input className="input" value={form.mujerNombre} onFocus={selectOnFocus} onChange={(e) => patch("mujerNombre", e.target.value)} />
-          <input className="input" value={form.mujerApellido} onFocus={selectOnFocus} onChange={(e) => patch("mujerApellido", e.target.value)} />
-        </div>
-        {(form.ninos || []).map((nino, idx) => (
-          <div className="opc-int-row" key={`nino-${idx}`}>
-            <span className="opc-int-role">Niño {idx + 1}</span>
-            <input className="input" value={nino.nombre} onFocus={selectOnFocus} onChange={(e) => setNino(idx, "nombre", e.target.value)} />
-            <input className="input" type="number" min="0" value={nino.edad} onFocus={selectOnFocus} onChange={(e) => setNino(idx, "edad", e.target.value)} />
-          </div>
-        ))}
-      </div>
-      <div className="btn-row" style={{ marginTop: 12 }}>
-        <button type="button" className="btn btn-ghost btn-sm" onClick={() => setForm((f) => ({ ...f, ninos: [...(f.ninos || []), emptyNino()] }))}>
-          Agregar niño
-        </button>
+      <div className="table-scroll">
+        <table className="mtbl opc-int-table">
+          <thead>
+            <tr>
+              <th />
+              <th>Hombre</th>
+              <th>Mujer</th>
+              <th>Niños</th>
+            </tr>
+          </thead>
+          <tbody>
+            {PERSON_ROWS.map(([key, label]) => (
+              <tr key={key}>
+                <td className="opc-int-rowlabel">{label}</td>
+                {["hombre", "mujer", "ninos"].map((who) => (
+                  <td key={who}>
+                    <input
+                      className="input"
+                      data-testid={`opc-int-${who}-${key}`}
+                      value={form[who]?.[key] || ""}
+                      onFocus={selectOnFocus}
+                      onChange={(e) => setPerson(who, key, e.target.value)}
+                    />
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
   );
@@ -81,7 +133,13 @@ export function OpcExpedientePage() {
     olaConfigId: params.get("ola") || "",
   }));
 
-  const patch = (key, value) => setForm((f) => ({ ...f, [key]: value }));
+  const patch = (key, value) => setForm((f) => {
+    const next = { ...f, [key]: value };
+    if (key === "nights" || key === "rate") {
+      next.total = computeStayTotal(next.nights, next.rate);
+    }
+    return next;
+  });
 
   useEffect(() => {
     if (!empresaId || !workspaceId || !form.fecha) {
@@ -102,11 +160,14 @@ export function OpcExpedientePage() {
   const olaLabel = matchedOla
     ? `${matchedOla.etiqueta} · ${normalizeHora(matchedOla.hora)}`
     : (form.etiqueta ? `${form.etiqueta} · ${normalizeHora(form.hora)}` : "—");
+  const cupoLabel = matchedOla
+    ? `Cupo ${matchedOla.ocupado ?? 0}/${matchedOla.cupo_max ?? "—"}`
+    : "Cupo —";
 
   const confirm = async () => {
-    const nombre = firstSingleName(form.hombreNombre) !== "Pareja"
-      ? firstSingleName(form.hombreNombre)
-      : firstSingleName(form.mujerNombre);
+    const nombre = firstSingleName(form.hombre?.nombre) !== "Pareja"
+      ? firstSingleName(form.hombre?.nombre)
+      : firstSingleName(form.mujer?.nombre);
     if (!form.fecha || !form.hora) {
       toast.error("Captura fecha y hora de la invitación.");
       setTab("invitacion");
@@ -147,48 +208,43 @@ export function OpcExpedientePage() {
         return;
       }
       const client = created.client;
-      useDbStore.getState().saveClient({
+      const snapshot = buildOpcSnapshot(form);
+      const notes = formatOpcNotes(form);
+      const merged = {
         ...client,
+        country: form.pais,
+        city: form.estado,
+        name1: form.hombre?.nombre || client.name1,
+        name2: form.mujer?.nombre || client.name2,
+        occupation1: form.hombre?.ocupacion || "",
+        occupation2: form.mujer?.ocupacion || "",
+        note: notes,
         data: {
           ...(client.data || {}),
-          opc: {
-            integrantes: {
-              hombre: { nombre: form.hombreNombre, apellido: form.hombreApellido },
-              mujer: { nombre: form.mujerNombre, apellido: form.mujerApellido },
-              ninos: form.ninos,
-            },
-            estancia: {
-              agencia: form.agencia,
-              estado_procedencia: form.estadoProcedencia,
-              nights: form.nights,
-              room_type: form.roomType,
-              room_number: form.roomNumber,
-              notes: form.notes,
-            },
-            invitacion: {
-              fecha: form.fecha,
-              hora: normalizeHora(form.hora),
-              ola_config_id: ola.ola_config_id,
-              etiqueta: ola.etiqueta,
-            },
-          },
+          opc: snapshot,
         },
-      });
+      };
+      useDbStore.getState().saveClient(merged, { skipCloud: true });
+      await persistProspectOnlineFirst(merged);
 
-      const displayName = [form.hombreNombre, form.mujerNombre].filter(Boolean).join(" / ") || nombre;
       await royalHolidayApi.registrarPremanifiestoPareja(emp, {
         empresa_id: emp,
         workspace_id: ws,
         fecha: form.fecha,
         ola_config_id: ola.ola_config_id,
         origen: "opc",
-        prospect_nombre: displayName,
-        notes: form.notes || null,
-        estado_procedencia: form.estadoProcedencia || null,
+        prospect_nombre: opcDisplayName(form) || nombre,
+        prospect_id: client.id,
+        notes,
+        estado_procedencia: form.estado || null,
         agencia: form.agencia || null,
         room_type: form.roomType || null,
         room_number: form.roomNumber || null,
         nights: form.nights !== "" ? Number(form.nights) : null,
+        rate: form.rate !== "" ? Number(form.rate) : null,
+        total: form.total !== "" ? Number(form.total) : null,
+        calif: form.calificacion || null,
+        regalo_nombre: form.regalo || null,
       });
       toast.success("Invitación confirmada");
       navigate(`/clients/${client.id}`, { replace: true });
@@ -202,12 +258,29 @@ export function OpcExpedientePage() {
   return (
     <>
       <Topbar title="Nueva pareja" subtitle={olaLabel} />
-      <div className="sales-page">
-        <div className="page-toolbar">
-          <PageBack inline href="/ops/rh/premanifiesto" />
-        </div>
+      <div className="sales-page tool-calc-page">
+        <header className="exp-page-head">
+          <PageBack inline href="/ops/rh/premanifiesto" label="Back a Premanifiesto" className="exp-page-back" />
+          <div className="exp-page-meta">
+            <h1 className="exp-page-title">Nueva pareja — {olaLabel}</h1>
+            <p className="exp-page-sub">
+              Premanifiesto · {formatOpcFechaMeta(form.fecha)} · {cupoLabel}
+            </p>
+          </div>
+          <div className="exp-page-actions">
+            <button
+              type="button"
+              className="btn btn-primary"
+              data-testid="opc-confirm"
+              disabled={saving}
+              onClick={confirm}
+            >
+              {saving ? "Confirmando…" : "Confirmar invitación"}
+            </button>
+          </div>
+        </header>
 
-        <nav className="admin-subnav" aria-label="Expediente OPC" data-testid="opc-expediente-tabs">
+        <nav className="admin-subnav worksheet-rh-tabs" aria-label="Expediente OPC" data-testid="opc-expediente-tabs">
           {TABS.map((tb) => (
             <button
               key={tb.id}
@@ -221,36 +294,70 @@ export function OpcExpedientePage() {
         </nav>
 
         {tab === "cliente" && (
-          <IntegrantesTable form={form} setForm={setForm} />
+          <>
+            <div className="card tool-calc-card">
+              <div className="card-heading">Datos generales</div>
+              <TextField label="País" testId="opc-pais" value={form.pais} onChange={(v) => patch("pais", v)} />
+              <TextField label="Pax" testId="opc-pax" value={form.pax} onChange={(v) => patch("pax", v)} />
+              <TextField label="Estado" testId="opc-estado" value={form.estado} onChange={(v) => patch("estado", v)} />
+              <TextField label="Módulo" testId="opc-modulo" value={form.modulo} onChange={(v) => patch("modulo", v)} />
+              <TextField label="Idioma" testId="opc-idioma" value={form.idioma} onChange={(v) => patch("idioma", v)} />
+              <TextField label="Estado civil" testId="opc-estado-civil" value={form.estadoCivil} onChange={(v) => patch("estadoCivil", v)} />
+            </div>
+            <IntegrantesTable form={form} setForm={setForm} />
+            <div className="card tool-calc-card">
+              <NotesField
+                label="Notas"
+                testId="opc-notas-cliente"
+                placeholder="Notas generales del cliente..."
+                value={form.notasCliente}
+                onChange={(v) => patch("notasCliente", v)}
+              />
+            </div>
+          </>
         )}
 
         {tab === "estancia" && (
           <div className="card tool-calc-card">
-            <div className="card-heading">Estancia</div>
-            <div className="frow tool-frow"><div className="flabel">Agencia</div><input className="input" value={form.agencia} onFocus={selectOnFocus} onChange={(e) => patch("agencia", e.target.value)} /></div>
-            <div className="frow tool-frow"><div className="flabel">Estado procedencia</div><input className="input" value={form.estadoProcedencia} onFocus={selectOnFocus} onChange={(e) => patch("estadoProcedencia", e.target.value)} /></div>
-            <div className="frow tool-frow"><div className="flabel">Nights</div><input className="input" type="number" min="0" value={form.nights} onFocus={selectOnFocus} onChange={(e) => patch("nights", e.target.value)} /></div>
-            <div className="frow tool-frow"><div className="flabel">Room type</div><input className="input" value={form.roomType} onFocus={selectOnFocus} onChange={(e) => patch("roomType", e.target.value)} /></div>
-            <div className="frow tool-frow"><div className="flabel">Room #</div><input className="input" value={form.roomNumber} onFocus={selectOnFocus} onChange={(e) => patch("roomNumber", e.target.value)} /></div>
-            <div className="frow tool-frow"><div className="flabel">Notas operativas</div><input className="input" value={form.notes} onFocus={selectOnFocus} onChange={(e) => patch("notes", e.target.value)} /></div>
+            <div className="card-heading">Datos de estancia</div>
+            <TextField label="Agencia" testId="opc-agencia" value={form.agencia} onChange={(v) => patch("agencia", v)} />
+            <TextField label="# Noches" testId="opc-nights" type="number" value={form.nights} onChange={(v) => patch("nights", v)} />
+            <TextField label="Categoría de habitación" testId="opc-room-type" value={form.roomType} onChange={(v) => patch("roomType", v)} />
+            <TextField label="Costo por noche" testId="opc-rate" type="number" value={form.rate} onChange={(v) => patch("rate", v)} />
+            <TextField label="# de habitación" testId="opc-room-number" value={form.roomNumber} onChange={(v) => patch("roomNumber", v)} />
+            <TextField label="Total" testId="opc-total" type="number" value={form.total} onChange={(v) => patch("total", v)} />
+            <NotesField
+              label="Notas"
+              testId="opc-notas-estancia"
+              placeholder="Notas de la estancia..."
+              value={form.notasEstancia}
+              onChange={(v) => patch("notasEstancia", v)}
+            />
           </div>
         )}
 
         {tab === "invitacion" && (
           <div className="card tool-calc-card">
-            <div className="card-heading">Invitación</div>
-            <div className="frow tool-frow"><div className="flabel">Fecha</div><input className="input" type="date" value={form.fecha} onChange={(e) => patch("fecha", e.target.value)} /></div>
-            <div className="frow tool-frow"><div className="flabel">Hora</div><input className="input" type="time" value={form.hora} onChange={(e) => patch("hora", e.target.value)} /></div>
+            <div className="card-heading">Datos de la invitación</div>
+            <FieldRow label="Fecha de la cita">
+              <input className="input" type="date" data-testid="opc-fecha" value={form.fecha} onChange={(e) => patch("fecha", e.target.value)} />
+            </FieldRow>
+            <FieldRow label="Hora">
+              <input className="input" type="time" data-testid="opc-hora" value={form.hora} onChange={(e) => patch("hora", e.target.value)} />
+            </FieldRow>
             <div className="frow tool-frow readonly-soft">
               <div className="flabel">Ola</div>
               <input className="input" readOnly tabIndex={-1} value={matchedOla ? `${matchedOla.etiqueta} (${normalizeHora(matchedOla.hora)})` : "Sin ola para esa hora"} />
             </div>
-            <div className="save-footer">
-              <button type="button" className="btn btn-ghost" onClick={() => navigate("/ops/rh/premanifiesto")}>Cancelar</button>
-              <button type="button" className="btn btn-primary" disabled={saving} onClick={confirm}>
-                {saving ? "Confirmando…" : "Confirmar invitación"}
-              </button>
-            </div>
+            <TextField label="Calificación" testId="opc-calif" value={form.calificacion} onChange={(v) => patch("calificacion", v)} />
+            <TextField label="Regalo" testId="opc-regalo" value={form.regalo} onChange={(v) => patch("regalo", v)} />
+            <NotesField
+              label="Notas"
+              testId="opc-notas-invitacion"
+              placeholder="Notas de la invitación..."
+              value={form.notasInvitacion}
+              onChange={(v) => patch("notasInvitacion", v)}
+            />
           </div>
         )}
       </div>

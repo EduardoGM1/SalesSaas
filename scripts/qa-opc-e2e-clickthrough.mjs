@@ -216,13 +216,26 @@ async function runFlow(browser, out) {
 
     await page.locator('[data-testid="opc-expediente-tabs"]').waitFor({ state: "visible", timeout: 20000 });
     await page.getByRole("button", { name: "Información cliente" }).click();
-    const rows = page.locator(".opc-int-row");
-    await rows.nth(1).locator("input").nth(0).fill("Qaopc");
-    await rows.nth(1).locator("input").nth(1).fill("E2e");
-    await rows.nth(2).locator("input").nth(0).fill("Qamujer");
-    await rows.nth(2).locator("input").nth(1).fill("E2e");
+    const hombreNombre = page.getByTestId("opc-int-hombre-nombre");
+    if (await hombreNombre.count()) {
+      await hombreNombre.fill("Qaopc");
+      await page.getByTestId("opc-int-hombre-apellido").fill("E2e");
+      await page.getByTestId("opc-int-mujer-nombre").fill("Qamujer");
+      await page.getByTestId("opc-int-mujer-apellido").fill("E2e");
+    } else {
+      const rows = page.locator(".opc-int-row");
+      await rows.nth(1).locator("input").nth(0).fill("Qaopc");
+      await rows.nth(1).locator("input").nth(1).fill("E2e");
+      await rows.nth(2).locator("input").nth(0).fill("Qamujer");
+      await rows.nth(2).locator("input").nth(1).fill("E2e");
+    }
     await page.getByRole("button", { name: "Estancia" }).click();
-    await page.locator('.frow:has(.flabel:text("Agencia")) input').fill("QA Agencia");
+    const agencia = page.getByTestId("opc-agencia");
+    if (await agencia.count()) {
+      await agencia.fill("QA Agencia");
+    } else {
+      await page.locator('.frow:has(.flabel:text("Agencia")) input').fill("QA Agencia");
+    }
     await page.getByRole("button", { name: "Invitación" }).click();
     const fechaVal = await page.locator('input[type="date"]').inputValue();
     const horaVal = await page.locator('input[type="time"]').inputValue();

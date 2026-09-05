@@ -924,6 +924,10 @@ a.sb-item.active { color: #93c5fd; }
 a.tool-card { text-decoration: none; color: inherit; }
 
 /* Expediente: carpetas (Nivel 1) + panel inline */
+.opc-int-table{margin-top:0;}
+.opc-int-table .opc-int-rowlabel{font-size:12.5px;font-weight:700;white-space:nowrap;text-transform:none;letter-spacing:0;color:var(--text);}
+.tool-frow--notes{align-items:flex-start;}
+.tool-frow--notes textarea.input{min-height:72px;resize:vertical;}
 .exp-folder-strip{display:flex;flex-direction:column;gap:12px;width:100%;}
 .exp-folder-strip--shelf{
   display:grid;

@@ -654,6 +654,11 @@ export async function registrarPremanifiestoPareja(client, userId, body) {
     p_nights: body.nights ?? null,
     p_notas_csi: body.notas_csi ?? null,
     p_notes: body.notes ?? null,
+    p_rate: body.rate ?? null,
+    p_total: body.total ?? null,
+    p_calif: body.calif ?? null,
+    p_regalo_nombre: body.regalo_nombre ?? null,
+    p_prospect_id: body.prospect_id ?? null,
   });
   if (error) mapPremanifiestoRpcError(error);
   return data;
