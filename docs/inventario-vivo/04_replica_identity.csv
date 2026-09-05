@@ -1,0 +1,16 @@
+schemaname,relname,relreplident,replica_identity
+public,activities,d,default
+public,calendar_entries,d,default
+public,chat_members,d,default
+public,chat_messages,d,default
+public,direct_messages,d,default
+public,gerente_acceso_cruzado,d,default
+public,goals,d,default
+public,permisos_delegados,d,default
+public,profiles,d,default
+public,prospect_shares,d,default
+public,prospects,d,default
+public,sales,d,default
+public,support_request_replies,d,default
+public,tool_calculations,d,default
+public,user_connections,d,default

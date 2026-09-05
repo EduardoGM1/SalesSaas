@@ -76,7 +76,7 @@ apps/api/       API Express (JS, sin TypeScript) — rutas en routes/, lógica e
 packages/shared Código compartido
 supabase/       Migraciones y notas Auth
 public/         Assets estáticos (Vite publicDir)
-docs/           Documentación técnica versionada
+docs/           Documentación técnica versionada (mapa: docs/MAPA-GENERAL-SISTEMA.md)
 scripts/        Utilidades (seed, migrate, verify)
 e2e/            Playwright
 ```

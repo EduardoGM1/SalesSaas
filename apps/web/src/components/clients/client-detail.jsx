@@ -1,7 +1,7 @@
 
-import { useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import {  useNavigate  } from "react-router-dom";
-import { FileText, Palmtree, DollarSign, MessageSquare, Wallet } from "lucide-react";
+import { FileText, Palmtree, DollarSign, MessageSquare, Wallet, User } from "lucide-react";
 import { SalesModal } from "@/components/ui/sales-modal";
 import { ClientRecordModal } from "@/components/clients/client-record-modal.jsx";
 import { CollapsibleSection } from "@/components/ui/collapsible-section.jsx";
@@ -24,9 +24,16 @@ import { statusLabel } from "@/lib/format/status";
 import { useMoney } from "@/hooks/use-money.js";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { useUserPermissions } from "@/hooks/use-user-permissions.js";
-import { useFlags } from "@/hooks/use-flag.js";
+import { useFlag, useFlags } from "@/hooks/use-flag.js";
 import { TOOL_PERMISSION_KEYS } from "@/lib/auth/tool-permissions.js";
-import { TOOL_FLAG_KEYS } from "@/lib/auth/tool-flags.js";
+import { TOOL_FLAG_KEYS, WORKSHEET_ROYAL_HOLIDAY_FLAG, WORKSHEET_RH_MONEY_BOX_TAB_FLAG } from "@/lib/auth/tool-flags.js";
+import { useExpedienteFolderNav, EXPEDIENTE_TABS } from "@/hooks/use-expediente-folder-nav.js";
+import { ClientFolderStrip, ClientFolderSubnav } from "@/components/clients/client-folder-nav.jsx";
+import { namedLazy } from "@/lib/lazy-retry.js";
+
+const SurveyPage = namedLazy(() => import("@/components/calculators/survey-page.jsx"), "SurveyPage");
+const VacacionesPage = namedLazy(() => import("@/components/calculators/vacaciones-page.jsx"), "VacacionesPage");
+const WorksheetPage = namedLazy(() => import("@/components/calculators/worksheet-page.jsx"), "WorksheetPage");
 import { useDbStore } from "@/stores/db-store";
 import { useAppStore } from "@/stores/app-store";
 import { shallow } from "zustand/shallow";
@@ -65,7 +72,11 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
   const { t, lang } = useI18n();
   const { can, ready: permReady } = useUserPermissions();
   const { isEnabled, hasCatalog, ready: flagsReady, flagsStatus } = useFlags();
+  const rhWorksheetFlag = useFlag(WORKSHEET_ROYAL_HOLIDAY_FLAG);
+  const rhMoneyBoxFlag = useFlag(WORKSHEET_RH_MONEY_BOX_TAB_FLAG);
+  const { tab: folderTab, sub: folderSub, setFolder, setSub } = useExpedienteFolderNav();
   const toolsReady = flagsReady && permReady;
+  const worksheetRhActive = rhWorksheetFlag.enabled === true;
   const { active } = useWorkspace();
   const { modules: customExpedienteModules } = useCustomModules(EXTENSION_POINTS.EXPEDIENTE_TAB);
   const isPersonalWorkspace = !active || active.tipo === "personal";
@@ -318,50 +329,89 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
     </div>
   );
 
-  const scrollToSection = (selector) => {
-    const el = document.querySelector(selector);
-    if (!el) return;
-    if (el.classList.contains("is-collapsed")) {
-      el.querySelector(".collapsible-section-head")?.click();
-    }
-    el.scrollIntoView({ behavior: "smooth", block: "start" });
-  };
-  const saleCard = canEdit
-    ? { label: t("exp.card.sale"), desc: t("exp.card.saleDesc"), icon: DollarSign, tone: "green", onClick: () => openSaleModal() }
-    : sharedRemote
-      ? { label: t("exp.card.sale"), desc: t("exp.card.saleDesc"), icon: DollarSign, tone: "green", onClick: () => scrollToSection("#client-sales-card") }
-      : null;
-  const notesCard = !sharedRemote && canComment
-    ? { label: t("exp.card.notes"), desc: t("exp.card.notesDesc"), icon: MessageSquare, tone: "blue", onClick: () => setNoteOpen(true) }
-    : sharedRemote
-      ? { label: t("exp.card.notes"), desc: t("exp.card.notesDesc"), icon: MessageSquare, tone: "blue", onClick: () => scrollToSection("#client-activity-card") }
-      : null;
   const isQuick = !!c.quickExpedient && !c.completedExpedient;
-  const toolCards = isQuick
-    ? [saleCard, notesCard].filter(Boolean)
+  const clienteFolder = {
+    id: EXPEDIENTE_TABS.cliente,
+    label: t("exp.folder.cliente"),
+    desc: t("exp.folder.clienteDesc"),
+    icon: User,
+    tone: "blue",
+    onClick: () => setFolder(EXPEDIENTE_TABS.cliente),
+  };
+  const ventaFolder = (canEdit || sharedRemote)
+    ? {
+        id: EXPEDIENTE_TABS.venta,
+        label: t("exp.card.sale"),
+        desc: t("exp.card.saleDesc"),
+        icon: DollarSign,
+        tone: "green",
+        onClick: () => setFolder(EXPEDIENTE_TABS.venta),
+      }
+    : null;
+  const notasFolder = (canComment || sharedRemote)
+    ? {
+        id: EXPEDIENTE_TABS.notas,
+        label: t("exp.card.notes"),
+        desc: t("exp.card.notesDesc"),
+        icon: MessageSquare,
+        tone: "blue",
+        onClick: () => setFolder(EXPEDIENTE_TABS.notas),
+      }
+    : null;
+  const folderCards = isQuick
+    ? [ventaFolder, notasFolder].filter(Boolean)
     : [
         ...TOOL_DEFS
           .filter((tool) => toolAllowed(tool.key))
           .map((tool) => ({
-            toolKey: tool.key,
+            id: tool.key,
             label: t(tool.labelKey),
             desc: t(tool.descKey),
             icon: tool.icon,
             tone: tool.tone,
-            onClick: sharedRemote
-              ? () => {
-                  if (!contactId) return;
-                  navigate(`/red/contacto/${contactId}/expediente/${id}/${tool.href}`);
-                }
-              : () => {
-                  setToolMode("client", id);
-                  navigate(`/clients/${id}/${tool.href}`);
-                },
+            onClick: () => {
+              if (sharedRemote && !contactId) return;
+              if (!sharedRemote) setToolMode("client", id);
+              if (tool.key === "worksheet" && worksheetRhActive) {
+                setFolder("worksheet", "financiamiento");
+              } else {
+                setFolder(tool.key);
+              }
+            },
           })),
-        ...(saleCard ? [saleCard] : []),
-        ...(notesCard ? [notesCard] : []),
+        clienteFolder,
+        ...(ventaFolder ? [ventaFolder] : []),
+        ...(notasFolder ? [notasFolder] : []),
       ];
+  const validFolder = folderCards.some((f) => f.id === folderTab) ? folderTab : "";
+  const rhSubTabs = [
+    { id: "financiamiento", label: "Datos Financiamiento" },
+    { id: "venta", label: "Datos Venta" },
+    ...(rhMoneyBoxFlag.enabled ? [{ id: "moneybox", label: "Money Box" }] : []),
+    { id: "worksheet", label: "Worksheet" },
+  ];
+  const showRhSubnav = validFolder === "worksheet" && worksheetRhActive;
+  const activeRhSub = rhSubTabs.some((s) => s.id === folderSub)
+    ? folderSub
+    : "financiamiento";
   const sales = [...(c.sales || [])].sort((a, b) => (b.ts || 0) - (a.ts || 0));
+  const toolShared = sharedRemote ? { prospectId: id, contactId } : undefined;
+  const moneyBoxTo = sharedRemote
+    ? (contactId ? `/red/contacto/${contactId}/expediente/${id}/money-box` : undefined)
+    : `/clients/${id}/money-box`;
+  const moneyBoxCard = (
+    <PremiumFeatureCard
+      featureKey="money_box"
+      title={t("moneyBox.title")}
+      description={t("moneyBox.cardDesc")}
+      icon={Wallet}
+      tone="green"
+      to={moneyBoxTo}
+      onBeforeOpen={() => {
+        if (!sharedRemote) setToolMode("client", id);
+      }}
+    />
+  );
 
   return (
     <>
@@ -424,62 +474,17 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
           onCapabilities={setSalaCapabilities}
         />
 
-        <div className="exp-layout">
+        <div className="exp-layout exp-layout--folders">
           <div>
             <div className="section-label" id="exp-tool-section-label">{t("exp.section.info")}</div>
             <div className="exp-tool-list" id="exp-tool-list">
               {!toolsReady ? (
                 Array.from({ length: isQuick ? 2 : 3 }, (_, i) => <ToolCardSkeleton key={`exp-skel-${i}`} />)
-              ) : toolCards.map((card) => {
-                const Icon = card.icon;
-                return (
-                  <div key={card.label} className="tool-card-stack">
-                    <button type="button" className="tool-card" onClick={card.onClick}>
-                      <div className={`tool-icon ${card.tone}`}><Icon size={20} /></div>
-                      <div>
-                        <div className="tool-name">{card.label}</div>
-                        <div className="tool-desc">{card.desc}</div>
-                      </div>
-                      <div style={{ color: "var(--muted2)", marginLeft: "auto", fontSize: 18 }}>›</div>
-                    </button>
-                    {card.toolKey === "worksheet" && (
-                      <PremiumFeatureCard
-                        featureKey="money_box"
-                        title={t("moneyBox.title")}
-                        description={t("moneyBox.cardDesc")}
-                        icon={Wallet}
-                        tone="green"
-                        to={
-                          sharedRemote
-                            ? (contactId ? `/red/contacto/${contactId}/expediente/${id}/money-box` : undefined)
-                            : `/clients/${id}/money-box`
-                        }
-                        onBeforeOpen={() => {
-                          if (!sharedRemote) setToolMode("client", id);
-                        }}
-                      />
-                    )}
-                  </div>
-                );
-              })}
-              {toolsReady && !isQuick && !toolCards.some((card) => card.toolKey === "worksheet") && (
-                <div className="tool-card-stack">
-                  <PremiumFeatureCard
-                    featureKey="money_box"
-                    title={t("moneyBox.title")}
-                    description={t("moneyBox.cardDesc")}
-                    icon={Wallet}
-                    tone="green"
-                    to={
-                      sharedRemote
-                        ? (contactId ? `/red/contacto/${contactId}/expediente/${id}/money-box` : undefined)
-                        : `/clients/${id}/money-box`
-                    }
-                    onBeforeOpen={() => {
-                      if (!sharedRemote) setToolMode("client", id);
-                    }}
-                  />
-                </div>
+              ) : (
+                <ClientFolderStrip folders={folderCards} activeTab={validFolder} compact={!!validFolder} />
+              )}
+              {toolsReady && !validFolder && !isQuick && !folderCards.some((card) => card.id === "worksheet") && !worksheetRhActive && (
+                <div className="tool-card-stack">{moneyBoxCard}</div>
               )}
               {isQuick && (
                 <button type="button" className="tool-card" onClick={() => {
@@ -495,44 +500,175 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
                 </button>
               )}
             </div>
+
+            {showRhSubnav && (
+              <ClientFolderSubnav
+                tabs={rhSubTabs}
+                activeId={activeRhSub}
+                onSelect={(next) => setSub(next)}
+                ariaLabel="Pestañas worksheet"
+              />
+            )}
+
+            {validFolder ? (
+              <div className="exp-folder-panel" data-testid="exp-folder-panel">
+                <Suspense fallback={<ToolCardSkeleton />}>
+                  {validFolder === "survey" && (
+                    <SurveyPage clientId={id} shared={toolShared} embedded />
+                  )}
+                  {validFolder === "vacaciones" && (
+                    <VacacionesPage clientId={id} shared={toolShared} embedded />
+                  )}
+                  {validFolder === "worksheet" && (
+                    <>
+                      <WorksheetPage
+                        clientId={id}
+                        shared={toolShared}
+                        embedded
+                        hideTabs={worksheetRhActive}
+                        externalTab={worksheetRhActive ? activeRhSub : undefined}
+                        onTabChange={worksheetRhActive ? setSub : undefined}
+                      />
+                      {!worksheetRhActive && moneyBoxCard}
+                    </>
+                  )}
+                </Suspense>
+                {validFolder === "cliente" && (
+                  <div className="card prospect-summary-card">
+                    <div className="prospect-summary-head prospect-summary-head--actions">
+                      <div className="prospect-summary-title">{t("exp.prospect.title")}</div>
+                      {canEdit && (
+                        <button type="button" className="btn btn-ghost btn-sm" onClick={openEdit}>{t("exp.prospect.edit")}</button>
+                      )}
+                    </div>
+                    <div className="prospect-summary-list prospect-summary-grid" id="prospect-summary-list">
+                      <div className="ps-grid-row ps-grid-row--full">
+                        {psCell("#", t("exp.prospect.id"), psValue(c.prospectCode, true))}
+                      </div>
+                      <div className="ps-grid-row ps-grid-row--pair">
+                        {psCell("👤", t("exp.prospect.name"), psValue(c.name1 || c.name, true))}
+                        {psCell("🏷", t("exp.prospect.tourType"), psValue(c.tipo_tour, true))}
+                      </div>
+                      <div className="ps-grid-row ps-grid-row--full">
+                        {psCell("📍", t("exp.prospect.location"), psValue(cityCountry))}
+                      </div>
+                      <div className="ps-grid-row ps-grid-row--pair">
+                        {psCell("▣", t("exp.prospect.contract"), psValue(c.contract))}
+                        {psCell("◉", t("exp.prospect.status"), <span className="ps-pill">{statusLabel(c.status || "", lang)}</span>)}
+                      </div>
+                      <div className="ps-grid-row ps-grid-row--full">
+                        {psCell("📊", t("exp.prospect.quantifiable"), psValue(c.tour_cuantificable !== false ? t("clients.yes") : t("clients.no"), true))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+                {validFolder === "venta" && (
+                  <div className="card activity-card" id="client-sales-card">
+                    <div className="card-heading">{t("exp.sales.title")}</div>
+                    <p className="card-sub">{t("exp.sales.sub")}</p>
+                    {canEdit && (
+                      <div className="exp-folder-panel-actions">
+                        <button type="button" className="btn btn-primary btn-sm" onClick={() => openSaleModal()}>{t("exp.registerSale")}</button>
+                      </div>
+                    )}
+                    <div className="activity-list" id="client-sales-list">
+                      {!sales.length ? <div className="activity-empty">{t("exp.sales.empty")}</div> : (
+                        sales.map((sale) => {
+                          const pending = sale.status === "pendiente" || sale.processing === "pendiente";
+                          return (
+                            <div key={sale.saleId || `${sale.date}-${sale.contract}-${sale.ts || sale.vol}`} className="activity-item">
+                              <span className="activity-dot venta" />
+                              <div>
+                                <div className="activity-main">
+                                  {`${fmt(sale.vol || 0)} · ${t("exp.sales.tours", { n: sale.tours || 1 })}`}
+                                  {pending && <span className="sale-pending-pill" title={t("exp.sales.pendingHint")}>{t("exp.sales.pending")}</span>}
+                                </div>
+                                <div className="activity-sub">
+                                  {[sale.contract ? t("exp.sales.contract", { contract: sale.contract }) : null, statusLabel(sale.status || "", lang), sale.processDate ? t("exp.sales.processes", { date: longDate(sale.processDate, lang) }) : null].filter(Boolean).join(" · ")}
+                                </div>
+                                {sale.note && <div className="activity-sub">{sale.note}</div>}
+                              </div>
+                              <div className="activity-date">
+                                {longDate(sale.date, lang)}
+                                <br />
+                                {canEdit && (
+                                  <button type="button" className="dg-link" onClick={() => openSaleModal(sale)}>{t("exp.sales.open")}</button>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
+                )}
+                {validFolder === "notas" && (
+                  <div className="card activity-card" id="client-activity-card">
+                    <div className="card-heading">{t("exp.activity.title")}</div>
+                    <p className="card-sub">{t("exp.activity.sub")}</p>
+                    {canComment && !sharedRemote && (
+                      <div className="exp-folder-panel-actions">
+                        <button type="button" className="btn btn-primary btn-sm" onClick={() => setNoteOpen(true)}>{t("exp.note.title")}</button>
+                      </div>
+                    )}
+                    <div className="activity-list" id="client-activity-list">
+                      {!activityItems.length ? <div className="activity-empty">{t("exp.activity.empty")}</div> : (
+                        activityItems.map((a) => (
+                          <div key={a.id} className="activity-item">
+                            <span className={`activity-dot ${a.type || ""}`} />
+                            <div>
+                              <div className="activity-main">{a.title}</div>
+                              {a.note && <div className="activity-sub">{a.note}</div>}
+                            </div>
+                            <div className="activity-date">{a.date ? longDate(a.date, lang) : ""}</div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : null}
           </div>
 
-          <CollapsibleSection
-            defaultOpen={
-              typeof window !== "undefined"
-              && window.matchMedia("(min-width: 769px)").matches
-              && !sharedRemote
-            }
-            className="card exp-side-card prospect-summary-card exp-collapsible-card"
-            title={<div className="prospect-summary-title">{t("exp.prospect.title")}</div>}
-            subtitle={t("exp.prospect.sub")}
-            bodyClassName="prospect-summary-body"
-          >
-            <div className="prospect-summary-head prospect-summary-head--actions">
-              {canEdit && (
-                <button type="button" className="btn btn-ghost btn-sm" onClick={openEdit}>{t("exp.prospect.edit")}</button>
-              )}
-            </div>
-            <div className="prospect-summary-list prospect-summary-grid" id="prospect-summary-list">
-              <div className="ps-grid-row ps-grid-row--full">
-                {psCell("#", t("exp.prospect.id"), psValue(c.prospectCode, true))}
+          {!validFolder && (
+            <CollapsibleSection
+              defaultOpen={
+                typeof window !== "undefined"
+                && window.matchMedia("(min-width: 769px)").matches
+                && !sharedRemote
+              }
+              className="card exp-side-card prospect-summary-card exp-collapsible-card"
+              title={<div className="prospect-summary-title">{t("exp.prospect.title")}</div>}
+              subtitle={t("exp.prospect.sub")}
+              bodyClassName="prospect-summary-body"
+            >
+              <div className="prospect-summary-head prospect-summary-head--actions">
+                {canEdit && (
+                  <button type="button" className="btn btn-ghost btn-sm" onClick={openEdit}>{t("exp.prospect.edit")}</button>
+                )}
               </div>
-              <div className="ps-grid-row ps-grid-row--pair">
-                {psCell("👤", t("exp.prospect.name"), psValue(c.name1 || c.name, true))}
-                {psCell("🏷", t("exp.prospect.tourType"), psValue(c.tipo_tour, true))}
+              <div className="prospect-summary-list prospect-summary-grid" id="prospect-summary-list">
+                <div className="ps-grid-row ps-grid-row--full">
+                  {psCell("#", t("exp.prospect.id"), psValue(c.prospectCode, true))}
+                </div>
+                <div className="ps-grid-row ps-grid-row--pair">
+                  {psCell("👤", t("exp.prospect.name"), psValue(c.name1 || c.name, true))}
+                  {psCell("🏷", t("exp.prospect.tourType"), psValue(c.tipo_tour, true))}
+                </div>
+                <div className="ps-grid-row ps-grid-row--full">
+                  {psCell("📍", t("exp.prospect.location"), psValue(cityCountry))}
+                </div>
+                <div className="ps-grid-row ps-grid-row--pair">
+                  {psCell("▣", t("exp.prospect.contract"), psValue(c.contract))}
+                  {psCell("◉", t("exp.prospect.status"), <span className="ps-pill">{statusLabel(c.status || "", lang)}</span>)}
+                </div>
+                <div className="ps-grid-row ps-grid-row--full">
+                  {psCell("📊", t("exp.prospect.quantifiable"), psValue(c.tour_cuantificable !== false ? t("clients.yes") : t("clients.no"), true))}
+                </div>
               </div>
-              <div className="ps-grid-row ps-grid-row--full">
-                {psCell("📍", t("exp.prospect.location"), psValue(cityCountry))}
-              </div>
-              <div className="ps-grid-row ps-grid-row--pair">
-                {psCell("▣", t("exp.prospect.contract"), psValue(c.contract))}
-                {psCell("◉", t("exp.prospect.status"), <span className="ps-pill">{statusLabel(c.status || "", lang)}</span>)}
-              </div>
-              <div className="ps-grid-row ps-grid-row--full">
-                {psCell("📊", t("exp.prospect.quantifiable"), psValue(c.tour_cuantificable !== false ? t("clients.yes") : t("clients.no"), true))}
-              </div>
-            </div>
-          </CollapsibleSection>
+            </CollapsibleSection>
+          )}
         </div>
 
         {!sharedRemote && customExpedienteModules.map((mod) => (
@@ -551,6 +687,8 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
           </CollapsibleSection>
         ))}
 
+        {!validFolder && (
+          <>
         <CollapsibleSection
           mobileOnly
           defaultOpen={false}
@@ -613,6 +751,8 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
             )}
           </div>
         </CollapsibleSection>
+          </>
+        )}
       </div>
 
       <ClientRecordModal

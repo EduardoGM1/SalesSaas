@@ -29,14 +29,14 @@ import { shallow } from "zustand/shallow";
 
 const EMPTY_FIELDS = { wv: "", we: "", wcc: "", wob: "" };
 
-export function WorksheetPage({ clientId, shared }) {
+export function WorksheetPage({ clientId, shared, embedded, hideTabs, externalTab, onTabChange }) {
   const rhFlag = useFlag(WORKSHEET_ROYAL_HOLIDAY_FLAG);
   if (rhFlag.loading) {
     return (
       <>
-        <Topbar title="Worksheet" subtitle="Royal Holiday" />
-        <div className="sales-page tool-calc-page" aria-busy="true">
-          <div className="page-toolbar"><PageBack inline href="/tools" /></div>
+        {!embedded && <Topbar title="Worksheet" subtitle="Royal Holiday" />}
+        <div className={`${embedded ? "exp-embedded-tool" : "sales-page"} tool-calc-page`} aria-busy="true">
+          {!embedded && <div className="page-toolbar"><PageBack inline href="/tools" /></div>}
           <CalcCardSkeleton rows={4} boxes={3} />
           <div style={{ marginTop: 12 }}><CalcCardSkeleton rows={3} boxes={2} /></div>
         </div>
@@ -46,21 +46,30 @@ export function WorksheetPage({ clientId, shared }) {
   if (rhFlag.flagsStatus === "unavailable") {
     return (
       <>
-        <Topbar title="Worksheet" subtitle="" />
-        <div className="sales-page tool-calc-page">
-          <div className="page-toolbar"><PageBack inline href="/tools" /></div>
+        {!embedded && <Topbar title="Worksheet" subtitle="" />}
+        <div className={`${embedded ? "exp-embedded-tool" : "sales-page"} tool-calc-page`}>
+          {!embedded && <div className="page-toolbar"><PageBack inline href="/tools" /></div>}
           <PermissionsUnavailableNotice variant="panel" kind="flags" />
         </div>
       </>
     );
   }
   if (rhFlag.enabled) {
-    return <WorksheetRoyalHolidayPage clientId={clientId} shared={shared} />;
+    return (
+      <WorksheetRoyalHolidayPage
+        clientId={clientId}
+        shared={shared}
+        embedded={embedded}
+        hideTabs={hideTabs}
+        externalTab={externalTab}
+        onTabChange={onTabChange}
+      />
+    );
   }
-  return <WorksheetStandardPage clientId={clientId} shared={shared} />;
+  return <WorksheetStandardPage clientId={clientId} shared={shared} embedded={embedded} />;
 }
 
-function WorksheetStandardPage({ clientId, shared }) {
+function WorksheetStandardPage({ clientId, shared, embedded }) {
   const { t } = useI18n();
   const session = useToolSession({ clientId, shared, section: "worksheet" });
   const { ready, readOnly, backHref, getBucket, saveBucket, isFileMode, isShared, peers, lockedBy, toolsRevision, collab } = session;
@@ -182,14 +191,23 @@ function WorksheetStandardPage({ clientId, shared }) {
 
   return (
     <>
-      <Topbar title={t("tools.worksheet")} subtitle={isFileMode ? t("tools.sub.financing") : t("tools.sub.free")} />
-      <div className={`sales-page tool-calc-page${!readOnly ? " tool-calc-page--with-save" : ""}`}>
-        <div className="page-toolbar page-toolbar--between">
-          <PageBack inline href={backHref} hasUnsavedChanges={() => dirtyKeysRef.current.size > 0} />
-          {!readOnly && (
+      {!embedded && (
+        <Topbar title={t("tools.worksheet")} subtitle={isFileMode ? t("tools.sub.financing") : t("tools.sub.free")} />
+      )}
+      <div className={`${embedded ? "exp-embedded-tool" : "sales-page"} tool-calc-page${!readOnly ? " tool-calc-page--with-save" : ""}`}>
+        {!embedded && (
+          <div className="page-toolbar page-toolbar--between">
+            <PageBack inline href={backHref} hasUnsavedChanges={() => dirtyKeysRef.current.size > 0} />
+            {!readOnly && (
+              <PageBack inline label={t("common.clear")} onClick={handleClear} showIcon={false} />
+            )}
+          </div>
+        )}
+        {embedded && !readOnly && (
+          <div className="page-toolbar page-toolbar--end exp-embedded-toolbar">
             <PageBack inline label={t("common.clear")} onClick={handleClear} showIcon={false} />
-          )}
-        </div>
+          </div>
+        )}
 
         <SharedToolBanner show={ready && isShared && readOnly} peers={peers} />
 

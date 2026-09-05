@@ -1,11 +1,11 @@
 # Salètse — Información técnica del sistema
 
-Documento maestro de referencia: producto, stack, arquitectura, modelo de datos, RBAC, flujos y operaciones.
+Ficha de producto, stack y modelo. **Mapa de onboarding (código actual, punta a punta):** [`MAPA-GENERAL-SISTEMA.md`](./MAPA-GENERAL-SISTEMA.md). **UX por rol:** [`FLUJO-USUARIO-POR-ROL.md`](./FLUJO-USUARIO-POR-ROL.md). **Sala Royal Holiday:** [`FLUJO-USUARIO-ROYAL-HOLIDAY.md`](./FLUJO-USUARIO-ROYAL-HOLIDAY.md).
 
 > Producto: plataforma SaaS de ventas para timeshare / clubes vacacionales (agenda, expedientes, herramientas comerciales, metas, red, workspaces personal/sala).  
 > Repositorio: monorepo `sales-app` (npm workspaces).  
-> Producción: [saletse.vercel.app](https://saletse.vercel.app).  
-> Migraciones SQL: `0001` … `0075` (gap histórico `0024`).
+> Producción: ver el mapa (VPS self-hosted; alias Vercel histórico).  
+> Migraciones SQL: `0001` … `0090` (gap histórico `0024`). Este archivo nació citando hasta `0075`; el detalle de corte está en el mapa §7.
 
 ---
 
@@ -233,7 +233,7 @@ sequenceDiagram
 efectivo = permisos(rol) ∪ overrides(otorgado=true) ∪ admin_permissions (si admin plataforma)
 ```
 
-Deny deprecado. Detalle: [`RBAC-ADDITIVE.md`](./RBAC-ADDITIVE.md).
+Deny deprecado. **No hay** `techo_plataforma ∩ techo_empresa`: esa fórmula se documentó por error y nunca corrió. Versiones anteriores de [`RBAC-ADDITIVE.md`](./RBAC-ADDITIVE.md) la presentaban como si existiera; **ese documento ya no describe un mecanismo real y fue corregido** (unión + atajos superadmin / admin de empresa con `capa: app`). El “techo” en UI/API es alcance del delegante o unión de puestos existentes, no una capa de gobierno.
 
 **Precedencia de flags:** usuario → rol → membresía (plan) → default global (y resolvers tenant-aware). Si el flag padre está off, los hijos quedan off.
 

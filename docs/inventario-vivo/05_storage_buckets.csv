@@ -1,0 +1,4 @@
+id,name,public,file_size_limit
+prospect-files,prospect-files,False,10485760
+support-screenshots,support-screenshots,False,10485760
+workspace-branding,workspace-branding,True,2097152

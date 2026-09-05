@@ -176,9 +176,9 @@ export function RhOkrPage() {
     }
   };
 
-  if (!ready) return <RhToolLoading title="OKR → Dashboard" backHref="/ops/rh" />;
+  if (!ready) return <RhToolLoading title="OKR de sala" backHref="/ops/rh" />;
   return (
-    <ModuleShell title="OKR → Dashboard">
+    <ModuleShell title="OKR de sala">
       <div className="card tool-calc-card">
         <div className="frow tool-frow"><div className="flabel">Periodo</div>
           <input className="input" type="month" value={periodo} onChange={(e) => setPeriodo(e.target.value)} /></div>

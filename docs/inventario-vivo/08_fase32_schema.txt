@@ -1,0 +1,44 @@
+Fase 3.2 — esquema en staging — 2026-08-22
+Sin secretos. Sin datos de producción.
+
+FUENTE
+  pg_dump Cloud --schema-only --no-owner --no-privileges -n public
+  Dumped from 17.6 / pg_dump 17.6
+  8807 líneas, 281 KB → /opt/saletse-sb-staging/schema_public.sql
+  Nota: db.*.supabase.co es solo IPv6; la VPS no llega. Dump vía túnel SSH
+  (Windows IPv6 → VPS 127.0.0.1:15432). Solo lectura.
+
+APLICADO
+  CREATE SCHEMA public omitido (el esquema ya existía)
+  125 CREATE POLICY public desde el dump
+  Trigger on_auth_user_created ON auth.users → handle_new_user
+  Publication supabase_realtime: 15 tablas (paridad Cloud; sin usuario_permisos_override / rol_permisos)
+  REPLICA IDENTITY: las 15 en default (d); ninguna FULL
+  Buckets: workspace-branding (público, 2 MB), prospect-files (privado, 10 MB),
+           support-screenshots (privado, 10 MB)
+  NO creado: soporte-adjuntos (decisión pendiente)
+  Policies storage.objects (4) y realtime.messages (4) aplicadas como supabase_admin
+  Event trigger ensure_rls: NO está en el dump -n public (esperado). Función rls_auto_enable SÍ está.
+
+DIFF RLS
+  Cloud 133 = staging 133
+  only_cloud=0 only_staging=0 field_diffs=0
+  public 125 + storage 4 + realtime 4
+
+FUNCIONES public
+  Cloud 62 = staging 62 (incluye rls_auto_enable)
+  only_cloud=[] only_staging=[]
+
+RAM (esquema, sin datos) vs baseline vacío 610 MiB
+  kong     241.1 / 256   (antes 137; cerca del techo del contenedor)
+  storage  169.5 / 384
+  realtime 184.6 / 512
+  auth       8.9 / 256
+  rest      24.3 / 256
+  db        92.4 / 768
+  Suma ≈ 721 MiB (+111 MiB vs vacío)
+  Host: 7.8 GiB, used 1.9 GiB, available 5.8 GiB, swap 13 MiB
+
+PROD
+  saletse :4000/health 200
+  cuidate :3000 200

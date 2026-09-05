@@ -163,6 +163,9 @@ export function ClientsPage() {
   const [listError, setListError] = useState(null);
   const canShare = isSupabaseConfigured();
   const isSalaWorkspace = active?.tipo === "sala_de_venta";
+  const isPersonalWorkspace = !active || active.tipo === "personal";
+  const isGerenteSala = isSalaWorkspace && active?.rol_en_workspace === "gerente";
+  const canDeleteExpediente = workspaceReady && (isPersonalWorkspace || isGerenteSala);
   const showTeamCols = isSalaWorkspace && canShare;
   const customColCount = customColumnModules.length;
   const tableColSpan = (showTeamCols ? 7 : 4) + customColCount;
@@ -592,7 +595,7 @@ export function ClientsPage() {
                                 <Share2 size={14} />
                               </button>
                             )}
-                            {!c.pinned && (
+                            {!c.pinned && canDeleteExpediente && (
                               <button type="button" className="icon-btn danger" title={t("clients.delete")} onClick={async () => {
                                 await removeClient(c.id, clientDisplayName(c));
                               }}><Trash2 size={14} color="#dc2626" /></button>

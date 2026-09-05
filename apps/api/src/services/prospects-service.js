@@ -7,15 +7,21 @@ import {
   requireWorkspacePermission,
   scopeByWorkspace,
 } from "../lib/workspace-scope.js";
-import { rpcEffectiveWorkspacePermissions } from "../lib/workspace-permission-rpc.js";
+import { permissionDeniedError, rpcEffectiveWorkspacePermissions } from "../lib/workspace-permission-rpc.js";
 import { canEditProspectRecord } from "../lib/prospect-edit-access.js";
+
+function requiredProspectViewPermission(teamScope) {
+  return teamScope ? "expedientes:ver_equipo" : "expedientes:ver_propios";
+}
 
 export async function listProspects(supabase, userId, { limit, offset, status }) {
   const ctx = await getRequestWorkspaceContext(supabase, userId);
-  // Gerente / alcance de equipo: autorizar con ver_equipo (no exigir ver_propios).
-  if (ctx.teamScope) {
-    await requireWorkspacePermission(supabase, userId, "expedientes:ver_equipo", ctx.workspaceId);
-  }
+  await requireWorkspacePermission(
+    supabase,
+    userId,
+    requiredProspectViewPermission(ctx.teamScope),
+    ctx.workspaceId,
+  );
 
   const { data: assignments } = !ctx.teamScope
     ? await supabase
@@ -26,9 +32,6 @@ export async function listProspects(supabase, userId, { limit, offset, status })
       .neq("estado", "cancelado")
     : { data: [] };
   const assignedIds = (assignments ?? []).map((row) => row.prospect_id);
-  if (!ctx.teamScope && !assignedIds.length) {
-    await requireWorkspacePermission(supabase, userId, "expedientes:ver_propios", ctx.workspaceId);
-  }
   let q = supabase
     .from("prospects")
     .select(PROSPECT_LIST_COLUMNS, { count: "exact" })
@@ -88,22 +91,22 @@ async function ensureProspectSalaSideEffects(supabase, userId, workspaceId, pros
     estado: "en_progreso",
   }, { onConflict: "prospect_id" });
 
-  await admin.rpc("sync_prospect_chat_members", { p_prospect_id: prospectId }).catch(() => {});
+  try {
+    await admin.rpc("sync_prospect_chat_members", { p_prospect_id: prospectId });
+  } catch {
+    /* el chat no bloquea la creación del expediente */
+  }
 }
 
 export async function getProspect(supabase, userId, id) {
   if (!isUuid(id)) throw new ServiceError("ID inválido.");
   const ctx = await getRequestWorkspaceContext(supabase, userId);
-  const { data: assignment } = await supabase
-    .from("prospect_workflows")
-    .select("prospect_id")
-    .eq("prospect_id", id)
-    .eq("cerrador_id", userId)
-    .maybeSingle();
-  if (!assignment) {
-    const required = ctx.teamScope ? "expedientes:ver_equipo" : "expedientes:ver_propios";
-    await requireWorkspacePermission(supabase, userId, required, ctx.workspaceId);
-  }
+  await requireWorkspacePermission(
+    supabase,
+    userId,
+    requiredProspectViewPermission(ctx.teamScope),
+    ctx.workspaceId,
+  );
   let q = supabase.from("prospects").select("*").eq("id", id);
   q = scopeByWorkspace(q, ctx.workspaceId);
   const { data, error } = await q.maybeSingle();
@@ -115,19 +118,19 @@ export async function updateProspect(supabase, userId, id, body) {
   if (!isUuid(id)) throw new ServiceError("ID inválido.");
   const patch = bodyToProspectPatch(body);
   if (!Object.keys(patch).length) throw new ServiceError("Sin campos para actualizar.");
-  const ctx = await getRequestWorkspaceContext(supabase, userId);
+  const workspaceId = await requireWorkspacePermission(supabase, userId, "expedientes:editar");
   let q = supabase.from("prospects").select("id, user_id, workspace_id").eq("id", id);
-  q = scopeByWorkspace(q, ctx.workspaceId);
+  q = scopeByWorkspace(q, workspaceId);
   const { data: prospect, error: loadErr } = await q.maybeSingle();
   if (loadErr) throw new ServiceError(loadErr.message, 500);
   if (!prospect) throw new ServiceError("Expediente no encontrado.", 404);
 
   const [permissionKeys, { data: member }] = await Promise.all([
-    rpcEffectiveWorkspacePermissions(supabase, userId, ctx.workspaceId),
+    rpcEffectiveWorkspacePermissions(supabase, userId, workspaceId),
     supabase
       .from("workspace_miembros")
       .select("rol_en_workspace")
-      .eq("workspace_id", ctx.workspaceId)
+      .eq("workspace_id", workspaceId)
       .eq("usuario_id", userId)
       .maybeSingle(),
   ]);
@@ -146,11 +149,11 @@ export async function updateProspect(supabase, userId, id, body) {
     permissions,
     memberRole: member?.rol_en_workspace || null,
   })) {
-    throw new ServiceError("No tienes permiso para editar este expediente.", 403);
+    throw permissionDeniedError();
   }
 
   let updateQ = supabase.from("prospects").update(patch).eq("id", id);
-  updateQ = scopeByWorkspace(updateQ, ctx.workspaceId);
+  updateQ = scopeByWorkspace(updateQ, workspaceId);
   const { data, error } = await updateQ.select().maybeSingle();
   if (error) throw new ServiceError(error.message, 400);
   return assertFound(data, "Expediente no encontrado.");

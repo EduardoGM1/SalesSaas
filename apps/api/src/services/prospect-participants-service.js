@@ -4,7 +4,7 @@
  */
 import { ServiceError } from "../lib/service-error.js";
 import { createServiceSupabaseClient } from "../lib/supabase-server.js";
-import { getRequestWorkspaceId } from "../lib/workspace-scope.js";
+import { getRequestWorkspaceContext, requireWorkspacePermission } from "../lib/workspace-scope.js";
 import { canEditProspectRecord } from "../lib/prospect-edit-access.js";
 import { notifyCloserAssigned } from "./push-notifications-service.js";
 import { rpcEffectiveWorkspacePermissions } from "../lib/workspace-permission-rpc.js";
@@ -23,10 +23,11 @@ async function loadAccess(actorId, prospectId) {
     .eq("id", prospectId)
     .maybeSingle();
   if (error) throw new ServiceError(error.message, 500);
-  if (!prospect) throw new ServiceError("Expediente no encontrado.", 404);
-  if (prospect.workspaces?.tipo !== "sala_de_venta") {
-    throw new ServiceError("Los participantes solo aplican en Salas de Ventas.", 409);
-  }
+
+  const denyAccess = () => new ServiceError("No puedes acceder a este expediente.", 403);
+  // Mismo 403 si el UUID no existe o si existe y el actor no es miembro:
+  // evita enumerar expedientes (404 vs 403). El SELECT admin sigue siendo interno.
+  if (!prospect) throw denyAccess();
 
   const [{ data: profile }, { data: member }, { data: companyAdmin }] = await Promise.all([
     admin.from("profiles").select("is_super_admin").eq("id", actorId).maybeSingle(),
@@ -49,7 +50,10 @@ async function loadAccess(actorId, prospectId) {
   ]);
   const isSuper = profile?.is_super_admin === true;
   if (!isSuper && !companyAdmin && !member) {
-    throw new ServiceError("No puedes acceder a este expediente.", 403);
+    throw denyAccess();
+  }
+  if (prospect.workspaces?.tipo !== "sala_de_venta") {
+    throw new ServiceError("Los participantes solo aplican en Salas de Ventas.", 409);
   }
 
   const permissionKeys = await rpcEffectiveWorkspacePermissions(admin, actorId, prospect.workspace_id);
@@ -71,6 +75,17 @@ async function loadAccess(actorId, prospectId) {
   };
 }
 
+async function loadExistingParticipants(access) {
+  const { data, error } = await access.admin
+    .from("prospect_workflows")
+    .select("*")
+    .eq("prospect_id", access.prospect.id)
+    .maybeSingle();
+  if (error) throw new ServiceError(error.message, 500);
+  return data || null;
+}
+
+/** Inserta el row de participantes. Solo llamar DESPUÉS de autorizar al actor. */
 async function ensureParticipants(access, actorId) {
   const { admin, prospect } = access;
   const { data: existing, error } = await admin
@@ -114,13 +129,34 @@ async function ensureParticipants(access, actorId) {
   return again;
 }
 
-function assertVisibility(access, participants, actorId) {
-  const visible = access.isManager
-    || participants.representante_id === actorId
-    || participants.cerrador_id === actorId
+function canViewParticipants(access, participants, actorId) {
+  const representanteId = participants?.representante_id ?? access.prospect.user_id;
+  const cerradorId = participants?.cerrador_id ?? null;
+  return access.isManager
+    || representanteId === actorId
+    || cerradorId === actorId
     || access.permissions.has("workflow:ver")
     || access.permissions.has("expedientes:ver_propios");
-  if (!visible) throw new ServiceError("No puedes ver este expediente.", 403);
+}
+
+function assertCanManageParticipants(access, message) {
+  if (!access.isManager) throw new ServiceError(message, 403);
+}
+
+/**
+ * Autoriza la vista y solo entonces inicializa el row si falta.
+ * Quien no pasa el check grosero (gerente/dueño/ver_propios) solo puede ser
+ * representante/cerrador de un row YA existente — nunca provoca un insert.
+ */
+async function participantsAfterAuth(access, actorId) {
+  if (canViewParticipants(access, null, actorId)) {
+    return ensureParticipants(access, actorId);
+  }
+  const existing = await loadExistingParticipants(access);
+  if (existing && (existing.representante_id === actorId || existing.cerrador_id === actorId)) {
+    return existing;
+  }
+  throw new ServiceError("No puedes ver este expediente.", 403);
 }
 
 async function participantsPayload(admin, prospectId) {
@@ -136,8 +172,7 @@ async function participantsPayload(admin, prospectId) {
 /** Estado de participantes + historial (sin etapas). */
 export async function getParticipants(_supabase, actorId, prospectId) {
   const access = await loadAccess(actorId, prospectId);
-  const row = await ensureParticipants(access, actorId);
-  assertVisibility(access, row, actorId);
+  await participantsAfterAuth(access, actorId);
   const [state, timeline, conversation] = await Promise.all([
     participantsPayload(access.admin, prospectId),
     listEventTimeline(_supabase, actorId, prospectId),
@@ -175,8 +210,7 @@ export async function getParticipants(_supabase, actorId, prospectId) {
 
 export async function listEventTimeline(_supabase, actorId, prospectId) {
   const access = await loadAccess(actorId, prospectId);
-  const row = await ensureParticipants(access, actorId);
-  assertVisibility(access, row, actorId);
+  await participantsAfterAuth(access, actorId);
   const { data, error } = await access.admin
     .from("prospect_workflow_events")
     .select("id, prospect_id, actor_id, actor_role, event_type, metadata, created_at, actor:profiles(full_name, email)")
@@ -190,8 +224,8 @@ export async function listEventTimeline(_supabase, actorId, prospectId) {
 /** Asigna o reasigna Cerrador; sincroniza chat y notifica. */
 export async function assignCloser(_supabase, actorId, prospectId, closerId) {
   const access = await loadAccess(actorId, prospectId);
+  assertCanManageParticipants(access, "Solo un gerente puede asignar Cerrador.");
   const participants = await ensureParticipants(access, actorId);
-  if (!access.isManager) throw new ServiceError("Solo un gerente puede asignar Cerrador.", 403);
   if (participants.estado === "cancelado") {
     throw new ServiceError("El expediente está cancelado.", 409);
   }
@@ -226,7 +260,11 @@ export async function assignCloser(_supabase, actorId, prospectId, closerId) {
   });
   if (error) throw new ServiceError(error.message, 409);
 
-  await access.admin.rpc("sync_prospect_chat_members", { p_prospect_id: prospectId }).catch(() => {});
+  try {
+    await access.admin.rpc("sync_prospect_chat_members", { p_prospect_id: prospectId });
+  } catch {
+    /* el chat no bloquea la asignación */
+  }
 
   const prospectName = access.prospect.name1 || access.prospect.name || access.prospect.prospect_code || "Expediente";
   const { data: actorProfile } = await access.admin
@@ -250,8 +288,8 @@ export async function assignCloser(_supabase, actorId, prospectId, closerId) {
 /** Asigna o reasigna Vendedor (representante); sincroniza chat. */
 export async function assignRepresentante(_supabase, actorId, prospectId, representanteId) {
   const access = await loadAccess(actorId, prospectId);
+  assertCanManageParticipants(access, "Solo un gerente puede asignar Vendedor.");
   const participants = await ensureParticipants(access, actorId);
-  if (!access.isManager) throw new ServiceError("Solo un gerente puede asignar Vendedor.", 403);
   if (participants.estado === "cancelado") {
     throw new ServiceError("El expediente está cancelado.", 409);
   }
@@ -289,15 +327,20 @@ export async function assignRepresentante(_supabase, actorId, prospectId, repres
   });
   if (error) throw new ServiceError(error.message, 409);
 
-  await access.admin.rpc("sync_prospect_chat_members", { p_prospect_id: prospectId }).catch(() => {});
+  try {
+    await access.admin.rpc("sync_prospect_chat_members", { p_prospect_id: prospectId });
+  } catch {
+    /* el chat no bloquea la asignación */
+  }
 
   return data;
 }
 
 /** Lista expedientes activos de la sala según rol (sin filtrar por etapa). */
 export async function listActiveProspects(supabase, actorId) {
-  const workspaceId = await getRequestWorkspaceId(supabase, actorId);
-  if (!workspaceId) throw new ServiceError("Workspace activo requerido.", 403);
+  const ctx = await getRequestWorkspaceContext(supabase, actorId);
+  const required = ctx.teamScope ? "expedientes:ver_equipo" : "expedientes:ver_propios";
+  const workspaceId = await requireWorkspacePermission(supabase, actorId, required, ctx.workspaceId);
   const admin = adminClient();
   const { data: member } = await admin
     .from("workspace_miembros")

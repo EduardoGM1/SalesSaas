@@ -15,11 +15,13 @@ npm run db:migrate -- 0077
 
 Empresa de prueba: **Royal Holiday** · Sala: **Sala Royal Holiday** · Gerente: `eduardolalito99@hotmail.com`.
 
+**Qué ve cada puesto en esta sala (pantallas, no APIs):** [`../FLUJO-USUARIO-ROYAL-HOLIDAY.md`](../FLUJO-USUARIO-ROYAL-HOLIDAY.md).
+
 ## Herramientas RH (Tools Hub)
 
 Con flag `worksheet.royal_holiday` activo, Tools muestra:
 
-- Worksheet (pestañas Datos Financiamiento / Datos Venta / **Money Box**¹ / Resumen / Pre VLO / Worksheet)
+- Worksheet (pestañas Datos Financiamiento / Datos Venta / **Money Box**¹ / Worksheet)
 - Calculadora B. Lines · Comisiones · Créditos
 - Calendario comisiones · Días de descanso
 - Administrativo operaciones (`/ops/rh/*`): Premanifiesto, Línea, Resumen, Estadísticos, OKR, Descansos, Propinas
@@ -45,8 +47,7 @@ Flags hijos: `rh.tool.*` (semilla `npm run rh:flags`). Configuración de tablas:
 | Fuente Excel canonical | Hojas dedicadas — ver [CATALOGO-EXCEL-FUENTE.md](./CATALOGO-EXCEL-FUENTE.md) |
 | Extra DP 90 días | Implementado: validación fecha + forfeit (`RH_EXTRA_DP_PLAZO_DIAS`) |
 | Pestaña Money Box RH | MVP: por enganche, monto contrato, paridad con Datos Financiamiento |
-| Pestañas Resumen / Pre VLO | Placeholders "próxima iteración" |
-| Premanifiesto Fase 1 (backend) | Migración `0087`: olas, flags, RPCs, RLS. Smoke: `node scripts/verify-rh-premanifiesto-fase1.mjs`. CSI capacitación: [PREMANIFIESTO-CSI-CAPACITACION.md](./PREMANIFIESTO-CSI-CAPACITACION.md). UI Fase 2 pendiente revisión. |
+| Premanifiesto | Backend `0087` + UI en `/ops/rh/premanifiesto`. Smoke: `node scripts/verify-rh-premanifiesto-fase1.mjs`. CSI: [PREMANIFIESTO-CSI-CAPACITACION.md](./PREMANIFIESTO-CSI-CAPACITACION.md) (acceso por flags, no por slug de puesto). |
 
 ## APIs
 

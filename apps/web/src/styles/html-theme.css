@@ -910,3 +910,20 @@ a.sb-item { text-decoration: none; color: rgba(255,255,255,0.55); }
 a.sb-item:hover { color: rgba(255,255,255,0.9); }
 a.sb-item.active { color: #93c5fd; }
 a.tool-card { text-decoration: none; color: inherit; }
+
+/* Expediente: carpetas (Nivel 1) + panel inline */
+.exp-folder-strip{display:flex;flex-direction:column;gap:12px;width:100%;}
+.exp-folder-card{background:var(--white);border:1px solid var(--border);border-radius:var(--r-lg);padding:18px 20px;cursor:pointer;transition:all 0.18s;display:flex;align-items:center;gap:14px;box-shadow:var(--shadow);width:100%;text-align:left;font:inherit;color:inherit;}
+.exp-folder-card:hover{border-color:color-mix(in srgb, var(--blue) 30%, var(--border));box-shadow:var(--shadow-md);}
+.exp-folder-card.is-active{border-color:var(--blue);box-shadow:0 0 0 3px color-mix(in srgb, var(--blue) 18%, transparent);}
+.exp-folder-card-text{min-width:0;flex:1;}
+.exp-folder-chevron{color:var(--muted2);margin-left:auto;font-size:18px;}
+.exp-folder-strip--compact{flex-direction:row;flex-wrap:wrap;gap:8px;margin-bottom:12px;}
+.exp-folder-card--compact{width:auto;flex:1 1 140px;padding:10px 12px;min-height:48px;gap:10px;}
+.exp-folder-card--compact .tool-name{font-size:13px;}
+.exp-folder-subnav{margin:4px 0 16px;}
+.exp-folder-panel{min-width:0;}
+.exp-folder-panel-actions{margin:8px 0 12px;}
+.exp-embedded-tool{min-width:0;}
+.exp-embedded-toolbar{justify-content:flex-end;margin-bottom:8px;}
+.page-toolbar--end{display:flex;justify-content:flex-end;align-items:center;}

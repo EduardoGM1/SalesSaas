@@ -27,10 +27,3 @@ export const participantsApi = {
   ),
   openChat: (prospectId) => participantsJson(`prospects/${prospectId}/chat`, { method: "POST" }),
 };
-
-/** Compat con código que aún importa workflowApi */
-export const workflowApi = {
-  get: participantsApi.get,
-  inbox: participantsApi.active,
-  assignCloser: participantsApi.assignCloser,
-};

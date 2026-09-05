@@ -1,0 +1,8 @@
+evtname,evtevent,evtfoid
+ensure_rls,ddl_command_end,rls_auto_enable
+issue_graphql_placeholder,sql_drop,set_graphql_placeholder
+issue_pg_cron_access,ddl_command_end,grant_pg_cron_access
+issue_pg_graphql_access,ddl_command_end,grant_pg_graphql_access
+issue_pg_net_access,ddl_command_end,grant_pg_net_access
+pgrst_ddl_watch,ddl_command_end,pgrst_ddl_watch
+pgrst_drop_watch,sql_drop,pgrst_drop_watch

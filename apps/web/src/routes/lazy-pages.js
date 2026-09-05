@@ -3,6 +3,7 @@ import { namedLazy } from "@/lib/lazy-retry.js";
 export const SettingsPage = namedLazy(() => import("@/components/settings/settings-page.tsx"), "SettingsPage");
 export const ClientsPage = namedLazy(() => import("@/components/clients/clients-page.jsx"), "ClientsPage");
 export const ClientDetailPage = namedLazy(() => import("@/components/clients/client-detail.jsx"), "ClientDetail");
+export const OpcExpedientePage = namedLazy(() => import("@/components/clients/opc-expediente-page.jsx"), "OpcExpedientePage");
 export const MessagesPage = namedLazy(() => import("@/pages/MessagesPage.jsx"), "MessagesPage");
 export const NetworkPage = namedLazy(() => import("@/pages/NetworkPage.jsx"), "NetworkPage");
 export const ContactPage = namedLazy(() => import("@/pages/ContactPage.jsx"), "ContactPage");

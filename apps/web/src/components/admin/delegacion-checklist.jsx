@@ -1,8 +1,8 @@
 import { PermissionMatrix } from "@/components/admin/permission-matrix.jsx";
 
 /**
- * Checklist de permisos delegables (techo del delegante).
- * Wrapper de PermissionMatrix para compatibilidad con TeamPage y tenant admin.
+ * Checklist de permisos delegables (alcance del delegante: capa:app).
+ * No es un techo de gobierno de plataforma. Wrapper de PermissionMatrix.
  */
 export function DelegacionChecklist({
   ceiling = [],

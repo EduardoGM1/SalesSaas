@@ -66,6 +66,21 @@ router.get("/", (_req, res) => {
       cron: {
         flushReminders: { GET_POST: "/api/v1/cron/flush-reminders" },
         cleanupSupportAttachments: { GET_POST: "/api/v1/cron/cleanup-support-attachments" },
+        rhExtraDp: { GET_POST: "/api/v1/cron/rh-extra-dp" },
+      },
+      royalHoliday: {
+        catalogo: { GET: "/api/v1/royal-holiday/:empresaId/catalogo" },
+        preview: { POST: "/api/v1/royal-holiday/:empresaId/preview" },
+        ventas: { POST: "/api/v1/royal-holiday/:empresaId/ventas" },
+        comisionesMovimientos: { GET: "/api/v1/royal-holiday/:empresaId/comisiones-movimientos" },
+        diasDescanso: { GET_POST: "/api/v1/royal-holiday/:empresaId/dias-descanso" },
+        opsConfig: { GET_PUT: "/api/v1/royal-holiday/:empresaId/ops-config" },
+        moneyBoxConfig: { GET_PUT: "/api/v1/royal-holiday/:empresaId/money-box-config" },
+        premanifiesto: { GET: "/api/v1/royal-holiday/:empresaId/premanifiesto/dia" },
+        linea: { GET_POST: "/api/v1/royal-holiday/:empresaId/linea/asignacion" },
+        okr: { GET_POST: "/api/v1/royal-holiday/:empresaId/okr" },
+        resumen: { GET: "/api/v1/royal-holiday/:empresaId/resumen" },
+        propinas: { GET_POST: "/api/v1/royal-holiday/:empresaId/propinas" },
       },
       support: {
         requests: { POST: "/api/v1/support/requests" },

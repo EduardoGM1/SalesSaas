@@ -1,0 +1,16 @@
+schemaname,relname,bytes,pretty
+auth,refresh_tokens,327680,320 kB
+auth,users,270336,264 kB
+public,rh_financiamiento,180224,176 kB
+public,tool_calculations,180224,176 kB
+realtime,subscription,172032,168 kB
+public,prospects,172032,168 kB
+public,profiles,155648,152 kB
+public,sales,147456,144 kB
+public,rh_ventas,139264,136 kB
+public,workspace_miembros,139264,136 kB
+public,rol_permisos,139264,136 kB
+public,calendar_entries,139264,136 kB
+auth,sessions,131072,128 kB
+auth,one_time_tokens,131072,128 kB
+public,direct_messages,122880,120 kB

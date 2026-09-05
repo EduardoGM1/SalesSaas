@@ -1,0 +1,2 @@
+tgname,tgrelid,tgfoid
+on_auth_user_created,auth.users,handle_new_user

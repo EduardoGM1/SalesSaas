@@ -1,0 +1,16 @@
+pubname,schemaname,tablename
+supabase_realtime,public,activities
+supabase_realtime,public,calendar_entries
+supabase_realtime,public,chat_members
+supabase_realtime,public,chat_messages
+supabase_realtime,public,direct_messages
+supabase_realtime,public,gerente_acceso_cruzado
+supabase_realtime,public,goals
+supabase_realtime,public,permisos_delegados
+supabase_realtime,public,profiles
+supabase_realtime,public,prospect_shares
+supabase_realtime,public,prospects
+supabase_realtime,public,sales
+supabase_realtime,public,support_request_replies
+supabase_realtime,public,tool_calculations
+supabase_realtime,public,user_connections

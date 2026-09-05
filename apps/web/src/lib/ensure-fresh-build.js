@@ -63,4 +63,5 @@ export function initEnsureFreshBuildWatchers() {
   window.addEventListener("pageshow", (event) => {
     if (event.persisted) onResume();
   });
+  window.addEventListener("online", onResume);
 }

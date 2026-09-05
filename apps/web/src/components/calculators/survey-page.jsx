@@ -54,9 +54,10 @@ const TABS = [
 interface SurveyPageProps {
   clientId?;
   shared?;
+  embedded?;
 }
 
-export function SurveyPage({ clientId, shared }: SurveyPageProps) {
+export function SurveyPage({ clientId, shared, embedded }: SurveyPageProps) {
   const { t } = useI18n();
   const { flags, hasCatalog, flagsStatus } = useFlags();
   const session = useToolSession({ clientId, shared, section: "survey" });
@@ -355,14 +356,23 @@ export function SurveyPage({ clientId, shared }: SurveyPageProps) {
 
   return (
     <>
-      <Topbar title={t("tools.survey")} subtitle={isFileMode ? t("tools.sub.surveyClient") : t("tools.sub.free")} />
-      <div className={`sales-page tool-calc-page survey-calc-page${!readOnly ? " tool-calc-page--with-save" : ""}`}>
-        <div className="page-toolbar page-toolbar--between">
-          <PageBack inline href={backHref} hasUnsavedChanges={() => dirtyKeysRef.current.size > 0} />
-          {!readOnly && (
+      {!embedded && (
+        <Topbar title={t("tools.survey")} subtitle={isFileMode ? t("tools.sub.surveyClient") : t("tools.sub.free")} />
+      )}
+      <div className={`${embedded ? "exp-embedded-tool" : "sales-page"} tool-calc-page survey-calc-page${!readOnly ? " tool-calc-page--with-save" : ""}`}>
+        {!embedded && (
+          <div className="page-toolbar page-toolbar--between">
+            <PageBack inline href={backHref} hasUnsavedChanges={() => dirtyKeysRef.current.size > 0} />
+            {!readOnly && (
+              <PageBack inline label={t("common.clear")} onClick={handleClear} showIcon={false} />
+            )}
+          </div>
+        )}
+        {embedded && !readOnly && (
+          <div className="page-toolbar page-toolbar--end exp-embedded-toolbar">
             <PageBack inline label={t("common.clear")} onClick={handleClear} showIcon={false} />
-          )}
-        </div>
+          </div>
+        )}
 
         <SharedToolBanner show={ready && isShared && readOnly} peers={peers} />
 

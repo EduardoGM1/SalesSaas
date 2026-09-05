@@ -83,10 +83,19 @@ export async function listUserWorkspaces(supabase, userId) {
     /* migración no aplicada */
   }
 
-  const { data: memberships, error } = await supabase
+  const WS_SELECT = "rol_en_workspace, fecha_union, workspace_id, workspaces(id, tipo, nombre, logo_url, logo_icono_url, colores_marca, empresa_id, estado, empresas(id, nombre, logo_url, logo_icono_url, colores_marca))";
+  let { data: memberships, error } = await supabase
     .from("workspace_miembros")
-    .select("rol_en_workspace, fecha_union, workspace_id, workspaces(id, tipo, nombre, logo_url, logo_icono_url, colores_marca, empresa_id, estado, empresas(id, nombre, logo_url, logo_icono_url, colores_marca))")
+    .select(`${WS_SELECT.replace("workspace_id, ", "workspace_id, role_id, roles(slug), ")}`)
     .eq("usuario_id", userId);
+  if (error) {
+    const fallback = await supabase
+      .from("workspace_miembros")
+      .select(WS_SELECT)
+      .eq("usuario_id", userId);
+    memberships = fallback.data;
+    error = fallback.error;
+  }
   if (error) {
     if (flagsMissing(error)) return [];
     throw new ServiceError(error.message, 500);
@@ -98,6 +107,8 @@ export async function listUserWorkspaces(supabase, userId) {
       const w = m.workspaces;
       const emp = w.empresas || null;
       const brand = resolveBrand(w, emp);
+      const roleRaw = m.roles;
+      const role = Array.isArray(roleRaw) ? roleRaw[0] : (roleRaw && typeof roleRaw === "object" ? roleRaw : null);
       return {
         id: w.id,
         tipo: w.tipo,
@@ -107,6 +118,7 @@ export async function listUserWorkspaces(supabase, userId) {
         empresa_id: w.empresa_id,
         empresa_nombre: emp?.nombre ?? null,
         rol_en_workspace: m.rol_en_workspace,
+        role_slug: role?.slug ?? null,
         fecha_union: m.fecha_union,
         brand,
         acceso_cruzado: false,
@@ -134,6 +146,7 @@ export async function listUserWorkspaces(supabase, userId) {
           empresa_id: w.empresa_id,
           empresa_nombre: emp?.nombre ?? null,
           rol_en_workspace: "gerente",
+          role_slug: "gerente",
           fecha_union: null,
           brand,
           acceso_cruzado: true,
@@ -1128,6 +1141,7 @@ export async function assignMemberSalaRole(supabase, actorId, memberId, roleId) 
   return assertFound(data, "Miembro no encontrado.");
 }
 
+/** Unión de permisos de puestos workspace de la empresa (no un tope impuesto por Superadmin). */
 async function empresaWorkspacePermissionCeiling(admin, empresaId) {
   const blocked = new Set(SUPERADMIN_ONLY_KEYS);
   const { data: roles, error } = await admin
@@ -1185,7 +1199,8 @@ export async function listMemberSalaOverrides(supabase, actorId, memberId) {
 }
 
 /**
- * Gerente escribe override aditivo en sala. Rechaza deny y claves fuera del techo empresa.
+ * Gerente escribe override aditivo en sala. Rechaza deny y claves que ningún
+ * puesto workspace de la empresa tenga (unión de puestos, no techo de gobierno).
  */
 export async function setMemberSalaOverride(supabase, actorId, memberId, clave, otorgado = true) {
   const active = await requireActiveSalaGerente(supabase, actorId);
@@ -1213,7 +1228,7 @@ export async function setMemberSalaOverride(supabase, actorId, memberId, clave, 
   const ceiling = await empresaWorkspacePermissionCeiling(admin, active.empresa_id);
   if (!ceiling.has(key)) {
     throw new ServiceError(
-      "Ese permiso no está en el techo de roles de la empresa; no se puede otorgar.",
+      "Ese permiso no lo tiene ningún puesto de esta empresa; no se puede otorgar.",
       403,
     );
   }

@@ -41,14 +41,19 @@ const TABS = [
   { id: "financiamiento", label: "Datos Financiamiento" },
   { id: "venta", label: "Datos Venta" },
   { id: "moneybox", label: "Money Box", flagKey: WORKSHEET_RH_MONEY_BOX_TAB_FLAG },
-  { id: "resumen", label: "Resumen", placeholder: true },
-  { id: "prevlo", label: "Pre VLO", placeholder: true },
   { id: "worksheet", label: "Worksheet" },
 ];
 
 const POSICIONES = ["liner", "closer", "ftb", "opc", "x"];
 
-export function WorksheetRoyalHolidayPage({ clientId, shared }) {
+export function WorksheetRoyalHolidayPage({
+  clientId,
+  shared,
+  embedded = false,
+  hideTabs = false,
+  externalTab,
+  onTabChange,
+}) {
   const getClient = useDbStore((s) => s.getClient);
   const client = clientId ? getClient(clientId) : null;
   const session = useToolSession({ clientId, shared, section: "worksheet" });
@@ -64,6 +69,7 @@ export function WorksheetRoyalHolidayPage({ clientId, shared }) {
     refreshCurrencyMeta,
   } = useMonedaToolBucket({ getBucket, toolKey: "worksheet", ready, toolsRevision });
   const [tab, setTab] = useState("financiamiento");
+  const activeTab = externalTab || tab;
   const [empresaId, setEmpresaId] = useState(null);
   const [workspaceId, setWorkspaceId] = useState(null);
   const [catalogo, setCatalogo] = useState(null);
@@ -75,13 +81,13 @@ export function WorksheetRoyalHolidayPage({ clientId, shared }) {
   const skipAutosaveRef = useRef(true);
 
   const persistRhBucket = async () => {
-    await saveBucket("worksheet", appendMonedaPayload(rhFormToBucket(form, tab)));
+    await saveBucket("worksheet", appendMonedaPayload(rhFormToBucket(form, activeTab)));
   };
 
   useFlushLibreToolOnLeave({
     enabled: ready && !isFileMode,
     tool: "worksheet",
-    getSnapshot: () => appendMonedaPayload(rhFormToBucket(form, tab)),
+    getSnapshot: () => appendMonedaPayload(rhFormToBucket(form, activeTab)),
     hasChanges: () => dirtyKeysRef.current.size > 0,
   });
 
@@ -92,10 +98,10 @@ export function WorksheetRoyalHolidayPage({ clientId, shared }) {
       if (!hydratedRef.current) {
         hydratedRef.current = true;
         setForm(restored.form);
-        setTab(restored.tab);
+        if (!externalTab) setTab(restored.tab);
       } else if (dirtyKeysRef.current.size === 0) {
         setForm(restored.form);
-        setTab(restored.tab);
+        if (!externalTab) setTab(restored.tab);
       }
     } else if (!hydratedRef.current) {
       hydratedRef.current = true;
@@ -113,7 +119,7 @@ export function WorksheetRoyalHolidayPage({ clientId, shared }) {
       void persistRhBucket();
     }, 700);
     return () => clearTimeout(timer);
-  }, [form, tab, captureCurrency, currencyMetaSerialized, ready, readOnly]);
+  }, [form, activeTab, captureCurrency, currencyMetaSerialized, ready, readOnly]);
 
   useEffect(() => {
     let cancelled = false;
@@ -196,10 +202,12 @@ export function WorksheetRoyalHolidayPage({ clientId, shared }) {
   }), [moneyBoxFlag.hasCatalog, moneyBoxFlag.enabled]);
 
   useEffect(() => {
-    if (!visibleTabs.some((tb) => tb.id === tab)) {
-      setTab(visibleTabs[0]?.id || "financiamiento");
+    if (!visibleTabs.some((tb) => tb.id === activeTab)) {
+      const fallback = visibleTabs[0]?.id || "financiamiento";
+      if (onTabChange) onTabChange(fallback);
+      else setTab(fallback);
     }
-  }, [visibleTabs, tab]);
+  }, [visibleTabs, activeTab, onTabChange]);
 
   const posicionesDisponibles = useMemo(() => {
     const fromCat = new Set((catalogo?.comisiones || []).map((c) => String(c.posicion).toLowerCase()));
@@ -226,6 +234,7 @@ export function WorksheetRoyalHolidayPage({ clientId, shared }) {
   const setTabPersisted = (nextTab) => {
     markFieldsDirty(dirtyKeysRef, "__tab");
     setTab(nextTab);
+    onTabChange?.(nextTab);
   };
 
   const handleMoneyBlur = (key, formattedValue) => {
@@ -336,40 +345,44 @@ export function WorksheetRoyalHolidayPage({ clientId, shared }) {
   if (!ready) {
     return (
       <>
-        <Topbar title="Worksheet · Royal Holiday" subtitle="Sala Royal Holiday" />
-        <div className="sales-page tool-calc-page" aria-busy="true">
-          <div className="page-toolbar"><PageBack inline href={backHref} /></div>
+        {!embedded && <Topbar title="Worksheet · Royal Holiday" subtitle="Sala Royal Holiday" />}
+        <div className={`${embedded ? "exp-embedded-tool" : "sales-page"} tool-calc-page`} aria-busy="true">
+          {!embedded && <div className="page-toolbar"><PageBack inline href={backHref} /></div>}
           <WorksheetRhSkeleton />
         </div>
       </>
     );
   }
 
-  const showVenta = tab === "venta";
-  const showFin = tab === "financiamiento";
-  const showMoneyBox = tab === "moneybox";
-  const showHoja = tab === "worksheet";
+  const showVenta = activeTab === "venta";
+  const showFin = activeTab === "financiamiento";
+  const showMoneyBox = activeTab === "moneybox";
+  const showHoja = activeTab === "worksheet";
 
   return (
     <>
-      <Topbar title="Worksheet · Royal Holiday" subtitle="Sala Royal Holiday" />
-      <div className={`sales-page tool-calc-page worksheet-rh content-ready${showHoja ? " worksheet-rh--hoja" : ""}${!readOnly ? " tool-calc-page--with-save" : ""}`}>
-        <div className="page-toolbar page-toolbar--between">
-          <PageBack inline href={backHref} hasUnsavedChanges={() => dirtyKeysRef.current.size > 0} />
-        </div>
+      {!embedded && <Topbar title="Worksheet · Royal Holiday" subtitle="Sala Royal Holiday" />}
+      <div className={`${embedded ? "exp-embedded-tool" : "sales-page"} tool-calc-page worksheet-rh content-ready${showHoja ? " worksheet-rh--hoja" : ""}${!readOnly ? " tool-calc-page--with-save" : ""}`}>
+        {!embedded && (
+          <div className="page-toolbar page-toolbar--between">
+            <PageBack inline href={backHref} hasUnsavedChanges={() => dirtyKeysRef.current.size > 0} />
+          </div>
+        )}
 
-        <nav className="admin-subnav worksheet-rh-tabs" aria-label="Pestañas worksheet">
-          {visibleTabs.map((tb) => (
-            <button
-              key={tb.id}
-              type="button"
-              className={`admin-subnav-item${tab === tb.id ? " active" : ""}`}
-              onClick={() => setTabPersisted(tb.id)}
-            >
-              {tb.label}
-            </button>
-          ))}
-        </nav>
+        {!hideTabs && (
+          <nav className="admin-subnav worksheet-rh-tabs" aria-label="Pestañas worksheet">
+            {visibleTabs.map((tb) => (
+              <button
+                key={tb.id}
+                type="button"
+                className={`admin-subnav-item${activeTab === tb.id ? " active" : ""}`}
+                onClick={() => setTabPersisted(tb.id)}
+              >
+                {tb.label}
+              </button>
+            ))}
+          </nav>
+        )}
 
         {!empresaId && (
           <p className="muted">Activa un workspace de sala Royal Holiday para cargar el catálogo.</p>
@@ -383,13 +396,6 @@ export function WorksheetRoyalHolidayPage({ clientId, shared }) {
           disabled={readOnly}
           className="tool-moneda-selector"
         />
-
-        {(tab === "resumen" || tab === "prevlo") && (
-          <div className="card tool-calc-card">
-            <div className="card-heading">{tab === "resumen" ? "Resumen" : "Pre VLO"}</div>
-            <p className="muted">Próxima iteración — pestaña placeholder sin funcionalidad aún.</p>
-          </div>
-        )}
 
         {showVenta && (
           <WorksheetRhVentaPanel
@@ -458,7 +464,7 @@ export function WorksheetRoyalHolidayPage({ clientId, shared }) {
         )}
         </fieldset>
 
-        {!readOnly && tab !== "resumen" && tab !== "prevlo" && (
+        {!readOnly && (
           <div className="save-footer tool-save-footer">
             <button type="button" className="btn btn-primary" disabled={saving || !empresaId} onClick={save}>
               {saving ? "Guardando…" : "Guardar"}

@@ -19,7 +19,7 @@ import {
   PROSPECT_DETAIL_COLUMNS,
   SALE_LIST_COLUMNS,
 } from "@salesapp/shared/data/sync-columns.js";
-import { getRequestWorkspaceId } from "../lib/workspace-scope.js";
+import { getRequestWorkspaceId, requireWorkspacePermission } from "../lib/workspace-scope.js";
 
 async function loadProfiles(supabase, ids) {
   const unique = [...new Set(ids.filter(Boolean))];
@@ -209,6 +209,8 @@ export async function createShare(supabase, userId, prospectId, { shared_with_id
   if (!isUuid(sharedWithId)) throw new ServiceError("Usuario inválido.");
   if (!VALID_PERMISSIONS.includes(permission)) throw new ServiceError("Permiso inválido.");
   if (sharedWithId === userId) throw new ServiceError("No puedes compartir contigo mismo.");
+
+  await requireWorkspacePermission(supabase, userId, "expedientes:compartir");
 
   const { data: owned } = await supabase
     .from("prospects")
@@ -498,6 +500,8 @@ export async function createShareInvite(supabase, userId, prospectId, { permissi
   if (!isUuid(prospectId)) throw new ServiceError("Expediente inválido.");
   if (!VALID_PERMISSIONS.includes(permission)) throw new ServiceError("Permiso inválido.");
 
+  await requireWorkspacePermission(supabase, userId, "expedientes:compartir");
+
   const { data: owned } = await supabase
     .from("prospects")
     .select("id, prospect_code, name, name1, name2")
@@ -725,7 +729,11 @@ async function transferPersonalToSala(userId, prospectId, targetWorkspaceId) {
     p_target_workspace_id: targetWorkspaceId,
   });
   if (error) throw new ServiceError(error.message, 400);
-  await admin.rpc("sync_prospect_chat_members", { p_prospect_id: prospectId }).catch(() => {});
+  try {
+    await admin.rpc("sync_prospect_chat_members", { p_prospect_id: prospectId });
+  } catch {
+    /* el chat no bloquea la transferencia ya persistida */
+  }
 
   const [{ data: workflow }, { data: sala }, { data: actor }] = await Promise.all([
     admin.from("prospect_workflows").select("gerente_id").eq("prospect_id", prospectId).maybeSingle(),

@@ -18,8 +18,10 @@ BACKUP_ROOT = "/opt/saletse-backups"
 # Hashes de entry ya retirados. Un 404 hacía que el SW viejo (NetworkFirst)
 # rehidratara el JS de Cloud cacheado; un 200 de recuperación fuerza purge+reload.
 RETIRED_ENTRY_CHUNKS = ("index-DS5s4Hkv.js",)
+# ESM válido: el index.html viejo carga este hash como <script type="module">.
+# Un IIFE clásico no se ejecuta como módulo y recoverFromStaleModuleScript
+# veía HTTP 200 y no purgaba.
 RETIRED_ENTRY_STUB = (
-    "(function(){"
     'console.warn("[pwa] retired entry chunk, recovering");'
     "var go=function(){location.reload();};"
     "var chain=Promise.resolve();"
@@ -32,7 +34,7 @@ RETIRED_ENTRY_STUB = (
     ".then(function(keys){return Promise.all(keys.map(function(k){return caches.delete(k);}));});"
     "}"
     "chain.then(go).catch(go);"
-    "})();"
+    "export {};"
 )
 
 sys.path.insert(0, str(LOCAL_ROOT / "scripts"))

@@ -19,20 +19,26 @@ async function keysToPermisoIds(admin, keys) {
   return list.map((k) => ({ clave: k, id: byClave.get(k) }));
 }
 
+/** Catálogo tenant (capa:app). El techo del delegante nunca incluye capa:admin. */
+async function loadAppPermissionKeys(admin) {
+  const { data, error } = await admin.from("permisos").select("clave").eq("capa", "app");
+  if (error) throw new ServiceError(error.message, 500);
+  return new Set((data || []).map((p) => p.clave).filter(Boolean));
+}
+
 async function effectiveKeysForActor(admin, actorId, { empresaId, salaId }) {
+  const appKeys = await loadAppPermissionKeys(admin);
   if (salaId) {
     const data = await rpcEffectiveWorkspacePermissions(admin, actorId, salaId);
-    return new Set(data);
+    // Alcance del delegante (no techo de gobierno): set efectivo ∩ capa:app.
+    return new Set((data || []).filter((k) => appKeys.has(k)));
   }
-  // Admin de empresa: techo = catálogo completo (mismo que user_is_empresa_admin).
   const { data: isAdmin } = await admin.rpc("user_is_empresa_admin", {
     p_usuario_id: actorId,
     p_empresa_id: empresaId,
   });
   if (isAdmin === true) {
-    const { data: all, error } = await admin.from("permisos").select("clave");
-    if (error) throw new ServiceError(error.message, 500);
-    return new Set((all || []).map((p) => p.clave));
+    return appKeys;
   }
   throw new ServiceError("Solo el Admin de Empresa o el Gerente pueden delegar.", 403);
 }
@@ -104,7 +110,7 @@ export async function listDelegatedKeys(actorId, { asistenteId, empresaId, salaI
 
 /**
  * Reemplaza el conjunto de permisos delegados (PUT semántico).
- * Valida techo del delegante.
+ * Valida el alcance del delegante (capa:app; no es un techo de gobierno de plataforma).
  */
 export async function replaceDelegatedPermissions(actorId, {
   asistenteId,

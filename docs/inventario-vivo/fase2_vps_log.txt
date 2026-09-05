@@ -1,0 +1,35 @@
+
+===== echo BASELINE; curl -s -o /dev/null -w 'saletse_health:%{http_code}\n' --max-time 8 http://127.0.0.1:4000/health; curl - exit=0 =====
+BASELINE
+saletse_health:200
+saletse_nginx:301
+cuidate_3000:200
+LISTEN 0      511          0.0.0.0:3000       0.0.0.0:*    users:(redacted)                                         
+LISTEN 0      151        127.0.0.1:3306       0.0.0.0:*    users:(redacted)                                                  
+LISTEN 0      511          0.0.0.0:443        0.0.0.0:*    users:(redacted)
+LISTEN 0      70         127.0.0.1:33060      0.0.0.0:*    users:(redacted)                                                  
+LISTEN 0      511          0.0.0.0:80         0.0.0.0:*    users:(redacted)
+LISTEN 0      511                *:4000             *:*    users:(redacted)                                                    
+LISTEN 0      511             [::]:443           [::]:*    users:(redacted)
+LISTEN 0      511             [::]:80            [::]:*    users:(redacted)
+api-clinica online 241366
+saletse-api online 300529
+               total        used        free      shared  buff/cache   available
+Mem:           7.8Gi       1.2Gi       2.1Gi       1.1Mi       4.8Gi       6.6Gi
+Swap:             0B          0B          0B
+
+===== 
+set -euo pipefail
+if swapon --show | grep -q swapfile; then
+  echo SWAP_ALREADY_PRESENT
+else
+  if [ -f /swapfile ]; the exit=0 =====
+Setting up swapspace version 1, size = 4 GiB (4294963200 bytes)
+no label, UUID=e035e17a-4f37-43c4-becb-ab201a5ec1e8
+vm.swappiness = 10
+SWAP_OK
+               total        used        free      shared  buff/cache   available
+Mem:           7.8Gi       1.2Gi       2.1Gi       1.1Mi       4.8Gi       6.6Gi
+Swap:          4.0Gi          0B       4.0Gi
+NAME      TYPE SIZE USED PRIO
+/swapfile file   4G   0B   -2

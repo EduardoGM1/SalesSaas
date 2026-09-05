@@ -17,9 +17,6 @@ router.get("/workflow/inbox", rutaAutenticada(workflowController.listarExpedient
 router.get("/prospects/:id/participants", rutaAutenticada(workflowController.obtenerParticipantes, { wrap: "data" }));
 router.get("/prospects/:id/workflow", rutaAutenticada(workflowController.obtenerParticipantes, { wrap: "data" }));
 router.get("/prospects/:id/workflow/timeline", rutaAutenticada(workflowController.listarTimeline, { wrap: "data" }));
-router.post("/prospects/:id/workflow/advance", rutaAutenticada(workflowController.avanzarWorkflow, { wrap: "data" }));
-router.post("/prospects/:id/workflow/send-review", rutaAutenticada(workflowController.enviarARevision, { wrap: "data" }));
-router.post("/prospects/:id/workflow/review", rutaAutenticada(workflowController.revisarWorkflow, { wrap: "data" }));
 router.post("/prospects/:id/workflow/assign-closer", rutaAutenticada(workflowController.asignarCerrador, { cuerpo: true, wrap: "data" }));
 router.post("/prospects/:id/participants/assign-closer", rutaAutenticada(workflowController.asignarCerrador, { cuerpo: true, wrap: "data" }));
 router.post("/prospects/:id/participants/assign-representante", rutaAutenticada(workflowController.asignarRepresentante, { cuerpo: true, wrap: "data" }));

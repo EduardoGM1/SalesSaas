@@ -1,0 +1,400 @@
+{
+  "server_version": "17.6",
+  "extensions": [
+    {
+      "name": "pg_stat_statements",
+      "version": "1.11",
+      "schema": "extensions"
+    },
+    {
+      "name": "pgcrypto",
+      "version": "1.3",
+      "schema": "extensions"
+    },
+    {
+      "name": "plpgsql",
+      "version": "1.0",
+      "schema": "pg_catalog"
+    },
+    {
+      "name": "supabase_vault",
+      "version": "0.3.1",
+      "schema": "vault"
+    },
+    {
+      "name": "uuid-ossp",
+      "version": "1.1",
+      "schema": "extensions"
+    }
+  ],
+  "pg_policies_count": 133,
+  "public_functions": [
+    "admin_create_role",
+    "admin_delete_role",
+    "admin_list_logs",
+    "admin_list_roles",
+    "admin_platform_overview",
+    "admin_set_user_active",
+    "admin_set_user_features",
+    "admin_set_user_permission_overrides",
+    "admin_set_user_permissions",
+    "admin_set_user_role_id",
+    "admin_tools_usage",
+    "admin_update_role_permissions",
+    "admin_update_user_role",
+    "admin_user_stats",
+    "assert_rpc_self_or_super",
+    "assign_prospect_closer",
+    "assign_prospect_representante",
+    "can_access_presence_topic",
+    "current_membership",
+    "effective_workspace_permissions",
+    "ensure_personal_workspace",
+    "flag_row_for_empresa",
+    "handle_new_user",
+    "has_admin_permission",
+    "initialize_prospect_workflow_event",
+    "insert_admin_log",
+    "is_admin",
+    "is_super_admin",
+    "list_permisos_delegados_keys",
+    "platform_session_end",
+    "platform_session_start",
+    "presence_prospect_from_topic",
+    "presence_user_from_topic",
+    "prevent_workflow_event_mutation",
+    "prospect_participants_after_insert",
+    "resolve_user_permission_keys",
+    "resolver_all_flags",
+    "resolver_flag",
+    "resolver_session_flags",
+    "resolver_workspace_flag",
+    "revoke_mutual_shares",
+    "rh_can_access_empresa",
+    "rls_auto_enable",
+    "search_profiles",
+    "set_updated_at",
+    "share_can_edit",
+    "sync_profile_legacy_permissions",
+    "sync_prospect_chat_members",
+    "transfer_prospect_to_sala",
+    "transition_prospect_workflow",
+    "user_can_access_prospect",
+    "user_can_read_tenant_role",
+    "user_in_empresa",
+    "user_in_workspace",
+    "user_is_empresa_admin",
+    "users_are_connected",
+    "validate_empresa_member_role_scope",
+    "validate_gerente_acceso_cruzado",
+    "validate_tenant_role_package_scope",
+    "validate_workspace_member_role_scope",
+    "workspace_boundary_ok",
+    "workspace_has_permission"
+  ],
+  "on_auth_user_created": [
+    [
+      "on_auth_user_created",
+      "auth.users",
+      "handle_new_user"
+    ]
+  ],
+  "auth_users_triggers": [
+    [
+      "on_auth_user_created",
+      "auth.users",
+      "handle_new_user",
+      false
+    ]
+  ],
+  "realtime_tables": [
+    {
+      "schema": "public",
+      "table": "activities"
+    },
+    {
+      "schema": "public",
+      "table": "calendar_entries"
+    },
+    {
+      "schema": "public",
+      "table": "chat_members"
+    },
+    {
+      "schema": "public",
+      "table": "chat_messages"
+    },
+    {
+      "schema": "public",
+      "table": "direct_messages"
+    },
+    {
+      "schema": "public",
+      "table": "gerente_acceso_cruzado"
+    },
+    {
+      "schema": "public",
+      "table": "goals"
+    },
+    {
+      "schema": "public",
+      "table": "permisos_delegados"
+    },
+    {
+      "schema": "public",
+      "table": "profiles"
+    },
+    {
+      "schema": "public",
+      "table": "prospect_shares"
+    },
+    {
+      "schema": "public",
+      "table": "prospects"
+    },
+    {
+      "schema": "public",
+      "table": "sales"
+    },
+    {
+      "schema": "public",
+      "table": "support_request_replies"
+    },
+    {
+      "schema": "public",
+      "table": "tool_calculations"
+    },
+    {
+      "schema": "public",
+      "table": "user_connections"
+    }
+  ],
+  "replica_identity": [
+    {
+      "schema": "public",
+      "table": "activities",
+      "code": "d",
+      "identity": "default"
+    },
+    {
+      "schema": "public",
+      "table": "calendar_entries",
+      "code": "d",
+      "identity": "default"
+    },
+    {
+      "schema": "public",
+      "table": "chat_members",
+      "code": "d",
+      "identity": "default"
+    },
+    {
+      "schema": "public",
+      "table": "chat_messages",
+      "code": "d",
+      "identity": "default"
+    },
+    {
+      "schema": "public",
+      "table": "direct_messages",
+      "code": "d",
+      "identity": "default"
+    },
+    {
+      "schema": "public",
+      "table": "gerente_acceso_cruzado",
+      "code": "d",
+      "identity": "default"
+    },
+    {
+      "schema": "public",
+      "table": "goals",
+      "code": "d",
+      "identity": "default"
+    },
+    {
+      "schema": "public",
+      "table": "permisos_delegados",
+      "code": "d",
+      "identity": "default"
+    },
+    {
+      "schema": "public",
+      "table": "profiles",
+      "code": "d",
+      "identity": "default"
+    },
+    {
+      "schema": "public",
+      "table": "prospect_shares",
+      "code": "d",
+      "identity": "default"
+    },
+    {
+      "schema": "public",
+      "table": "prospects",
+      "code": "d",
+      "identity": "default"
+    },
+    {
+      "schema": "public",
+      "table": "sales",
+      "code": "d",
+      "identity": "default"
+    },
+    {
+      "schema": "public",
+      "table": "support_request_replies",
+      "code": "d",
+      "identity": "default"
+    },
+    {
+      "schema": "public",
+      "table": "tool_calculations",
+      "code": "d",
+      "identity": "default"
+    },
+    {
+      "schema": "public",
+      "table": "user_connections",
+      "code": "d",
+      "identity": "default"
+    }
+  ],
+  "database_size": "19 MB",
+  "top15": [
+    {
+      "schema": "auth",
+      "table": "refresh_tokens",
+      "bytes": 327680,
+      "pretty": "320 kB"
+    },
+    {
+      "schema": "auth",
+      "table": "users",
+      "bytes": 270336,
+      "pretty": "264 kB"
+    },
+    {
+      "schema": "public",
+      "table": "rh_financiamiento",
+      "bytes": 180224,
+      "pretty": "176 kB"
+    },
+    {
+      "schema": "public",
+      "table": "tool_calculations",
+      "bytes": 180224,
+      "pretty": "176 kB"
+    },
+    {
+      "schema": "realtime",
+      "table": "subscription",
+      "bytes": 172032,
+      "pretty": "168 kB"
+    },
+    {
+      "schema": "public",
+      "table": "prospects",
+      "bytes": 172032,
+      "pretty": "168 kB"
+    },
+    {
+      "schema": "public",
+      "table": "profiles",
+      "bytes": 155648,
+      "pretty": "152 kB"
+    },
+    {
+      "schema": "public",
+      "table": "sales",
+      "bytes": 147456,
+      "pretty": "144 kB"
+    },
+    {
+      "schema": "public",
+      "table": "rh_ventas",
+      "bytes": 139264,
+      "pretty": "136 kB"
+    },
+    {
+      "schema": "public",
+      "table": "workspace_miembros",
+      "bytes": 139264,
+      "pretty": "136 kB"
+    },
+    {
+      "schema": "public",
+      "table": "rol_permisos",
+      "bytes": 139264,
+      "pretty": "136 kB"
+    },
+    {
+      "schema": "public",
+      "table": "calendar_entries",
+      "bytes": 139264,
+      "pretty": "136 kB"
+    },
+    {
+      "schema": "auth",
+      "table": "sessions",
+      "bytes": 131072,
+      "pretty": "128 kB"
+    },
+    {
+      "schema": "auth",
+      "table": "one_time_tokens",
+      "bytes": 131072,
+      "pretty": "128 kB"
+    },
+    {
+      "schema": "public",
+      "table": "direct_messages",
+      "bytes": 122880,
+      "pretty": "120 kB"
+    }
+  ],
+  "buckets": [
+    [
+      "prospect-files",
+      "prospect-files",
+      false,
+      10485760
+    ],
+    [
+      "support-screenshots",
+      "support-screenshots",
+      false,
+      10485760
+    ],
+    [
+      "workspace-branding",
+      "workspace-branding",
+      true,
+      2097152
+    ]
+  ],
+  "storage": [
+    {
+      "bucket_id": "prospect-files",
+      "name": "prospect-files",
+      "public": false,
+      "objects": 0,
+      "bytes": 0
+    },
+    {
+      "bucket_id": "support-screenshots",
+      "name": "support-screenshots",
+      "public": false,
+      "objects": 0,
+      "bytes": 0
+    },
+    {
+      "bucket_id": "workspace-branding",
+      "name": "workspace-branding",
+      "public": true,
+      "objects": 5,
+      "bytes": 97595
+    }
+  ]
+}

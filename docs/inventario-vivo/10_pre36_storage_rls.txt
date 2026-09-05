@@ -1,0 +1,21 @@
+Pre-3.6 storage paths + 24 vs 30 — 2026-08-22 (actualizado placeholders)
+
+STORAGE name (5):
+empresa/0aee9ad0-5a5e-4532-8b86-95b801f8ee88/1786400118217.jpg
+empresa/0aee9ad0-5a5e-4532-8b86-95b801f8ee88/1786400249384.jpg
+empresa/0aee9ad0-5a5e-4532-8b86-95b801f8ee88/icon-1786405884820.jpg
+empresa/0aee9ad0-5a5e-4532-8b86-95b801f8ee88/principal-1786405897258.jpg
+sala/090aa626-32ea-43bf-96c3-ff5dad04cdfb/1785251976142.jpg
+
+FileBackend real: /var/lib/storage/stub/stub/workspace-branding/<name>/<version>
+Host: /opt/saletse-sb-staging/volumes/storage/stub/stub/...
+Copiar solo a .../stub/workspace-branding/<name> → HTTP 500 ENOENT.
+
+Placeholders JPEG 139 B upsert via Storage API. GET public 5/5 HTTP 200.
+PENDIENTE-DE-REEMPLAZO-ANTES-DEL-CORTE-A-PRODUCCIÓN (no bloqueante staging).
+
+Empresa 0aee9ad0-… = Royal Holiday.
+Sala 090aa626-… = leftover «sala 1» de «saletse test» (ya no hay fila).
+Sala viva RH: b0b1c8b0-… Sala Royal Holiday.
+
+24 vs 30: CORRECTO. 2 workspaces, 24 prospects en ellos (0+24). 6 fuera (personales ajenos).

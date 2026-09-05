@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { RhToolLoading, RhToolShell } from "@/components/rh/rh-tool-shell.jsx";
 import { RhCalendarWidget } from "@/components/rh/rh-calendar-widget.jsx";
 import { useRhEmpresa } from "@/hooks/use-rh-empresa.js";
@@ -165,9 +166,7 @@ function PremanifiestoEntryForm({
     }
   };
 
-  const title = isNew
-    ? (access.canOpc && !access.canMarketing ? "Invitar pareja" : "Registrar pareja")
-    : "Editar registro";
+  const title = isNew ? "Registrar pareja" : "Editar registro";
 
   return (
     <div className="card tool-calc-card rh-pm-form-card" data-testid="rh-pm-form">
@@ -285,6 +284,18 @@ function PremanifiestoEntryRow({
   );
 }
 
+function olaDisponible(ola) {
+  if (ola?.disponible != null) return Number(ola.disponible) > 0;
+  return Number(ola?.ocupado || 0) < Number(ola?.cupo_max || 0);
+}
+
+function formatOlaHora(hora) {
+  const raw = String(hora || "");
+  const m = raw.match(/^(\d{1,2}):(\d{2})/);
+  if (!m) return raw.slice(0, 5);
+  return `${String(m[1]).padStart(2, "0")}:${m[2]}`;
+}
+
 function PremanifiestoDayPanel({
   fecha,
   dia,
@@ -297,6 +308,8 @@ function PremanifiestoDayPanel({
   setFormState,
 }) {
   const olas = dia?.olas || [];
+  const navigate = useNavigate();
+  const canOpcInvite = access.canOpc && !access.canMarketing;
 
   if (loading) {
     return <div className="card tool-calc-card"><p className="muted">Cargando olas…</p></div>;
@@ -331,15 +344,6 @@ function PremanifiestoDayPanel({
             Registrar pareja
           </button>
         )}
-        {access.canOpc && !access.canMarketing && (
-          <button
-            type="button"
-            className="btn btn-primary btn-sm"
-            onClick={() => setFormState({ mode: "new", entry: null })}
-          >
-            Invitar pareja
-          </button>
-        )}
       </div>
 
       {olas.length === 0 ? (
@@ -354,9 +358,28 @@ function PremanifiestoDayPanel({
                   <span className="dg-name">{ola.etiqueta}</span>
                   <span className="muted rh-pm-ola-time">{ola.hora}</span>
                 </div>
-                <span className="network-pill ok rh-pm-cupo-pill">
-                  {ola.ocupado}/{ola.cupo_max} parejas
-                </span>
+                {canOpcInvite && olaDisponible(ola) ? (
+                  <button
+                    type="button"
+                    className="network-pill ok rh-pm-cupo-pill is-clickable"
+                    data-testid="rh-pm-cupo-libre"
+                    onClick={() => {
+                      const q = new URLSearchParams({
+                        ola: ola.ola_config_id,
+                        fecha,
+                        hora: formatOlaHora(ola.hora),
+                        etiqueta: ola.etiqueta || "",
+                      });
+                      navigate(`/clients/opc-nuevo?${q.toString()}`);
+                    }}
+                  >
+                    {ola.ocupado}/{ola.cupo_max} parejas
+                  </button>
+                ) : (
+                  <span className="network-pill ok rh-pm-cupo-pill">
+                    {ola.ocupado}/{ola.cupo_max} parejas
+                  </span>
+                )}
               </div>
               <div className="rh-pm-ola-body">
                 {(ola.entradas || []).length === 0 && (

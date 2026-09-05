@@ -61,6 +61,8 @@ test("GET /api/v1 catálogo sigue en v1", async () => {
     assert.equal(res.status, 200);
     assert.equal(res.json?.version, "v1");
     assert.equal(res.json?.endpoints?.goals?.GET, "/api/v1/goals");
+    assert.equal(res.json?.endpoints?.cron?.rhExtraDp?.GET_POST, "/api/v1/cron/rh-extra-dp");
+    assert.equal(res.json?.endpoints?.royalHoliday?.catalogo?.GET, "/api/v1/royal-holiday/:empresaId/catalogo");
   } finally {
     server.close();
   }

@@ -36,7 +36,7 @@ function ToolsHubSkeleton({ rh = true, ops = true, other = 2 }) {
       <span className="sr-only">Cargando herramientas</span>
       {rh ? (
         <>
-          <div className="rh-tools-section-title">Herramientas (Gerente, Closer, Reps)</div>
+          <div className="rh-tools-section-title">Herramientas Royal Holiday</div>
           <div className="exp-tool-list tools-hub-list">
             {Array.from({ length: 6 }, (_, i) => <ToolCardSkeleton key={`rh-${i}`} />)}
           </div>
@@ -137,7 +137,7 @@ export function ToolsHubPage() {
           <ContentFade className="tools-hub-ready">
             {rhEnabled && (
               <div className="rh-tools-section">
-                <div className="rh-tools-section-title">Herramientas (Gerente, Closer, Reps)</div>
+                <div className="rh-tools-section-title">Herramientas Royal Holiday</div>
                 <div className="exp-tool-list tools-hub-list">
                   {RH_TOOLS.map((tool) => {
                     const Icon = tool.icon;

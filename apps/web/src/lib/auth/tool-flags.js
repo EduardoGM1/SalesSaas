@@ -11,6 +11,9 @@ export const MONEY_BOX_FLAG = "worksheet.money_box";
 /** Variante Worksheet Royal Holiday (custom por empresa). */
 export const WORKSHEET_ROYAL_HOLIDAY_FLAG = "worksheet.royal_holiday";
 
+/** Empresa Royal Holiday — el recorte de sidebar depende del workspace activo, no del rol en abstracto. */
+export const ROYAL_HOLIDAY_EMPRESA_ID = "0aee9ad0-5a5e-4532-8b86-95b801f8ee88";
+
 /** Pestaña Money Box dentro del Worksheet RH (custom por empresa). */
 export const WORKSHEET_RH_MONEY_BOX_TAB_FLAG = "worksheet.royal_holiday.money_box";
 

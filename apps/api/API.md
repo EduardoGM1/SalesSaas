@@ -5,7 +5,7 @@ API versionada montada en `/api/v1`. Backend Express + Node.js (JavaScript puro)
 ## Convenciones
 
 - **Versionado**: todas las rutas viven bajo `/api/v1/...`. Cambios incompatibles se publicarán como `/api/v2`.
-- **Recursos**: sustantivos en plural (`/prospects`, `/sales`, `/workspaces/:id/members`). Sin verbos en la URL; las transiciones de estado se modelan como sub-recursos de acción (`POST /prospects/:id/workflow/advance`).
+- **Recursos**: sustantivos en plural (`/prospects`, `/sales`, `/workspaces/:id/members`). Las asignaciones de participantes son sub-recursos (`POST /prospects/:id/participants/assign-closer`).
 - **Autenticación**: `Authorization: Bearer <supabase_access_token>` o cookies de sesión web. Toda ruta (salvo `GET /api/v1/`) valida sesión en el backend.
 - **Autorización**: cada servicio valida permisos/alcance del actor (workspace, empresa) antes de tocar datos. Las políticas RLS de Supabase son la última línea de defensa.
 - **Respuestas**: éxito envuelve el payload en `{ "data": ... }`; error responde `{ "error": "mensaje" }`.
@@ -39,7 +39,7 @@ Al excederse responde `429` con header `Retry-After`.
 | Red y mensajes | `/network/*`, `/messages/*` | `network-service`, `messages-service` |
 | Notificaciones | `/notifications/*` | `push-notifications-service` |
 | Workspaces | `/workspace/*`, `/auth/workspace` | `workspace-service`, `workspace-ops-service` |
-| Workflow comercial | `/workflow/inbox`, `/prospects/:id/workflow/*` | `workflow-service` |
+| Workflow comercial | `/workflow/inbox`, `/prospects/:id/workflow`, `/prospects/:id/participants` | `prospect-participants-service` |
 | Admin plataforma | `/admin/*` | `admin-users-service`, `roles-service`, `flags-service`… |
 | Admin tenant (empresa/sala) | `/admin/tenant/*`, `/admin/workspaces/*` | `tenant-admin-service`, `tenant-rbac-service` |
 
@@ -89,7 +89,6 @@ registro (`prospect_workflows` = participantes; `etapa_actual` está deprecada).
 | `GET /prospects/:id/workflow` | Alias de compatibilidad → participants. |
 | `POST /prospects/:id/participants/assign-closer` | Asigna/reasigna Cerrador (sin cambiar etapa). |
 | `POST /prospects/:id/workflow/assign-closer` | Alias de compatibilidad. |
-| `POST …/advance\|send-review\|review` | **410 Gone** — pipeline eliminado. |
 
 ## Chat grupal por expediente
 

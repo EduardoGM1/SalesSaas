@@ -37,6 +37,15 @@ def assert_dist_selfhosted(dist: Path) -> None:
             + "). Rebuild con VITE_SUPABASE_URL=http://187.77.14.148 (keys de la VPS), "
             "no con .env.local de Cloud."
         )
+    html = dist / "index.html"
+    if html.is_file():
+        html_text = html.read_text(encoding="utf-8", errors="ignore")
+        for retired in ("index-DS5s4Hkv.js",):
+            if f"assets/{retired}" in html_text:
+                raise SystemExit(
+                    f"index.html apunta al chunk retirado {retired}. "
+                    "Rebuild self-hosted; no desplegar."
+                )
     js_ip = [f for f in ip_files if f.endswith(".js")]
     if not js_ip:
         raise SystemExit(

@@ -44,12 +44,18 @@ export async function getToolCalculation(supabase, userId, tool, prospectId) {
 export async function getToolCalculationById(supabase, userId, id) {
   if (!isUuid(id)) throw new ServiceError("ID inválido.");
   const ctx = await getRequestWorkspaceContext(supabase, userId);
+  let metaQ = supabase.from("tool_calculations").select("id, tool, workspace_id").eq("id", id);
+  metaQ = scopeByWorkspace(metaQ, ctx.workspaceId);
+  const { data: meta, error: metaErr } = await metaQ.maybeSingle();
+  if (metaErr) throw new ServiceError(metaErr.message, 500);
+  if (!meta) throw new ServiceError("Cálculo no encontrado.", 404);
+  await requireWorkspaceFlag(supabase, userId, TOOL_FLAG_KEYS[meta.tool] || meta.tool);
+
   let q = supabase.from("tool_calculations").select("*").eq("id", id);
   q = scopeByWorkspace(q, ctx.workspaceId);
   const { data, error } = await q.maybeSingle();
   if (error) throw new ServiceError(error.message, 500);
   if (!data) throw new ServiceError("Cálculo no encontrado.", 404);
-  await requireWorkspaceFlag(supabase, userId, TOOL_FLAG_KEYS[data.tool] || data.tool);
   return data;
 }
 

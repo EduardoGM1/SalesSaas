@@ -1,5 +1,13 @@
 import { useEffect, useState } from "react";
-import { fetchSession } from "@/lib/session-api.js";
+import { fetchSession, watchSession } from "@/lib/session-api.js";
+
+function idsFromSession(session) {
+  const ws = session?.workspace_activo || session?.profile?.workspace_activo;
+  return {
+    empresaId: ws?.empresa_id || null,
+    workspaceId: ws?.id || session?.workspace_activo_id || session?.profile?.workspace_activo_id || null,
+  };
+}
 
 /** Resuelve empresa_id y workspace_id del workspace activo (RH). */
 export function useRhEmpresa() {
@@ -8,20 +16,19 @@ export function useRhEmpresa() {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const s = await fetchSession();
-        const ws = s?.workspace_activo || s?.profile?.workspace_activo;
-        if (cancelled) return;
-        setEmpresaId(ws?.empresa_id || null);
-        setWorkspaceId(ws?.id || s?.workspace_activo_id || s?.profile?.workspace_activo_id || null);
-      } finally {
-        if (!cancelled) setReady(true);
-      }
-    })();
-    return () => { cancelled = true; };
+    return watchSession((session) => {
+      const ids = idsFromSession(session);
+      setEmpresaId(ids.empresaId);
+      setWorkspaceId(ids.workspaceId);
+      setReady(true);
+    });
   }, []);
 
   return { empresaId, workspaceId, ready };
+}
+
+/** Relee sesión una vez (p. ej. al confirmar si el hook aún no resolvió). */
+export async function readRhEmpresaFromSession() {
+  const session = await fetchSession();
+  return idsFromSession(session);
 }

@@ -1,0 +1,152 @@
+Fase 3.6 — checklist funcional staging — 2026-08-22 — CERRADO
+Sin secretos. Express prod (:4000 / pm2 saletse-api) no se rewireó ni se reinició.
+CuidateAPP / MySQL / Nginx no se tocaron.
+
+ALCANCE
+  Kong 127.0.0.1:8000 + sidecar Express 127.0.0.1:4001 (pm2 saletse-api-staging).
+  Cuentas de prueba: *@test.saletse.dev (corridas anteriores, borradas) y
+  plus-alias del correo personal del dueño de la cuenta Resend de prueba
+  (dominio hotmail, NO cliente ni Royal Holiday; usuario borrado al terminar).
+  Cloud: solo SELECT/EXPLAIN de lectura.
+
+LOGOS
+  Placeholders 5/5 HTTP 200. PENDIENTE-DE-REEMPLAZO-ANTES-DEL-CORTE.
+  Empresa 0aee9ad0-… = Royal Holiday. Sala 090aa626-… leftover «sala 1».
+
+------------------------------------------------------------------------------
+1) chat_members 42P17 — diagnóstico (sin corrección en ningún ambiente)
+------------------------------------------------------------------------------
+Query (misma que staging PostgREST GET /rest/v1/chat_messages?select=id&limit=1):
+  SET LOCAL ROLE authenticated;
+  set_config request.jwt.claims / claim.sub = cuenta is_super_admin (dev, no hotel);
+  SELECT id FROM public.chat_messages LIMIT 1;
+
+Cloud (lectura, 2026-08-22):
+  ERR InvalidObjectDefinition:
+  infinite recursion detected in policy for relation "chat_members"
+  También falla SELECT LIMIT 1 sobre chat_members y chat_conversations
+  (ambos EXISTS hacia chat_members).
+
+Staging: el mismo 42P17 vía PostgREST (corrida anterior).
+
+Policy:
+  public.chat_members / chat_members_select_peer / SELECT / authenticated
+  USING: EXISTS (
+    SELECT 1 FROM chat_members me
+    WHERE me.conversation_id = chat_members.conversation_id
+      AND me.usuario_id = auth.uid() AND me.left_at IS NULL
+  )
+  Se referencia a sí misma. Encadenada desde:
+    chat_messages_select_member
+    chat_conversations_select_member
+  Definición idéntica en:
+    docs/inventario-vivo/pg_policies_cloud.csv
+    docs/inventario-vivo/pg_policies_staging.csv
+    git supabase/migrations/0059_prospect_shared_no_pipeline.sql
+    pg_policies LIVE Cloud (comprobado)
+
+HALLAZGO SEPARADO: bug preexistente de producción / git. No introducido por la
+migración. Diff Fase 3.2 no lo “pasó por alto”: las policies ya eran iguales.
+No se corrigió en Cloud ni en staging (pedido explícito).
+
+------------------------------------------------------------------------------
+2) Sidecar Express → staging
+------------------------------------------------------------------------------
+pm2 name: saletse-api-staging  (pid nuevo; saletse-api prod intacto)
+bind: 127.0.0.1:4001  (no *:4001; firewall inactivo, por eso bind loopback)
+env: /opt/saletse-api-staging/.env chmod 600
+  SUPABASE_URL=http://127.0.0.1:8000
+  keys nuevas de Fase 2 (ANON/SERVICE_ROLE del compose staging)
+  ONESIGNAL_* y RESEND_* vacíos (no habla con prod)
+  CRON_SECRET propio del sidecar (no el de prod)
+health: 200; health/supabase ok urlHost=127.0.0.1:8000
+prod :4000/health sigue 200
+
+PASS  sync GET /api/v1/sync 200 (payload clients/sales/cal/goals/…)
+PASS  sync PUT /api/v1/sync 200 (eco del GET)
+PASS  cron GET /api/v1/cron/flush-reminders 200
+        data.skipped=not_configured (OneSignal deshabilitado a propósito)
+PASS  cron GET /api/v1/cron/cleanup-support-attachments 200
+        scanned=0 purged=0 retention_days=90
+PASS  login is_active=false → 403 HTTP real en sidecar
+        "Tu cuenta fue desactivada. Contacta al administrador."
+
+------------------------------------------------------------------------------
+3) SMTP ensayo registro/recovery — PASS (2026-08-22)
+------------------------------------------------------------------------------
+GoTrue staging (contenedor supabase-auth, compose service `auth`).
+Solo se recreó ese servicio (`docker compose up -d --no-deps --force-recreate auth`);
+el resto del stack y prod no se tocaron. Health: healthy.
+
+.env de /opt/saletse-sb-staging (NO está en git; el directorio no es repo;
+sales-app/.gitignore cubre `.env` y `.env.*` con excepción de `.env.example`):
+  SMTP_HOST=smtp.resend.com
+  SMTP_PORT=587          (STARTTLS; GoTrue/net/smtp no usa TLS implícito 465)
+  SMTP_USER=resend
+  SMTP_PASS=<API key Resend de Saletse; solo en VPS; no versionada>
+  SMTP_ADMIN_EMAIL=test-staging@cuidateapp.com.mx
+  SMTP_SENDER_NAME=Saletse (STAGING - no responder)
+  ENABLE_EMAIL_AUTOCONFIRM=false
+  → contenedor: GOTRUE_MAILER_AUTOCONFIRM=false, GOTRUE_SMTP_* equivalentes
+
+Remitente: la API key correcta de Saletse (sustituyó una key de otra cuenta).
+Dominio verificado en esa cuenta Resend = cuidateapp.com.mx (único). From
+staging = test-staging@cuidateapp.com.mx. PENDIENTE ANTES DEL CORTE: si el
+From de producción debe ser un dominio Saletse, hay que verificarlo en esta
+cuenta Resend (hoy no hay otro dominio).
+
+Flujo (sidecar :4001 + Kong :8000; destinatario = plus-alias hotmail personal,
+no cliente/RH). Usuario de prueba borrado al terminar (auth.users limpio).
+
+PASS  Registro completo
+      POST /auth/register 200 «Cuenta creada. Revisa tu correo…»
+      email_confirmed_at NULL; login sidecar 401 «Debes confirmar tu correo…»
+      Mail Resend subject «Confirm Your Email»
+      POST /auth/v1/verify {type, token_hash} 200; email_confirmed_at set
+      login sidecar 200
+
+PASS  Recovery completo
+      POST /auth/forgot-password 200
+      Mail Resend subject «Reset Your Password»
+      POST /auth/v1/verify {type:recovery, token_hash} 200 (access_token)
+      PUT /auth/v1/user password 200; login sidecar 200 con la nueva clave
+
+Logs GoTrue al arrancar: sin error de conexión SMTP. Eventos de la prueba:
+user_signedup, user_recovery_requested, user_updated_password, user_deleted.
+(Aviso informativo GOTRUE_MAILER_EXTERNAL_HOSTS por Host loopback; no bloquea.)
+
+------------------------------------------------------------------------------
+RESULTADOS CONSOLIDADOS
+
+PASS  Login email/password
+PASS  is_active=false → 403 (ahora también HTTP real en sidecar :4001)
+PASS  Registro + mail confirmación SMTP
+PASS  Recovery + reset-password
+PASS  Signout global / auth_revoked_at
+PASS  RLS A vs B (anon/JWT)
+PASS  service_role tickets + transfer/assert
+PASS  sync GET/PUT /api/v1/sync             (sidecar)
+PASS  Realtime postgres_changes INSERT sales
+FAIL  Chat + toast                          [preexistente Cloud, no de la migración]
+PASS  Pins REST id=eq
+PASS  Presence user_can_access_prospect
+PASS  Upload soporte signed 30 min
+PASS  Logo URL pública placeholders 5/5     [pendiente reemplazo bytes reales]
+PASS  prospect-files service_role
+PASS  OneSignal no re-registrar vs prod     (sidecar sin keys)
+PASS  Cron flush + cleanup contra staging   (sidecar; flush sin push)
+
+§3.6 CERRADO. 16 PASS / 1 FAIL.
+
+PENDIENTE ANTES DEL CORTE (no impide cerrar el ensayo de staging)
+  - Logos reales de Royal Holiday (hoy placeholders JPEG 139 B).
+  - Dominio de envío: esta cuenta Resend de Saletse solo tiene verificado
+    cuidateapp.com.mx (From staging @cuidateapp.com.mx). Si el corte exige
+    un From @saletse…, hay que verificar ese dominio aquí.
+
+BUG PREEXISTENTE NO BLOQUEANTE (igual en Cloud; no se tocó la policy)
+  - 42P17 chat_members_select_peer (recursión). Chat REST/Realtime de
+    expediente está roto igual en Cloud que en staging.
+
+NO BLOQUEANTE STAGING
+  - Sidecar no expuesto; prod Express sigue en Cloud hasta el corte.

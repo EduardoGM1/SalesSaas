@@ -1,0 +1,46 @@
+Fase 3.3-3.4 — 2026-08-22
+Sin secretos. Cloud solo lectura. Producción VPS intacta.
+
+AJUSTES PREVIOS
+  Bucket soporte-adjuntos: privado, 5 MB, png/jpeg/webp + policies upload/read/delete propio + admin read
+  Kong mem_limit 256m → 384m; recreado solo Kong (resto del stack 24h uptime)
+
+DATOS public
+  pg_dump --data-only --no-owner --no-privileges -n public (17.6)
+  Restore como supabase_admin con session_replication_role=replica
+  ANALYZE ok. Sin seriales/identity en public (PKs UUID).
+  Conteos: 63 tablas public Cloud=staging (MISMATCH 0)
+  Principales: prospects 30, sales 1, activities 3, tool_calculations 36, empresas 1, workspaces 23
+
+AUTH
+  auth.users 7, auth.identities 7. sessions/refresh_tokens NO copiados (staging 0 vs Cloud 33 sessions)
+  Trigger on_auth_user_created deshabilitado durante import, reactivado (tgenabled=O)
+  profiles 7, huérfanos 0, users sin profile 0
+  workspaces 23 (= Cloud) → no se duplicaron personales. Usuario S2: 1 workspace personal
+  Hashes bcrypt $2a$ importados
+
+STORAGE
+  storage.objects: 5 filas workspace-branding restauradas (metadata)
+  Bytes: NO copiados. Cloud Storage API responde 402 exceed_egress_quota
+  prospect-files y support-screenshots vacíos (0 objetos)
+
+S2 LOGIN
+  Cloud ya no tiene prueba@hola.com ni *@test.*
+  Se usó la cuenta de desarrollo (is_super_admin, no admin de hotel cliente)
+  Password de prueba fijada SOLO en staging (Cloud no se tocó)
+  signInWithPassword → 200, uid = mismo UUID (prefijo 5719b210)
+  GET /rest/v1/prospects autenticado: 24 filas vs 30 con service_role → RLS actúa
+  1 workspace personal
+
+RAM
+  Kong 134 / 384 (recreado; ya no 241/256)
+  Storage 170 / 384
+  Realtime 185 / 512
+  Auth 10 / 256
+  Rest 27 / 256
+  DB 100 / 768
+  Suma ≈ 626 MiB (vs 721 esquema vacío con Kong viejo; vs 610 vacío Fase 2)
+  Host: used 1.8 GiB, available 5.9 GiB, swap 1 MiB
+
+PROD
+  :4000/health 200, :3000 200

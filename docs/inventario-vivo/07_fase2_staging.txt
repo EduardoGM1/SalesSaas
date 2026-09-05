@@ -1,0 +1,54 @@
+Fase 2 staging — VPS 187.77.14.148 — 2026-08-21
+Sin secretos (JWT, passwords, ANON/SERVICE keys no incluidos).
+
+SWAP
+  /swapfile file 4G  persistente en /etc/fstab
+  vm.swappiness=10
+  free: Swap 4.0Gi, usado 512Ki en reposo del stack
+
+DOCKER
+  Docker version 29.7.2, build a7dcaa6
+  Docker Compose version v5.5.0
+  Usuario de despliegue: root (mismo patrón que PM2/Nginx) → docker sin sudo
+  Grupo docker existe (gid 988); no se añadió otro usuario
+  Ningún contenedor de producción; project nuevo saletse-sb-staging
+
+COMPOSE
+  Ruta: /opt/saletse-sb-staging
+  Tag: self-hosted/v0.6.0
+  Postgres image: supabase/postgres:17.6.1.136
+  Servicios: db, auth, rest, realtime, storage, kong
+  Omitidos: studio, postgres-meta, imgproxy, functions, analytics/logflare/vector, supavisor
+  Kong: 127.0.0.1:8000
+  Postgres: 127.0.0.1:5432 (NO 0.0.0.0)
+  Keys: generadas en el VPS (.env chmod 600); no se reutilizaron keys de Cloud
+
+HEALTH (stack vacío, sin esquema Saletse)
+  pg_isready: accepting connections
+  GET http://127.0.0.1:8000/auth/v1/health → 200 (GoTrue v2.189.0)
+  GET http://127.0.0.1:8000/rest/v1/ → 200 (PostgREST swagger)
+  WebSocket /realtime/v1/websocket → 101 Switching Protocols
+  Todos los contenedores: healthy
+
+MEMORIA EN REPOSO (docker stats --no-stream, ~1 min tras up)
+  supabase-kong                    137.2MiB / 256MiB
+  supabase-storage                 173.5MiB / 384MiB
+  realtime-dev.supabase-realtime   178.4MiB / 512MiB
+  supabase-auth                      8.9MiB / 256MiB
+  supabase-rest                     18.5MiB / 256MiB
+  supabase-db                       93.8MiB / 768MiB
+  Suma uso real ≈ 610 MiB
+  Techo mem_limit ≈ 2.4 GiB
+  Host: Mem 7.8Gi, used 1.8Gi, available 5.9Gi, swap 512Ki
+
+PRODUCCIÓN (mismos PIDs que el baseline de esta sesión)
+  saletse_health http://127.0.0.1:4000/health → 200
+  cuidate_3000 http://127.0.0.1:3000/ → 200
+  nginx http://127.0.0.1/ → 301 (igual que baseline)
+  pm2: api-clinica online pid 241366
+       saletse-api online pid 300529
+  MySQL sigue en 127.0.0.1:3306; 80/443 intactos
+
+MONITOREO MANUAL
+  cd /opt/saletse-sb-staging
+  watch -n 5 'free -h; echo; docker stats --no-stream --format "table {{.Name}}\t{{.MemUsage}}\t{{.CPUPerc}}"'

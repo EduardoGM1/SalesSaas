@@ -99,14 +99,17 @@ export const OVERRIDABLE_APP_FEATURES = [
   "herramientas:analysis",
 ];
 
-/** Permisos por defecto del rol Vendedor (sin ver_equipo). */
-export const VENDEDOR_DEFAULT_PERMISSIONS = APP_PERMISSION_KEYS.filter(
+/** Permisos por defecto del puesto Liner / app sin ver_equipo. */
+export const LINER_DEFAULT_PERMISSIONS = APP_PERMISSION_KEYS.filter(
   (k) => !k.endsWith(":ver_equipo"),
 );
 
+/** @deprecated Usar LINER_DEFAULT_PERMISSIONS */
+export const VENDEDOR_DEFAULT_PERMISSIONS = LINER_DEFAULT_PERMISSIONS;
+
 /** Admin sistema: app + secciones operativas (sin logs ni roles). */
 export const ADMIN_DEFAULT_PERMISSIONS = [
-  ...VENDEDOR_DEFAULT_PERMISSIONS,
+  ...LINER_DEFAULT_PERMISSIONS,
   "ver_resumen",
   "gestionar_usuarios",
   "gestionar_metas",
@@ -116,7 +119,7 @@ export const ADMIN_DEFAULT_PERMISSIONS = [
 
 /** Rol sistema Soporte: app base + solo soporte. */
 export const SOPORTE_DEFAULT_PERMISSIONS = [
-  ...VENDEDOR_DEFAULT_PERMISSIONS,
+  ...LINER_DEFAULT_PERMISSIONS,
   "gestionar_soporte",
 ];
 

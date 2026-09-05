@@ -14,20 +14,26 @@ function reloadOnce() {
  * Si el HTML/SW quedó en una revisión vieja, el script module apunta a un chunk 404.
  * En ese caso se limpian caches y se recarga una vez.
  */
+const RETIRED_ENTRY_CHUNKS = ["index-DS5s4Hkv.js"];
+
 async function recoverFromStaleModuleScript() {
   if (!("serviceWorker" in navigator)) return;
   const script = document.querySelector('script[type="module"][src*="/assets/"]');
   if (!script?.src) return;
 
+  const isRetired = RETIRED_ENTRY_CHUNKS.some((name) => script.src.includes(name));
   try {
     const res = await fetch(script.src, { method: "HEAD", cache: "no-store" });
-    if (res.ok) return;
+    if (!isRetired && res.ok) return;
 
     console.warn("[pwa] stale module script detected, purging caches", script.src, res.status);
     await purgeAppCaches();
     reloadOnce();
   } catch {
-    // Sin red: no forzar reload en bucle.
+    if (isRetired) {
+      await purgeAppCaches();
+      reloadOnce();
+    }
   }
 }
 

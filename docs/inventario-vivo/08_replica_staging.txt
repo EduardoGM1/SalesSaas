@@ -1,0 +1,15 @@
+activities|d
+calendar_entries|d
+chat_members|d
+chat_messages|d
+direct_messages|d
+gerente_acceso_cruzado|d
+goals|d
+permisos_delegados|d
+profiles|d
+prospect_shares|d
+prospects|d
+sales|d
+support_request_replies|d
+tool_calculations|d
+user_connections|d

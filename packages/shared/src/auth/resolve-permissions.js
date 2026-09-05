@@ -2,7 +2,7 @@ import {
   ALL_PERMISSION_KEYS,
   ADMIN_PERMISSION_KEYS,
   OVERRIDABLE_APP_FEATURES,
-  VENDEDOR_DEFAULT_PERMISSIONS,
+  LINER_DEFAULT_PERMISSIONS,
 } from "./permission-catalog.js";
 
 /**
@@ -61,7 +61,7 @@ export function resolveUserPermissions(input = {}) {
 }
 
 function inferRoleKeysFromLegacy(input) {
-  const keys = new Set(VENDEDOR_DEFAULT_PERMISSIONS);
+  const keys = new Set(LINER_DEFAULT_PERMISSIONS);
   if (input.role === "admin") {
     const adminPerms = Array.isArray(input.admin_permissions) ? input.admin_permissions : [];
     for (const p of adminPerms) keys.add(p);

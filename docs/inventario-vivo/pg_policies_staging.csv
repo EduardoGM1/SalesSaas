@@ -1,0 +1,289 @@
+schemaname,tablename,policyname,permissive,roles,cmd,qual,with_check
+public,activities,activities_delete_tenant_role,PERMISSIVE,{authenticated},DELETE,"((user_id = auth.uid()) AND workspace_has_permission(auth.uid(), workspace_id, 'expedientes:editar'::text))",
+public,activities,activities_insert_tenant_role,PERMISSIVE,{authenticated},INSERT,,"((user_id = auth.uid()) AND workspace_has_permission(auth.uid(), workspace_id, 'expedientes:editar'::text))"
+public,activities,activities_select_tenant_role,PERMISSIVE,{authenticated},SELECT,"(user_in_workspace(auth.uid(), workspace_id) AND ((user_id = auth.uid()) OR workspace_has_permission(auth.uid(), workspace_id, 'expedientes:ver_equipo'::text) OR (EXISTS ( SELECT 1
+   FROM (prospect_shares ps
+     JOIN prospects p ON ((p.id = ps.prospect_id)))
+  WHERE ((ps.prospect_id = activities.prospect_id) AND (ps.shared_with_id = auth.uid()) AND (p.workspace_id = activities.workspace_id))))))",
+public,activities,activities_update_tenant_role,PERMISSIVE,{authenticated},UPDATE,"((user_id = auth.uid()) AND workspace_has_permission(auth.uid(), workspace_id, 'expedientes:editar'::text))","((user_id = auth.uid()) AND user_in_workspace(auth.uid(), workspace_id))"
+public,calendar_entries,calendar_delete_tenant_role,PERMISSIVE,{authenticated},DELETE,"((user_id = auth.uid()) AND workspace_has_permission(auth.uid(), workspace_id, 'expedientes:editar'::text))",
+public,calendar_entries,calendar_insert_tenant_role,PERMISSIVE,{authenticated},INSERT,,"((user_id = auth.uid()) AND user_in_workspace(auth.uid(), workspace_id) AND workspace_has_permission(auth.uid(), workspace_id, 'expedientes:editar'::text))"
+public,calendar_entries,calendar_select_tenant_role,PERMISSIVE,{authenticated},SELECT,"(user_in_workspace(auth.uid(), workspace_id) AND ((user_id = auth.uid()) OR workspace_has_permission(auth.uid(), workspace_id, 'expedientes:ver_equipo'::text)))",
+public,calendar_entries,calendar_update_tenant_role,PERMISSIVE,{authenticated},UPDATE,"((user_id = auth.uid()) AND workspace_has_permission(auth.uid(), workspace_id, 'expedientes:editar'::text))","((user_id = auth.uid()) AND user_in_workspace(auth.uid(), workspace_id))"
+public,catalogo_configuracion,catalogo_config_select,PERMISSIVE,{public},SELECT,rh_can_access_empresa(empresa_id),
+public,catalogo_configuracion,catalogo_config_write,PERMISSIVE,{public},ALL,(is_super_admin() OR rh_can_access_empresa(empresa_id)),(is_super_admin() OR rh_can_access_empresa(empresa_id))
+public,chat_conversations,chat_conversations_select_member,PERMISSIVE,{authenticated},SELECT,"(EXISTS ( SELECT 1
+   FROM chat_members m
+  WHERE ((m.conversation_id = chat_conversations.id) AND (m.usuario_id = auth.uid()) AND (m.left_at IS NULL))))",
+public,chat_members,chat_members_select_peer,PERMISSIVE,{authenticated},SELECT,"(EXISTS ( SELECT 1
+   FROM chat_members me
+  WHERE ((me.conversation_id = chat_members.conversation_id) AND (me.usuario_id = auth.uid()) AND (me.left_at IS NULL))))",
+public,chat_messages,chat_messages_insert_member,PERMISSIVE,{authenticated},INSERT,,"((sender_id = auth.uid()) AND (EXISTS ( SELECT 1
+   FROM chat_members m
+  WHERE ((m.conversation_id = chat_messages.conversation_id) AND (m.usuario_id = auth.uid()) AND (m.left_at IS NULL)))))"
+public,chat_messages,chat_messages_select_member,PERMISSIVE,{authenticated},SELECT,"(EXISTS ( SELECT 1
+   FROM chat_members m
+  WHERE ((m.conversation_id = chat_messages.conversation_id) AND (m.usuario_id = auth.uid()) AND (m.left_at IS NULL))))",
+public,direct_messages,messages_insert_sender,PERMISSIVE,{public},INSERT,,"((auth.uid() = sender_id) AND users_are_connected(sender_id, recipient_id))"
+public,direct_messages,messages_select_participant,PERMISSIVE,{public},SELECT,((auth.uid() = sender_id) OR (auth.uid() = recipient_id)),
+public,direct_messages,messages_update_recipient_read,PERMISSIVE,{public},UPDATE,(auth.uid() = recipient_id),
+public,empresa_miembros,empresa_miembros_select_empresa,PERMISSIVE,{authenticated},SELECT,"user_in_empresa(auth.uid(), empresa_id)",
+public,empresas,empresas_select_member,PERMISSIVE,{authenticated},SELECT,"((EXISTS ( SELECT 1
+   FROM (workspaces w
+     JOIN workspace_miembros m ON ((m.workspace_id = w.id)))
+  WHERE ((w.empresa_id = empresas.id) AND (m.usuario_id = auth.uid())))) OR (EXISTS ( SELECT 1
+   FROM profiles p
+  WHERE ((p.id = auth.uid()) AND (p.is_super_admin = true)))))",
+public,flag_reglas,flag_reglas_select_scoped,PERMISSIVE,{authenticated},SELECT,"(is_super_admin() OR (alcance = 'membresia'::text) OR ((alcance = 'usuario'::text) AND (alcance_id = auth.uid())) OR ((alcance = 'rol'::text) AND (EXISTS ( SELECT 1
+   FROM roles r
+  WHERE ((r.id = flag_reglas.alcance_id) AND ((r.empresa_id IS NULL) OR user_can_read_tenant_role(r.empresa_id)))))))",
+public,flags,flags_select_authenticated,PERMISSIVE,{authenticated},SELECT,"(is_super_admin() OR (empresa_id IS NULL) OR (EXISTS ( SELECT 1
+   FROM empresa_miembros em
+  WHERE ((em.empresa_id = flags.empresa_id) AND (em.usuario_id = auth.uid()) AND (em.estado = 'activo'::text)))) OR (EXISTS ( SELECT 1
+   FROM (workspace_miembros wm
+     JOIN workspaces w ON ((w.id = wm.workspace_id)))
+  WHERE ((w.empresa_id = flags.empresa_id) AND (wm.usuario_id = auth.uid())))))",
+public,funciones_premium,Authenticated read funciones_premium,PERMISSIVE,{authenticated},SELECT,true,
+public,gerente_acceso_cruzado,gerente_acceso_cruzado_select,PERMISSIVE,{authenticated},SELECT,"((auth.uid() = gerente_id) OR (auth.uid() = otorgado_por) OR is_super_admin() OR user_is_empresa_admin(auth.uid(), ( SELECT w.empresa_id
+   FROM workspaces w
+  WHERE (w.id = gerente_acceso_cruzado.sala_adicional_id))))",
+public,gerente_acceso_cruzado,gerente_acceso_cruzado_write_admin,PERMISSIVE,{authenticated},ALL,"(is_super_admin() OR user_is_empresa_admin(auth.uid(), ( SELECT w.empresa_id
+   FROM workspaces w
+  WHERE (w.id = gerente_acceso_cruzado.sala_adicional_id))))","(is_super_admin() OR user_is_empresa_admin(auth.uid(), ( SELECT w.empresa_id
+   FROM workspaces w
+  WHERE (w.id = gerente_acceso_cruzado.sala_adicional_id))))"
+public,goals,goals_admin_read,PERMISSIVE,{public},SELECT,(is_super_admin() OR (is_admin() AND has_admin_permission('goals:read'::text))),
+public,goals,goals_select_tenant_role,PERMISSIVE,{authenticated},SELECT,"(user_in_workspace(auth.uid(), workspace_id) AND ((user_id = auth.uid()) OR workspace_has_permission(auth.uid(), workspace_id, 'metas:ver_equipo'::text)))",
+public,goals,goals_write_tenant_role,PERMISSIVE,{authenticated},ALL,"((user_id = auth.uid()) AND workspace_has_permission(auth.uid(), workspace_id, 'metas:ver_editar_propias'::text))","((user_id = auth.uid()) AND workspace_has_permission(auth.uid(), workspace_id, 'metas:ver_editar_propias'::text))"
+public,logs_administracion,logs_admin_select,PERMISSIVE,{authenticated},SELECT,"(is_super_admin() OR (EXISTS ( SELECT 1
+   FROM unnest(resolve_user_permission_keys(auth.uid())) k(k)
+  WHERE (k.k = 'ver_logs_administracion'::text))))",
+public,membresias,Admins read all membresias,PERMISSIVE,{authenticated},SELECT,"(EXISTS ( SELECT 1
+   FROM profiles p
+  WHERE ((p.id = auth.uid()) AND ((p.is_super_admin = true) OR (p.role = 'admin'::user_role)))))",
+public,membresias,Users read own membresias,PERMISSIVE,{authenticated},SELECT,(usuario_id = auth.uid()),
+public,modulo_custom_datos,modulo_custom_datos_select_authenticated,PERMISSIVE,{authenticated},SELECT,"(is_super_admin() OR (EXISTS ( SELECT 1
+   FROM empresa_miembros em
+  WHERE ((em.empresa_id = modulo_custom_datos.empresa_id) AND (em.usuario_id = auth.uid()) AND (em.estado = 'activo'::text)))) OR (EXISTS ( SELECT 1
+   FROM (workspace_miembros wm
+     JOIN workspaces w ON ((w.id = wm.workspace_id)))
+  WHERE ((w.empresa_id = modulo_custom_datos.empresa_id) AND (wm.usuario_id = auth.uid())))))",
+public,modulo_custom_datos,modulo_custom_datos_write_empresa_admin,PERMISSIVE,{authenticated},ALL,"(is_super_admin() OR (EXISTS ( SELECT 1
+   FROM empresa_miembros em
+  WHERE ((em.empresa_id = modulo_custom_datos.empresa_id) AND (em.usuario_id = auth.uid()) AND (em.es_admin = true) AND (em.estado = 'activo'::text)))) OR (EXISTS ( SELECT 1
+   FROM (workspace_miembros wm
+     JOIN workspaces w ON ((w.id = wm.workspace_id)))
+  WHERE ((w.empresa_id = modulo_custom_datos.empresa_id) AND (wm.usuario_id = auth.uid())))))","(is_super_admin() OR (EXISTS ( SELECT 1
+   FROM empresa_miembros em
+  WHERE ((em.empresa_id = modulo_custom_datos.empresa_id) AND (em.usuario_id = auth.uid()) AND (em.es_admin = true) AND (em.estado = 'activo'::text)))) OR (EXISTS ( SELECT 1
+   FROM (workspace_miembros wm
+     JOIN workspaces w ON ((w.id = wm.workspace_id)))
+  WHERE ((w.empresa_id = modulo_custom_datos.empresa_id) AND (wm.usuario_id = auth.uid())))))"
+public,paquete_flags,paquete_flags_select_empresa,PERMISSIVE,{authenticated},SELECT,"(EXISTS ( SELECT 1
+   FROM paquetes_acceso pa
+  WHERE ((pa.id = paquete_flags.paquete_id) AND user_in_empresa(auth.uid(), pa.empresa_id))))",
+public,paquetes_acceso,paquetes_select_empresa,PERMISSIVE,{authenticated},SELECT,"user_in_empresa(auth.uid(), empresa_id)",
+public,permisos,permisos_select_authenticated,PERMISSIVE,{authenticated},SELECT,true,
+public,permisos_delegados,permisos_delegados_select_parties,PERMISSIVE,{authenticated},SELECT,((auth.uid() = usuario_delegante_id) OR (auth.uid() = usuario_asistente_id) OR is_super_admin()),
+public,permisos_delegados,permisos_delegados_write_delegante,PERMISSIVE,{authenticated},ALL,((auth.uid() = usuario_delegante_id) OR is_super_admin()),((auth.uid() = usuario_delegante_id) OR is_super_admin())
+public,planes,Authenticated read planes,PERMISSIVE,{authenticated},SELECT,true,
+public,platform_sessions,platform_sessions_own,PERMISSIVE,{authenticated},ALL,(auth.uid() = user_id),(auth.uid() = user_id)
+public,profiles,profiles_admin_read,PERMISSIVE,{public},SELECT,(is_super_admin() OR (is_admin() AND (has_admin_permission('users:read'::text) OR has_admin_permission('dashboard:read'::text) OR has_admin_permission('goals:read'::text) OR has_admin_permission('tools:analytics'::text)))),
+public,profiles,profiles_admin_update,PERMISSIVE,{public},UPDATE,is_super_admin(),is_super_admin()
+public,profiles,profiles_insert_own,PERMISSIVE,{public},INSERT,,(auth.uid() = id)
+public,profiles,profiles_select_network,PERMISSIVE,{public},SELECT,"((auth.uid() = id) OR users_are_connected(auth.uid(), id) OR (EXISTS ( SELECT 1
+   FROM user_connections c
+  WHERE ((c.status = ANY (ARRAY['pending'::connection_status, 'accepted'::connection_status])) AND (((c.requester_id = auth.uid()) AND (c.addressee_id = profiles.id)) OR ((c.addressee_id = auth.uid()) AND (c.requester_id = profiles.id)))))))",
+public,profiles,profiles_select_own,PERMISSIVE,{public},SELECT,(auth.uid() = id),
+public,profiles,profiles_update_own,PERMISSIVE,{public},UPDATE,(auth.uid() = id),(auth.uid() = id)
+public,prospect_archivos,prospect_archivos_delete,PERMISSIVE,{authenticated},DELETE,"(user_in_workspace(auth.uid(), workspace_id) AND ((uploaded_by = auth.uid()) OR workspace_has_permission(auth.uid(), workspace_id, 'expedientes:ver_equipo'::text)))",
+public,prospect_archivos,prospect_archivos_insert,PERMISSIVE,{authenticated},INSERT,,"((uploaded_by = auth.uid()) AND user_in_workspace(auth.uid(), workspace_id) AND (EXISTS ( SELECT 1
+   FROM prospects p
+  WHERE ((p.id = prospect_archivos.prospect_id) AND (p.workspace_id = prospect_archivos.workspace_id) AND ((p.user_id = auth.uid()) OR workspace_has_permission(auth.uid(), p.workspace_id, 'expedientes:ver_equipo'::text) OR (EXISTS ( SELECT 1
+           FROM prospect_workflows pw
+          WHERE ((pw.prospect_id = p.id) AND (pw.cerrador_id = auth.uid())))))))))"
+public,prospect_archivos,prospect_archivos_select,PERMISSIVE,{authenticated},SELECT,"(user_in_workspace(auth.uid(), workspace_id) AND (EXISTS ( SELECT 1
+   FROM prospects p
+  WHERE ((p.id = prospect_archivos.prospect_id) AND ((p.user_id = auth.uid()) OR workspace_has_permission(auth.uid(), p.workspace_id, 'expedientes:ver_equipo'::text) OR (EXISTS ( SELECT 1
+           FROM prospect_workflows pw
+          WHERE ((pw.prospect_id = p.id) AND (pw.cerrador_id = auth.uid())))) OR (EXISTS ( SELECT 1
+           FROM prospect_shares ps
+          WHERE ((ps.prospect_id = p.id) AND (ps.shared_with_id = auth.uid())))))))))",
+public,prospect_share_invites,share_invites_insert_owner,PERMISSIVE,{public},INSERT,,"((auth.uid() = owner_id) AND (EXISTS ( SELECT 1
+   FROM prospects pr
+  WHERE ((pr.id = prospect_share_invites.prospect_id) AND (pr.user_id = auth.uid())))))"
+public,prospect_share_invites,share_invites_select_owner,PERMISSIVE,{public},SELECT,(auth.uid() = owner_id),
+public,prospect_share_invites,share_invites_update_owner,PERMISSIVE,{public},UPDATE,(auth.uid() = owner_id),
+public,prospect_shares,shares_delete_owner,PERMISSIVE,{public},DELETE,(auth.uid() = owner_id),
+public,prospect_shares,shares_insert_owner,PERMISSIVE,{public},INSERT,,"((auth.uid() = owner_id) AND (EXISTS ( SELECT 1
+   FROM prospects pr
+  WHERE ((pr.id = prospect_shares.prospect_id) AND (pr.user_id = auth.uid())))) AND users_are_connected(auth.uid(), shared_with_id))"
+public,prospect_shares,shares_select_participant,PERMISSIVE,{public},SELECT,((auth.uid() = owner_id) OR (auth.uid() = shared_with_id)),
+public,prospect_shares,shares_update_owner,PERMISSIVE,{public},UPDATE,(auth.uid() = owner_id),
+public,prospect_shares,shares_update_recipient_pin,PERMISSIVE,{public},UPDATE,((auth.uid() = shared_with_id) AND share_can_edit(permission)),((auth.uid() = shared_with_id) AND share_can_edit(permission))
+public,prospect_workflow_events,workflow_events_select_scoped,PERMISSIVE,{authenticated},SELECT,"(EXISTS ( SELECT 1
+   FROM prospect_workflows pw
+  WHERE ((pw.prospect_id = prospect_workflow_events.prospect_id) AND user_in_workspace(auth.uid(), pw.workspace_id) AND ((pw.representante_id = auth.uid()) OR (pw.cerrador_id = auth.uid()) OR workspace_has_permission(auth.uid(), pw.workspace_id, 'workflow:ver'::text) OR workspace_has_permission(auth.uid(), pw.workspace_id, 'expedientes:ver_equipo'::text)))))",
+public,prospect_workflows,workflow_select_scoped,PERMISSIVE,{authenticated},SELECT,"(user_in_workspace(auth.uid(), workspace_id) AND ((representante_id = auth.uid()) OR (cerrador_id = auth.uid()) OR workspace_has_permission(auth.uid(), workspace_id, 'workflow:ver'::text) OR workspace_has_permission(auth.uid(), workspace_id, 'expedientes:ver_equipo'::text)))",
+public,prospects,prospects_delete_tenant_role,PERMISSIVE,{authenticated},DELETE,"(user_in_workspace(auth.uid(), workspace_id) AND (((user_id = auth.uid()) AND workspace_has_permission(auth.uid(), workspace_id, 'expedientes:eliminar'::text)) OR user_is_empresa_admin(auth.uid(), ( SELECT w.empresa_id
+   FROM workspaces w
+  WHERE (w.id = prospects.workspace_id)))))",
+public,prospects,prospects_insert_tenant_role,PERMISSIVE,{authenticated},INSERT,,"((user_id = auth.uid()) AND workspace_has_permission(auth.uid(), workspace_id, 'expedientes:crear'::text))"
+public,prospects,prospects_select_shared,PERMISSIVE,{public},SELECT,"(EXISTS ( SELECT 1
+   FROM prospect_shares ps
+  WHERE ((ps.prospect_id = prospects.id) AND (ps.shared_with_id = auth.uid()))))",
+public,prospects,prospects_select_tenant_role,PERMISSIVE,{authenticated},SELECT,"(user_in_workspace(auth.uid(), workspace_id) AND ((user_id = auth.uid()) OR workspace_has_permission(auth.uid(), workspace_id, 'expedientes:ver_equipo'::text) OR (EXISTS ( SELECT 1
+   FROM prospect_workflows pw
+  WHERE ((pw.prospect_id = prospects.id) AND (pw.cerrador_id = auth.uid())))) OR (EXISTS ( SELECT 1
+   FROM prospect_shares ps
+  WHERE ((ps.prospect_id = prospects.id) AND (ps.shared_with_id = auth.uid()))))))",
+public,prospects,prospects_update_tenant_role,PERMISSIVE,{authenticated},UPDATE,"(user_in_workspace(auth.uid(), workspace_id) AND (((user_id = auth.uid()) AND workspace_has_permission(auth.uid(), workspace_id, 'expedientes:editar'::text)) OR workspace_has_permission(auth.uid(), workspace_id, 'expedientes:ver_equipo'::text) OR (EXISTS ( SELECT 1
+   FROM prospect_workflows pw
+  WHERE ((pw.prospect_id = prospects.id) AND ((pw.representante_id = auth.uid()) OR (pw.cerrador_id = auth.uid()))))) OR (EXISTS ( SELECT 1
+   FROM prospect_shares ps
+  WHERE ((ps.prospect_id = prospects.id) AND (ps.shared_with_id = auth.uid()) AND share_can_edit(ps.permission))))))","user_in_workspace(auth.uid(), workspace_id)"
+public,push_subscriptions,push_subscriptions_own,PERMISSIVE,{authenticated},ALL,(auth.uid() = user_id),(auth.uid() = user_id)
+public,rh_bottom_line,rh_bl_select,PERMISSIVE,{public},SELECT,"(EXISTS ( SELECT 1
+   FROM catalogo_configuracion c
+  WHERE ((c.id = rh_bottom_line.catalogo_configuracion_id) AND rh_can_access_empresa(c.empresa_id))))",
+public,rh_bottom_line,rh_bl_write,PERMISSIVE,{public},ALL,"(is_super_admin() OR (EXISTS ( SELECT 1
+   FROM catalogo_configuracion c
+  WHERE ((c.id = rh_bottom_line.catalogo_configuracion_id) AND rh_can_access_empresa(c.empresa_id)))))","(is_super_admin() OR (EXISTS ( SELECT 1
+   FROM catalogo_configuracion c
+  WHERE ((c.id = rh_bottom_line.catalogo_configuracion_id) AND rh_can_access_empresa(c.empresa_id)))))"
+public,rh_comision_movimientos,rh_mov_select,PERMISSIVE,{public},SELECT,"(EXISTS ( SELECT 1
+   FROM rh_ventas v
+  WHERE ((v.id = rh_comision_movimientos.rh_venta_id) AND (is_super_admin() OR (v.usuario_id = auth.uid()) OR rh_can_access_empresa(v.empresa_id)))))",
+public,rh_comision_movimientos,rh_mov_write,PERMISSIVE,{public},ALL,"(EXISTS ( SELECT 1
+   FROM rh_ventas v
+  WHERE ((v.id = rh_comision_movimientos.rh_venta_id) AND (is_super_admin() OR (v.usuario_id = auth.uid()) OR rh_can_access_empresa(v.empresa_id)))))","(EXISTS ( SELECT 1
+   FROM rh_ventas v
+  WHERE ((v.id = rh_comision_movimientos.rh_venta_id) AND (is_super_admin() OR (v.usuario_id = auth.uid()) OR rh_can_access_empresa(v.empresa_id)))))"
+public,rh_comisiones,rh_com_select,PERMISSIVE,{public},SELECT,"(EXISTS ( SELECT 1
+   FROM catalogo_configuracion c
+  WHERE ((c.id = rh_comisiones.catalogo_configuracion_id) AND rh_can_access_empresa(c.empresa_id))))",
+public,rh_comisiones,rh_com_write,PERMISSIVE,{public},ALL,"(is_super_admin() OR (EXISTS ( SELECT 1
+   FROM catalogo_configuracion c
+  WHERE ((c.id = rh_comisiones.catalogo_configuracion_id) AND rh_can_access_empresa(c.empresa_id)))))","(is_super_admin() OR (EXISTS ( SELECT 1
+   FROM catalogo_configuracion c
+  WHERE ((c.id = rh_comisiones.catalogo_configuracion_id) AND rh_can_access_empresa(c.empresa_id)))))"
+public,rh_costo_administrativo,rh_ca_select,PERMISSIVE,{public},SELECT,"(EXISTS ( SELECT 1
+   FROM catalogo_configuracion c
+  WHERE ((c.id = rh_costo_administrativo.catalogo_configuracion_id) AND rh_can_access_empresa(c.empresa_id))))",
+public,rh_costo_administrativo,rh_ca_write,PERMISSIVE,{public},ALL,"(is_super_admin() OR (EXISTS ( SELECT 1
+   FROM catalogo_configuracion c
+  WHERE ((c.id = rh_costo_administrativo.catalogo_configuracion_id) AND rh_can_access_empresa(c.empresa_id)))))","(is_super_admin() OR (EXISTS ( SELECT 1
+   FROM catalogo_configuracion c
+  WHERE ((c.id = rh_costo_administrativo.catalogo_configuracion_id) AND rh_can_access_empresa(c.empresa_id)))))"
+public,rh_dias_descanso,rh_dias_descanso_select,PERMISSIVE,{authenticated},SELECT,rh_can_access_empresa(empresa_id),
+public,rh_dias_descanso,rh_dias_descanso_write,PERMISSIVE,{authenticated},ALL,(is_super_admin() OR rh_can_access_empresa(empresa_id)),(is_super_admin() OR rh_can_access_empresa(empresa_id))
+public,rh_extra_pagos,rh_extra_select,PERMISSIVE,{public},SELECT,"(EXISTS ( SELECT 1
+   FROM rh_ventas v
+  WHERE ((v.id = rh_extra_pagos.rh_venta_id) AND (is_super_admin() OR (v.usuario_id = auth.uid()) OR rh_can_access_empresa(v.empresa_id)))))",
+public,rh_extra_pagos,rh_extra_write,PERMISSIVE,{public},ALL,"(EXISTS ( SELECT 1
+   FROM rh_ventas v
+  WHERE ((v.id = rh_extra_pagos.rh_venta_id) AND (is_super_admin() OR (v.usuario_id = auth.uid()) OR rh_can_access_empresa(v.empresa_id)))))","(EXISTS ( SELECT 1
+   FROM rh_ventas v
+  WHERE ((v.id = rh_extra_pagos.rh_venta_id) AND (is_super_admin() OR (v.usuario_id = auth.uid()) OR rh_can_access_empresa(v.empresa_id)))))"
+public,rh_financiamiento,rh_fin_select,PERMISSIVE,{public},SELECT,"(EXISTS ( SELECT 1
+   FROM catalogo_configuracion c
+  WHERE ((c.id = rh_financiamiento.catalogo_configuracion_id) AND rh_can_access_empresa(c.empresa_id))))",
+public,rh_financiamiento,rh_fin_write,PERMISSIVE,{public},ALL,"(is_super_admin() OR (EXISTS ( SELECT 1
+   FROM catalogo_configuracion c
+  WHERE ((c.id = rh_financiamiento.catalogo_configuracion_id) AND rh_can_access_empresa(c.empresa_id)))))","(is_super_admin() OR (EXISTS ( SELECT 1
+   FROM catalogo_configuracion c
+  WHERE ((c.id = rh_financiamiento.catalogo_configuracion_id) AND rh_can_access_empresa(c.empresa_id)))))"
+public,rh_linea_asignacion,rh_linea_asignacion_select,PERMISSIVE,{authenticated},SELECT,rh_can_access_empresa(empresa_id),
+public,rh_linea_asignacion,rh_linea_asignacion_write,PERMISSIVE,{authenticated},ALL,(is_super_admin() OR rh_can_access_empresa(empresa_id)),(is_super_admin() OR rh_can_access_empresa(empresa_id))
+public,rh_linea_rotacion,rh_linea_rotacion_select,PERMISSIVE,{authenticated},SELECT,rh_can_access_empresa(empresa_id),
+public,rh_linea_rotacion,rh_linea_rotacion_write,PERMISSIVE,{authenticated},ALL,(is_super_admin() OR rh_can_access_empresa(empresa_id)),(is_super_admin() OR rh_can_access_empresa(empresa_id))
+public,rh_okr,rh_okr_select,PERMISSIVE,{authenticated},SELECT,rh_can_access_empresa(empresa_id),
+public,rh_okr,rh_okr_write,PERMISSIVE,{authenticated},ALL,(is_super_admin() OR rh_can_access_empresa(empresa_id)),(is_super_admin() OR rh_can_access_empresa(empresa_id))
+public,rh_ops_config,rh_ops_config_select,PERMISSIVE,{authenticated},SELECT,rh_can_access_empresa(empresa_id),
+public,rh_ops_config,rh_ops_config_write,PERMISSIVE,{authenticated},ALL,(is_super_admin() OR rh_can_access_empresa(empresa_id)),(is_super_admin() OR rh_can_access_empresa(empresa_id))
+public,rh_parametros_generales,rh_pg_select,PERMISSIVE,{public},SELECT,"(EXISTS ( SELECT 1
+   FROM catalogo_configuracion c
+  WHERE ((c.id = rh_parametros_generales.catalogo_configuracion_id) AND rh_can_access_empresa(c.empresa_id))))",
+public,rh_parametros_generales,rh_pg_write,PERMISSIVE,{public},ALL,"(is_super_admin() OR (EXISTS ( SELECT 1
+   FROM catalogo_configuracion c
+  WHERE ((c.id = rh_parametros_generales.catalogo_configuracion_id) AND rh_can_access_empresa(c.empresa_id)))))","(is_super_admin() OR (EXISTS ( SELECT 1
+   FROM catalogo_configuracion c
+  WHERE ((c.id = rh_parametros_generales.catalogo_configuracion_id) AND rh_can_access_empresa(c.empresa_id)))))"
+public,rh_premanifiesto,rh_premanifiesto_select,PERMISSIVE,{authenticated},SELECT,rh_can_access_empresa(empresa_id),
+public,rh_premanifiesto,rh_premanifiesto_write,PERMISSIVE,{authenticated},ALL,(is_super_admin() OR rh_can_access_empresa(empresa_id)),(is_super_admin() OR rh_can_access_empresa(empresa_id))
+public,rh_propinas,rh_propinas_select,PERMISSIVE,{authenticated},SELECT,rh_can_access_empresa(empresa_id),
+public,rh_propinas,rh_propinas_write,PERMISSIVE,{authenticated},ALL,(is_super_admin() OR rh_can_access_empresa(empresa_id)),(is_super_admin() OR rh_can_access_empresa(empresa_id))
+public,rh_regalos,rh_reg_select,PERMISSIVE,{public},SELECT,"(EXISTS ( SELECT 1
+   FROM catalogo_configuracion c
+  WHERE ((c.id = rh_regalos.catalogo_configuracion_id) AND rh_can_access_empresa(c.empresa_id))))",
+public,rh_regalos,rh_reg_write,PERMISSIVE,{public},ALL,"(is_super_admin() OR (EXISTS ( SELECT 1
+   FROM catalogo_configuracion c
+  WHERE ((c.id = rh_regalos.catalogo_configuracion_id) AND rh_can_access_empresa(c.empresa_id)))))","(is_super_admin() OR (EXISTS ( SELECT 1
+   FROM catalogo_configuracion c
+  WHERE ((c.id = rh_regalos.catalogo_configuracion_id) AND rh_can_access_empresa(c.empresa_id)))))"
+public,rh_ventas,rh_ventas_select,PERMISSIVE,{public},SELECT,(is_super_admin() OR (usuario_id = auth.uid()) OR rh_can_access_empresa(empresa_id)),
+public,rh_ventas,rh_ventas_write,PERMISSIVE,{public},ALL,(is_super_admin() OR (usuario_id = auth.uid()) OR rh_can_access_empresa(empresa_id)),(is_super_admin() OR (usuario_id = auth.uid()) OR rh_can_access_empresa(empresa_id))
+public,rol_permisos,rol_permisos_select_scoped,PERMISSIVE,{authenticated},SELECT,"(is_super_admin() OR (EXISTS ( SELECT 1
+   FROM roles r
+  WHERE ((r.id = rol_permisos.rol_id) AND ((r.empresa_id IS NULL) OR user_can_read_tenant_role(r.empresa_id))))))",
+public,roles,roles_select_scoped,PERMISSIVE,{authenticated},SELECT,(is_super_admin() OR (empresa_id IS NULL) OR user_can_read_tenant_role(empresa_id)),
+public,sales,sales_delete_tenant_role,PERMISSIVE,{authenticated},DELETE,"((user_id = auth.uid()) AND workspace_has_permission(auth.uid(), workspace_id, 'ventas:cancelar'::text))",
+public,sales,sales_insert_tenant_role,PERMISSIVE,{authenticated},INSERT,,"((user_id = auth.uid()) AND workspace_has_permission(auth.uid(), workspace_id, 'ventas:registrar'::text))"
+public,sales,sales_select_tenant_role,PERMISSIVE,{authenticated},SELECT,"(user_in_workspace(auth.uid(), workspace_id) AND ((user_id = auth.uid()) OR workspace_has_permission(auth.uid(), workspace_id, 'ventas:ver_equipo'::text) OR (EXISTS ( SELECT 1
+   FROM (prospect_shares ps
+     JOIN prospects p ON ((p.id = ps.prospect_id)))
+  WHERE ((ps.prospect_id = sales.prospect_id) AND (ps.shared_with_id = auth.uid()) AND (p.workspace_id = sales.workspace_id))))))",
+public,sales,sales_update_tenant_role,PERMISSIVE,{authenticated},UPDATE,"((user_id = auth.uid()) AND workspace_has_permission(auth.uid(), workspace_id, 'ventas:editar'::text))","((user_id = auth.uid()) AND user_in_workspace(auth.uid(), workspace_id))"
+public,scheduled_push_jobs,Users read own scheduled push,PERMISSIVE,{authenticated},SELECT,(user_id = auth.uid()),
+public,share_permission_requests,share_perm_req_insert_requester,PERMISSIVE,{public},INSERT,,"((auth.uid() = requester_id) AND (EXISTS ( SELECT 1
+   FROM prospect_shares ps
+  WHERE ((ps.id = share_permission_requests.share_id) AND (ps.shared_with_id = auth.uid()) AND (ps.owner_id = ps.owner_id) AND (ps.prospect_id = ps.prospect_id)))))"
+public,share_permission_requests,share_perm_req_select_participant,PERMISSIVE,{public},SELECT,((auth.uid() = owner_id) OR (auth.uid() = requester_id)),
+public,share_permission_requests,share_perm_req_update_owner,PERMISSIVE,{public},UPDATE,(auth.uid() = owner_id),
+public,support_request_replies,support_replies_insert_admin,PERMISSIVE,{authenticated},INSERT,,((autor_id = auth.uid()) AND is_admin())
+public,support_request_replies,support_replies_select_owner_or_admin,PERMISSIVE,{authenticated},SELECT,"((autor_id = auth.uid()) OR (EXISTS ( SELECT 1
+   FROM support_requests sr
+  WHERE ((sr.id = support_request_replies.ticket_id) AND (sr.user_id = auth.uid())))) OR is_admin())",
+public,support_requests,Admins read all support requests,PERMISSIVE,{authenticated},SELECT,"(EXISTS ( SELECT 1
+   FROM profiles p
+  WHERE ((p.id = auth.uid()) AND ((p.is_super_admin = true) OR (p.role = 'admin'::user_role)))))",
+public,support_requests,Users insert own support requests,PERMISSIVE,{authenticated},INSERT,,(user_id = auth.uid())
+public,support_requests,Users read own support requests,PERMISSIVE,{authenticated},SELECT,(user_id = auth.uid()),
+public,survey_preguntas,survey_preguntas_select_auth,PERMISSIVE,{authenticated},SELECT,true,
+public,survey_preguntas_usuario,survey_preguntas_usuario_all_own,PERMISSIVE,{authenticated},ALL,(auth.uid() = usuario_id),(auth.uid() = usuario_id)
+public,tool_calculations,tools_delete_tenant_role,PERMISSIVE,{authenticated},DELETE,"((user_id = auth.uid()) AND user_in_workspace(auth.uid(), workspace_id))",
+public,tool_calculations,tools_insert_tenant_role,PERMISSIVE,{authenticated},INSERT,,"(user_in_workspace(auth.uid(), workspace_id) AND ((user_id = auth.uid()) OR ((user_id = ( SELECT p.user_id
+   FROM prospects p
+  WHERE (p.id = tool_calculations.prospect_id))) AND (EXISTS ( SELECT 1
+   FROM prospect_workflows pw
+  WHERE ((pw.prospect_id = tool_calculations.prospect_id) AND (pw.cerrador_id = auth.uid())))))))"
+public,tool_calculations,tools_select_tenant_role,PERMISSIVE,{authenticated},SELECT,"(user_in_workspace(auth.uid(), workspace_id) AND ((user_id = auth.uid()) OR workspace_has_permission(auth.uid(), workspace_id, 'expedientes:ver_equipo'::text) OR (EXISTS ( SELECT 1
+   FROM prospect_workflows pw
+  WHERE ((pw.prospect_id = tool_calculations.prospect_id) AND (pw.cerrador_id = auth.uid())))) OR (EXISTS ( SELECT 1
+   FROM prospect_shares ps
+  WHERE ((ps.prospect_id = tool_calculations.prospect_id) AND (ps.shared_with_id = auth.uid()))))))",
+public,tool_calculations,tools_update_tenant_role,PERMISSIVE,{authenticated},UPDATE,"(user_in_workspace(auth.uid(), workspace_id) AND ((user_id = auth.uid()) OR (EXISTS ( SELECT 1
+   FROM prospect_workflows pw
+  WHERE ((pw.prospect_id = tool_calculations.prospect_id) AND (pw.cerrador_id = auth.uid())))) OR (EXISTS ( SELECT 1
+   FROM prospect_shares ps
+  WHERE ((ps.prospect_id = tool_calculations.prospect_id) AND (ps.shared_with_id = auth.uid()) AND share_can_edit(ps.permission))))))","user_in_workspace(auth.uid(), workspace_id)"
+public,user_connections,connections_delete_participant,PERMISSIVE,{public},DELETE,((auth.uid() = requester_id) OR (auth.uid() = addressee_id)),
+public,user_connections,connections_insert_requester,PERMISSIVE,{public},INSERT,,((auth.uid() = requester_id) AND (status = 'pending'::connection_status))
+public,user_connections,connections_select_participant,PERMISSIVE,{public},SELECT,((auth.uid() = requester_id) OR (auth.uid() = addressee_id)),
+public,user_connections,connections_update_participant,PERMISSIVE,{public},UPDATE,((auth.uid() = requester_id) OR (auth.uid() = addressee_id)),
+public,usuario_permisos_override,overrides_select_own_or_admin,PERMISSIVE,{authenticated},SELECT,((usuario_id = auth.uid()) OR is_super_admin()),
+public,workspace_miembros,workspace_miembros_select_self,PERMISSIVE,{authenticated},SELECT,"((usuario_id = auth.uid()) OR user_in_workspace(auth.uid(), workspace_id) OR (EXISTS ( SELECT 1
+   FROM profiles p
+  WHERE ((p.id = auth.uid()) AND (p.is_super_admin = true)))))",
+public,workspace_usuario_permisos_override,workspace_overrides_select_context,PERMISSIVE,{authenticated},SELECT,"((usuario_id = auth.uid()) OR workspace_has_permission(auth.uid(), workspace_id, 'users:permissions'::text))",
+public,workspaces,workspaces_select_member,PERMISSIVE,{authenticated},SELECT,"(user_in_workspace(auth.uid(), id) OR (EXISTS ( SELECT 1
+   FROM profiles p
+  WHERE ((p.id = auth.uid()) AND (p.is_super_admin = true)))))",
+realtime,messages,presence_listen_contacts,PERMISSIVE,{authenticated},SELECT,"((presence_user_from_topic(( SELECT realtime.topic() AS topic)) IS NOT NULL) AND ((presence_user_from_topic(( SELECT realtime.topic() AS topic)) = ( SELECT auth.uid() AS uid)) OR users_are_connected(( SELECT auth.uid() AS uid), presence_user_from_topic(( SELECT realtime.topic() AS topic)))))",
+realtime,messages,presence_listen_expediente,PERMISSIVE,{authenticated},SELECT,"((presence_prospect_from_topic(( SELECT realtime.topic() AS topic)) IS NOT NULL) AND user_can_access_prospect(( SELECT auth.uid() AS uid), presence_prospect_from_topic(( SELECT realtime.topic() AS topic))))",
+realtime,messages,presence_track_expediente,PERMISSIVE,{authenticated},INSERT,,"((extension = 'presence'::text) AND (presence_prospect_from_topic(( SELECT realtime.topic() AS topic)) IS NOT NULL) AND user_can_access_prospect(( SELECT auth.uid() AS uid), presence_prospect_from_topic(( SELECT realtime.topic() AS topic))))"
+realtime,messages,presence_track_own,PERMISSIVE,{authenticated},INSERT,,((extension = 'presence'::text) AND (presence_user_from_topic(( SELECT realtime.topic() AS topic)) = ( SELECT auth.uid() AS uid)))
+storage,objects,Users delete own support screenshots,PERMISSIVE,{authenticated},DELETE,((bucket_id = 'support-screenshots'::text) AND ((storage.foldername(name))[1] = (auth.uid())::text)),
+storage,objects,Users read own support screenshots,PERMISSIVE,{authenticated},SELECT,((bucket_id = 'support-screenshots'::text) AND ((storage.foldername(name))[1] = (auth.uid())::text)),
+storage,objects,Users upload own support screenshots,PERMISSIVE,{authenticated},INSERT,,((bucket_id = 'support-screenshots'::text) AND ((storage.foldername(name))[1] = (auth.uid())::text))
+storage,objects,workspace_branding_public_read,PERMISSIVE,{public},SELECT,(bucket_id = 'workspace-branding'::text),

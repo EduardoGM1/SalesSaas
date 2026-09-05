@@ -270,6 +270,3 @@ export function ProspectParticipantsPanel({ prospectId, enabled = true, onCapabi
     </CollapsibleSection>
   );
 }
-
-/** @deprecated Alias de compatibilidad */
-export const ProspectWorkflowPanel = ProspectParticipantsPanel;

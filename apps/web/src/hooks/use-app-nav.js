@@ -27,6 +27,9 @@ export function useAppNav() {
   const [userProfile, setUserProfile] = useState(null);
   const [isGerenteSala, setIsGerenteSala] = useState(false);
   const [workspaceTipo, setWorkspaceTipo] = useState(null);
+  const [roleSlug, setRoleSlug] = useState(null);
+  const [empresaId, setEmpresaId] = useState(null);
+  const [sessionFlags, setSessionFlags] = useState({});
   const [unreadMessages, setUnreadMessages] = useState(() => getUnreadMessagesCount());
 
   useEffect(() => {
@@ -39,6 +42,9 @@ export function useAppNav() {
         setUserProfile(null);
         setIsGerenteSala(false);
         setWorkspaceTipo(null);
+        setRoleSlug(null);
+        setEmpresaId(null);
+        setSessionFlags({});
         return;
       }
       setUserProfile(profile);
@@ -76,6 +82,10 @@ export function useAppNav() {
       const tipo = ws?.tipo || "personal";
       setWorkspaceTipo(tipo);
       setIsGerenteSala(tipo === "sala_de_venta" && ws?.rol_en_workspace === "gerente");
+      setRoleSlug(ws?.role_slug || null);
+      setEmpresaId(ws?.empresa_id || null);
+      const rawFlags = session?.flags ?? session?.profile?.flags;
+      setSessionFlags(rawFlags && typeof rawFlags === "object" ? rawFlags : {});
     });
   }, []);
 
@@ -110,8 +120,11 @@ export function useAppNav() {
     isAdmin,
     isGerenteSala,
     workspaceTipo,
+    roleSlug,
+    empresaId,
+    flags: sessionFlags,
     canFeature: (feature) => hasUserFeature(userProfile, feature),
-  }), [cloudEnabled, isAdmin, isGerenteSala, workspaceTipo, userProfile]);
+  }), [cloudEnabled, isAdmin, isGerenteSala, workspaceTipo, roleSlug, empresaId, sessionFlags, userProfile]);
 
   const sidebarGroups = useMemo(
     () => getSidebarNavGroups(navOptions),

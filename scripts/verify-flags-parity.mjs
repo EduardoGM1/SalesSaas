@@ -74,7 +74,7 @@ async function legacyToolAccess(sb, userId, roleId, isSuperAdmin, permClave) {
       .maybeSingle();
     roleHas = Boolean(data);
   } else {
-    // Sin role_id: la sesión cae a VENDEDOR_DEFAULT_PERMISSIONS (incluye herramientas).
+    // Sin role_id: la sesión cae a LINER_DEFAULT_PERMISSIONS (incluye herramientas).
     roleHas = VENDEDOR_TOOL_DEFAULTS.has(permClave);
   }
 

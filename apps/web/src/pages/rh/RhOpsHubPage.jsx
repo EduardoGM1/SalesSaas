@@ -19,7 +19,7 @@ const OPS = [
   { href: "/ops/rh/linea", label: "Línea", desc: "Asignación y rotación", icon: Users },
   { href: "/ops/rh/resumen", label: "Resumen", desc: "Día / semana / mes", icon: LayoutDashboard },
   { href: "/ops/rh/estadisticos", label: "Estadísticos sala", desc: "Reps y closers", icon: BarChart3 },
-  { href: "/ops/rh/okr", label: "OKR → Dashboard", desc: "Metas de sala", icon: Target },
+  { href: "/ops/rh/okr", label: "OKR de sala", desc: "Metas de sala (no alimenta Dashboard)", icon: Target },
   { href: "/ops/rh/calendario-descansos", label: "Calendario de descansos", desc: "Vista gerencial", icon: CalendarDays },
   { href: "/ops/rh/propinas", label: "Pago de propinas", desc: "Registro de propinas", icon: Coins },
 ];

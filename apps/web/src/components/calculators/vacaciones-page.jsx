@@ -22,9 +22,10 @@ const DEFAULT_FIELDS = { vv: "", vc: "", va: "", vi: "8" };
 interface VacacionesPageProps {
   clientId?;
   shared?;
+  embedded?;
 }
 
-export function VacacionesPage({ clientId, shared }: VacacionesPageProps) {
+export function VacacionesPage({ clientId, shared, embedded }: VacacionesPageProps) {
   const { t } = useI18n();
   const session = useToolSession({ clientId, shared, section: "vacaciones" });
   const { ready, readOnly, backHref, getBucket, saveBucket, isFileMode, isShared, peers, lockedBy, toolsRevision, collab } = session;
@@ -131,14 +132,23 @@ export function VacacionesPage({ clientId, shared }: VacacionesPageProps) {
 
   return (
     <>
-      <Topbar title={t("tools.vacation")} subtitle={t("tools.vacationDesc")} />
-      <div className="sales-page tool-calc-page">
-        <div className="page-toolbar page-toolbar--between">
-          <PageBack inline href={backHref} hasUnsavedChanges={() => dirtyKeysRef.current.size > 0} />
-          {!readOnly && (
+      {!embedded && (
+        <Topbar title={t("tools.vacation")} subtitle={t("tools.vacationDesc")} />
+      )}
+      <div className={`${embedded ? "exp-embedded-tool" : "sales-page"} tool-calc-page`}>
+        {!embedded && (
+          <div className="page-toolbar page-toolbar--between">
+            <PageBack inline href={backHref} hasUnsavedChanges={() => dirtyKeysRef.current.size > 0} />
+            {!readOnly && (
+              <PageBack inline label={t("common.clear")} onClick={handleClear} showIcon={false} />
+            )}
+          </div>
+        )}
+        {embedded && !readOnly && (
+          <div className="page-toolbar page-toolbar--end exp-embedded-toolbar">
             <PageBack inline label={t("common.clear")} onClick={handleClear} showIcon={false} />
-          )}
-        </div>
+          </div>
+        )}
 
         <SharedToolBanner show={ready && isShared && readOnly} peers={peers} />
 

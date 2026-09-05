@@ -7,7 +7,7 @@
     "dev": "node --import ./src/load-env.js --watch src/index.js",
     "start": "node --import ./src/load-env.js src/index.js",
     "verify": "node --import ./src/load-env.js scripts/verify-smoke.mjs",
-    "test:security": "node --test src/lib/security-lib.test.mjs src/middleware/rate-limit.test.mjs src/app.security.test.mjs src/lib/workspace-scope.test.mjs src/mvc-contract.test.mjs"
+    "test:security": "node --test src/lib/security-lib.test.mjs src/middleware/rate-limit.test.mjs src/app.security.test.mjs src/lib/workspace-scope.test.mjs src/lib/prospect-edit-access.test.mjs src/mvc-contract.test.mjs"
   },
   "dependencies": {
     "@salesapp/shared": "*",
