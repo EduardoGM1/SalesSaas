@@ -420,7 +420,7 @@ export function TenantCompanyAdministration({
                 <button className="btn btn-primary" disabled={pending}>Añadir</button>
               </form>
             </AdminCard>
-            <div className="admin-room-cards">
+            <div className="admin-room-cards admin-room-cards--members">
               {state.rooms.map((room) => {
                 const members = memberRows(room);
                 return (
