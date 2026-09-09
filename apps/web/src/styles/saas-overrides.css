@@ -5732,11 +5732,19 @@ body,
 .admin-members-table-wrap { overflow-x: auto; }
 .admin-company-members-table td:last-child, .admin-company-members-table th:last-child { width: 60px; text-align: right; }
 .admin-room-cards--members {
-  grid-template-columns: minmax(0, 90%);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
   width: 100%;
+  max-width: 100%;
+}
+.admin-room-cards--members > * {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
 }
 .admin-room-cards--members .admin-members-table-wrap {
   overflow-x: visible;
+  width: 100%;
 }
 .admin-page .admin-company-members-table.client-table {
   min-width: 0;
@@ -5799,8 +5807,16 @@ body,
 
 @media (max-width: 1100px) {
   .admin-company-cards, .admin-room-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .admin-room-cards--members { grid-template-columns: minmax(0, 90%); }
+  .admin-room-cards--members { grid-template-columns: minmax(0, 1fr); }
+  .admin-company-members-table .admin-tenant-role-select { max-width: none; }
   .admin-room-form { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 900px) {
+  .admin-room-cards--members .admin-company-members-table th,
+  .admin-room-cards--members .admin-company-members-table td {
+    padding: 10px 8px;
+    font-size: 12px;
+  }
 }
 @media (max-width: 800px) {
   .admin-branding-layout, .admin-settings-grid { grid-template-columns: 1fr; }
@@ -5811,8 +5827,9 @@ body,
 }
 @media (max-width: 600px) {
   .admin-company-cards, .admin-room-cards, .admin-room-form { grid-template-columns: 1fr; }
-  .admin-room-cards--members { grid-template-columns: 1fr; }
-  .admin-room-cards--members .admin-members-table-wrap { overflow-x: visible; }
+  .admin-room-cards--members { grid-template-columns: 1fr; width: 100%; }
+  .admin-room-cards--members .admin-members-table-wrap { overflow-x: visible; width: 100%; }
+  .admin-company-members-table .admin-tenant-role-select { max-width: none; }
   .admin-inline-form, .admin-members-toolbar form { align-items: stretch; flex-direction: column; }
   .admin-brand-preview { grid-template-columns: 58px 1fr; min-height: 270px; }
   .admin-brand-preview-copy { padding: 26px 18px; }
