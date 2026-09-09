@@ -114,7 +114,7 @@ test.describe("Premanifiesto form — responsive layout", () => {
     await page.waitForSelector("[data-testid='rh-pm-page']", { timeout: 30000 });
 
     const diaTab = page.locator(".rh-pm-subnav .admin-subnav-item", { hasText: /^Día/ });
-    if (await diaTab.count()) await diaTab.click();
+    await expect(diaTab).toHaveCount(0);
 
     await page.locator("button", { hasText: "Editar" }).first().click();
     await page.waitForSelector("[data-testid='rh-pm-form']", { timeout: 15000 });
@@ -153,5 +153,68 @@ test.describe("Premanifiesto day panel — card spacing", () => {
     expect(spacing.groupGap).toBeGreaterThanOrEqual(14);
     expect(spacing.entryGap).toBeGreaterThanOrEqual(10);
     expect(spacing.olaBodyGap).toBeGreaterThanOrEqual(10);
+  });
+
+  test("clic en un día no crea pestaña Día y mantiene el calendario", async ({ page }) => {
+    await prepareAuthenticatedPage(page);
+    await mockPremanifiesto(page);
+    await page.goto("/ops/rh/premanifiesto", { waitUntil: "domcontentloaded" });
+    await page.waitForSelector("[data-testid='rh-pm-page']", { timeout: 30000 });
+    await expect(page.locator(".cal-widget")).toBeVisible();
+    const dayBtn = page.locator(".cal-grid button.cal-day:not(.other)").nth(4);
+    await dayBtn.click();
+    await expect(page.getByRole("button", { name: /^Día / })).toHaveCount(0);
+    await expect(page.locator(".cal-widget")).toBeVisible();
+    await expect(page.locator("[data-testid='rh-pm-day-panel']")).toBeVisible();
+  });
+});
+
+test.describe("Premanifiesto OPC — modal de cupo", () => {
+  test.use({ viewport: { width: 1280, height: 800 } });
+
+  test("cupo libre abre modal sin salir de Premanifiesto y cerrar no navega", async ({ page }) => {
+    await prepareAuthenticatedPage(page);
+    await page.route("**/api/v1/auth/session", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          ok: true,
+          user: { id: "e2e-user", email: "e2e@test.local" },
+          profile: { id: "e2e-user", role: "user" },
+          flags: { "rh.tool.premanifiesto.opc": true },
+          workspace_activo: { id: WORKSPACE_ID, empresa_id: EMPRESA_ID, tipo: "sala_de_venta", role_slug: "opc" },
+          workspace_activo_id: WORKSPACE_ID,
+        }),
+      });
+    });
+    await page.route(`**/api/v1/royal-holiday/${EMPRESA_ID}/premanifiesto/dia**`, async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ data: DIA_STUB }),
+      });
+    });
+    await page.route("**/api/v1/rh/empresa**", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ data: { empresa_id: EMPRESA_ID, workspace_id: WORKSPACE_ID } }),
+      });
+    });
+
+    await page.goto("/ops/rh/premanifiesto", { waitUntil: "domcontentloaded" });
+    await page.waitForSelector("[data-testid='rh-pm-page']", { timeout: 30000 });
+    await page.locator("[data-testid='rh-pm-cupo-libre']").first().click();
+    await expect(page).toHaveURL(/\/ops\/rh\/premanifiesto/);
+    await expect(page.locator("[data-testid='opc-expediente-modal']")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Información cliente" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Estancia" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Invitación" })).toBeVisible();
+    await page.getByTestId("opc-pais").fill("parcial");
+    await page.locator(".modal-close").click();
+    await expect(page.locator("[data-testid='opc-expediente-modal']")).toHaveCount(0);
+    await expect(page).toHaveURL(/\/ops\/rh\/premanifiesto/);
+    await expect(page.locator("[data-testid='rh-pm-page']")).toBeVisible();
   });
 });

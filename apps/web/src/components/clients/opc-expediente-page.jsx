@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Topbar } from "@/components/layout/topbar";
 import { PageBack } from "@/components/layout/page-back.jsx";
+import { SalesModal } from "@/components/ui/sales-modal";
 import { createProspectFromName } from "@/actions/clients.js";
 import { DEFAULT_TOUR_TYPES } from "@/lib/store-empty.js";
 import { useDbStore } from "@/stores/db-store";
@@ -36,6 +37,30 @@ const PERSON_ROWS = [
   ["ocupacion", "Ocupación"],
 ];
 
+const PERSON_PLACEHOLDERS = {
+  hombre: {
+    nombre: "ej. Juan",
+    apellido: "ej. Pérez",
+    nacionalidad: "ej. Mexicana",
+    edad: "ej. 42",
+    ocupacion: "ej. Ingeniero",
+  },
+  mujer: {
+    nombre: "ej. María",
+    apellido: "ej. Pérez",
+    nacionalidad: "ej. Mexicana",
+    edad: "ej. 38",
+    ocupacion: "ej. Contadora",
+  },
+  ninos: {
+    nombre: "ej. Luis",
+    apellido: "ej. Pérez",
+    nacionalidad: "ej. Mexicana",
+    edad: "ej. 8",
+    ocupacion: "ej. Estudiante",
+  },
+};
+
 function FieldRow({ label, testId, children }) {
   return (
     <div className="frow tool-frow">
@@ -45,13 +70,14 @@ function FieldRow({ label, testId, children }) {
   );
 }
 
-function TextField({ label, value, onChange, testId, type = "text" }) {
+function TextField({ label, value, onChange, testId, type = "text", placeholder }) {
   return (
     <FieldRow label={label}>
       <input
         className="input"
         type={type}
         data-testid={testId}
+        placeholder={placeholder}
         value={value}
         onFocus={selectOnFocus}
         onChange={(e) => onChange(e.target.value)}
@@ -65,8 +91,8 @@ function NotesField({ label, value, onChange, testId, placeholder }) {
     <div className="frow tool-frow tool-frow--notes">
       <div className="flabel">{label}</div>
       <textarea
-        className="input"
-        rows={3}
+        className="input opc-notes-textarea"
+        rows={6}
         data-testid={testId}
         placeholder={placeholder}
         value={value}
@@ -103,6 +129,7 @@ function IntegrantesTable({ form, setForm }) {
                     <input
                       className="input"
                       data-testid={`opc-int-${who}-${key}`}
+                      placeholder={PERSON_PLACEHOLDERS[who]?.[key]}
                       value={form[who]?.[key] || ""}
                       onFocus={selectOnFocus}
                       onChange={(e) => setPerson(who, key, e.target.value)}
@@ -118,19 +145,23 @@ function IntegrantesTable({ form, setForm }) {
   );
 }
 
-export function OpcExpedientePage() {
+export function OpcExpedienteForm({
+  initial = {},
+  layout = "page",
+  onClose,
+  onConfirmed,
+}) {
   const navigate = useNavigate();
-  const [params] = useSearchParams();
   const { empresaId, workspaceId, ready: empReady } = useRhEmpresa();
   const tourTypes = useDbStore((s) => s.db.settings?.tourTypes ?? DEFAULT_TOUR_TYPES);
   const [tab, setTab] = useState("cliente");
   const [saving, setSaving] = useState(false);
   const [dia, setDia] = useState(null);
   const [form, setForm] = useState(() => defaultOpcForm({
-    fecha: params.get("fecha") || "",
-    hora: params.get("hora") || "",
-    etiqueta: params.get("etiqueta") || "",
-    olaConfigId: params.get("ola") || "",
+    fecha: initial.fecha || "",
+    hora: initial.hora || "",
+    etiqueta: initial.etiqueta || "",
+    olaConfigId: initial.olaConfigId || "",
   }));
 
   const patch = (key, value) => setForm((f) => {
@@ -247,13 +278,131 @@ export function OpcExpedientePage() {
         regalo_nombre: form.regalo || null,
       });
       toast.success("Invitación confirmada");
-      navigate(`/clients/${client.id}`, { replace: true });
+      if (layout === "modal") {
+        onConfirmed?.();
+        onClose?.();
+      } else {
+        navigate(`/clients/${client.id}`, { replace: true });
+      }
     } catch (err) {
       toast.error(err.message);
     } finally {
       setSaving(false);
     }
   };
+
+  const confirmBtn = (
+    <button
+      type="button"
+      className="btn btn-primary"
+      data-testid="opc-confirm"
+      disabled={saving}
+      onClick={confirm}
+    >
+      {saving ? "Confirmando…" : "Confirmar invitación"}
+    </button>
+  );
+
+  const fields = (
+    <>
+      <nav className="admin-subnav worksheet-rh-tabs" aria-label="Expediente OPC" data-testid="opc-expediente-tabs">
+        {TABS.map((tb) => (
+          <button
+            key={tb.id}
+            type="button"
+            className={`admin-subnav-item${tab === tb.id ? " active" : ""}`}
+            onClick={() => setTab(tb.id)}
+          >
+            {tb.label}
+          </button>
+        ))}
+      </nav>
+
+      {tab === "cliente" && (
+        <>
+          <div className="card tool-calc-card">
+            <div className="card-heading">Datos generales</div>
+            <TextField label="País" testId="opc-pais" placeholder="ej. México" value={form.pais} onChange={(v) => patch("pais", v)} />
+            <TextField label="Pax" testId="opc-pax" placeholder="ej. 2" value={form.pax} onChange={(v) => patch("pax", v)} />
+            <TextField label="Estado" testId="opc-estado" placeholder="ej. Quintana Roo" value={form.estado} onChange={(v) => patch("estado", v)} />
+            <TextField label="Módulo" testId="opc-modulo" placeholder="ej. Módulo 4" value={form.modulo} onChange={(v) => patch("modulo", v)} />
+            <TextField label="Idioma" testId="opc-idioma" placeholder="ej. Español" value={form.idioma} onChange={(v) => patch("idioma", v)} />
+            <TextField label="Estado civil" testId="opc-estado-civil" placeholder="ej. Casados" value={form.estadoCivil} onChange={(v) => patch("estadoCivil", v)} />
+          </div>
+          <IntegrantesTable form={form} setForm={setForm} />
+          <div className="card tool-calc-card">
+            <NotesField
+              label="Notas"
+              testId="opc-notas-cliente"
+              placeholder="ej. Pareja en luna de miel, llegó por el lobby…"
+              value={form.notasCliente}
+              onChange={(v) => patch("notasCliente", v)}
+            />
+          </div>
+        </>
+      )}
+
+      {tab === "estancia" && (
+        <div className="card tool-calc-card">
+          <div className="card-heading">Datos de estancia</div>
+          <TextField label="Agencia" testId="opc-agencia" placeholder="ej. Booking" value={form.agencia} onChange={(v) => patch("agencia", v)} />
+          <TextField label="# Noches" testId="opc-nights" type="number" placeholder="ej. 4" value={form.nights} onChange={(v) => patch("nights", v)} />
+          <TextField label="Categoría de habitación" testId="opc-room-type" placeholder="ej. Deluxe" value={form.roomType} onChange={(v) => patch("roomType", v)} />
+          <TextField label="Costo por noche" testId="opc-rate" type="number" placeholder="ej. 180" value={form.rate} onChange={(v) => patch("rate", v)} />
+          <TextField label="# de habitación" testId="opc-room-number" placeholder="ej. 1204" value={form.roomNumber} onChange={(v) => patch("roomNumber", v)} />
+          <TextField label="Total" testId="opc-total" type="number" placeholder="ej. 720" value={form.total} onChange={(v) => patch("total", v)} />
+          <NotesField
+            label="Notas"
+            testId="opc-notas-estancia"
+            placeholder="ej. Late check-in, cuna en habitación…"
+            value={form.notasEstancia}
+            onChange={(v) => patch("notasEstancia", v)}
+          />
+        </div>
+      )}
+
+      {tab === "invitacion" && (
+        <div className="card tool-calc-card">
+          <div className="card-heading">Datos de la invitación</div>
+          <FieldRow label="Fecha de la cita">
+            <input className="input" type="date" data-testid="opc-fecha" value={form.fecha} onChange={(e) => patch("fecha", e.target.value)} />
+          </FieldRow>
+          <FieldRow label="Hora">
+            <input className="input" type="time" data-testid="opc-hora" value={form.hora} onChange={(e) => patch("hora", e.target.value)} />
+          </FieldRow>
+          <div className="frow tool-frow readonly-soft">
+            <div className="flabel">Ola</div>
+            <input className="input" readOnly tabIndex={-1} value={matchedOla ? `${matchedOla.etiqueta} (${normalizeHora(matchedOla.hora)})` : "Sin ola para esa hora"} />
+          </div>
+          <TextField label="Calificación" testId="opc-calif" placeholder="ej. Q" value={form.calificacion} onChange={(v) => patch("calificacion", v)} />
+          <TextField label="Regalo" testId="opc-regalo" placeholder="ej. Cena para dos" value={form.regalo} onChange={(v) => patch("regalo", v)} />
+          <NotesField
+            label="Notas"
+            testId="opc-notas-invitacion"
+            placeholder="ej. Show 10:30, llegó con niños…"
+            value={form.notasInvitacion}
+            onChange={(v) => patch("notasInvitacion", v)}
+          />
+        </div>
+      )}
+    </>
+  );
+
+  if (layout === "modal") {
+    return (
+      <div className="opc-exp-modal-body sales-page tool-calc-page" data-testid="opc-expediente-modal">
+        <header className="exp-page-head exp-page-head--modal">
+          <div className="exp-page-meta">
+            <p className="exp-page-sub">
+              Premanifiesto · {formatOpcFechaMeta(form.fecha)} · {cupoLabel}
+            </p>
+          </div>
+          <div className="exp-page-actions">{confirmBtn}</div>
+        </header>
+        {fields}
+      </div>
+    );
+  }
 
   return (
     <>
@@ -267,100 +416,50 @@ export function OpcExpedientePage() {
               Premanifiesto · {formatOpcFechaMeta(form.fecha)} · {cupoLabel}
             </p>
           </div>
-          <div className="exp-page-actions">
-            <button
-              type="button"
-              className="btn btn-primary"
-              data-testid="opc-confirm"
-              disabled={saving}
-              onClick={confirm}
-            >
-              {saving ? "Confirmando…" : "Confirmar invitación"}
-            </button>
-          </div>
+          <div className="exp-page-actions">{confirmBtn}</div>
         </header>
-
-        <nav className="admin-subnav worksheet-rh-tabs" aria-label="Expediente OPC" data-testid="opc-expediente-tabs">
-          {TABS.map((tb) => (
-            <button
-              key={tb.id}
-              type="button"
-              className={`admin-subnav-item${tab === tb.id ? " active" : ""}`}
-              onClick={() => setTab(tb.id)}
-            >
-              {tb.label}
-            </button>
-          ))}
-        </nav>
-
-        {tab === "cliente" && (
-          <>
-            <div className="card tool-calc-card">
-              <div className="card-heading">Datos generales</div>
-              <TextField label="País" testId="opc-pais" value={form.pais} onChange={(v) => patch("pais", v)} />
-              <TextField label="Pax" testId="opc-pax" value={form.pax} onChange={(v) => patch("pax", v)} />
-              <TextField label="Estado" testId="opc-estado" value={form.estado} onChange={(v) => patch("estado", v)} />
-              <TextField label="Módulo" testId="opc-modulo" value={form.modulo} onChange={(v) => patch("modulo", v)} />
-              <TextField label="Idioma" testId="opc-idioma" value={form.idioma} onChange={(v) => patch("idioma", v)} />
-              <TextField label="Estado civil" testId="opc-estado-civil" value={form.estadoCivil} onChange={(v) => patch("estadoCivil", v)} />
-            </div>
-            <IntegrantesTable form={form} setForm={setForm} />
-            <div className="card tool-calc-card">
-              <NotesField
-                label="Notas"
-                testId="opc-notas-cliente"
-                placeholder="Notas generales del cliente..."
-                value={form.notasCliente}
-                onChange={(v) => patch("notasCliente", v)}
-              />
-            </div>
-          </>
-        )}
-
-        {tab === "estancia" && (
-          <div className="card tool-calc-card">
-            <div className="card-heading">Datos de estancia</div>
-            <TextField label="Agencia" testId="opc-agencia" value={form.agencia} onChange={(v) => patch("agencia", v)} />
-            <TextField label="# Noches" testId="opc-nights" type="number" value={form.nights} onChange={(v) => patch("nights", v)} />
-            <TextField label="Categoría de habitación" testId="opc-room-type" value={form.roomType} onChange={(v) => patch("roomType", v)} />
-            <TextField label="Costo por noche" testId="opc-rate" type="number" value={form.rate} onChange={(v) => patch("rate", v)} />
-            <TextField label="# de habitación" testId="opc-room-number" value={form.roomNumber} onChange={(v) => patch("roomNumber", v)} />
-            <TextField label="Total" testId="opc-total" type="number" value={form.total} onChange={(v) => patch("total", v)} />
-            <NotesField
-              label="Notas"
-              testId="opc-notas-estancia"
-              placeholder="Notas de la estancia..."
-              value={form.notasEstancia}
-              onChange={(v) => patch("notasEstancia", v)}
-            />
-          </div>
-        )}
-
-        {tab === "invitacion" && (
-          <div className="card tool-calc-card">
-            <div className="card-heading">Datos de la invitación</div>
-            <FieldRow label="Fecha de la cita">
-              <input className="input" type="date" data-testid="opc-fecha" value={form.fecha} onChange={(e) => patch("fecha", e.target.value)} />
-            </FieldRow>
-            <FieldRow label="Hora">
-              <input className="input" type="time" data-testid="opc-hora" value={form.hora} onChange={(e) => patch("hora", e.target.value)} />
-            </FieldRow>
-            <div className="frow tool-frow readonly-soft">
-              <div className="flabel">Ola</div>
-              <input className="input" readOnly tabIndex={-1} value={matchedOla ? `${matchedOla.etiqueta} (${normalizeHora(matchedOla.hora)})` : "Sin ola para esa hora"} />
-            </div>
-            <TextField label="Calificación" testId="opc-calif" value={form.calificacion} onChange={(v) => patch("calificacion", v)} />
-            <TextField label="Regalo" testId="opc-regalo" value={form.regalo} onChange={(v) => patch("regalo", v)} />
-            <NotesField
-              label="Notas"
-              testId="opc-notas-invitacion"
-              placeholder="Notas de la invitación..."
-              value={form.notasInvitacion}
-              onChange={(v) => patch("notasInvitacion", v)}
-            />
-          </div>
-        )}
+        {fields}
       </div>
     </>
+  );
+}
+
+export function OpcExpedientePage() {
+  const [params] = useSearchParams();
+  return (
+    <OpcExpedienteForm
+      initial={{
+        fecha: params.get("fecha") || "",
+        hora: params.get("hora") || "",
+        etiqueta: params.get("etiqueta") || "",
+        olaConfigId: params.get("ola") || "",
+      }}
+    />
+  );
+}
+
+export function OpcExpedienteModal({ open, onOpenChange, initial, onConfirmed }) {
+  const olaLabel = initial?.etiqueta
+    ? `${initial.etiqueta} · ${normalizeHora(initial.hora)}`
+    : "Nueva pareja";
+  return (
+    <SalesModal
+      open={open}
+      onOpenChange={onOpenChange}
+      title={`Nueva pareja — ${olaLabel}`}
+      maxWidth={920}
+      popupId="opc-expediente-modal"
+      modalClassName="modal-wide opc-exp-modal"
+    >
+      {open && initial ? (
+        <OpcExpedienteForm
+          key={`${initial.olaConfigId}-${initial.fecha}-${initial.hora}`}
+          layout="modal"
+          initial={initial}
+          onClose={() => onOpenChange(false)}
+          onConfirmed={onConfirmed}
+        />
+      ) : null}
+    </SalesModal>
   );
 }

@@ -90,10 +90,11 @@ e2e/            Playwright
 
 ## Documentación
 
+- **[`docs/ROLES-Y-PERMISOS.md`](docs/ROLES-Y-PERMISOS.md)** — vista actual de roles, flags vs permisos, menú y aterrizaje
 - **[`docs/INFORMACION-TECNICA-SISTEMA.md`](docs/INFORMACION-TECNICA-SISTEMA.md)** — documento maestro (producto, stack, DB, RBAC, flujos, ops)
 - `apps/api/API.md` — endpoints REST
 - `supabase/README.md` — Auth, Redirect URLs, Realtime, migraciones
-- `docs/RBAC-ADDITIVE.md` — permisos aditivos
+- Fórmula RBAC (aditiva): `docs/INFORMACION-TECNICA-SISTEMA.md` §5 (el enlace histórico `docs/RBAC-ADDITIVE.md` no está en el repo)
 - `MIGRATION.md` — port histórico Next → Vite/Express
 
 ```bash

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { OpcExpedienteModal } from "@/components/clients/opc-expediente-page.jsx";
 import { RhToolLoading, RhToolShell } from "@/components/rh/rh-tool-shell.jsx";
 import { RhCalendarWidget } from "@/components/rh/rh-calendar-widget.jsx";
 import { useRhEmpresa } from "@/hooks/use-rh-empresa.js";
@@ -306,10 +306,18 @@ function PremanifiestoDayPanel({
   onRefresh,
   formState,
   setFormState,
+  onInviteOla,
 }) {
   const olas = dia?.olas || [];
-  const navigate = useNavigate();
   const canOpcInvite = access.canOpc && !access.canMarketing;
+  const openInvite = (ola) => {
+    onInviteOla?.({
+      olaConfigId: ola.ola_config_id,
+      fecha,
+      hora: formatOlaHora(ola.hora),
+      etiqueta: ola.etiqueta || "",
+    });
+  };
 
   if (loading) {
     return <div className="card tool-calc-card"><p className="muted">Cargando olas…</p></div>;
@@ -363,15 +371,7 @@ function PremanifiestoDayPanel({
                     type="button"
                     className="network-pill ok rh-pm-cupo-pill is-clickable"
                     data-testid="rh-pm-cupo-libre"
-                    onClick={() => {
-                      const q = new URLSearchParams({
-                        ola: ola.ola_config_id,
-                        fecha,
-                        hora: formatOlaHora(ola.hora),
-                        etiqueta: ola.etiqueta || "",
-                      });
-                      navigate(`/clients/opc-nuevo?${q.toString()}`);
-                    }}
+                    onClick={() => openInvite(ola)}
                   >
                     {ola.ocupado}/{ola.cupo_max} parejas
                   </button>
@@ -383,7 +383,18 @@ function PremanifiestoDayPanel({
               </div>
               <div className="rh-pm-ola-body">
                 {(ola.entradas || []).length === 0 && (
-                  <p className="muted rh-pm-empty-ola">Sin parejas en esta ola</p>
+                  canOpcInvite && olaDisponible(ola) ? (
+                    <button
+                      type="button"
+                      className="muted rh-pm-empty-ola is-clickable"
+                      data-testid="rh-pm-empty-ola-invite"
+                      onClick={() => openInvite(ola)}
+                    >
+                      Sin parejas en esta ola
+                    </button>
+                  ) : (
+                    <p className="muted rh-pm-empty-ola">Sin parejas en esta ola</p>
+                  )
                 )}
                 {(ola.entradas || []).map((entry) => (
                   <PremanifiestoEntryRow
@@ -414,7 +425,7 @@ export function RhPremanifiestoPage() {
   const [dia, setDia] = useState(null);
   const [loading, setLoading] = useState(false);
   const [formState, setFormState] = useState(null);
-  const [tab, setTab] = useState("calendario");
+  const [invite, setInvite] = useState(null);
 
   const loadDia = useCallback(async () => {
     if (!empresaId || !workspaceId || !fecha) return;
@@ -445,7 +456,6 @@ export function RhPremanifiestoPage() {
   const selectDate = (iso) => {
     setFecha(iso);
     setFormState(null);
-    setTab("dia");
     const y = Number(iso.slice(0, 4));
     const m = Number(iso.slice(5, 7)) - 1;
     setCalYear(y);
@@ -476,24 +486,6 @@ export function RhPremanifiestoPage() {
   return (
     <RhToolShell title="Premanifiesto" subtitle={access.readOnly ? "Solo lectura" : undefined} backHref="/ops/rh">
       <div className="rh-pm-page" data-testid="rh-pm-page">
-      <nav className="admin-subnav rh-pm-subnav" aria-label="Premanifiesto">
-        <button
-          type="button"
-          className={`admin-subnav-item${tab === "calendario" ? " active" : ""}`}
-          onClick={() => setTab("calendario")}
-        >
-          Calendario
-        </button>
-        <button
-          type="button"
-          className={`admin-subnav-item${tab === "dia" ? " active" : ""}`}
-          onClick={() => setTab("dia")}
-        >
-          Día {fecha ? `(${fecha})` : ""}
-        </button>
-      </nav>
-
-      {tab === "calendario" ? (
         <div className="cal-layout rh-pm-cal-layout">
           <RhCalendarWidget
             year={calYear}
@@ -515,24 +507,16 @@ export function RhPremanifiestoPage() {
               onRefresh={loadDia}
               formState={formState}
               setFormState={setFormState}
+              onInviteOla={setInvite}
             />
           </div>
         </div>
-      ) : (
-        <div className="rh-pm-day-only">
-          <PremanifiestoDayPanel
-            fecha={fecha}
-            dia={dia}
-            loading={loading}
-            access={access}
-            empresaId={empresaId}
-            workspaceId={workspaceId}
-            onRefresh={loadDia}
-            formState={formState}
-            setFormState={setFormState}
-          />
-        </div>
-      )}
+        <OpcExpedienteModal
+          open={Boolean(invite)}
+          onOpenChange={(v) => { if (!v) setInvite(null); }}
+          initial={invite}
+          onConfirmed={() => { setInvite(null); loadDia(); }}
+        />
       </div>
     </RhToolShell>
   );

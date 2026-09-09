@@ -4,7 +4,8 @@ Mapa de **experiencia de pantalla**: qué se ve, a dónde se navega, y cómo cam
 
 **Fecha:** 2026-09-02.  
 **Fuente:** UI (`apps/web`) + catálogo de permisos/flags y seeds de puestos (`packages/shared`, `empresa-roles-seed.js`).  
-**Profundidad técnica:** [`MAPA-GENERAL-SISTEMA.md`](./MAPA-GENERAL-SISTEMA.md) · [`RBAC-ADDITIVE.md`](./RBAC-ADDITIVE.md) · [`ARQUITECTURA-API.md`](./ARQUITECTURA-API.md) · [`royal-holiday/README.md`](./royal-holiday/README.md)  
+**Vista actual de roles / menú / home (2026-09-09):** [`ROLES-Y-PERMISOS.md`](./ROLES-Y-PERMISOS.md) — este flujo (2026-09-02) **no** refleja el aterrizaje OPC ni el sidebar recortado en sala RH.  
+**Profundidad técnica:** [`MAPA-GENERAL-SISTEMA.md`](./MAPA-GENERAL-SISTEMA.md) · [`INFORMACION-TECNICA-SISTEMA.md`](./INFORMACION-TECNICA-SISTEMA.md) §5 · [`ARQUITECTURA-API.md`](./ARQUITECTURA-API.md) · [`royal-holiday/README.md`](./royal-holiday/README.md)  
 **Sala Royal Holiday (Herramientas RH, Premanifiesto, venta `rh_ventas`):** [`FLUJO-USUARIO-ROYAL-HOLIDAY.md`](./FLUJO-USUARIO-ROYAL-HOLIDAY.md).
 
 ---

@@ -26,7 +26,12 @@ export function CalendarPage() {
   const { t, months, weekdays, weekdaysShort } = useI18n();
   const { fmt } = useMoney();
   const { active } = useWorkspace();
-  const { userProfile } = useAppNav();
+  const { userProfile, homeHref } = useAppNav();
+  const opcHome = Boolean(userProfile && homeHref && homeHref !== "/");
+
+  useEffect(() => {
+    if (opcHome) navigate(homeHref, { replace: true });
+  }, [opcHome, homeHref, navigate]);
   const hydrated = useAppStore((s) => s.hydrated);
   const calYear = useAppStore((s) => s.calYear);
   const calMonth = useAppStore((s) => s.calMonth);
@@ -79,6 +84,10 @@ export function CalendarPage() {
       return peerNameById[entry.ownerUserId] || t("cal.ownerUnknown");
     };
   }, [isSala, myUserId, peerNameById, t]);
+
+  if (opcHome) {
+    return <Topbar title="Premanifiesto" subtitle={t("common.loading")} />;
+  }
 
   if (!hydrated) return <Topbar title={t("page.agenda.title")} subtitle={t("common.loading")} />;
   const first = new Date(calYear, calMonth, 1).getDay();

@@ -11260,6 +11260,31 @@ body,
   background: var(--surface2);
 }
 
+.rh-pm-empty-ola.is-clickable {
+  display: block;
+  width: 100%;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+
+.rh-pm-empty-ola.is-clickable:hover {
+  border-color: var(--accent, #2563eb);
+}
+
+.sales-modal-viewport .modal.opc-exp-modal {
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+}
+
+.opc-exp-modal .exp-page-head--modal {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
 .rh-pm-cupo-pill { font-size: 11px; flex-shrink: 0; }
 .rh-pm-cupo-pill.is-clickable {
   cursor: pointer;
@@ -11283,7 +11308,22 @@ body,
   color: var(--text);
 }
 .tool-frow--notes { align-items: flex-start; }
-.tool-frow--notes textarea.input { min-height: 72px; resize: vertical; }
+.tool-frow--notes textarea.input,
+.opc-notes-textarea {
+  min-height: 148px;
+  height: 148px;
+  resize: vertical;
+  line-height: 1.45;
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+@media (max-width: 768px) {
+  .tool-frow--notes textarea.input,
+  .opc-notes-textarea {
+    min-height: 88px;
+    height: 88px;
+  }
+}
 
 .rh-pm-entry {
   background: var(--surface2);

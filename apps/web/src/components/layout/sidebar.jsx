@@ -14,13 +14,14 @@ export function Sidebar() {
     avatarLabel,
     unreadMessages,
     sidebarGroups,
+    homeHref,
     isAdmin,
   } = useAppNav();
 
   return (
     <aside className="sidebar" id="sidebar">
       <WorkspaceRail />
-      <Link to="/" className="sb-logo" title="Usuario">
+      <Link to={homeHref || "/"} className="sb-logo" title="Usuario" data-testid="sb-user-avatar-link">
         <div className="sb-user-avatar" id="sb-user-avatar" suppressHydrationWarning>
           {avatarUrl ? (
             <img src={avatarUrl} alt="" className="sb-user-avatar-img" />

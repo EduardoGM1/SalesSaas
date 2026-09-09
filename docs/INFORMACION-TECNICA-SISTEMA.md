@@ -1,6 +1,6 @@
 # Salètse — Información técnica del sistema
 
-Ficha de producto, stack y modelo. **Mapa de onboarding (código actual, punta a punta):** [`MAPA-GENERAL-SISTEMA.md`](./MAPA-GENERAL-SISTEMA.md). **UX por rol:** [`FLUJO-USUARIO-POR-ROL.md`](./FLUJO-USUARIO-POR-ROL.md). **Sala Royal Holiday:** [`FLUJO-USUARIO-ROYAL-HOLIDAY.md`](./FLUJO-USUARIO-ROYAL-HOLIDAY.md).
+Ficha de producto, stack y modelo. **Roles y permisos (vista actual):** [`ROLES-Y-PERMISOS.md`](./ROLES-Y-PERMISOS.md). **Mapa de onboarding:** [`MAPA-GENERAL-SISTEMA.md`](./MAPA-GENERAL-SISTEMA.md). **UX por rol (2026-09-02):** [`FLUJO-USUARIO-POR-ROL.md`](./FLUJO-USUARIO-POR-ROL.md). **Sala Royal Holiday:** [`FLUJO-USUARIO-ROYAL-HOLIDAY.md`](./FLUJO-USUARIO-ROYAL-HOLIDAY.md).
 
 > Producto: plataforma SaaS de ventas para timeshare / clubes vacacionales (agenda, expedientes, herramientas comerciales, metas, red, workspaces personal/sala).  
 > Repositorio: monorepo `sales-app` (npm workspaces).  

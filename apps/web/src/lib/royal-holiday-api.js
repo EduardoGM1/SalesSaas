@@ -1,8 +1,10 @@
 async function apiFetch(path, options = {}) {
+  const { signal, ...rest } = options;
   const res = await fetch(`/api/v1${path}`, {
     credentials: "include",
-    headers: { "Content-Type": "application/json", ...(options.headers || {}) },
-    ...options,
+    headers: { "Content-Type": "application/json", ...(rest.headers || {}) },
+    signal: signal || AbortSignal.timeout(25000),
+    ...rest,
   });
   const json = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(json.error || json.message || `Error ${res.status}`);

@@ -12,10 +12,11 @@ Documento de onboarding: cómo funciona el producto **de punta a punta**, según
 
 | Si necesitas… | Ve a |
 |---------------|------|
+| Roles / permisos / menú / home (vista actual) | [`ROLES-Y-PERMISOS.md`](./ROLES-Y-PERMISOS.md) |
 | Experiencia por rol (menú, pantallas, recorrido de una venta) | [`FLUJO-USUARIO-POR-ROL.md`](./FLUJO-USUARIO-POR-ROL.md) |
 | Experiencia en la sala Royal Holiday (tools RH, Premanifiesto, `rh_ventas`) | [`FLUJO-USUARIO-ROYAL-HOLIDAY.md`](./FLUJO-USUARIO-ROYAL-HOLIDAY.md) |
 | Capas HTTP de la API (rutas → controllers → services → repos) | [`ARQUITECTURA-API.md`](./ARQUITECTURA-API.md) |
-| Fórmula RBAC (rol ∪ overrides, sin techo plataforma∩empresa) | [`RBAC-ADDITIVE.md`](./RBAC-ADDITIVE.md) |
+| Fórmula RBAC (rol ∪ overrides, atajo admin empresa `capa:app`) | [`ROLES-Y-PERMISOS.md`](./ROLES-Y-PERMISOS.md) §2 · [`INFORMACION-TECNICA-SISTEMA.md`](./INFORMACION-TECNICA-SISTEMA.md) §5 |
 | Ficha de producto / stack / módulos | [`INFORMACION-TECNICA-SISTEMA.md`](./INFORMACION-TECNICA-SISTEMA.md) |
 | Auditoría de egress (snapshot 2026-08-20; ver §7) | [`DIAGNOSTICO-EGRESS.md`](./DIAGNOSTICO-EGRESS.md) |
 | Compartir expedientes, invites, chat de negociación | [`SHARING-ARCHITECTURE.md`](./SHARING-ARCHITECTURE.md) |

@@ -90,7 +90,8 @@ async function runFlow(browser, out) {
     if (!cupoBtn) return;
 
     await cupoBtn.click();
-    await page.waitForURL(/\/clients\/opc-nuevo/, { timeout: 20000 });
+    await page.locator('[data-testid="opc-expediente-modal"]').waitFor({ state: "visible", timeout: 20000 });
+    rec(out, "c.modal", /\/ops\/rh\/premanifiesto/.test(page.url()), page.url());
     await page.locator('[data-testid="opc-expediente-tabs"]').waitFor({ state: "visible", timeout: 20000 });
 
     const folderStrip = await page.locator(".exp-folder-strip").count();
@@ -141,11 +142,11 @@ async function runFlow(browser, out) {
     await page.screenshot({ path: `${SHOTS}/invitacion.png`, fullPage: true });
 
     await page.getByTestId("opc-confirm").click();
-    await page.waitForURL(/\/clients\/(?!opc-nuevo)[^/]+/, { timeout: 45000 });
-    const landed = /\/clients\/[0-9a-f-]{8,}/i.test(page.url()) && !page.url().includes("opc-nuevo");
-    const prospectId = (page.url().match(/\/clients\/([0-9a-f-]{36})/i) || [])[1] || "";
-    rec(out, "e.confirm-nav", landed && !!prospectId, `url=${page.url()}`);
-    out.prospectId = prospectId;
+    const toastOk = await page.getByText("Invitación confirmada").waitFor({ state: "visible", timeout: 45000 }).then(() => true).catch(() => false);
+    await page.locator('[data-testid="opc-expediente-modal"]').waitFor({ state: "hidden", timeout: 15000 }).catch(() => {});
+    const stayed = /\/ops\/rh\/premanifiesto/.test(page.url());
+    rec(out, "e.confirm-nav", toastOk && stayed, `url=${page.url()} toast=${toastOk}`);
+    out.prospectId = "";
     out.mark = MARK;
     out.fecha = fechaVal;
     await page.screenshot({ path: `${SHOTS}/despues-confirm.png`, fullPage: true });

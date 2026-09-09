@@ -164,6 +164,8 @@ async function runFlow(browser, out) {
   const page = await ctx.newPage();
   try {
     await passwordLogin(page);
+    await page.waitForURL((url) => String(url.pathname).includes("/ops/rh/premanifiesto"), { timeout: 25000 }).catch(() => {});
+    rec(out, "a.landing", /\/ops\/rh\/premanifiesto/.test(page.url()), page.url());
     await page.screenshot({ path: `${SHOTS}/a-after-login.png`, fullPage: true });
 
     const compactLink = page.locator('.sb-nav a.sb-item[href="/ops/rh/premanifiesto"]');
@@ -208,10 +210,9 @@ async function runFlow(browser, out) {
     const olaHead = cupoBtn.locator("xpath=ancestor::*[contains(@class,'rh-pm-ola-head')]");
     const olaName = ((await olaHead.locator(".dg-name").textContent()) || "").trim();
     await cupoBtn.click();
-    await page.waitForURL(/\/clients\/opc-nuevo/, { timeout: 20000 });
-    const url = new URL(page.url());
-    const precarga = url.searchParams.get("ola") && url.searchParams.get("fecha") && url.searchParams.get("hora");
-    rec(out, "c.opc-nuevo", precarga, page.url());
+    const stayedOnPm = /\/ops\/rh\/premanifiesto/.test(page.url()) && !/opc-nuevo/.test(page.url());
+    await page.locator('[data-testid="opc-expediente-modal"]').waitFor({ state: "visible", timeout: 20000 });
+    rec(out, "c.opc-nuevo", stayedOnPm, page.url());
     await page.screenshot({ path: `${SHOTS}/c-opc-nuevo.png`, fullPage: true });
 
     await page.locator('[data-testid="opc-expediente-tabs"]').waitFor({ state: "visible", timeout: 20000 });
@@ -247,26 +248,18 @@ async function runFlow(browser, out) {
     );
     await page.screenshot({ path: `${SHOTS}/d-invitacion.png`, fullPage: true });
 
-    await page.getByRole("button", { name: "Confirmar invitación" }).click();
-    const navP = page.waitForURL(/\/clients\/(?!opc-nuevo)[^/]+/, { timeout: 45000 }).then(() => "nav");
-    const toastP = page.locator(".toast-item, .toast-card-title").first()
-      .waitFor({ state: "visible", timeout: 45000 })
-      .then(() => "toast");
-    const winner = await Promise.race([navP, toastP]).catch(() => "timeout");
-    const toastText = ((await page.locator(".toast-item, .toast-card-title").first().textContent().catch(() => "")) || "").trim();
-    if (winner !== "nav") {
-      await page.waitForURL(/\/clients\/(?!opc-nuevo)[^/]+/, { timeout: 15000 }).catch(() => {});
-    }
-    const landed = /\/clients\/[0-9a-f-]{8,}/i.test(page.url()) && !page.url().includes("opc-nuevo");
-    rec(out, "e.confirm-nav", landed, `winner=${winner} url=${page.url()} toast=${toastText}`);
-    if (!landed) {
+    await page.getByTestId("opc-confirm").click();
+    const toastOk = await page.getByText("Invitación confirmada").waitFor({ state: "visible", timeout: 45000 }).then(() => true).catch(() => false);
+    await page.locator('[data-testid="opc-expediente-modal"]').waitFor({ state: "hidden", timeout: 15000 }).catch(() => {});
+    const stillPm = /\/ops\/rh\/premanifiesto/.test(page.url());
+    rec(out, "e.confirm-nav", toastOk && stillPm, `url=${page.url()} toast=${toastOk}`);
+    if (!stillPm) {
       await page.screenshot({ path: `${SHOTS}/e-confirm-fail.png`, fullPage: true });
       return;
     }
 
-    await page.locator('.sb-nav a.sb-item[href="/ops/rh/premanifiesto"]').click();
     await page.waitForSelector('[data-testid="rh-pm-page"]', { timeout: 30000 });
-    const bookedFecha = url.searchParams.get("fecha");
+    const bookedFecha = fechaVal;
     if (bookedFecha) {
       const dayNum = Number(bookedFecha.slice(8, 10));
       await page.getByRole("button", { name: "Calendario", exact: true }).click().catch(() => {});
@@ -356,7 +349,7 @@ async function main() {
     await browser.close();
   }
   report.finishedAt = new Date().toISOString();
-  const needed = ["a.sidebar", "b.premanifiesto", "b.olas", "c.opc-nuevo", "d.tabs", "e.confirm-nav", "e.cupo-spa", "f.cupo-reload"];
+  const needed = ["a.landing", "a.sidebar", "b.premanifiesto", "b.olas", "c.opc-nuevo", "d.tabs", "e.confirm-nav", "e.cupo-spa", "f.cupo-reload"];
   const flowPass = needed.every((k) => report.flow[k]?.pass === true);
   report.pass = flowPass;
   writeFileSync(RESULTS, JSON.stringify(report, null, 2));

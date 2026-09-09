@@ -1,6 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 
-const webPort = process.env.PLAYWRIGHT_WEB_PORT ?? "5173";
+const e2eRh = Boolean(process.env.E2E_RH);
+const webPort = process.env.PLAYWRIGHT_WEB_PORT ?? (e2eRh ? "5178" : "5173");
 const apiPort = process.env.PLAYWRIGHT_API_PORT ?? "4000";
 const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? `http://localhost:${webPort}`;
 
@@ -33,12 +34,14 @@ export default defineConfig({
         {
           command: "npm run dev:web",
           url: baseURL,
-          reuseExistingServer: !process.env.CI,
+          // E2E_RH necesita VITE_SUPABASE dummy. Reusar un Vite ya levantado
+          // (sin esas vars) deja isSupabaseConfigured=false y los mocks de sesión no corren.
+          reuseExistingServer: e2eRh ? false : !process.env.CI,
           timeout: 120000,
           env: {
             ...process.env,
-            VITE_SUPABASE_URL: process.env.E2E_RH ? "http://e2e.test" : "",
-            VITE_SUPABASE_ANON_KEY: process.env.E2E_RH ? "e2e-anon-key" : "",
+            VITE_SUPABASE_URL: e2eRh ? "http://e2e.test" : "",
+            VITE_SUPABASE_ANON_KEY: e2eRh ? "e2e-anon-key" : "",
           },
         },
       ],

@@ -6,6 +6,7 @@ import { notifyAuthChanged } from "@/lib/session-api.js";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { AuthField } from "@/components/auth/auth-field.jsx";
 import { safeNextPath } from "@/lib/safe-next.js";
+import { resolvePostAuthPath } from "@/lib/post-auth-home.js";
 import { hasAuthParamsInUrl } from "@/lib/auth-callback.js";
 import { authHandoffPath } from "@/lib/auth-intent.js";
 
@@ -38,8 +39,10 @@ export function LoginPage() {
       return;
     }
     fetch("/api/v1/auth/session", { credentials: "include" })
-      .then((r) => {
-        if (r.ok) navigate(nextPath, { replace: true });
+      .then(async (r) => {
+        if (!r.ok) return;
+        const dest = await resolvePostAuthPath(searchParams.get("next"));
+        navigate(dest, { replace: true });
       })
       .catch(() => {});
   }, [navigate, nextPath, searchParams]);
@@ -63,7 +66,8 @@ export function LoginPage() {
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body.error ?? t("auth.login.errorGeneric"));
       notifyAuthChanged();
-      navigate(nextPath, { replace: true });
+      const dest = await resolvePostAuthPath(searchParams.get("next"));
+      navigate(dest, { replace: true });
     } catch (err) {
       if (err instanceof Error && err.name === "AbortError") {
         setError(t("auth.login.errorTimeout"));

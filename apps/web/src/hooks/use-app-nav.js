@@ -14,6 +14,7 @@ import { shallow } from "zustand/shallow";
 import {
   getMobileBottomNavItems,
   getMobileHeaderNavItems,
+  getRhOpcHomeHref,
   getSidebarNavGroups,
 } from "@/lib/nav-config.js";
 import { warmAdminSession } from "@/hooks/use-admin-session.js";
@@ -141,6 +142,8 @@ export function useAppNav() {
     [navOptions],
   );
 
+  const homeHref = useMemo(() => getRhOpcHomeHref(navOptions), [navOptions]);
+
   const avatarLabel = mounted
     ? (settings?.userInitials
       || settings?.userName?.split(/\s+/).slice(0, 2).map((part) => part[0]).join("")
@@ -156,6 +159,7 @@ export function useAppNav() {
     userProfile,
     unreadMessages,
     workspaceTipo,
+    homeHref,
     sidebarGroups,
     mobileBottomItems,
     mobileHeaderItems,

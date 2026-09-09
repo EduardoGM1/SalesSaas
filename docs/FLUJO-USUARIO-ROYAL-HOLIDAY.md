@@ -4,6 +4,7 @@ Experiencia de pantalla **dentro de la sala Royal Holiday**. Complementa [`FLUJO
 
 **Fecha:** 2026-09-02.  
 **Fuente:** UI RH, flags/paquetes de bootstrap, `empresa-roles-seed.js`, `seed-rh-tool-flags.mjs`, `0085`.  
+**Menú recortado y home OPC (código vigente):** [`ROLES-Y-PERMISOS.md`](./ROLES-Y-PERMISOS.md). Las secciones 1–2 de este archivo (home = Agenda, “el menú casi no cambia”) están **desactualizadas**.  
 **Catálogo / APIs:** [`royal-holiday/README.md`](./royal-holiday/README.md).  
 **CSI (proceso, no UX de botones):** [`royal-holiday/PREMANIFIESTO-CSI-CAPACITACION.md`](./royal-holiday/PREMANIFIESTO-CSI-CAPACITACION.md).
 

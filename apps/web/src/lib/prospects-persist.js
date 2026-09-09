@@ -88,6 +88,7 @@ async function apiJson(method, path, body) {
     method,
     credentials: "include",
     cache: "no-store",
+    signal: AbortSignal.timeout(25000),
     headers: {
       Accept: "application/json",
       ...(body != null ? { "Content-Type": "application/json" } : {}),

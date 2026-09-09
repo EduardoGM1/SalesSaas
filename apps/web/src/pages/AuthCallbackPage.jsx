@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { safeNextPath } from "@/lib/safe-next.js";
+import { resolvePostAuthPath } from "@/lib/post-auth-home.js";
 import { consumeAuthParamsFromUrl } from "@/lib/auth-callback.js";
 import { consumeAuthIntent } from "@/lib/auth-intent.js";
 
@@ -31,7 +32,8 @@ export function AuthCallbackPage() {
 
       try {
         await consumeAuthParamsFromUrl({ searchParams, t });
-        if (active) navigate(next, { replace: true });
+        const dest = recovery ? next : await resolvePostAuthPath(nextRaw);
+        if (active) navigate(dest, { replace: true });
       } catch (err) {
         if (active) {
           setMessage(err instanceof Error ? err.message : t("auth.login.errorAuth"));

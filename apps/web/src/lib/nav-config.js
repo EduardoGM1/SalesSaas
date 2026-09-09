@@ -11,7 +11,21 @@ import {
   UsersRound,
   Wrench,
 } from "lucide-react";
-import { RH_TOOL_FLAGS, ROYAL_HOLIDAY_EMPRESA_ID, WORKSHEET_ROYAL_HOLIDAY_FLAG } from "@/lib/auth/tool-flags.js";
+import {
+  getRhOpcHomeHref,
+  isRhOpcFloorNav,
+  navOptionsFromSession,
+  RH_OPC_CALENDAR_HREF,
+  shouldCompactRhFloorNav,
+} from "./rh-opc-home.js";
+
+export {
+  getRhOpcHomeHref,
+  isRhOpcFloorNav,
+  navOptionsFromSession,
+  RH_OPC_CALENDAR_HREF,
+  shouldCompactRhFloorNav,
+};
 
 /** Grupos de navegación principal (sidebar escritorio + barra inferior móvil). */
 export const NAV_GROUPS = [
@@ -71,48 +85,6 @@ export const ADMIN_NAV_ITEM = {
 
 /** Orden fijo del sidebar recortado en sala Royal Holiday (Liner / Cerrador / OPC). */
 export const RH_COMPACT_NAV_HREFS = ["/", "/clients", "/metas"];
-
-/**
- * OPC en sala RH: el icono Calendario abre Premanifiesto (olas), no la Agenda CRM.
- * Antes del recorte, OPC llegaba vía Herramientas → Operaciones sala → Premanifiesto.
- */
-export const RH_OPC_CALENDAR_HREF = "/ops/rh/premanifiesto";
-
-/**
- * Recorte de 3 iconos SOLO si el workspace activo es la sala RH
- * (empresa Royal Holiday o flag worksheet.royal_holiday en sesión),
- * para Liner/Cerrador/OPC/.rep. El paquete Liner no incluye el flag RH,
- * así que empresa_id del workspace es la señal primaria.
- * Gerente, admin, Marketing y cualquier otra sala: sidebar completo.
- */
-export function shouldCompactRhFloorNav({
-  workspaceTipo,
-  isGerenteSala,
-  isAdmin,
-  roleSlug,
-  flags,
-  empresaId,
-} = {}) {
-  if (isAdmin || isGerenteSala) return false;
-  if (workspaceTipo !== "sala_de_venta") return false;
-  const inRhSala =
-    empresaId === ROYAL_HOLIDAY_EMPRESA_ID
-    || flags?.[WORKSHEET_ROYAL_HOLIDAY_FLAG] === true;
-  if (!inRhSala) return false;
-  const slug = String(roleSlug || "").toLowerCase();
-  if (slug === "gerente") return false;
-  if (slug === "liner" || slug === "cerrador" || slug === "opc") return true;
-  if (flags?.[RH_TOOL_FLAGS.premanifiestoOpc] === true) return true;
-  if (flags?.[RH_TOOL_FLAGS.premanifiestoRep] === true) return true;
-  return false;
-}
-
-/** Puesto OPC (slug o flag) dentro del recorte RH — Calendario = Premanifiesto. */
-export function isRhOpcFloorNav({ roleSlug, flags } = {}) {
-  const slug = String(roleSlug || "").toLowerCase();
-  if (slug === "opc") return true;
-  return flags?.[RH_TOOL_FLAGS.premanifiestoOpc] === true;
-}
 
 export function filterCompactRhNavItems(items = [], options = {}) {
   const byHref = new Map(items.map((item) => [item.href.split("?")[0], item]));

@@ -62,11 +62,11 @@ async function runCase(page, c) {
     const dayBtn = page.locator(".cal-grid button.cal-day:not(.other)").nth(5);
     if (await dayBtn.count()) await dayBtn.click();
     await expect(page.locator(".rh-pm-ola-group").first()).toBeVisible({ timeout: 45000 });
-    results.push({ label: c.label, check: "calendar day olas", ok: true, detail: "cal+olas OK" });
+    await expect(page.getByRole("button", { name: /^Día / })).toHaveCount(0);
+    results.push({ label: c.label, check: "calendar day olas", ok: true, detail: "cal+olas OK sin tab Día" });
   }
 
   if (c.checkOpcBadge) {
-    await page.getByRole("button", { name: /^Día / }).click();
     await expect(page.getByText("QA DOM Badge OPC")).toBeVisible({ timeout: 20000 });
     await expect(page.locator('[data-testid="rh-pm-badge-opc"]').first()).toBeVisible({ timeout: 20000 });
     results.push({ label: c.label, check: "opc badge", ok: true, detail: "badge visible" });
@@ -80,7 +80,8 @@ async function runCase(page, c) {
     const cupoLibre = page.locator('[data-testid="rh-pm-cupo-libre"]').first();
     await expect(cupoLibre).toBeVisible({ timeout: 30000 });
     await cupoLibre.click();
-    await expect(page).toHaveURL(/\/clients\/opc-nuevo/);
+    await expect(page).not.toHaveURL(/\/clients\/opc-nuevo/);
+    await expect(page.locator('[data-testid="opc-expediente-modal"]')).toBeVisible({ timeout: 20000 });
     await expect(page.locator('[data-testid="opc-expediente-tabs"]')).toBeVisible({ timeout: 20000 });
     await expect(page.getByRole("button", { name: "Información cliente" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Estancia" })).toBeVisible();
@@ -89,7 +90,7 @@ async function runCase(page, c) {
       label: c.label,
       check: "opc expediente 3 tabs",
       ok: true,
-      detail: "cupo→opc-nuevo",
+      detail: "cupo→modal 3 tabs",
     });
   }
 
