@@ -1,6 +1,6 @@
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { createClient, primeRealtimeAuth } from "@/lib/supabase/client";
-import { fetchRealtimeSession } from "@/lib/presence-api.js";
+import { ensureBrowserSession } from "@/lib/supabase/ensure-browser-session.js";
 import { ensureRealtimeReady, removeChannelSafe } from "@/lib/presence/realtime.js";
 // No import estático de session-api: evita ciclo session-api ↔ session-cross-device (TDZ en bundle).
 
@@ -20,6 +20,7 @@ function sessionTopic(userId) {
 }
 
 function tlog(stage, msOrExtra, extra) {
+  if (!import.meta.env.DEV) return;
   if (typeof msOrExtra === "number") {
     console.info(`[session-sync] +${msOrExtra}ms ${stage}`, extra ?? "");
   } else {
@@ -54,25 +55,6 @@ function delay(ms) {
 
 function isChannelHot(userId) {
   return Boolean(channel && channelJoined && subscribedUserId && (!userId || subscribedUserId === userId));
-}
-
-async function ensureBrowserSession(supabase) {
-  let { data: { session } } = await supabase.auth.getSession();
-  if (session?.access_token && session?.user?.id) return session;
-
-  try {
-    const rt = await fetchRealtimeSession();
-    const { error } = await supabase.auth.setSession({
-      access_token: rt.access_token,
-      refresh_token: rt.refresh_token,
-    });
-    if (error) return null;
-    ({ data: { session } } = await supabase.auth.getSession());
-    if (session?.access_token) primeRealtimeAuth(session.access_token);
-    return session;
-  } catch {
-    return null;
-  }
 }
 
 async function checkRevokedOrIgnore(supabase, userId) {

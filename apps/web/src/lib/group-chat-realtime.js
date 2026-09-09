@@ -2,8 +2,8 @@
  * Realtime del hilo de chat grupal de un expediente (MessagesPage).
  */
 import { isSupabaseConfigured } from "@/lib/supabase/config";
-import { createClient, primeRealtimeAuth } from "@/lib/supabase/client";
-import { fetchRealtimeSession } from "@/lib/presence-api.js";
+import { createClient } from "@/lib/supabase/client";
+import { ensureBrowserSession } from "@/lib/supabase/ensure-browser-session.js";
 import { ensureRealtimeReady, removeChannelSafe } from "@/lib/presence/realtime.js";
 
 const DEBOUNCE_MS = 250;
@@ -13,24 +13,6 @@ let activeConversationId = null;
 let channelJoined = false;
 let debounceTimer = null;
 let onChangeCb = null;
-
-async function ensureBrowserSession(supabase) {
-  let { data: { session } } = await supabase.auth.getSession();
-  if (session?.access_token) return session;
-  try {
-    const rt = await fetchRealtimeSession();
-    const { error } = await supabase.auth.setSession({
-      access_token: rt.access_token,
-      refresh_token: rt.refresh_token,
-    });
-    if (error) return null;
-    ({ data: { session } } = await supabase.auth.getSession());
-    if (session?.access_token) primeRealtimeAuth(session.access_token);
-    return session;
-  } catch {
-    return null;
-  }
-}
 
 function scheduleNotify() {
   clearTimeout(debounceTimer);

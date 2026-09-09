@@ -1,5 +1,7 @@
 import {
   ACTIVE_WORKSPACE_KEY,
+  APP_STORAGE_PREFIX,
+  STORAGE_KEYS_KEEP_ON_LOGOUT,
   OUTBOX_KEY,
   OUTBOX_LEGACY_PENDING_KEY,
   STORAGE_KEY,
@@ -305,6 +307,32 @@ export function switchWorkspaceStorage(
 }
 
 export { USER_PREFS_KEY };
+
+/**
+ * Borra de localStorage todo el estado CRM/sync del dispositivo: blobs por
+ * workspace, preferencias de usuario, outbox, workspace activo y dueño
+ * (`sts4_account`). Se usa al cerrar sesión y cuando inicia sesión un usuario
+ * distinto al dueño del blob, para que sus datos no se mezclen ni se suban a
+ * la cuenta del siguiente usuario.
+ */
+export function clearLocalCrmStorage(): void {
+  if (typeof window === "undefined") return;
+  let keys: string[] = [];
+  try {
+    for (let i = 0; i < localStorage.length; i += 1) {
+      const key = localStorage.key(i);
+      if (key) keys.push(key);
+    }
+  } catch {
+    return;
+  }
+  keys = keys.filter(
+    (key) => key.startsWith(APP_STORAGE_PREFIX) && !STORAGE_KEYS_KEEP_ON_LOGOUT.includes(key),
+  );
+  for (const key of keys) lsRemove(key);
+  // Mantener la versión de esquema para no re-ejecutar migraciones legadas.
+  lsSet(STORAGE_SCHEMA_KEY, String(STORAGE_SCHEMA_VERSION));
+}
 
 export function exportDatabase(db: AppDatabase): void {
   const payload = {

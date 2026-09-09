@@ -6,6 +6,10 @@ import { EXTENSION_POINTS } from "./extension-points.js";
 
 export { EXTENSION_POINTS };
 
+/** Límites para `field.pattern` (regex de admin) — mitigación ReDoS en el cliente. */
+const MAX_PATTERN_LENGTH = 200;
+const MAX_PATTERN_INPUT_LENGTH = 2000;
+
 export const FIELD_TYPES = Object.freeze([
   "text",
   "textarea",
@@ -167,9 +171,13 @@ export function validateAgainstSchema(schemaUi, values) {
         if (f.max != null && n > f.max) errors[f.key] = `Máximo ${f.max}`;
       }
     }
-    if (f.pattern && !empty) {
+    // Patrón definido por el admin de empresa: se limita longitud (ReDoS) y se
+    // valida contra un valor acotado.
+    if (f.pattern && !empty && String(f.pattern).length <= MAX_PATTERN_LENGTH) {
       try {
-        if (!new RegExp(f.pattern).test(String(v))) errors[f.key] = "Formato inválido";
+        if (!new RegExp(f.pattern).test(String(v).slice(0, MAX_PATTERN_INPUT_LENGTH))) {
+          errors[f.key] = "Formato inválido";
+        }
       } catch {
         /* pattern inválido en schema: ignorar */
       }

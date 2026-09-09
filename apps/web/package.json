@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
+    "test": "node --test src/lib/storage/settings-scope.test.mjs src/lib/opc-expediente.test.mjs src/lib/rh-opc-home.test.mjs",
     "test:storage": "node --test src/lib/storage/settings-scope.test.mjs"
   },
   "dependencies": {

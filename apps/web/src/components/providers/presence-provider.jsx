@@ -2,7 +2,8 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { createClient, primeRealtimeAuth } from "@/lib/supabase/client";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { networkApi } from "@/lib/network-api.js";
-import { fetchRealtimeSession, markPresenceOffline } from "@/lib/presence-api.js";
+import { markPresenceOffline } from "@/lib/presence-api.js";
+import { ensureBrowserSession } from "@/lib/supabase/ensure-browser-session.js";
 import { shouldLimitBackgroundRealtime } from "@/lib/connection-profile.js";
 import {
   ensureRealtimeReady,
@@ -37,18 +38,9 @@ async function runExclusive(lockRef, fn) {
   }
 }
 
+/** Variante que lanza: el flujo de presencia no puede continuar sin sesión. */
 async function resolveSession(supabase) {
-  let { data: { session } } = await supabase.auth.getSession();
-  if (session?.access_token) return session;
-
-  const rt = await fetchRealtimeSession();
-  const { error } = await supabase.auth.setSession({
-    access_token: rt.access_token,
-    refresh_token: rt.refresh_token,
-  });
-  if (error) throw error;
-
-  ({ data: { session } } = await supabase.auth.getSession());
+  const session = await ensureBrowserSession(supabase);
   if (!session?.access_token) throw new Error("Sin sesión para Realtime");
   return session;
 }

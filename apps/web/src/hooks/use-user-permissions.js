@@ -41,7 +41,11 @@ export function useUserPermissions() {
     ready,
     permissionsStatus,
     can: (clave) => {
-      if (!profile) return true;
+      // Modo local sin Supabase (dev): no hay perfil ni permisos, todo visible.
+      if (!isSupabaseConfigured()) return true;
+      // Fail-closed: sin perfil (sesión aún cargando o expirada) no se concede nada.
+      // Los consumidores deben esperar `ready` para no parpadear.
+      if (!profile) return false;
       if (permissionsStatus === "unavailable") return false;
       if (!Array.isArray(profile.permission_keys)) return false;
       return hasResolvedPermission(keys, clave);

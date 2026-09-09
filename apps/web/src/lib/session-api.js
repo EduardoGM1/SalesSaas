@@ -4,6 +4,12 @@ import { clearAdminSessionCache } from "@/hooks/use-admin-session.js";
 import { clearUserPlanCache } from "@/lib/user-plan-cache.js";
 import { createClient, primeRealtimeAuth } from "@/lib/supabase/client";
 import { isStandaloneApp } from "@/lib/pwa-install.js";
+import { resetLocalUserState } from "@/lib/local-session-reset.js";
+import { requestSyncPush } from "@/lib/sync-outbound.js";
+import { isOutboxDirty } from "@/lib/sync-outbox.js";
+
+/** Tiempo máximo para intentar subir cambios pendientes antes de borrar el estado local. */
+const SIGNOUT_FLUSH_TIMEOUT_MS = 4000;
 
 /** Clave localStorage para propagar login/logout entre pestaña web y PWA (mismo origen). */
 const AUTH_SYNC_KEY = "sts4_auth_sync";
@@ -107,7 +113,21 @@ export async function clearLocalSession(options = {}) {
   primeRealtimeAuth(null);
   clearAdminSessionCache();
   clearUserPlanCache();
+  await resetLocalUserState();
   if (notify) notifyAuthChanged();
+}
+
+/** Best-effort: subir mutaciones pendientes antes de borrar el blob local. */
+async function flushOutboxBeforeSignOut() {
+  if (!isOutboxDirty()) return;
+  try {
+    await Promise.race([
+      requestSyncPush({ reason: "signout" }),
+      delay(SIGNOUT_FLUSH_TIMEOUT_MS),
+    ]);
+  } catch {
+    // Sin red: se pierde lo no sincronizado; preferible a filtrarlo al siguiente usuario.
+  }
 }
 
 export async function signOut() {
@@ -118,6 +138,8 @@ export async function signOut() {
   } catch {
     // ignore
   }
+
+  await flushOutboxBeforeSignOut();
 
   const syncMod = import("@/lib/session-cross-device.js");
 
@@ -133,7 +155,7 @@ export async function signOut() {
   }).catch(() => null);
 
   await Promise.all([broadcastP, serverP]);
-  console.info(`[session-sync] +${Date.now() - t0}ms signOut:broadcast+server`);
+  if (import.meta.env.DEV) console.info(`[session-sync] +${Date.now() - t0}ms signOut:broadcast+server`);
 
   try {
     const sync = await syncMod;
@@ -149,8 +171,9 @@ export async function signOut() {
   primeRealtimeAuth(null);
   clearAdminSessionCache();
   clearUserPlanCache();
+  await resetLocalUserState();
   notifyAuthChanged();
-  console.info(`[session-sync] +${Date.now() - t0}ms signOut:done`);
+  if (import.meta.env.DEV) console.info(`[session-sync] +${Date.now() - t0}ms signOut:done`);
 }
 
 /**

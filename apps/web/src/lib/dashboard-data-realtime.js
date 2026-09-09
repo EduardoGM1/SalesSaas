@@ -6,8 +6,8 @@
  * El canal se amarra al workspace_id activo cuando existe, para no mezclar salas.
  */
 import { isSupabaseConfigured } from "@/lib/supabase/config";
-import { createClient, primeRealtimeAuth } from "@/lib/supabase/client";
-import { fetchRealtimeSession } from "@/lib/presence-api.js";
+import { createClient } from "@/lib/supabase/client";
+import { ensureBrowserSession } from "@/lib/supabase/ensure-browser-session.js";
 import { ensureRealtimeReady, removeChannelSafe } from "@/lib/presence/realtime.js";
 import { applyDashboardTableChange } from "@/lib/sync-table-refresh.js";
 import { shouldLimitBackgroundRealtime } from "@/lib/connection-profile.js";
@@ -46,24 +46,6 @@ function scheduleInvalidate(table, eventType, payload) {
       }
     }
   }, DEBOUNCE_MS);
-}
-
-async function ensureBrowserSession(supabase) {
-  let { data: { session } } = await supabase.auth.getSession();
-  if (session?.access_token && session?.user?.id) return session;
-  try {
-    const rt = await fetchRealtimeSession();
-    const { error } = await supabase.auth.setSession({
-      access_token: rt.access_token,
-      refresh_token: rt.refresh_token,
-    });
-    if (error) return null;
-    ({ data: { session } } = await supabase.auth.getSession());
-    if (session?.access_token) primeRealtimeAuth(session.access_token);
-    return session;
-  } catch {
-    return null;
-  }
 }
 
 function markChannelDead(reason) {

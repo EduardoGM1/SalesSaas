@@ -7,8 +7,8 @@
  * Un solo API lógico; dos topics físicos (Presence privado no mezcla bien con Changes).
  */
 import { isSupabaseConfigured } from "@/lib/supabase/config";
-import { createClient, primeRealtimeAuth } from "@/lib/supabase/client";
-import { fetchRealtimeSession } from "@/lib/presence-api.js";
+import { createClient } from "@/lib/supabase/client";
+import { ensureBrowserSession } from "@/lib/supabase/ensure-browser-session.js";
 import { ensureRealtimeReady, removeChannelSafe } from "@/lib/presence/realtime.js";
 
 const DEBOUNCE_MS = 50;
@@ -53,24 +53,6 @@ export function expedienteDataTopic(prospectId) {
 
 export function isExpedienteUuid(id) {
   return typeof id === "string" && UUID_RE.test(id);
-}
-
-async function ensureBrowserSession(supabase) {
-  let { data: { session } } = await supabase.auth.getSession();
-  if (session?.access_token) return session;
-  try {
-    const rt = await fetchRealtimeSession();
-    const { error } = await supabase.auth.setSession({
-      access_token: rt.access_token,
-      refresh_token: rt.refresh_token,
-    });
-    if (error) return null;
-    ({ data: { session } } = await supabase.auth.getSession());
-    if (session?.access_token) primeRealtimeAuth(session.access_token);
-    return session;
-  } catch {
-    return null;
-  }
 }
 
 function presenceListToPeers(ch) {
@@ -654,10 +636,3 @@ export function getExpedientePeers() {
 export function getFieldLocks() {
   return locksSnapshot();
 }
-
-// --- Compat aliases (migración desde expediente-collab) ---
-export async function startExpedienteCollab(opts) {
-  return startExpedienteRealtime(opts);
-}
-export const stopExpedienteCollab = stopExpedienteRealtime;
-export const updateExpedienteCollabTrack = updateExpedienteTrack;

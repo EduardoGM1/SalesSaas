@@ -137,28 +137,13 @@ export default defineConfig({
             urlPattern: ({ request }) => request.mode === "navigate",
             handler: "NetworkOnly",
           },
+          // API y auth: nunca cachear. Las respuestas son por usuario (perfil,
+          // mensajes, admin) y Cache Storage es compartido por dispositivo; el
+          // modo offline lo cubre el blob CRM en localStorage, no el SW.
           {
             urlPattern: ({ url }) =>
-              url.pathname.startsWith("/api/v1/auth/") || url.pathname.startsWith("/auth/"),
+              url.pathname.startsWith("/api/") || url.pathname.startsWith("/auth/"),
             handler: "NetworkOnly",
-          },
-          // Sync / prospects: nunca cachear (evita PWA↔Desktop con blob stale).
-          {
-            urlPattern: ({ url }) =>
-              url.pathname === "/api/v1/sync"
-              || url.pathname.startsWith("/api/v1/sync/")
-              || url.pathname === "/api/v1/prospects"
-              || /^\/api\/v1\/prospects(\/|$)/.test(url.pathname),
-            handler: "NetworkOnly",
-          },
-          {
-            urlPattern: ({ url }) => url.pathname.startsWith("/api/"),
-            handler: "NetworkFirst",
-            options: {
-              cacheName: "api-cache",
-              networkTimeoutSeconds: 10,
-              expiration: { maxEntries: 32, maxAgeSeconds: 60 },
-            },
           },
         ],
       },

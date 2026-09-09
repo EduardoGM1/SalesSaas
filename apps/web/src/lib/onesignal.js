@@ -818,22 +818,33 @@ export function navigateToPushTarget(notification, onNavigate) {
 
   const url = notification?.launchURL || notification?.launchUrl || readNotificationPayload(notification)?.url;
   if (url) {
-    try {
-      const parsed = new URL(url, window.location.origin);
-      if (parsed.origin === window.location.origin) {
-        window.location.assign(`${parsed.pathname}${parsed.search}${parsed.hash}`);
-        return true;
-      }
-      window.location.assign(url);
-      return true;
-    } catch {
-      window.location.assign(url);
+    const safe = safePushUrl(url);
+    if (safe) {
+      window.location.assign(safe);
       return true;
     }
   }
 
   window.location.assign(target);
   return true;
+}
+
+/**
+ * Solo se navega a rutas del propio origen o a https:. Cualquier otro esquema
+ * (javascript:, data:, etc.) o URL inválida se descarta y se usa el destino
+ * derivado del payload.
+ */
+function safePushUrl(url) {
+  try {
+    const parsed = new URL(String(url), window.location.origin);
+    if (parsed.origin === window.location.origin) {
+      return `${parsed.pathname}${parsed.search}${parsed.hash}`;
+    }
+    if (parsed.protocol === "https:") return parsed.href;
+    return null;
+  } catch {
+    return null;
+  }
 }
 
 /** Muestra push en primer plano y navega al pulsar la notificación. */

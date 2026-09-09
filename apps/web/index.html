@@ -4,7 +4,10 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#0f2044" />
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; script-src 'self' 'unsafe-inline' https://cdn.onesignal.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; connect-src 'self' https://cdn.onesignal.com https://onesignal.com wss: https:; worker-src 'self'; media-src 'self' blob:;" />
+    <!--
+      Content-Security-Policy: la sirve nginx (deploy/nginx-saletse-security-headers.conf).
+      No duplicar aquí: dos fuentes divergen y una <meta> no puede expresar frame-ancestors.
+    -->
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -18,48 +21,8 @@
   </head>
   <body>
     <div id="root"></div>
-    <!-- Solo redirige dominios Vercel legacy; IP y dominio propio quedan en el host actual. -->
-    <script>
-      (function () {
-        var host = location.hostname;
-        if (host === "localhost" || host === "127.0.0.1") return;
-        if (!/\.vercel\.app$/i.test(host) || host === "saletse.vercel.app") return;
-        location.replace("https://saletse.vercel.app" + location.pathname + location.search + location.hash);
-      })();
-    </script>
-    <!-- Recupera shells PWA obsoletos (HTML/SW cacheados con chunks 404 tras deploy). -->
-    <script>
-      (function () {
-        var current = document.querySelector('script[type="module"][src*="/assets/"]');
-        if (!current) return;
-        var currentSrc = current.getAttribute("src") || "";
-        fetch("/index.html?__fresh=" + Date.now(), { cache: "no-store", credentials: "same-origin" })
-          .then(function (r) { return r.ok ? r.text() : Promise.reject(); })
-          .then(function (html) {
-            var match = html.match(/\/assets\/index-[^"']+\.js/);
-            if (!match || !match[0] || currentSrc.indexOf(match[0]) !== -1) return;
-            console.warn("[pwa] outdated shell detected, clearing SW caches", currentSrc, match[0]);
-            var reloadKey = "app:shell-reload:" + match[0];
-            try {
-              var n = Number(sessionStorage.getItem(reloadKey) || 0);
-              if (n >= 3) return;
-              sessionStorage.setItem(reloadKey, String(n + 1));
-            } catch (e) {}
-            var done = function () { location.reload(); };
-            if (!("serviceWorker" in navigator)) return done();
-            return navigator.serviceWorker.getRegistrations()
-              .then(function (regs) {
-                return Promise.all(regs.map(function (reg) { return reg.unregister(); }));
-              })
-              .then(function () { return caches.keys(); })
-              .then(function (keys) {
-                return Promise.all(keys.map(function (key) { return caches.delete(key); }));
-              })
-              .then(done);
-          })
-          .catch(function () {});
-      })();
-    </script>
+    <!-- Recuperación de shell PWA obsoleto. Externo (sin hash) para no requerir 'unsafe-inline' en la CSP. -->
+    <script src="/boot.js"></script>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

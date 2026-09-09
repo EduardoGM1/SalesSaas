@@ -3,7 +3,8 @@ import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { isEmptyDb, normalizeIds } from "@/lib/data/mappers";
 import { pullViaApi, reconcileViaApi } from "@/lib/sync-api.js";
 import { loadDatabase, getActiveWorkspaceId, isCurrentWorkspaceStorageEvent } from "@/lib/storage/local-storage-adapter";
-import { USER_PREFS_KEY } from "@/lib/storage/keys";
+import { ACCOUNT_KEY, USER_PREFS_KEY } from "@/lib/storage/keys";
+import { resetLocalCrmState } from "@/lib/local-session-reset.js";
 import { applyWorkspaceLocalDatabase } from "@/lib/workspace-local-cache.js";
 import { mergeSettingsForWorkspace } from "@/lib/storage/settings-scope.js";
 import { emptyDatabase } from "@/lib/storage/types";
@@ -38,7 +39,6 @@ import { useSyncStore } from "@/stores/sync-store";
 import { Toaster } from "@/components/ui/toaster";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
-const ACCOUNT_KEY = "sts4_account";
 const DEBOUNCE_MS = 400;
 const RESUME_PULL_COOLDOWN_MS = 5_000;
 const RECOVERY_COOLDOWN_MS = 15_000;
@@ -273,7 +273,13 @@ export function SyncProvider({ children }) {
       useSyncStore.getState().setStatus("loading");
       useSyncStore.getState().refreshPendingFromOutbox();
 
-      const account = typeof window !== "undefined" ? localStorage.getItem(ACCOUNT_KEY) : null;
+      let account = typeof window !== "undefined" ? localStorage.getItem(ACCOUNT_KEY) : null;
+      if (account && account !== userId) {
+        // Dispositivo compartido: el blob local pertenece a otro usuario.
+        // Se descarta antes de cualquier merge/push para no mezclar datos entre cuentas.
+        resetLocalCrmState();
+        account = null;
+      }
       const sessionWorkspaceId = workspaceIdRef.current;
       if (sessionWorkspaceId && sessionWorkspaceId !== getActiveWorkspaceId()) {
         applyWorkspaceLocalDatabase(sessionWorkspaceId);

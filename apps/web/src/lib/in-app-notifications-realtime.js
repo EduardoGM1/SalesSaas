@@ -3,8 +3,8 @@
  * Arma data para `armarNotificacion` / `presentarNotificacion`.
  */
 import { isSupabaseConfigured } from "@/lib/supabase/config";
-import { createClient, primeRealtimeAuth } from "@/lib/supabase/client";
-import { fetchRealtimeSession } from "@/lib/presence-api.js";
+import { createClient } from "@/lib/supabase/client";
+import { ensureBrowserSession } from "@/lib/supabase/ensure-browser-session.js";
 import { ensureRealtimeReady, removeChannelSafe } from "@/lib/presence/realtime.js";
 import { getInstallPlatform } from "@/lib/pwa-install.js";
 import { sharedProspectPath } from "@salesapp/shared/push/notification-targets.js";
@@ -18,41 +18,25 @@ let starting = false;
 /** @type {Map<string, { full_name?: string | null, avatar_url?: string | null }>} */
 const profileCache = new Map();
 
-async function ensureBrowserSession(supabase) {
-  let { data: { session } } = await supabase.auth.getSession();
-  if (session?.access_token && session?.user?.id) return session;
-  try {
-    const rt = await fetchRealtimeSession();
-    const { error } = await supabase.auth.setSession({
-      access_token: rt.access_token,
-      refresh_token: rt.refresh_token,
-    });
-    if (error) return null;
-    ({ data: { session } } = await supabase.auth.getSession());
-    if (session?.access_token) primeRealtimeAuth(session.access_token);
-    return session;
-  } catch {
-    return null;
-  }
-}
-
 function resolveProfileName(data) {
   const fromColumn = String(data?.full_name ?? "").trim();
   if (fromColumn) return fromColumn;
-  const fromSettings = String(data?.settings?.userName ?? "").trim();
+  const fromSettings = String(data?.settings_user_name ?? "").trim();
   if (fromSettings && fromSettings.toLowerCase() !== "usuario") return fromSettings;
-  const email = String(data?.email ?? "").trim();
-  const fromEmail = email.includes("@") ? email.split("@")[0].trim() : "";
-  return fromEmail || null;
+  return null;
 }
 
+/**
+ * Solo campos de presentación: no leer email ni el blob `settings` completo
+ * (contiene ids de suscripción push y preferencias) de perfiles de terceros.
+ */
 async function loadProfile(supabase, userId) {
   if (!userId) return { full_name: null, avatar_url: null };
   if (profileCache.has(userId)) return profileCache.get(userId);
   try {
     const { data } = await supabase
       .from("profiles")
-      .select("full_name, email, avatar_url, settings")
+      .select("full_name, avatar_url, settings_user_name:settings->>userName")
       .eq("id", userId)
       .maybeSingle();
     const profile = {
