@@ -7,6 +7,7 @@ import { createServiceSupabaseClient } from "../lib/supabase-server.js";
 import { requireEmpresaAdmin } from "../lib/tenant-access.js";
 import { getRequestWorkspaceId } from "../lib/workspace-scope.js";
 import { rpcResolverWorkspaceFlag } from "../lib/workspace-permission-rpc.js";
+import { isUuid } from "@salesapp/shared/data/mappers.js";
 
 const PUNTOS_EXTENSION = new Set([
   "expediente.tab",
@@ -30,6 +31,7 @@ function assertSchemaUi(schema) {
 
 /** Catálogo visible para una empresa: estándar globales + custom propios. */
 export async function listFlagsForEmpresa(actorId, empresaId) {
+  if (!isUuid(empresaId)) throw new ServiceError("empresa_id inválido.", 400);
   await requireEmpresaAdmin(actorId, empresaId);
   const admin = adminClient();
   const { data, error } = await admin

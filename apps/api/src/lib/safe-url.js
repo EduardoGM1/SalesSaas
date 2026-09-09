@@ -50,3 +50,24 @@ export function assertPublicHttpUrl(rawUrl) {
   }
   return parsed;
 }
+
+const MAX_REDIRECTS = 3;
+
+/**
+ * `fetch` que sigue redirecciones manualmente revalidando cada `Location`
+ * con `assertPublicHttpUrl` (un host público puede redirigir a la red interna).
+ * @param {string} rawUrl
+ * @param {RequestInit} [init]
+ */
+export async function fetchPublicUrl(rawUrl, init = {}) {
+  let current = assertPublicHttpUrl(rawUrl).href;
+  for (let hop = 0; hop <= MAX_REDIRECTS; hop += 1) {
+    const res = await fetch(current, { ...init, redirect: "manual" });
+    if (![301, 302, 303, 307, 308].includes(res.status)) return res;
+    const location = res.headers.get("location");
+    if (!location) return res;
+    if (hop === MAX_REDIRECTS) throw new Error("Demasiadas redirecciones.");
+    current = assertPublicHttpUrl(new URL(location, current).href).href;
+  }
+  throw new Error("Demasiadas redirecciones.");
+}

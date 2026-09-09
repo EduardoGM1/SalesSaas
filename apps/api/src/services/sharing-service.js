@@ -20,6 +20,7 @@ import {
   SALE_LIST_COLUMNS,
 } from "@salesapp/shared/data/sync-columns.js";
 import { getRequestWorkspaceId, requireWorkspacePermission } from "../lib/workspace-scope.js";
+import { logger } from "../lib/logger.js";
 
 async function loadProfiles(supabase, ids) {
   const unique = [...new Set(ids.filter(Boolean))];
@@ -554,6 +555,24 @@ export async function redeemShareInvite(supabase, userId, token) {
     throw new ServiceError("No puedes canjear tu propia invitación.");
   }
 
+  // Misma regla que createShare: un expediente de sala solo se comparte con
+  // miembros de esa sala, aunque el link se reenvíe fuera.
+  const { data: target } = await client
+    .from("prospects")
+    .select("id, workspace_id, workspaces(tipo)")
+    .eq("id", invite.prospect_id)
+    .maybeSingle();
+  assertFound(target, "Expediente no encontrado.");
+  if (target.workspace_id && target.workspaces?.tipo === "sala_de_venta") {
+    const inWs = await userInWorkspace(client, userId, target.workspace_id);
+    if (!inWs) {
+      throw new ServiceError(
+        "Solo miembros del mismo workspace pueden aceptar esta invitación. " + CROSS_BOUNDARY_MSG,
+        403,
+      );
+    }
+  }
+
   if (admin) {
     await ensureAcceptedConnection(admin, invite.owner_id, userId);
   }
@@ -990,7 +1009,7 @@ export async function saveSharedTool(supabase, userId, prospectId, tool, data) {
     prospectId,
     ownerId: access.ownerId,
     section: tool,
-  }).catch((err) => console.warn("[share] push section:", err?.message || err));
+  }).catch((err) => logger.warn("[share] push section", { error: err }));
 
   return saved?.data ?? {};
 }
@@ -1017,7 +1036,7 @@ export async function updateSharedProspect(supabase, userId, prospectId, body) {
     prospectId,
     ownerId: access.ownerId,
     section: "detail",
-  }).catch((err) => console.warn("[share] push section:", err?.message || err));
+  }).catch((err) => logger.warn("[share] push section", { error: err }));
 
   return row;
 }

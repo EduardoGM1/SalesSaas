@@ -4,6 +4,7 @@
  */
 import { Router } from "express";
 import { authenticateApi } from "../middleware/auth.js";
+import { requireApiAdmin } from "../middleware/admin-auth.js";
 import { apiError, json } from "../lib/http.js";
 import {
   adminPermissionSetHas,
@@ -752,22 +753,21 @@ router.get("/overview", async (req, res) => {
   }
 });
 
+/** Cualquiera de estos permisos admin basta para listar vendedores (selects de filtros). */
+const SELLER_OPTIONS_PERMS = ["ver_resumen", "gestionar_metas", "ver_metricas", "gestionar_usuarios", "ver_logs"];
+
 router.get("/sellers", async (req, res) => {
   const base = await authenticateApi(req, res);
   if (!base.ok) return apiError(res, base.message, base.status);
-  const a = await requireApiAdmin(base, "ver_resumen");
-  if (a.ok) {
-    const data = await getSellerOptions(a.supabase);
-    return json(res, { data });
-  }
-  for (const perm of ["gestionar_metas", "ver_metricas", "gestionar_usuarios", "ver_logs"]) {
-    const alt = await requireApiAdmin(base, perm);
-    if (alt.ok) {
-      const data = await getSellerOptions(alt.supabase);
-      return json(res, { data });
+  let denied = null;
+  for (const perm of SELLER_OPTIONS_PERMS) {
+    const a = await requireApiAdmin(base, perm);
+    if (a.ok) {
+      return runService(res, () => getSellerOptions(a.supabase), { wrap: "data" });
     }
+    denied = denied || a;
   }
-  return apiError(res, a.message || "No autorizado.", a.status || 403);
+  return apiError(res, denied?.message || "No autorizado.", denied?.status || 403);
 });
 
 router.get("/users", async (req, res) => {

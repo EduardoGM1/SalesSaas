@@ -4,6 +4,7 @@
 import { isUuid } from "@salesapp/shared/data/mappers.js";
 import { bodyToCalInsert } from "@salesapp/shared/api/validators.js";
 import { ServiceError } from "../lib/service-error.js";
+import { calendarEntryToPatch } from "../lib/patch-whitelist.js";
 import { getRequestWorkspaceContext } from "../lib/workspace-scope.js";
 import * as agendaRepo from "../repositories/calendar-repository.js";
 
@@ -41,9 +42,7 @@ export async function obtenerEntradaAgenda(supabase, userId, id) {
 
 export async function actualizarEntradaAgenda(supabase, userId, id, body) {
   if (!isUuid(id)) throw new ServiceError("ID inválido.");
-  const patch = { ...body };
-  delete patch.id;
-  delete patch.user_id;
+  const patch = calendarEntryToPatch(body);
   const ctx = await getRequestWorkspaceContext(supabase, userId);
   return agendaRepo.actualizarEntradaAgenda(supabase, {
     id,
@@ -63,9 +62,3 @@ export async function eliminarEntradaAgenda(supabase, userId, id) {
   });
   return { ok: true };
 }
-
-export const listCalendarEntries = listarEntradasAgenda;
-export const createCalendarEntry = crearEntradaAgenda;
-export const getCalendarEntry = obtenerEntradaAgenda;
-export const updateCalendarEntry = actualizarEntradaAgenda;
-export const deleteCalendarEntry = eliminarEntradaAgenda;

@@ -251,13 +251,8 @@ async function main() {
   const ventaId = await legitimateFlow(tokenGerente, tokenSuper);
   await verifyV4();
 
-  let cronSecret = env.CRON_SECRET;
-  if (!cronSecret && process.env.VPS_PASSWORD) {
-    const { execSync } = await import("child_process");
-    try {
-      cronSecret = execSync("python scripts/_get-cron-secret.py", { encoding: "utf8" }).trim();
-    } catch { /* ignore */ }
-  }
+  // CRON_SECRET debe venir por env (.env.local o entorno); no se lee del VPS.
+  const cronSecret = env.CRON_SECRET || process.env.CRON_SECRET || "";
   await verifyV5(cronSecret, ventaId);
 
   console.log("\n| Verificación | Resultado observado | |");

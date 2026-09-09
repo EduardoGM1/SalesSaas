@@ -1,3 +1,5 @@
+import { ilikeOrFilter } from "../ilike.js";
+
 const MONTHS_ES = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
 
 function monthLabel(monthKey) {
@@ -116,8 +118,8 @@ export async function getUsers(sb, filters = {}, options = {}) {
   if (filters.state === "active") profilesQuery = profilesQuery.eq("is_active", true);
   if (filters.state === "inactive") profilesQuery = profilesQuery.eq("is_active", false);
   if (filters.q) {
-    const q = filters.q.replace(/[%_]/g, "");
-    if (q) profilesQuery = profilesQuery.or(`full_name.ilike.%${q}%,email.ilike.%${q}%`);
+    const orFilter = ilikeOrFilter(["full_name", "email"], filters.q);
+    if (orFilter) profilesQuery = profilesQuery.or(orFilter);
   }
 
   let profilesRes;
@@ -145,8 +147,8 @@ export async function getUsers(sb, filters = {}, options = {}) {
     if (filters.state === "active") legacyQuery = legacyQuery.eq("is_active", true);
     if (filters.state === "inactive") legacyQuery = legacyQuery.eq("is_active", false);
     if (filters.q) {
-      const q = filters.q.replace(/[%_]/g, "");
-      if (q) legacyQuery = legacyQuery.or(`full_name.ilike.%${q}%,email.ilike.%${q}%`);
+      const orFilter = ilikeOrFilter(["full_name", "email"], filters.q);
+      if (orFilter) legacyQuery = legacyQuery.or(orFilter);
     }
     profilesRes = await legacyQuery;
   }

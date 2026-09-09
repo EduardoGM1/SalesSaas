@@ -21,6 +21,7 @@ import {
   validarComisionesFtb,
   RH_EXTRA_DP_PLAZO_DIAS,
 } from "@salesapp/shared/calculations/royal-holiday.js";
+import { logger } from "../lib/logger.js";
 
 async function loadCatalogBundle(client, catalogoId) {
   const [
@@ -228,7 +229,7 @@ export async function saveVenta(client, userId, body) {
           note: `RH ${ex.tipo === "extra_cc" ? "Extra CC" : "Extra DP"} ${ex.porcentaje}% — venta ${venta.id}`,
           prospect_id: body.prospect_id || null,
         });
-        if (calErr) console.warn("[rh] calendar reminder:", calErr.message);
+        if (calErr) logger.warn("[rh] calendar reminder", { message: calErr.message });
       }
     }
 

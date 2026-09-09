@@ -1,6 +1,7 @@
 import { Resend } from "resend";
 import { reportServerIssue } from "../lib/observability.js";
 import { primaryWebOrigin } from "../lib/origins.js";
+import { logger } from "../lib/logger.js";
 
 function escapeHtml(value) {
   return String(value ?? "")
@@ -32,7 +33,7 @@ export async function sendSupportTicketEmail({
   const from = process.env.RESEND_FROM_EMAIL || "Saletse Soporte <onboarding@resend.dev>";
 
   if (!apiKey || !to) {
-    console.warn("[support:email] RESEND_API_KEY o SUPPORT_EMAIL no configurados; se omite email.");
+    logger.warn("[support:email] RESEND_API_KEY o SUPPORT_EMAIL no configurados; se omite email.");
     return { ok: false, reason: "not_configured" };
   }
 
@@ -98,7 +99,7 @@ export async function sendSalaInviteEmail({
   const apiKey = process.env.RESEND_API_KEY;
   const from = process.env.RESEND_FROM_EMAIL || "Saletse <onboarding@resend.dev>";
   if (!apiKey || !toEmail) {
-    console.warn("[workspace:invite] RESEND_API_KEY o email faltante; se omite email.");
+    logger.warn("[workspace:invite] RESEND_API_KEY o email faltante; se omite email.");
     return { ok: false, reason: "not_configured" };
   }
   const origin = primaryWebOrigin() || "https://app.saletse.local";

@@ -13,7 +13,7 @@ const tokenLimit = limit(AUTH_RATE_LIMITS.token);
 
 router.post("/login", limit(AUTH_RATE_LIMITS.login), authController.iniciarSesion);
 router.post("/register", limit(AUTH_RATE_LIMITS.register), authController.registrar);
-router.post("/signout", authController.cerrarSesion);
+router.post("/signout", tokenLimit, authController.cerrarSesion);
 router.post("/forgot-password", limit(AUTH_RATE_LIMITS.recover), authController.olvidarContrasena);
 router.post("/reset-password", tokenLimit, authController.restablecerContrasena);
 router.post("/exchange-code", tokenLimit, authController.intercambiarCodigo);

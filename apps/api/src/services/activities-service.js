@@ -4,6 +4,7 @@
 import { isUuid } from "@salesapp/shared/data/mappers.js";
 import { bodyToActivityInsert } from "@salesapp/shared/api/validators.js";
 import { ServiceError } from "../lib/service-error.js";
+import { activityToPatch } from "../lib/patch-whitelist.js";
 import {
   getRequestWorkspaceContext,
   requireWorkspacePermission,
@@ -46,9 +47,7 @@ export async function obtenerActividad(supabase, userId, id) {
 
 export async function actualizarActividad(supabase, userId, id, body) {
   if (!isUuid(id)) throw new ServiceError("ID inválido.");
-  const patch = { ...body };
-  delete patch.id;
-  delete patch.user_id;
+  const patch = activityToPatch(body);
   const workspaceId = await requireWorkspacePermission(supabase, userId, "expedientes:editar");
   return actividadesRepo.actualizarActividad(supabase, { id, userId, workspaceId, patch });
 }
@@ -59,9 +58,3 @@ export async function eliminarActividad(supabase, userId, id) {
   await actividadesRepo.eliminarActividad(supabase, { id, userId, workspaceId });
   return { ok: true };
 }
-
-export const listActivities = listarActividades;
-export const createActivity = crearActividad;
-export const getActivity = obtenerActividad;
-export const updateActivity = actualizarActividad;
-export const deleteActivity = eliminarActividad;

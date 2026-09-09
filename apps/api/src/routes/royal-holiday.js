@@ -23,7 +23,7 @@ router.get("/royal-holiday/:empresaId/premanifiesto/dia", async (req, res) => {
   if (!a) return;
   const workspaceId = req.query?.workspaceId ? String(req.query.workspaceId) : undefined;
   if (!req.query.fecha || !workspaceId) {
-    return apiError(res, 400, "fecha y workspaceId requeridos.");
+    return apiError(res, "fecha y workspaceId requeridos.", 400);
   }
   await runService(res, () => rh.obtenerPremanifiestoDia(a, req), { wrap: "data" });
 });
@@ -33,7 +33,7 @@ router.get("/royal-holiday/:empresaId/premanifiesto/cupos", async (req, res) => 
   if (!a) return;
   const workspaceId = req.query?.workspaceId ? String(req.query.workspaceId) : undefined;
   if (!req.query.fecha || !workspaceId) {
-    return apiError(res, 400, "fecha y workspaceId requeridos.");
+    return apiError(res, "fecha y workspaceId requeridos.", 400);
   }
   await runService(res, () => rh.listarCuposPremanifiesto(a, req), { wrap: "data" });
 });

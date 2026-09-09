@@ -1,7 +1,7 @@
 import { ServiceError, assertFound } from "../lib/service-error.js";
 import { createServiceSupabaseClient } from "../lib/supabase-server.js";
 import { ilikeOrFilter } from "../lib/ilike.js";
-import { assertPublicHttpUrl } from "../lib/safe-url.js";
+import { assertPublicHttpUrl, fetchPublicUrl } from "../lib/safe-url.js";
 import { isSuperAdmin } from "@salesapp/shared/auth/permissions.js";
 import { SUPERADMIN_ONLY_KEYS } from "@salesapp/shared/auth/permission-catalog.js";
 import { rpcEffectiveWorkspacePermissions } from "../lib/workspace-permission-rpc.js";
@@ -12,6 +12,7 @@ import {
   rewriteSupabasePublicUrl,
 } from "@salesapp/shared/supabase/public-url.js";
 import { ADMIN_AUDIT_ACTIONS, writeAdminLog } from "./admin-audit-service.js";
+import { logger } from "../lib/logger.js";
 
 export const CROSS_BOUNDARY_MSG =
   "No puedes mover información entre tu espacio personal y el de la empresa";
@@ -985,8 +986,8 @@ async function resolvePersistedLogoUrl(admin, { tipo, id, logoUrl, slot = "princ
 
   let res;
   try {
-    res = await fetch(url, {
-      redirect: "follow",
+    // Redirects revalidados (anti-SSRF); el detalle de red no se devuelve al cliente.
+    res = await fetchPublicUrl(url, {
       headers: {
         Accept: "image/avif,image/webp,image/apng,image/*,*/*;q=0.8",
         "User-Agent": "SaletseBranding/1.0 (+https://saletse.app)",
@@ -994,8 +995,9 @@ async function resolvePersistedLogoUrl(admin, { tipo, id, logoUrl, slot = "princ
       signal: AbortSignal.timeout(20000),
     });
   } catch (err) {
+    logger.warn("[branding] descarga de logo falló", { error: err });
     throw new ServiceError(
-      `No se pudo descargar el logo desde esa URL (${err instanceof Error ? err.message : "error de red"}). Usa una URL directa (.png/.jpg) o súbelo como archivo.`,
+      "No se pudo descargar el logo desde esa URL. Usa una URL directa (.png/.jpg) o súbelo como archivo.",
       400,
     );
   }

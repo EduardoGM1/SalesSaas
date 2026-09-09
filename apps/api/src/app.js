@@ -9,6 +9,7 @@ import { webOrigins } from "./lib/origins.js";
 import { JSON_BODY_LIMIT } from "./lib/http-limits.js";
 import { isSupabaseConfigured } from "@salesapp/shared/supabase/config.js";
 import { probeSupabaseAuth } from "./lib/supabase-server.js";
+import { authorizeCron } from "./lib/cron-auth.js";
 import { requestContextMiddleware } from "./lib/request-context.js";
 import { logger } from "./lib/logger.js";
 
@@ -51,12 +52,14 @@ export function createApp() {
     });
   });
 
-  app.get("/health/supabase", async (_req, res) => {
+  // Público: solo ok/configured. El detalle del probe (URLs, latencias, errores
+  // de infra) requiere el CRON_SECRET para no exponer topología.
+  app.get("/health/supabase", async (req, res) => {
     const probe = await probeSupabaseAuth();
     res.json({
       ok: probe.ok,
       configured: isSupabaseConfigured(),
-      probe,
+      ...(authorizeCron(req) ? { probe } : {}),
     });
   });
 

@@ -1,5 +1,6 @@
 import { ServiceError } from "../lib/service-error.js";
 import { createServiceSupabaseClient } from "../lib/supabase-server.js";
+import { logger } from "../lib/logger.js";
 
 const PLAN_RANK = { basico: 0, pro: 1 };
 
@@ -127,7 +128,7 @@ export async function assignMembership(userId, planNombre, options = {}) {
         },
       });
     } catch (err) {
-      console.warn("[membership] audit log:", err instanceof Error ? err.message : err);
+      logger.warn("[membership] audit log", { error: err });
     }
   }
 
@@ -135,7 +136,7 @@ export async function assignMembership(userId, planNombre, options = {}) {
     const { syncMoneyBoxFlagForUser } = await import("./flags-service.js");
     await syncMoneyBoxFlagForUser(userId, plan.nombre);
   } catch (err) {
-    console.warn("[membership] money_box flag sync:", err instanceof Error ? err.message : err);
+    logger.warn("[membership] money_box flag sync", { error: err });
   }
 
   return {

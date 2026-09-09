@@ -146,6 +146,20 @@ export async function listConversationMessages(_supabase, userId, conversationId
   };
 }
 
+/**
+ * `metadata` viene del cliente y se re-emite a todos los miembros: solo se
+ * conservan claves conocidas y acotadas (evita JSON arbitrario persistido).
+ */
+function sanitizeMessageMetadata(raw) {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
+  const out = {};
+  if (isUuid(raw.prospect_id)) out.prospect_id = raw.prospect_id;
+  if (typeof raw.prospect_name === "string" && raw.prospect_name.trim()) {
+    out.prospect_name = raw.prospect_name.trim().slice(0, 200);
+  }
+  return out;
+}
+
 /** Envía mensaje al chat del expediente. */
 export async function sendConversationMessage(_supabase, userId, conversationId, body = {}) {
   if (!isUuid(conversationId)) throw new ServiceError("Conversación inválida.");
@@ -157,7 +171,7 @@ export async function sendConversationMessage(_supabase, userId, conversationId,
   if (type === "text" && !text) throw new ServiceError("Mensaje vacío.", 400);
   if (text.length > 4000) throw new ServiceError("Mensaje demasiado largo.", 400);
 
-  const metadata = body.metadata && typeof body.metadata === "object" ? body.metadata : {};
+  const metadata = sanitizeMessageMetadata(body.metadata);
   if (type === "prospect_card" && !metadata.prospect_id) {
     const { data: conv } = await admin
       .from("chat_conversations")

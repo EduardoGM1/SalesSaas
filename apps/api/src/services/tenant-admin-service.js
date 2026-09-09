@@ -267,7 +267,7 @@ export async function updateScopedEmpresa(actorId, empresaId, body) {
     });
   }
   if (body?.colores_marca !== undefined) patch.colores_marca = body.colores_marca || {};
-  if (body?.plan_paquete !== undefined) patch.plan_paquete = body.plan_paquete || null;
+  // plan_paquete es facturación: solo Superadmin (workspace-service.updateEmpresa).
   const { data, error } = await admin
     .from("empresas")
     .update(patch)

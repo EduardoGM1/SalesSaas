@@ -370,9 +370,12 @@ def main():
             for acc in ACCOUNTS
         }
 
+        default_password = os.environ.get("PRUEBA_DEFAULT_PASSWORD", "")
         for acc in ACCOUNTS:
             pw_key = email_to_pass_key[acc["email"]]
-            password = old.get(pw_key) or "prueba2020"
+            # Sin contraseña hardcodeada: reutiliza la del .env.prueba-* o
+            # PRUEBA_DEFAULT_PASSWORD; si no hay, genera una aleatoria (queda en el summary).
+            password = old.get(pw_key) or default_password or secrets.token_urlsafe(12)
             print(f"=== {args.target} {acc['email']} ===")
             uid = ensure_auth_user(client, acc["email"], acc["name"], password, env_file=cfg["env_file"])
             info = provision_one(client, acc, uid, password, db=cfg["db"])

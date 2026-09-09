@@ -1,6 +1,7 @@
 /**
  * Permisos delegados (Asistentes) y acceso cruzado de Gerente entre salas.
  */
+import { isUuid } from "@salesapp/shared/data/mappers.js";
 import { ServiceError, assertFound } from "../lib/service-error.js";
 import { adminClient, requireEmpresaAdmin, empresaFromWorkspace } from "../lib/tenant-access.js";
 import { createServiceSupabaseClient } from "../lib/supabase-server.js";
@@ -53,28 +54,72 @@ function assertCeiling(requestedKeys, ceiling) {
   }
 }
 
+/**
+ * Quién puede delegar/ver delegaciones en una sala: Gerente de esa sala o Admin
+ * de la empresa dueña. Devuelve el empresa_id de la sala.
+ */
+async function assertSalaDelegator(admin, actorId, salaId, accion = "delegar") {
+  if (!isUuid(salaId)) throw new ServiceError("sala_id inválido.", 400);
+  const emp = await empresaFromWorkspace(admin, salaId);
+  const { data: mem } = await admin
+    .from("workspace_miembros")
+    .select("rol_en_workspace, roles(slug)")
+    .eq("workspace_id", salaId)
+    .eq("usuario_id", actorId)
+    .maybeSingle();
+  const isGerente = mem?.rol_en_workspace === "gerente" || mem?.roles?.slug === "gerente";
+  const { data: isAdmin } = await admin.rpc("user_is_empresa_admin", {
+    p_usuario_id: actorId,
+    p_empresa_id: emp,
+  });
+  if (!isGerente && isAdmin !== true) {
+    throw new ServiceError(`Solo el Gerente de la sala o Admin de Empresa pueden ${accion} aquí.`, 403);
+  }
+  return emp;
+}
+
+/**
+ * El asistente debe existir como miembro activo del ámbito (sala o empresa).
+ * Sin esto, con service_role se podrían delegar permisos a cualquier usuario
+ * de la plataforma.
+ */
+async function assertAsistenteEnAmbito(admin, asistenteId, { empresaId, salaId }) {
+  if (!isUuid(asistenteId)) throw new ServiceError("asistente_id inválido.", 400);
+  if (salaId) {
+    const { data, error } = await admin
+      .from("workspace_miembros")
+      .select("usuario_id")
+      .eq("workspace_id", salaId)
+      .eq("usuario_id", asistenteId)
+      .maybeSingle();
+    if (error) throw new ServiceError(error.message, 500);
+    if (!data) throw new ServiceError("El asistente no es miembro de la sala.", 403);
+    return;
+  }
+  // Ámbito empresa: miembro directo de la empresa o de alguna de sus salas.
+  const { data: direct, error: dErr } = await admin
+    .from("empresa_miembros")
+    .select("usuario_id")
+    .eq("empresa_id", empresaId)
+    .eq("usuario_id", asistenteId)
+    .maybeSingle();
+  if (dErr) throw new ServiceError(dErr.message, 500);
+  if (direct) return;
+  const { data: viaSala, error: sErr } = await admin
+    .from("workspace_miembros")
+    .select("usuario_id, workspaces!inner(empresa_id)")
+    .eq("usuario_id", asistenteId)
+    .eq("workspaces.empresa_id", empresaId)
+    .limit(1);
+  if (sErr) throw new ServiceError(sErr.message, 500);
+  if (!viaSala?.length) throw new ServiceError("El asistente no es miembro de la empresa.", 403);
+}
+
 /** Lista claves que el actor puede ofrecer en el checklist. */
 export async function listCeilingKeys(actorId, { empresaId, salaId }) {
   const admin = adminClient();
   if (empresaId) await requireEmpresaAdmin(actorId, empresaId);
-  if (salaId) {
-    const emp = await empresaFromWorkspace(admin, salaId);
-    // Gerente de esa sala o admin empresa
-    const { data: mem } = await admin
-      .from("workspace_miembros")
-      .select("rol_en_workspace, roles(slug)")
-      .eq("workspace_id", salaId)
-      .eq("usuario_id", actorId)
-      .maybeSingle();
-    const isGerente = mem?.rol_en_workspace === "gerente" || mem?.roles?.slug === "gerente";
-    const { data: isAdmin } = await admin.rpc("user_is_empresa_admin", {
-      p_usuario_id: actorId,
-      p_empresa_id: emp,
-    });
-    if (!isGerente && isAdmin !== true) {
-      throw new ServiceError("Solo el Gerente de la sala o Admin de Empresa pueden delegar aquí.", 403);
-    }
-  }
+  if (salaId) await assertSalaDelegator(admin, actorId, salaId, "delegar");
   const ceiling = await effectiveKeysForActor(admin, actorId, { empresaId, salaId });
   return [...ceiling].sort();
 }
@@ -82,23 +127,8 @@ export async function listCeilingKeys(actorId, { empresaId, salaId }) {
 export async function listDelegatedKeys(actorId, { asistenteId, empresaId, salaId }) {
   const admin = adminClient();
   if (empresaId) await requireEmpresaAdmin(actorId, empresaId);
-  if (salaId) {
-    const emp = await empresaFromWorkspace(admin, salaId);
-    const { data: mem } = await admin
-      .from("workspace_miembros")
-      .select("rol_en_workspace, roles(slug)")
-      .eq("workspace_id", salaId)
-      .eq("usuario_id", actorId)
-      .maybeSingle();
-    const isGerente = mem?.rol_en_workspace === "gerente" || mem?.roles?.slug === "gerente";
-    const { data: isAdmin } = await admin.rpc("user_is_empresa_admin", {
-      p_usuario_id: actorId,
-      p_empresa_id: emp,
-    });
-    if (!isGerente && isAdmin !== true) {
-      throw new ServiceError("Solo el Gerente de la sala o Admin de Empresa pueden ver delegaciones aquí.", 403);
-    }
-  }
+  if (salaId) await assertSalaDelegator(admin, actorId, salaId, "ver delegaciones");
+  await assertAsistenteEnAmbito(admin, asistenteId, { empresaId, salaId });
   const { data, error } = await admin.rpc("list_permisos_delegados_keys", {
     p_asistente_id: asistenteId,
     p_empresa_id: empresaId || null,
@@ -124,12 +154,8 @@ export async function replaceDelegatedPermissions(actorId, {
 
   const admin = adminClient();
   if (empresaId) await requireEmpresaAdmin(actorId, empresaId);
-  if (salaId) {
-    const emp = await empresaFromWorkspace(admin, salaId);
-    const ceilingGate = await listCeilingKeys(actorId, { salaId });
-    void emp;
-    void ceilingGate;
-  }
+  if (salaId) await assertSalaDelegator(admin, actorId, salaId, "delegar");
+  await assertAsistenteEnAmbito(admin, asistenteId, { empresaId, salaId });
 
   const ceiling = await effectiveKeysForActor(admin, actorId, { empresaId, salaId });
   const keys = [...new Set((permisoKeys || []).filter(Boolean))];

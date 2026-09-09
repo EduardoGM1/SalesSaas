@@ -17,6 +17,7 @@ import {
   clientProspectPath,
 } from "@salesapp/shared/push/notification-targets.js";
 import { collectReminders } from "../lib/reminders.js";
+import { logger } from "../lib/logger.js";
 
 const ONESIGNAL_API = "https://api.onesignal.com/notifications";
 const MAX_STORED_SUBSCRIPTIONS = 5;
@@ -118,7 +119,7 @@ async function postOneSignal(apiKey, payload) {
   // OneSignal: id vacío = aceptado pero 0 suscriptores ("No recipients" en dashboard).
   const ok = res.ok && messageId.length > 0 && !hasErrors;
   if (!ok) {
-    console.warn("[onesignal] Envío fallido:", {
+    logger.warn("[onesignal] envío fallido", {
       status: res.status,
       messageId: messageId || null,
       errors: body.errors,
@@ -164,8 +165,9 @@ async function sendToUser(serviceSb, userId, message) {
   if (byAlias.ok) return byAlias;
   if (byAlias.body?.errors) errors.push(...(Array.isArray(byAlias.body.errors) ? byAlias.body.errors : [byAlias.body.errors]));
 
-  console.warn("[onesignal] Sin destinatarios para usuario", userId, {
-    subscription_ids: subscriptionIds,
+  logger.warn("[onesignal] sin destinatarios para usuario", {
+    user_id: userId,
+    subscriptions: subscriptionIds.length,
     errors: errors.length ? errors : byAlias.body?.errors,
   });
 
@@ -313,7 +315,7 @@ async function claimNotificationCooldown(serviceSb, key, windowMs = SECTION_CHAN
     .from("notification_cooldowns")
     .upsert({ key, last_sent_at: now }, { onConflict: "key" });
   if (error) {
-    console.warn("[onesignal] cooldown upsert:", error.message);
+    logger.warn("[onesignal] cooldown upsert", { message: error.message });
     return true;
   }
   return true;
@@ -770,7 +772,7 @@ export async function flushDueScheduledPushes({ limit = 40, userId = null } = {}
   const { data: jobs, error } = await query;
 
   if (error) {
-    console.warn("[scheduled-push] flush select:", error.message);
+    logger.warn("[scheduled-push] flush select", { message: error.message });
     return { sent: 0, skipped: "query_error", error: error.message };
   }
   if (!jobs?.length) return { sent: 0 };

@@ -1,6 +1,7 @@
 import { isUuid } from "@salesapp/shared/data/mappers.js";
 import { bodyToToolUpsert } from "@salesapp/shared/api/validators.js";
 import { ServiceError } from "../lib/service-error.js";
+import { logger } from "../lib/logger.js";
 import { createServiceSupabaseClient } from "../lib/supabase-server.js";
 import { profileDisplayName } from "../lib/profile-display-name.js";
 import {
@@ -21,6 +22,33 @@ async function calculationOwnerId(supabase, actorId, prospectId) {
     .eq("id", prospectId)
     .maybeSingle();
   return data?.user_id || actorId;
+}
+
+/**
+ * Los cálculos se guardan bajo el user_id del dueño del expediente. Si el actor
+ * no es el dueño, solo puede escribir si tiene share `edit` o es participante
+ * (representante/cerrador) del pipeline; poder leer el prospecto no basta.
+ */
+async function assertCanWriteAsOwner(supabase, actorId, ownerId, prospectId) {
+  if (ownerId === actorId || !isUuid(prospectId)) return;
+  const client = createServiceSupabaseClient() || supabase;
+  const [{ data: share }, { data: wf }] = await Promise.all([
+    client
+      .from("prospect_shares")
+      .select("permission")
+      .eq("prospect_id", prospectId)
+      .eq("shared_with_id", actorId)
+      .maybeSingle(),
+    client
+      .from("prospect_workflows")
+      .select("representante_id, cerrador_id")
+      .eq("prospect_id", prospectId)
+      .maybeSingle(),
+  ]);
+  const canEdit = share?.permission === "edit"
+    || wf?.representante_id === actorId
+    || wf?.cerrador_id === actorId;
+  if (!canEdit) throw new ServiceError("No tienes permiso para editar este expediente.", 403);
 }
 
 export async function getToolCalculation(supabase, userId, tool, prospectId) {
@@ -66,6 +94,7 @@ export async function upsertToolCalculation(supabase, userId, body) {
     TOOL_FLAG_KEYS[body?.tool] || body?.tool,
   );
   const ownerId = await calculationOwnerId(supabase, userId, body?.prospect_id);
+  await assertCanWriteAsOwner(supabase, userId, ownerId, body?.prospect_id);
   const row = bodyToToolUpsert(body, ownerId, workspaceId);
   if (!row) throw new ServiceError("tool y data son requeridos.");
   const { data, error } = await supabase.from("tool_calculations").upsert(row, { onConflict: "user_id,prospect_id,tool" }).select().single();
@@ -76,7 +105,7 @@ export async function upsertToolCalculation(supabase, userId, body) {
       actorId: userId,
       prospectId: data.prospect_id,
       section: data.tool,
-    }).catch((err) => console.warn("[tools] push section:", err?.message || err));
+    }).catch((err) => logger.warn("[tools] push section", { error: err }));
   }
 
   return data;
@@ -130,6 +159,7 @@ export async function deleteToolCalculation(supabase, userId, tool, prospectId) 
   if (!tool) throw new ServiceError("tool requerido.");
   const workspaceId = await requireWorkspaceFlag(supabase, userId, TOOL_FLAG_KEYS[tool] || tool);
   const ownerId = await calculationOwnerId(supabase, userId, prospectId);
+  await assertCanWriteAsOwner(supabase, userId, ownerId, prospectId);
   let q = supabase.from("tool_calculations").delete().eq("user_id", ownerId).eq("tool", tool);
   q = scopeByWorkspace(q, workspaceId);
   if (prospectId === "libre") q = q.is("prospect_id", null);

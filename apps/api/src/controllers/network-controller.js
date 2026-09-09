@@ -4,8 +4,11 @@
 import * as networkService from "../services/network-service.js";
 import * as sharingService from "../services/sharing-service.js";
 
+const SEARCH_LIMIT_MAX = 50;
+
 export async function buscarUsuarios(auth, req) {
-  return networkService.searchUsers(auth.supabase, auth.userId, req.query.q, Number(req.query.limit) || 20);
+  const limit = Math.min(SEARCH_LIMIT_MAX, Math.max(1, Math.trunc(Number(req.query.limit)) || 20));
+  return networkService.searchUsers(auth.supabase, auth.userId, req.query.q, limit);
 }
 
 export async function listarConexiones(auth, req) {

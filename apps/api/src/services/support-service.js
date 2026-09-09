@@ -9,6 +9,7 @@ import {
   SUPPORT_REQUEST_TYPES,
   findSupportAreaOption,
 } from "@salesapp/shared/support/site-map.js";
+import { logger } from "../lib/logger.js";
 
 const MAX_DESCRIPTION = 1500;
 const MIN_DESCRIPTION = 10;
@@ -325,7 +326,7 @@ export async function updateSupportRequestStatus(supabase, ticketId, status, act
         detalle: { de: before?.status ?? null, a: next, reporter_id: data.user_id },
       });
     } catch (err) {
-      console.warn("[support] audit status:", err instanceof Error ? err.message : err);
+      logger.warn("[support] audit status", { error: err });
     }
   }
   return data;
@@ -379,7 +380,7 @@ export async function replyToSupportRequest(supabase, ticketId, { actorId, cuerp
       },
     });
   } catch (err) {
-    console.warn("[support] audit reply:", err instanceof Error ? err.message : err);
+    logger.warn("[support] audit reply", { error: err });
   }
 
   try {
@@ -390,7 +391,7 @@ export async function replyToSupportRequest(supabase, ticketId, { actorId, cuerp
       cuerpo: body,
     });
   } catch (err) {
-    console.warn("[support] notify reply:", err instanceof Error ? err.message : err);
+    logger.warn("[support] notify reply", { error: err });
   }
 
   return reply;

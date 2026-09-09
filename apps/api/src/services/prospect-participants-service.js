@@ -408,6 +408,3 @@ export async function listActiveProspects(supabase, actorId) {
 }
 
 // Compat aliases usados por rutas antiguas durante la migración.
-export const getWorkflow = getParticipants;
-export const listWorkflowTimeline = listEventTimeline;
-export const listWorkflowInbox = listActiveProspects;

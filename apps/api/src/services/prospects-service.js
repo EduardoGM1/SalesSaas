@@ -9,6 +9,7 @@ import {
 } from "../lib/workspace-scope.js";
 import { permissionDeniedError, rpcEffectiveWorkspacePermissions } from "../lib/workspace-permission-rpc.js";
 import { canEditProspectRecord } from "../lib/prospect-edit-access.js";
+import { logger } from "../lib/logger.js";
 
 function requiredProspectViewPermission(teamScope) {
   return teamScope ? "expedientes:ver_equipo" : "expedientes:ver_propios";
@@ -57,7 +58,7 @@ export async function createProspect(supabase, userId, body) {
 
   // Side-effects de sala en background: no bloquear la respuesta HTTP (evita 504 en Vercel).
   void ensureProspectSalaSideEffects(supabase, userId, workspaceId, data.id).catch((err) => {
-    console.error("[createProspect] sala side-effects:", err?.message || err);
+    logger.error("[createProspect] sala side-effects", { error: err });
   });
   return data;
 }

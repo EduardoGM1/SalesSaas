@@ -2,6 +2,7 @@ import { ServiceError } from "../lib/service-error.js";
 import { ADMIN_AUDIT_ACTIONS } from "@salesapp/shared/auth/permission-catalog.js";
 import { hasPermission, isSuperAdmin } from "@salesapp/shared/auth/permissions.js";
 import { toCsv } from "../lib/admin/csv.js";
+import { logger } from "../lib/logger.js";
 
 export { ADMIN_AUDIT_ACTIONS };
 
@@ -26,12 +27,12 @@ export async function writeAdminLog(supabase, {
       p_detalle: detalle && typeof detalle === "object" ? detalle : {},
     });
     if (error) {
-      console.warn("[admin-audit] insert falló:", error.message, { accion, actorId });
+      logger.warn("[admin-audit] insert falló", { message: error.message, accion, actor_id: actorId });
       return null;
     }
     return data;
   } catch (err) {
-    console.warn("[admin-audit] excepción:", err instanceof Error ? err.message : err);
+    logger.warn("[admin-audit] excepción", { error: err });
     return null;
   }
 }
@@ -45,8 +46,8 @@ export async function listAdminLogs(supabase, adminProfile, filters = {}) {
     p_to: filters.to ? `${filters.to}T23:59:59.999Z` : null,
     p_actor_id: filters.actorId || null,
     p_accion: filters.accion || null,
-    p_limit: filters.limit ? Number(filters.limit) : 100,
-    p_offset: filters.offset ? Number(filters.offset) : 0,
+    p_limit: Math.min(500, Math.max(1, Math.trunc(Number(filters.limit)) || 100)),
+    p_offset: Math.max(0, Math.trunc(Number(filters.offset)) || 0),
   });
   if (error) throw new ServiceError(error.message, 400);
   return data ?? { items: [], total: 0 };

@@ -61,8 +61,3 @@ export async function marcarPresenciaOffline(supabase, userId) {
   }
   return perfilRepo.actualizarPresenciaOffline(supabase, userId, now);
 }
-
-export const getProfile = obtenerPerfil;
-export const buildProfilePatch = armarParchePerfil;
-export const updateProfile = actualizarPerfil;
-export const markPresenceOffline = marcarPresenciaOffline;

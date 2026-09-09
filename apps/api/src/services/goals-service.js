@@ -20,13 +20,11 @@ export async function guardarMeta(supabase, userId, body) {
 }
 
 export async function eliminarMeta(supabase, userId, year, month) {
-  if (!year || month < 0 || month > 11) throw new ServiceError("year y month requeridos.");
+  // Number("x") → NaN pasa `< 0 || > 11`; exigir enteros explícitos.
+  if (!Number.isInteger(year) || year < 2000 || !Number.isInteger(month) || month < 0 || month > 11) {
+    throw new ServiceError("year y month requeridos.");
+  }
   const workspaceId = await requireWorkspacePermission(supabase, userId, "metas:ver_editar_propias");
   await metasRepo.eliminarMetaDeUsuario(supabase, { userId, workspaceId, year, month });
   return { ok: true };
 }
-
-/** Alias de compatibilidad interna. */
-export const listGoals = listarMetas;
-export const upsertGoal = guardarMeta;
-export const deleteGoal = eliminarMeta;

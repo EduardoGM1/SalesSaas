@@ -4,6 +4,8 @@
 import { isUuid } from "@salesapp/shared/data/mappers.js";
 import { bodyToSaleInsert } from "@salesapp/shared/api/validators.js";
 import { ServiceError } from "../lib/service-error.js";
+import { logger } from "../lib/logger.js";
+import { saleToPatch } from "../lib/patch-whitelist.js";
 import {
   getRequestWorkspaceContext,
   requireWorkspacePermission,
@@ -46,9 +48,7 @@ export async function obtenerVenta(supabase, userId, id) {
 
 export async function actualizarVenta(supabase, userId, id, body) {
   if (!isUuid(id)) throw new ServiceError("ID inválido.");
-  const patch = { ...body };
-  delete patch.id;
-  delete patch.user_id;
+  const patch = saleToPatch(body);
   const workspaceId = await requireWorkspacePermission(supabase, userId, "ventas:editar");
   const sale = await ventasRepo.actualizarVenta(supabase, { id, userId, workspaceId, patch });
   if (String(patch.status || "").toLowerCase() === "cancelada") {
@@ -56,7 +56,7 @@ export async function actualizarVenta(supabase, userId, id, body) {
       const { handleCancelacionVenta } = await import("./royal-holiday-service.js");
       await handleCancelacionVenta(id);
     } catch (err) {
-      console.warn("[rh] cancelacion comisión:", err instanceof Error ? err.message : err);
+      logger.warn("[rh] cancelacion comisión", { error: err, sale_id: id });
     }
   }
   return sale;
@@ -68,9 +68,3 @@ export async function eliminarVenta(supabase, userId, id) {
   await ventasRepo.eliminarVenta(supabase, { id, userId, workspaceId });
   return { ok: true };
 }
-
-export const listSales = listarVentas;
-export const createSale = crearVenta;
-export const getSale = obtenerVenta;
-export const updateSale = actualizarVenta;
-export const deleteSale = eliminarVenta;
