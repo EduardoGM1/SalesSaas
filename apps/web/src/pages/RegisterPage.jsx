@@ -82,7 +82,7 @@ export function RegisterPage() {
             placeholder={t("auth.register.passwordPlaceholder")}
             required
             autoComplete="new-password"
-            minLength={6}
+            minLength={8}
             icon={Lock}
             showToggle
           />

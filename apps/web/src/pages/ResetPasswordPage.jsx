@@ -89,7 +89,7 @@ export function ResetPasswordPage() {
             placeholder={t("auth.register.passwordPlaceholder")}
             required
             autoComplete="new-password"
-            minLength={6}
+            minLength={8}
             icon={Lock}
             showToggle
           />
@@ -99,7 +99,7 @@ export function ResetPasswordPage() {
             placeholder={t("auth.reset.confirmPlaceholder")}
             required
             autoComplete="new-password"
-            minLength={6}
+            minLength={8}
             icon={Lock}
             showToggle
           />

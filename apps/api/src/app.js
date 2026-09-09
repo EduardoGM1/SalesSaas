@@ -2,12 +2,15 @@ import express from "express";
 import compression from "compression";
 import cors from "cors";
 import cookieParser from "cookie-parser";
+import helmet from "helmet";
 import v1Router from "./routes/v1.js";
 import authRouter from "./routes/auth.js";
 import { webOrigins } from "./lib/origins.js";
 import { JSON_BODY_LIMIT } from "./lib/http-limits.js";
 import { isSupabaseConfigured } from "@salesapp/shared/supabase/config.js";
 import { probeSupabaseAuth } from "./lib/supabase-server.js";
+import { requestContextMiddleware } from "./lib/request-context.js";
+import { logger } from "./lib/logger.js";
 
 export function createApp() {
   const app = express();
@@ -18,6 +21,19 @@ export function createApp() {
   const origins = webOrigins();
   const isProd = process.env.NODE_ENV === "production" || Boolean(process.env.VERCEL);
 
+  app.use(requestContextMiddleware);
+  app.use(helmet({
+    contentSecurityPolicy: {
+      useDefaults: false,
+      directives: {
+        defaultSrc: ["'none'"],
+        frameAncestors: ["'none'"],
+      },
+    },
+    crossOriginEmbedderPolicy: false,
+    // Saletse en VPS aún se sirve por HTTP; HSTS rompería el acceso.
+    hsts: false,
+  }));
   app.use(compression());
   app.use(cors({
     origin: origins.length ? origins : (isProd ? false : true),
@@ -51,7 +67,7 @@ export function createApp() {
     if (err?.type === "entity.too.large" || err?.status === 413) {
       return res.status(413).json({ error: "El cuerpo de la solicitud es demasiado grande." });
     }
-    console.error(err);
+    logger.error(err, { handler: "express-error" });
     res.status(500).json({ error: "Error interno del servidor." });
   });
 

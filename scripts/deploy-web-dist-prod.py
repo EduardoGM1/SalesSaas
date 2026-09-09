@@ -1,14 +1,9 @@
 #!/usr/bin/env python3
 """Sube apps/web/dist al VPS (backup + reemplazo). No reinicia Express."""
-import io
-import os
 import sys
 import tarfile
-import time
 from datetime import datetime
 from pathlib import Path
-
-import paramiko
 
 LOCAL_ROOT = Path(__file__).resolve().parents[1]
 DIST = LOCAL_ROOT / "apps" / "web" / "dist"
@@ -39,18 +34,11 @@ RETIRED_ENTRY_STUB = (
 
 sys.path.insert(0, str(LOCAL_ROOT / "scripts"))
 from spa_selfhosted_guard import assert_dist_selfhosted  # noqa: E402
+from vps_ssh import connect_vps, load_env_file  # noqa: E402
 
 
 def load_env():
-    data = {}
-    for path in (LOCAL_ROOT / ".env.local", LOCAL_ROOT / ".env"):
-        if not path.is_file():
-            continue
-        for raw in path.read_text(encoding="utf-8").splitlines():
-            if "=" in raw and not raw.strip().startswith("#"):
-                k, v = raw.split("=", 1)
-                data[k.strip()] = v.strip().strip('"').strip("'")
-    return data
+    return load_env_file(LOCAL_ROOT)
 
 
 def run(client, cmd, timeout=600):
@@ -76,24 +64,17 @@ def main():
     assert_dist_selfhosted(DIST)
 
     env = load_env()
-    password = env.get("VPS_PASSWORD") or os.environ.get("VPS_PASSWORD")
     host = env.get("VPS_HOST", "187.77.14.148")
-    user = env.get("VPS_USER", "root")
-    if not password:
-        print("Define VPS_PASSWORD en .env.local", file=sys.stderr)
-        sys.exit(1)
 
     stamp = datetime.utcnow().strftime("%Y%m%d-%H%M%S")
     tar_path = LOCAL_ROOT / f".web-dist-{stamp}.tar.gz"
     with tarfile.open(tar_path, "w:gz") as tar:
         tar.add(DIST, arcname="dist")
 
-    client = paramiko.SSHClient()
-    client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
     print(f"Conectando a {host}...")
-    client.connect(host, username=user, password=password, timeout=30)
+    client = connect_vps(env)
 
-    backup = f"{BACKUP_ROOT}/web-dist-pre-rh-moneybox-{stamp}"
+    backup = f"{BACKUP_ROOT}/web-dist/pre-{stamp}"
     run(client, f"mkdir -p {BACKUP_ROOT}")
     run(client, f"test -d {REMOTE_DIST} && cp -a {REMOTE_DIST} {backup} || echo 'sin dist previo'")
 

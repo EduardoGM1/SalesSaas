@@ -24,7 +24,7 @@ function isProductionRuntime() {
 }
 
 /** Cookies Secure solo con HTTPS; en VPS por IP (http://) deben ir sin Secure. */
-function cookieSecure() {
+export function cookieSecure() {
   if (process.env.COOKIE_SECURE === "false") return false;
   const origin = String(process.env.WEB_ORIGIN ?? "");
   if (origin.startsWith("http://")) return false;
@@ -68,6 +68,8 @@ export function createCookieSupabaseClient(req, res) {
       path: "/",
       sameSite: "lax",
       secure: cookieSecure(),
+      // createBrowserClient lee document.cookie para Realtime; httpOnly rompería getSession().
+      httpOnly: false,
     },
     cookies: createCookieHandlers(req, res),
   });

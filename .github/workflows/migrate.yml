@@ -1,0 +1,31 @@
+name: Migrate
+
+on:
+  workflow_dispatch:
+    inputs:
+      prefix:
+        description: "Prefijo de migración (p. ej. 0092) o ruta supabase/migrations/...."
+        required: true
+        type: string
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Install dependencies
+        run: npm ci
+      - name: Apply migration
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "Falta secret DATABASE_URL. Configúralo en GitHub Actions."
+            exit 1
+          fi
+          node scripts/apply-migration.mjs "${{ inputs.prefix }}"

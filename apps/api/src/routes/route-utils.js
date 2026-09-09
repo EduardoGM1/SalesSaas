@@ -1,6 +1,8 @@
 import { authenticateApi } from "../middleware/auth.js";
 import { apiError, json, parseBody } from "../lib/http.js";
 import { ServiceError } from "../lib/service-error.js";
+import { patchRequestContext } from "../lib/request-context.js";
+import { logger } from "../lib/logger.js";
 
 /** Mensaje genérico en producción para no filtrar detalles internos. */
 export function internalErrorMessage(err) {
@@ -15,6 +17,7 @@ export async function requireAuth(req, res) {
     apiError(res, auth.message, auth.status);
     return null;
   }
+  patchRequestContext({ userId: auth.userId });
   return auth;
 }
 
@@ -36,7 +39,7 @@ export async function runService(res, handler, { successStatus, wrap } = {}) {
     return json(res, result, successStatus);
   } catch (err) {
     if (err instanceof ServiceError) return apiError(res, err.message, err.status, err.code);
-    console.error("[runService]", err);
+    logger.error(err, { handler: "runService" });
     return apiError(res, internalErrorMessage(err), 500);
   }
 }

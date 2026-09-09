@@ -1,4 +1,5 @@
 import { apiError } from "../lib/http.js";
+import { getRequestContext } from "../lib/request-context.js";
 
 /**
  * Rate limiting en memoria con ventana fija, para endpoints sensibles
@@ -28,7 +29,9 @@ export function rateLimit({
   return (req, res, next) => {
     const now = Date.now();
     pruneExpired(now);
-    const key = `${name}:${req.ip || req.socket?.remoteAddress || "unknown"}`;
+    const ctx = getRequestContext();
+    const tenant = req.workspaceId || ctx.workspaceId || ctx.userId || "";
+    const key = `${name}:${req.ip || req.socket?.remoteAddress || "unknown"}:${tenant}`;
     let bucket = buckets.get(key);
     if (!bucket || now >= bucket.resetAt) {
       bucket = { count: 0, resetAt: now + windowMs };

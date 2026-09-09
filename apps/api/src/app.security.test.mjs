@@ -48,12 +48,14 @@ function request(port, { method = "GET", path = "/", headers = {}, body } = {}) 
   });
 }
 
-test("health no envía X-Powered-By", async () => {
+test("health no envía X-Powered-By y sí CSP de API", async () => {
   const { server, port } = await listen(createApp());
   try {
     const res = await request(port, { path: "/health" });
     assert.equal(res.status, 200);
     assert.equal(res.headers["x-powered-by"], undefined);
+    assert.match(String(res.headers["content-security-policy"] || ""), /default-src 'none'/);
+    assert.equal(res.headers["x-content-type-options"], "nosniff");
   } finally {
     server.close();
   }

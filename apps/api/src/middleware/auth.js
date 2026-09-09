@@ -1,4 +1,5 @@
 import { isSupabaseConfigured } from "@salesapp/shared/supabase/config.js";
+import { logger } from "../lib/logger.js";
 import {
   createBearerSupabaseClient,
   createCookieSupabaseClient,
@@ -43,7 +44,7 @@ async function assertSessionNotRevoked(supabase, userId, accessToken) {
   // Columna aún no migrada / error temporal: no bloquear el login.
   if (error) {
     if (String(error.message || "").includes("auth_revoked_at")) return { ok: true };
-    console.warn("[authenticateApi] auth_revoked_at:", error.message);
+    logger.warn("auth.revoked_at_lookup_failed", { error: error.message });
     return { ok: true };
   }
 
@@ -72,7 +73,7 @@ export async function authenticateApi(req, res) {
       supabase = createCookieSupabaseClient(req, res);
     }
   } catch (err) {
-    console.error("[authenticateApi]", err);
+    logger.error(err, { scope: "authenticateApi" });
     return { ok: false, status: 503, message: "Supabase no configurado." };
   }
 

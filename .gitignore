@@ -80,10 +80,13 @@ extract_pdf.py
 # Debug / auditoría local (scratch — no subir a git)
 scripts/_*
 scripts/_archive/
+scripts/.*
+scripts/probe-*.py
 scripts/audit-rh-excel-fidelity.mjs
 scripts/cleanup-keep-*.mjs
 docs/*-backup.json
 docs/limpieza-*.json
+e2e/artifacts/
 
 # PEM / keys locales
 *.pem

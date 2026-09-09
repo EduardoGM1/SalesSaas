@@ -3,6 +3,7 @@
  * Si 0052 no está, retorna null y los callers degradan a filtro solo user_id.
  */
 import * as workspaceService from "../services/workspace-service.js";
+import { patchRequestContext } from "./request-context.js";
 import { ServiceError } from "./service-error.js";
 import {
   flagDeniedError,
@@ -16,7 +17,9 @@ import {
 
 export async function getRequestWorkspaceId(supabase, userId) {
   try {
-    return await workspaceService.resolveActiveWorkspaceId(supabase, userId);
+    const id = await workspaceService.resolveActiveWorkspaceId(supabase, userId);
+    if (id) patchRequestContext({ workspaceId: id, userId });
+    return id;
   } catch {
     return null;
   }
@@ -30,6 +33,7 @@ export async function getRequestWorkspaceContext(supabase, userId) {
   try {
     const list = await workspaceService.listUserWorkspaces(supabase, userId);
     const workspaceId = await workspaceService.resolveActiveWorkspaceId(supabase, userId);
+    if (workspaceId) patchRequestContext({ workspaceId, userId });
     const active = list.find((w) => w.id === workspaceId) || null;
     const tipo = active?.tipo ?? null;
     const rol = active?.rol_en_workspace ?? null;

@@ -1,10 +1,12 @@
 /**
  * Observabilidad mínima en API (Sentry opcional vía SENTRY_DSN).
  */
+import { logger } from "./logger.js";
+
 export async function reportServerIssue(tag, detail = {}) {
   const message = detail.message || tag;
   const err = detail.error instanceof Error ? detail.error : null;
-  console.warn(`[support:${tag}]`, message, detail);
+  logger.warn(`support.${tag}`, { message, error: err ?? detail.error ?? null });
 
   const dsn = process.env.SENTRY_DSN;
   if (!dsn) return;

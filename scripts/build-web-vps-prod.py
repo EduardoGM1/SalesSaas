@@ -17,37 +17,21 @@ import sys
 from pathlib import Path
 from urllib.parse import urlparse
 
-import paramiko
-
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 from spa_selfhosted_guard import SELF_HOSTED_HOST, assert_dist_selfhosted  # noqa: E402
+from vps_ssh import connect_vps, load_env_file  # noqa: E402
 
 VPS_ENV = "/var/www/Saletse/.env"
 PUBLIC_URL = f"http://{SELF_HOSTED_HOST}"
 
 
 def load_local_env():
-    data = {}
-    for path in (ROOT / ".env.local", ROOT / ".env"):
-        if not path.is_file():
-            continue
-        for raw in path.read_text(encoding="utf-8").splitlines():
-            if "=" in raw and not raw.strip().startswith("#"):
-                k, v = raw.split("=", 1)
-                data[k.strip()] = v.strip().strip('"').strip("'")
-    return data
+    return load_env_file(ROOT)
 
 
 def fetch_vps_env(local):
-    password = local.get("VPS_PASSWORD") or os.environ.get("VPS_PASSWORD")
-    host = local.get("VPS_HOST", SELF_HOSTED_HOST)
-    user = local.get("VPS_USER", "root")
-    if not password:
-        raise SystemExit("Define VPS_PASSWORD en .env.local")
-    client = paramiko.SSHClient()
-    client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-    client.connect(host, username=user, password=password, timeout=30, allow_agent=False, look_for_keys=False)
+    client = connect_vps(local)
     _, stdout, _ = client.exec_command(f"cat {VPS_ENV}", timeout=30)
     raw = stdout.read().decode("utf-8", errors="replace")
     client.close()

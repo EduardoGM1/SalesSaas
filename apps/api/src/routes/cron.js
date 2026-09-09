@@ -1,3 +1,7 @@
+/**
+ * Rutas /cron: invocadas por un scheduler externo con CRON_SECRET.
+ * Aceptan GET y POST (Vercel Cron usa GET; crontab/curl suele usar POST).
+ */
 import { Router } from "express";
 import { apiError } from "../lib/http.js";
 import { runService } from "./route-utils.js";
@@ -8,29 +12,18 @@ import * as royalHolidayController from "../controllers/royal-holiday-controller
 
 const router = Router();
 
-router.post("/cron/flush-reminders", async (req, res) => {
-  if (!authorizeCron(req)) return apiError(res, "Unauthorized", 401);
-  await runService(res, () => notificationsController.vaciarRecordatoriosCron(), { wrap: "data" });
-});
-router.get("/cron/flush-reminders", async (req, res) => {
-  if (!authorizeCron(req)) return apiError(res, "Unauthorized", 401);
-  await runService(res, () => notificationsController.vaciarRecordatoriosCron(), { wrap: "data" });
-});
-router.post("/cron/cleanup-support-attachments", async (req, res) => {
-  if (!authorizeCron(req)) return apiError(res, "Unauthorized", 401);
-  await runService(res, () => supportController.limpiarAdjuntosSoporteCron(), { wrap: "data" });
-});
-router.get("/cron/cleanup-support-attachments", async (req, res) => {
-  if (!authorizeCron(req)) return apiError(res, "Unauthorized", 401);
-  await runService(res, () => supportController.limpiarAdjuntosSoporteCron(), { wrap: "data" });
-});
-router.post("/cron/rh-extra-dp", async (req, res) => {
-  if (!authorizeCron(req)) return apiError(res, "Unauthorized", 401);
-  await runService(res, () => royalHolidayController.procesarExtraDpCron(), { wrap: "data" });
-});
-router.get("/cron/rh-extra-dp", async (req, res) => {
-  if (!authorizeCron(req)) return apiError(res, "Unauthorized", 401);
-  await runService(res, () => royalHolidayController.procesarExtraDpCron(), { wrap: "data" });
-});
+/** Registra la misma tarea en GET y POST, protegida por CRON_SECRET. */
+function cronRoute(path, task) {
+  const handler = async (req, res) => {
+    if (!authorizeCron(req)) return apiError(res, "Unauthorized", 401);
+    await runService(res, task, { wrap: "data" });
+  };
+  router.get(path, handler);
+  router.post(path, handler);
+}
+
+cronRoute("/cron/flush-reminders", () => notificationsController.vaciarRecordatoriosCron());
+cronRoute("/cron/cleanup-support-attachments", () => supportController.limpiarAdjuntosSoporteCron());
+cronRoute("/cron/rh-extra-dp", () => royalHolidayController.procesarExtraDpCron());
 
 export default router;

@@ -10,6 +10,7 @@ module.exports = {
       env: {
         NODE_ENV: "production",
         API_PORT: "4000",
+        API_HOST: "127.0.0.1",
         NODE_OPTIONS: "--dns-result-order=ipv4first",
       },
       max_restarts: 10,
