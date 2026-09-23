@@ -4,7 +4,7 @@ import { PageBack } from "@/components/layout/page-back.jsx";
 import { useToolSession } from "@/hooks/use-tool-session.js";
 import { useMonedaToolBucket } from "@/hooks/use-moneda-tool.js";
 import { useFlushLibreToolOnLeave } from "@/hooks/use-flush-libre-tool-on-leave.js";
-import { fetchSession } from "@/lib/session-api.js";
+import { useWorkspace } from "@/hooks/use-workspace.js";
 import { royalHolidayApi } from "@/lib/royal-holiday-api.js";
 import { toast } from "@/lib/toast";
 import {
@@ -68,10 +68,11 @@ export function WorksheetRoyalHolidayPage({
     applyCaptureCurrency,
     refreshCurrencyMeta,
   } = useMonedaToolBucket({ getBucket, toolKey: "worksheet", ready, toolsRevision });
+  const { active, activeId } = useWorkspace();
+  const empresaId = active?.empresa_id || null;
+  const workspaceId = activeId || active?.id || null;
   const [tab, setTab] = useState("financiamiento");
   const activeTab = externalTab || tab;
-  const [empresaId, setEmpresaId] = useState(null);
-  const [workspaceId, setWorkspaceId] = useState(null);
   const [catalogo, setCatalogo] = useState(null);
   const [preview, setPreview] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -121,27 +122,24 @@ export function WorksheetRoyalHolidayPage({
     return () => clearTimeout(timer);
   }, [form, activeTab, captureCurrency, currencyMetaSerialized, ready, readOnly]);
 
+  // Catálogo en paralelo con useToolSession (ensureToolLoaded). La sesión ya
+  // vive en useWorkspace; no encadenar fetchSession → getCatalogo.
   useEffect(() => {
+    if (!empresaId) {
+      setCatalogo(null);
+      return undefined;
+    }
     let cancelled = false;
     (async () => {
-      const s = await fetchSession();
-      const ws = s?.workspace_activo || s?.profile?.workspace_activo;
-      const eid = ws?.empresa_id;
-      const wid = ws?.id || s?.workspace_activo_id || s?.profile?.workspace_activo_id;
-      if (cancelled) return;
-      setEmpresaId(eid || null);
-      setWorkspaceId(wid || null);
-      if (eid) {
-        try {
-          const cat = await royalHolidayApi.getCatalogo(eid);
-          if (!cancelled) setCatalogo(cat);
-        } catch (err) {
-          toast.error(err.message);
-        }
+      try {
+        const cat = await royalHolidayApi.getCatalogo(empresaId);
+        if (!cancelled) setCatalogo(cat);
+      } catch (err) {
+        toast.error(err.message);
       }
     })();
     return () => { cancelled = true; };
-  }, []);
+  }, [empresaId]);
 
   useEffect(() => {
     if (!empresaId) return;

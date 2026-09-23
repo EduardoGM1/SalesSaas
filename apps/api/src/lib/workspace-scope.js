@@ -32,7 +32,7 @@ export async function getRequestWorkspaceId(supabase, userId) {
 export async function getRequestWorkspaceContext(supabase, userId) {
   try {
     const list = await workspaceService.listUserWorkspaces(supabase, userId);
-    const workspaceId = await workspaceService.resolveActiveWorkspaceId(supabase, userId);
+    const workspaceId = await workspaceService.resolveActiveWorkspaceId(supabase, userId, null, list);
     if (workspaceId) patchRequestContext({ workspaceId, userId });
     const active = list.find((w) => w.id === workspaceId) || null;
     const tipo = active?.tipo ?? null;

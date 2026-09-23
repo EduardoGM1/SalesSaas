@@ -104,6 +104,7 @@ export async function getSession(supabase, userId) {
       supabase,
       userId,
       profile?.workspace_activo_id,
+      workspaces,
     );
     workspaceActivo = workspaces.find((w) => w.id === workspaceActivoId) || null;
     if (workspaceActivoId && profile?.workspace_activo_id !== workspaceActivoId) {

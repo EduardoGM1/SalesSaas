@@ -87,11 +87,11 @@ export function useToolSession({ clientId, shared, section }) {
         : [];
     let cancelled = false;
     (async () => {
-      for (const tool of tools) {
-        const hydrated = await ensureToolLoaded(tool, mode, clientId || null);
-        if (cancelled) return;
-        if (hydrated) setLocalToolsRevision((n) => n + 1);
-      }
+      const results = await Promise.all(
+        tools.map((tool) => ensureToolLoaded(tool, mode, clientId || null)),
+      );
+      if (cancelled) return;
+      if (results.some(Boolean)) setLocalToolsRevision((n) => n + 1);
     })();
     return () => { cancelled = true; };
   }, [useShared, ready, toolSection, mode, clientId, ensureToolLoaded]);

@@ -23,6 +23,22 @@ import {
 } from "@salesapp/shared/calculations/royal-holiday.js";
 import { logger } from "../lib/logger.js";
 
+const CATALOG_TTL_MS = 45_000;
+/** @type {Map<string, { expires: number, bundle: object }>} */
+const catalogCache = new Map();
+/** @type {Map<string, Promise<object>>} */
+const catalogInflight = new Map();
+
+export function invalidateCatalogoVigenteCache(empresaId) {
+  if (empresaId) {
+    catalogCache.delete(empresaId);
+    catalogInflight.delete(empresaId);
+    return;
+  }
+  catalogCache.clear();
+  catalogInflight.clear();
+}
+
 async function loadCatalogBundle(client, catalogoId) {
   const [
     { data: catalogo },
@@ -52,9 +68,7 @@ async function loadCatalogBundle(client, catalogoId) {
   };
 }
 
-export async function getCatalogoVigente(client, empresaId) {
-  if (!client) throw new ServiceError("Cliente Supabase requerido.", 500);
-  if (!empresaId) throw new ServiceError("empresa_id requerido.", 400);
+async function fetchCatalogoVigente(client, empresaId) {
   const { data: cat, error } = await client
     .from("catalogo_configuracion")
     .select("*")
@@ -64,6 +78,40 @@ export async function getCatalogoVigente(client, empresaId) {
   if (error) throw new ServiceError(error.message, 400);
   if (!cat) throw new ServiceError("No hay catálogo vigente para esta empresa.", 404);
   return loadCatalogBundle(client, cat.id);
+}
+
+/**
+ * Catálogo vigente por empresa. Cache 45s + coalescing in-flight para que
+ * GET /catalogo y POST /preview no disparen 8 queries cada vez.
+ */
+export async function getCatalogoVigente(client, empresaId, { skipCache = false } = {}) {
+  if (!client) throw new ServiceError("Cliente Supabase requerido.", 500);
+  if (!empresaId) throw new ServiceError("empresa_id requerido.", 400);
+
+  if (!skipCache) {
+    const hit = catalogCache.get(empresaId);
+    if (hit && hit.expires > Date.now()) {
+      logger.info("rh.catalog.cache", { hit: true, empresa_id: empresaId });
+      return hit.bundle;
+    }
+    const pending = catalogInflight.get(empresaId);
+    if (pending) {
+      logger.info("rh.catalog.cache", { hit: "inflight", empresa_id: empresaId });
+      return pending;
+    }
+  }
+
+  const pending = fetchCatalogoVigente(client, empresaId)
+    .then((bundle) => {
+      catalogCache.set(empresaId, { expires: Date.now() + CATALOG_TTL_MS, bundle });
+      return bundle;
+    })
+    .finally(() => {
+      catalogInflight.delete(empresaId);
+    });
+  if (!skipCache) catalogInflight.set(empresaId, pending);
+  logger.info("rh.catalog.cache", { hit: false, empresa_id: empresaId });
+  return pending;
 }
 
 function assertComisionesFtb(comisiones) {
@@ -434,7 +482,7 @@ export async function handleCancelacionVenta(saleId) {
 /** Publica nueva versión clonando el catálogo vigente (copy-on-write). Requiere cliente admin (requireEmpresaAdmin). */
 export async function publishNuevaVersion(admin, empresaId, actorId, patch = {}) {
   if (!admin) throw new ServiceError("Cliente admin requerido.", 500);
-  const vigente = await getCatalogoVigente(admin, empresaId);
+  const vigente = await getCatalogoVigente(admin, empresaId, { skipCache: true });
   const now = new Date().toISOString();
   const prevCatalogoId = vigente.catalogo.id;
   await admin
@@ -503,7 +551,10 @@ export async function publishNuevaVersion(admin, empresaId, actorId, patch = {})
     );
   }
 
-  return loadCatalogBundle(admin, cid);
+  invalidateCatalogoVigenteCache(empresaId);
+  const bundle = await loadCatalogBundle(admin, cid);
+  catalogCache.set(empresaId, { expires: Date.now() + CATALOG_TTL_MS, bundle });
+  return bundle;
 }
 
 export async function listComisionMovimientos(client, empresaId, { workspaceId, from, to, limit = 200 } = {}) {

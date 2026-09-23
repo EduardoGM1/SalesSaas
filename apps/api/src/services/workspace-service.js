@@ -164,8 +164,8 @@ export async function listUserWorkspaces(supabase, userId) {
   });
 }
 
-export async function resolveActiveWorkspaceId(supabase, userId, preferredId = null) {
-  const list = await listUserWorkspaces(supabase, userId);
+export async function resolveActiveWorkspaceId(supabase, userId, preferredId = null, knownList = null) {
+  const list = Array.isArray(knownList) ? knownList : await listUserWorkspaces(supabase, userId);
   if (!list.length) return null;
 
   if (preferredId && list.some((w) => w.id === preferredId)) return preferredId;
@@ -507,7 +507,7 @@ export async function removeSalaMember(adminProfile, workspaceId, usuarioId) {
 
 async function requireActiveSalaGerente(supabase, userId) {
   const list = await listUserWorkspaces(supabase, userId);
-  const workspaceId = await resolveActiveWorkspaceId(supabase, userId);
+  const workspaceId = await resolveActiveWorkspaceId(supabase, userId, null, list);
   const active = list.find((w) => w.id === workspaceId) || null;
   if (!active || active.tipo !== "sala_de_venta") {
     throw new ServiceError("Solo disponible en una sala de venta activa.", 403);
@@ -526,7 +526,7 @@ export async function listTeamMembers(supabase, userId) {
 /** Miembros de la sala activa (cualquier rol) para chat colaborativo 1:1. */
 export async function listSalaPeers(supabase, userId) {
   const list = await listUserWorkspaces(supabase, userId);
-  const workspaceId = await resolveActiveWorkspaceId(supabase, userId);
+  const workspaceId = await resolveActiveWorkspaceId(supabase, userId, null, list);
   const active = list.find((w) => w.id === workspaceId) || null;
   if (!active || active.tipo !== "sala_de_venta") {
     throw new ServiceError("Solo disponible en una sala de venta activa.", 403);
@@ -848,7 +848,7 @@ export async function searchRepresentanteCandidates(supabase, userId, rawQuery) 
 
 export async function leaveActiveSala(supabase, userId) {
   const list = await listUserWorkspaces(supabase, userId);
-  const workspaceId = await resolveActiveWorkspaceId(supabase, userId);
+  const workspaceId = await resolveActiveWorkspaceId(supabase, userId, null, list);
   const active = list.find((w) => w.id === workspaceId) || null;
   if (!active || active.tipo !== "sala_de_venta") {
     throw new ServiceError("Solo puedes abandonar una sala de venta (no el espacio personal).", 403);
