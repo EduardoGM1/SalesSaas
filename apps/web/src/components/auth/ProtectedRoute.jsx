@@ -33,7 +33,7 @@ export function ProtectedRoute({ children }) {
       return;
     }
     ensureAuthSyncBridge();
-    // Revalida al montar, al reabrir la PWA (auth:resume), al focus y cada ~20s en standalone.
+    // Revalida al montar. El bus de sesión (poll ~4s, visibility, auth:resume) es compartido.
     return watchSession((session) => {
       setState({ loading: false, ok: !!session?.user });
     });

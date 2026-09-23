@@ -9988,6 +9988,17 @@ body,
 .schema-form .input { width: 100%; }
 
 /* ===== Worksheet Royal Holiday ===== */
+.worksheet-rh-stage {
+  display: grid;
+}
+.worksheet-rh-stage > .worksheet-rh-pane {
+  grid-area: 1 / 1;
+  min-width: 0;
+}
+.worksheet-rh-stage > .worksheet-rh-pane[data-active="false"] {
+  visibility: hidden;
+  pointer-events: none;
+}
 .worksheet-rh-tabs {
   margin: 8px 0 16px;
   flex-wrap: nowrap;

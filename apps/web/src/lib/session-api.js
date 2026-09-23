@@ -63,14 +63,93 @@ export function initSessionResumeProbe() {
   });
 }
 
-export async function fetchSession() {
-  if (!isSupabaseConfigured()) return null;
+/** Última sesión conocida. `undefined` = todavía no hay valor. */
+let cachedSession;
+/** @type {number} Sube en cada invalidación para ignorar respuestas viejas. */
+let sessionGeneration = 0;
+/** @type {{ gen: number, promise: Promise<object | null> } | null} */
+let sessionInflight = null;
+/** @type {Set<(session: object | null) => void>} */
+const sessionListeners = new Set();
+let sessionBusReady = false;
+
+function publishSession(session) {
+  cachedSession = session;
+  for (const listener of sessionListeners) {
+    try {
+      listener(session);
+    } catch {
+      // Un suscriptor no debe tumbar al resto.
+    }
+  }
+}
+
+/** Tira la sesión en memoria. La petición en vuelo, si la hay, ya no se publica. */
+export function invalidateSessionCache() {
+  sessionGeneration += 1;
+  cachedSession = undefined;
+}
+
+async function loadSessionFromNetwork(gen) {
   const res = await fetch("/api/v1/auth/session", {
     credentials: "include",
     cache: "no-store",
   });
   if (!res.ok) return null;
   return res.json();
+}
+
+/**
+ * Una sola sesión para todos los hooks.
+ * Las llamadas concurrentes comparten la promesa. Sin `force`, se reusa el
+ * último valor. `force` va a red (logout, switch, poll) y sigue coalesciendo.
+ * @param {{ force?: boolean }} [options]
+ */
+export async function fetchSession({ force = false } = {}) {
+  if (!isSupabaseConfigured()) return null;
+  if (!force && cachedSession !== undefined) return cachedSession;
+  if (sessionInflight && sessionInflight.gen === sessionGeneration) return sessionInflight.promise;
+
+  const gen = sessionGeneration;
+  const promise = (async () => {
+    try {
+      const data = await loadSessionFromNetwork(gen);
+      if (gen === sessionGeneration) publishSession(data);
+      return data;
+    } catch {
+      await delay(900);
+      try {
+        const data = await loadSessionFromNetwork(gen);
+        if (gen === sessionGeneration) publishSession(data);
+        return data;
+      } catch {
+        return cachedSession === undefined ? null : cachedSession;
+      }
+    } finally {
+      if (sessionInflight && sessionInflight.gen === gen) sessionInflight = null;
+    }
+  })();
+
+  sessionInflight = { gen, promise };
+  return promise;
+}
+
+function ensureSessionBus() {
+  if (sessionBusReady || typeof window === "undefined") return;
+  sessionBusReady = true;
+  ensureAuthSyncBridge();
+  const pollMs = isStandaloneApp() ? 3000 : 4000;
+  const refresh = () => {
+    if (document.visibilityState === "visible") void fetchSession({ force: true });
+  };
+  setInterval(refresh, pollMs);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") refresh();
+  });
+  window.addEventListener("auth:resume", () => {
+    invalidateSessionCache();
+    void fetchSession({ force: true });
+  });
 }
 
 export async function fetchProfile() {
@@ -84,12 +163,14 @@ export async function fetchProfile() {
 export function notifyAuthChanged() {
   if (typeof window === "undefined") return;
   ensureAuthSyncBridge();
+  invalidateSessionCache();
   try {
     localStorage.setItem(AUTH_SYNC_KEY, String(Date.now()));
   } catch {
     // private mode / storage blocked
   }
   window.dispatchEvent(new Event("auth:changed"));
+  void fetchSession({ force: true });
 }
 
 /**
@@ -98,6 +179,7 @@ export function notifyAuthChanged() {
  * @param {{ notify?: boolean }} [options]
  */
 export async function clearLocalSession(options = {}) {
+  invalidateSessionCache();
   const notify = options.notify !== false;
   try {
     const sync = await import("@/lib/session-cross-device.js");
@@ -131,6 +213,7 @@ async function flushOutboxBeforeSignOut() {
 }
 
 export async function signOut() {
+  invalidateSessionCache();
   ensureAuthSyncBridge();
   const t0 = Date.now();
   try {
@@ -180,68 +263,12 @@ export async function signOut() {
  * @param {(session: object | null) => void} onSession
  * @param {{ intervalMs?: number }} [options]
  */
-export function watchSession(onSession, { intervalMs } = {}) {
-  ensureAuthSyncBridge();
-  const standalone = typeof window !== "undefined" && isStandaloneApp();
-  // Respaldo corto: el camino feliz es Broadcast (<1s). Poll solo si Realtime falla.
-  const pollMs = intervalMs ?? (standalone ? 3000 : 4000);
-  let active = true;
-  let inFlight = false;
-  let pending = false;
-
-  const load = async ({ retry = false } = {}) => {
-    if (!active) return;
-    if (inFlight) {
-      pending = true;
-      return;
-    }
-    inFlight = true;
-    try {
-      const session = await fetchSession();
-      if (active) onSession(session);
-    } catch {
-      // Error de red al despertar: reintentar una vez; no marcar logout por fallo temporal.
-      if (retry && active) {
-        await delay(900);
-        try {
-          const session = await fetchSession();
-          if (active) onSession(session);
-        } catch {
-          // Mantener estado previo.
-        }
-      }
-    } finally {
-      inFlight = false;
-      if (pending && active) {
-        pending = false;
-        load({ retry: true });
-      }
-    }
-  };
-
-  load({ retry: true });
-  const interval = setInterval(() => {
-    if (document.visibilityState === "visible") load({ retry: true });
-  }, pollMs);
-
-  const onVisible = () => {
-    if (document.visibilityState === "visible") load({ retry: true });
-  };
-  const onResume = () => load({ retry: true });
-
-  document.addEventListener("visibilitychange", onVisible);
-  window.addEventListener("focus", onResume);
-  window.addEventListener("pageshow", onResume);
-  window.addEventListener("auth:changed", onResume);
-  window.addEventListener("auth:resume", onResume);
-
+export function watchSession(onSession) {
+  ensureSessionBus();
+  sessionListeners.add(onSession);
+  if (cachedSession !== undefined) onSession(cachedSession);
+  else void fetchSession();
   return () => {
-    active = false;
-    clearInterval(interval);
-    document.removeEventListener("visibilitychange", onVisible);
-    window.removeEventListener("focus", onResume);
-    window.removeEventListener("pageshow", onResume);
-    window.removeEventListener("auth:changed", onResume);
-    window.removeEventListener("auth:resume", onResume);
+    sessionListeners.delete(onSession);
   };
 }

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { Topbar } from "@/components/layout/topbar";
 import { PageBack } from "@/components/layout/page-back.jsx";
 import { useToolSession } from "@/hooks/use-tool-session.js";
@@ -80,9 +80,18 @@ export function WorksheetRoyalHolidayPage({
   const dirtyKeysRef = useRef(new Set());
   const hydratedRef = useRef(false);
   const skipAutosaveRef = useRef(true);
+  const autosaveTimerRef = useRef(null);
+  const prevTabRef = useRef(activeTab);
 
   const persistRhBucket = async () => {
-    await saveBucket("worksheet", appendMonedaPayload(rhFormToBucket(form, activeTab)));
+    const snapshot = new Set(dirtyKeysRef.current);
+    dirtyKeysRef.current = new Set();
+    try {
+      await saveBucket("worksheet", appendMonedaPayload(rhFormToBucket(form, activeTab)));
+    } catch (err) {
+      for (const key of snapshot) dirtyKeysRef.current.add(key);
+      throw err;
+    }
   };
 
   useFlushLibreToolOnLeave({
@@ -116,11 +125,24 @@ export function WorksheetRoyalHolidayPage({
       skipAutosaveRef.current = false;
       return;
     }
-    const timer = setTimeout(() => {
+    clearTimeout(autosaveTimerRef.current);
+    autosaveTimerRef.current = setTimeout(() => {
       void persistRhBucket();
     }, 700);
-    return () => clearTimeout(timer);
-  }, [form, activeTab, captureCurrency, currencyMetaSerialized, ready, readOnly]);
+    return () => clearTimeout(autosaveTimerRef.current);
+  }, [form, captureCurrency, currencyMetaSerialized, ready, readOnly]);
+
+  // El id de pestaña no es un cambio de datos. Si había edición pendiente,
+  // se guarda al salir de la pestaña; un click solo no dispara PUT.
+  useEffect(() => {
+    const prev = prevTabRef.current;
+    if (prev === activeTab) return;
+    prevTabRef.current = activeTab;
+    if (!ready || readOnly) return;
+    if (dirtyKeysRef.current.size === 0) return;
+    clearTimeout(autosaveTimerRef.current);
+    void persistRhBucket();
+  }, [activeTab, ready, readOnly]);
 
   // Catálogo en paralelo con useToolSession (ensureToolLoaded). La sesión ya
   // vive en useWorkspace; no encadenar fetchSession → getCatalogo.
@@ -224,13 +246,15 @@ export function WorksheetRoyalHolidayPage({
     setForm((f) => ({ ...f, [key]: value }));
   };
 
-  const patchForm = (updater) => {
-    markFieldsDirty(dirtyKeysRef, "__form");
-    setForm(updater);
-  };
+  const patchForm = useCallback((updater) => {
+    setForm((prev) => {
+      const next = typeof updater === "function" ? updater(prev) : updater;
+      if (next !== prev) markFieldsDirty(dirtyKeysRef, "__form");
+      return next;
+    });
+  }, []);
 
   const setTabPersisted = (nextTab) => {
-    markFieldsDirty(dirtyKeysRef, "__tab");
     setTab(nextTab);
     onTabChange?.(nextTab);
   };
@@ -395,7 +419,8 @@ export function WorksheetRoyalHolidayPage({
           className="tool-moneda-selector"
         />
 
-        {showVenta && (
+        <div className="worksheet-rh-stage">
+        <div className="worksheet-rh-pane" data-active={showVenta ? "true" : "false"} aria-hidden={!showVenta}>
           <WorksheetRhVentaPanel
             form={form}
             set={set}
@@ -415,9 +440,9 @@ export function WorksheetRoyalHolidayPage({
             regalosCatalogo={regalosCatalogo}
             showExtras={false}
           />
-        )}
+        </div>
 
-        {showHoja && (
+        <div className="worksheet-rh-pane" data-active={showHoja ? "true" : "false"} aria-hidden={!showHoja}>
           <WorksheetRhHojaPanel
             form={form}
             set={set}
@@ -435,9 +460,12 @@ export function WorksheetRoyalHolidayPage({
             captureCurrency={captureCurrency}
             client={client}
           />
-        )}
+        </div>
 
-        {showFin && (
+        <div className="worksheet-rh-pane" data-active={showFin ? "true" : "false"} aria-hidden={!showFin}>
+          {empresaId && !catalogo ? (
+            <WorksheetRhSkeleton />
+          ) : (
           <WorksheetRhFinancingPanel
             form={form}
             set={set}
@@ -451,15 +479,19 @@ export function WorksheetRoyalHolidayPage({
             onMoneyBlur={handleMoneyBlur}
             stacked={false}
           />
-        )}
+          )}
+        </div>
 
-        {showMoneyBox && (
+        <div className="worksheet-rh-pane" data-active={showMoneyBox ? "true" : "false"} aria-hidden={!showMoneyBox}>
+          {visibleTabs.some((tb) => tb.id === "moneybox") ? (
           <WorksheetRhMoneyBoxPanel
             empresaId={empresaId}
             financiamiento={catalogo?.financiamiento}
             nacionalidad={form.nacionalidad}
           />
-        )}
+          ) : null}
+        </div>
+        </div>
         </fieldset>
 
         {!readOnly && (

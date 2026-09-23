@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
-import { fetchSession, watchSession, notifyAuthChanged } from "@/lib/session-api.js";
+import { fetchSession, watchSession, notifyAuthChanged, invalidateSessionCache } from "@/lib/session-api.js";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { applyWorkspaceLocalDatabase } from "@/lib/workspace-local-cache.js";
 import { requestSyncRefresh } from "@/lib/sync-refresh.js";
@@ -90,7 +90,8 @@ export function useWorkspace() {
         throw new Error(body.error || "No se pudo cambiar de workspace.");
       }
 
-      const nextSession = await fetchSession();
+      invalidateSessionCache();
+      const nextSession = await fetchSession({ force: true });
       applyWorkspaceBrand(nextSession?.workspace_activo?.brand);
 
       applyWorkspaceLocalDatabase(

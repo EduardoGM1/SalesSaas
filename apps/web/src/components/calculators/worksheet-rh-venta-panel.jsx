@@ -622,7 +622,7 @@ export function WorksheetRhVentaPanel({
                 </li>
               </ul>
             </div>
-            {ws.comision?.pendiente ? (
+            {catalogo && ws.comision?.pendiente ? (
               <p className="rh-warn-text rh-hint">{ws.comision.mensaje}</p>
             ) : ws.comision ? (
               <p className="muted rh-hint">

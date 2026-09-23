@@ -701,12 +701,12 @@ export function WorksheetRhFinancingPanel({
                   </label>
                 );
               })}
-              {!plazoCards.length && (
+              {!catalogo ? null : !plazoCards.length ? (
                 <span className="muted">Sin plazos para esta combinación.</span>
-              )}
+              ) : null}
             </div>
 
-            {ws.comision?.pendiente ? (
+            {catalogo && ws.comision?.pendiente ? (
               <p className="rh-warn-text">{ws.comision.mensaje}</p>
             ) : ws.comision ? (
               <p className="muted rh-hint">

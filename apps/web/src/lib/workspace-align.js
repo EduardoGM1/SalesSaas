@@ -2,7 +2,7 @@
  * Realinea el cliente con profiles.workspace_activo_id del servidor
  * cuando otro dispositivo cambió de sala/workspace.
  */
-import { fetchSession, notifyAuthChanged } from "@/lib/session-api.js";
+import { fetchSession, notifyAuthChanged, invalidateSessionCache } from "@/lib/session-api.js";
 import { applyWorkspaceLocalDatabase } from "@/lib/workspace-local-cache.js";
 import { toast } from "@/lib/toast";
 
@@ -36,7 +36,8 @@ function applyBrand(brand) {
 export async function alignWorkspaceWithServer(localWorkspaceId) {
   let session = null;
   try {
-    session = await fetchSession();
+    invalidateSessionCache();
+    session = await fetchSession({ force: true });
   } catch {
     return { changed: false, workspaceId: localWorkspaceId || null, session: null };
   }

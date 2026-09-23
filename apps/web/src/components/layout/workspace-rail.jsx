@@ -9,7 +9,7 @@ import { confirmDialog } from "@/lib/confirm";
 import { toast } from "@/lib/toast";
 import { applyWorkspaceLocalDatabase } from "@/lib/workspace-local-cache.js";
 import { requestSyncRefresh } from "@/lib/sync-refresh.js";
-import { fetchSession, notifyAuthChanged } from "@/lib/session-api.js";
+import { fetchSession, notifyAuthChanged, invalidateSessionCache } from "@/lib/session-api.js";
 import {
   startDashboardDataRealtime,
   stopDashboardDataRealtime,
@@ -40,7 +40,8 @@ async function performLeaveSala(t) {
   publishWorkspaceTransition({ switching: true, target: null });
   try {
     await leaveActiveSala();
-    const nextSession = await fetchSession();
+    invalidateSessionCache();
+    const nextSession = await fetchSession({ force: true });
     const workspaceId = nextSession?.workspace_activo_id || nextSession?.workspace_activo?.id || null;
     applyWorkspaceLocalDatabase(workspaceId);
     notifyAuthChanged();
