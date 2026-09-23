@@ -217,4 +217,44 @@ test.describe("Premanifiesto OPC — modal de cupo", () => {
     await expect(page).toHaveURL(/\/ops\/rh\/premanifiesto/);
     await expect(page.locator("[data-testid='rh-pm-page']")).toBeVisible();
   });
+
+  test("todas las olas con cupo muestran botón + y el de OLA 2 abre el mismo modal", async ({ page }) => {
+    await prepareAuthenticatedPage(page);
+    await page.route("**/api/v1/auth/session", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          ok: true,
+          user: { id: "e2e-user", email: "e2e@test.local" },
+          profile: { id: "e2e-user", role: "user" },
+          flags: { "rh.tool.premanifiesto.opc": true },
+          workspace_activo: { id: WORKSPACE_ID, empresa_id: EMPRESA_ID, tipo: "sala_de_venta", role_slug: "opc" },
+          workspace_activo_id: WORKSPACE_ID,
+        }),
+      });
+    });
+    await page.route(`**/api/v1/royal-holiday/${EMPRESA_ID}/premanifiesto/dia**`, async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ data: DIA_STUB }),
+      });
+    });
+    await page.route("**/api/v1/rh/empresa**", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ data: { empresa_id: EMPRESA_ID, workspace_id: WORKSPACE_ID } }),
+      });
+    });
+
+    await page.goto("/ops/rh/premanifiesto", { waitUntil: "domcontentloaded" });
+    await page.waitForSelector("[data-testid='rh-pm-page']", { timeout: 30000 });
+    const addButtons = page.locator("[data-testid='rh-pm-ola-add']");
+    await expect(addButtons).toHaveCount(2);
+    await addButtons.nth(1).click();
+    await expect(page.locator("[data-testid='opc-expediente-modal']")).toBeVisible();
+    await expect(page.getByText(/OLA 2/)).toBeVisible();
+  });
 });

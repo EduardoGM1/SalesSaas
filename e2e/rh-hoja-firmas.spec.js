@@ -30,6 +30,8 @@ function buildRhForm(overrides = {}) {
     regalosCantidad: {},
     extrasDp: [],
     extrasCc: [],
+    extrasEngancheItems: [],
+    extrasClosingItems: [],
     enganche_num_pagos: "3",
     enganche_pagos: [],
     gasto_num_pagos: "2",

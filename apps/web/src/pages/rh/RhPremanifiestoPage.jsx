@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { Plus } from "lucide-react";
 import { OpcExpedienteModal } from "@/components/clients/opc-expediente-page.jsx";
 import { RhToolLoading, RhToolShell } from "@/components/rh/rh-tool-shell.jsx";
 import { RhCalendarWidget } from "@/components/rh/rh-calendar-widget.jsx";
@@ -296,6 +297,21 @@ function formatOlaHora(hora) {
   return `${String(m[1]).padStart(2, "0")}:${m[2]}`;
 }
 
+/** Botón + de nueva pareja (mismo control en todas las olas con cupo). */
+function OlaAddButton({ ola, onInvite }) {
+  return (
+    <button
+      type="button"
+      className="rh-pm-ola-add"
+      data-testid="rh-pm-ola-add"
+      aria-label={`Nueva pareja en ${ola.etiqueta || "ola"}`}
+      onClick={() => onInvite(ola)}
+    >
+      <Plus size={18} strokeWidth={2.6} aria-hidden />
+    </button>
+  );
+}
+
 function PremanifiestoDayPanel({
   fecha,
   dia,
@@ -382,31 +398,44 @@ function PremanifiestoDayPanel({
                 )}
               </div>
               <div className="rh-pm-ola-body">
-                {(ola.entradas || []).length === 0 && (
-                  canOpcInvite && olaDisponible(ola) ? (
-                    <button
-                      type="button"
-                      className="muted rh-pm-empty-ola is-clickable"
-                      data-testid="rh-pm-empty-ola-invite"
-                      onClick={() => openInvite(ola)}
-                    >
-                      Sin parejas en esta ola
-                    </button>
-                  ) : (
-                    <p className="muted rh-pm-empty-ola">Sin parejas en esta ola</p>
-                  )
+                {(ola.entradas || []).length === 0 ? (
+                  <div className="rh-pm-ola-empty-row">
+                    {canOpcInvite && olaDisponible(ola) ? (
+                      <button
+                        type="button"
+                        className="muted rh-pm-empty-ola is-clickable"
+                        data-testid="rh-pm-empty-ola-invite"
+                        onClick={() => openInvite(ola)}
+                      >
+                        Sin parejas en esta ola
+                      </button>
+                    ) : (
+                      <p className="muted rh-pm-empty-ola">Sin parejas en esta ola</p>
+                    )}
+                    {canOpcInvite && olaDisponible(ola) ? (
+                      <OlaAddButton ola={ola} onInvite={openInvite} />
+                    ) : null}
+                  </div>
+                ) : (
+                  <>
+                    {(ola.entradas || []).map((entry) => (
+                      <PremanifiestoEntryRow
+                        key={entry.id}
+                        entry={entry}
+                        access={access}
+                        empresaId={empresaId}
+                        workspaceId={workspaceId}
+                        onRefresh={onRefresh}
+                        onEdit={(e) => setFormState({ mode: "edit", entry: e })}
+                      />
+                    ))}
+                    {canOpcInvite && olaDisponible(ola) ? (
+                      <div className="rh-pm-ola-empty-row rh-pm-ola-empty-row--after">
+                        <OlaAddButton ola={ola} onInvite={openInvite} />
+                      </div>
+                    ) : null}
+                  </>
                 )}
-                {(ola.entradas || []).map((entry) => (
-                  <PremanifiestoEntryRow
-                    key={entry.id}
-                    entry={entry}
-                    access={access}
-                    empresaId={empresaId}
-                    workspaceId={workspaceId}
-                    onRefresh={onRefresh}
-                    onEdit={(e) => setFormState({ mode: "edit", entry: e })}
-                  />
-                ))}
               </div>
             </div>
           ))}

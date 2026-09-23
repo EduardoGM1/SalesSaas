@@ -28,7 +28,7 @@ import { useFlag, useFlags } from "@/hooks/use-flag.js";
 import { TOOL_PERMISSION_KEYS } from "@/lib/auth/tool-permissions.js";
 import { TOOL_FLAG_KEYS, WORKSHEET_ROYAL_HOLIDAY_FLAG, WORKSHEET_RH_MONEY_BOX_TAB_FLAG } from "@/lib/auth/tool-flags.js";
 import { useExpedienteFolderNav, EXPEDIENTE_TABS } from "@/hooks/use-expediente-folder-nav.js";
-import { ClientFolderStrip, ClientFolderSubnav } from "@/components/clients/client-folder-nav.jsx";
+import { ClientFolderStrip, SubTabsDrawer } from "@/components/clients/client-folder-nav.jsx";
 import { namedLazy } from "@/lib/lazy-retry.js";
 
 const SurveyPage = namedLazy(() => import("@/components/calculators/survey-page.jsx"), "SurveyPage");
@@ -517,10 +517,11 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
           {validFolder ? (
             <div className="exp-folder-stage">
               {showRhSubnav && (
-                <ClientFolderSubnav
+                <SubTabsDrawer
                   tabs={rhSubTabs}
                   activeId={activeRhSub}
                   onSelect={(next) => setSub(next)}
+                  tone="purple"
                   ariaLabel="Pestañas worksheet"
                 />
               )}

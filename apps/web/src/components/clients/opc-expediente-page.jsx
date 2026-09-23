@@ -61,10 +61,10 @@ const PERSON_PLACEHOLDERS = {
   },
 };
 
-function FieldRow({ label, testId, children }) {
+function FieldBox({ label, testId, children }) {
   return (
-    <div className="frow tool-frow">
-      <div className="flabel">{label}</div>
+    <div className="client-survey-cfield opc-card-field">
+      <label>{label}</label>
       {children}
     </div>
   );
@@ -72,7 +72,7 @@ function FieldRow({ label, testId, children }) {
 
 function TextField({ label, value, onChange, testId, type = "text", placeholder }) {
   return (
-    <FieldRow label={label}>
+    <FieldBox label={label} testId={testId}>
       <input
         className="input"
         type={type}
@@ -82,14 +82,14 @@ function TextField({ label, value, onChange, testId, type = "text", placeholder 
         onFocus={selectOnFocus}
         onChange={(e) => onChange(e.target.value)}
       />
-    </FieldRow>
+    </FieldBox>
   );
 }
 
 function NotesField({ label, value, onChange, testId, placeholder }) {
   return (
-    <div className="frow tool-frow tool-frow--notes">
-      <div className="flabel">{label}</div>
+    <div className="opc-card-notes">
+      <label className="opc-card-notes-label">{label}</label>
       <textarea
         className="input opc-notes-textarea"
         rows={6}
@@ -322,12 +322,15 @@ export function OpcExpedienteForm({
         <>
           <div className="card tool-calc-card">
             <div className="card-heading">Datos generales</div>
-            <TextField label="País" testId="opc-pais" placeholder="ej. México" value={form.pais} onChange={(v) => patch("pais", v)} />
-            <TextField label="Pax" testId="opc-pax" placeholder="ej. 2" value={form.pax} onChange={(v) => patch("pax", v)} />
-            <TextField label="Estado" testId="opc-estado" placeholder="ej. Quintana Roo" value={form.estado} onChange={(v) => patch("estado", v)} />
-            <TextField label="Módulo" testId="opc-modulo" placeholder="ej. Módulo 4" value={form.modulo} onChange={(v) => patch("modulo", v)} />
-            <TextField label="Idioma" testId="opc-idioma" placeholder="ej. Español" value={form.idioma} onChange={(v) => patch("idioma", v)} />
-            <TextField label="Estado civil" testId="opc-estado-civil" placeholder="ej. Casados" value={form.estadoCivil} onChange={(v) => patch("estadoCivil", v)} />
+            <div className="card-sub">País, pax, procedencia e idioma de la pareja.</div>
+            <div className="client-survey-compact opc-card-grid">
+              <TextField label="País" testId="opc-pais" placeholder="ej. México" value={form.pais} onChange={(v) => patch("pais", v)} />
+              <TextField label="Pax" testId="opc-pax" placeholder="ej. 2" value={form.pax} onChange={(v) => patch("pax", v)} />
+              <TextField label="Estado" testId="opc-estado" placeholder="ej. Quintana Roo" value={form.estado} onChange={(v) => patch("estado", v)} />
+              <TextField label="Módulo" testId="opc-modulo" placeholder="ej. Módulo 4" value={form.modulo} onChange={(v) => patch("modulo", v)} />
+              <TextField label="Idioma" testId="opc-idioma" placeholder="ej. Español" value={form.idioma} onChange={(v) => patch("idioma", v)} />
+              <TextField label="Estado civil" testId="opc-estado-civil" placeholder="ej. Casados" value={form.estadoCivil} onChange={(v) => patch("estadoCivil", v)} />
+            </div>
           </div>
           <IntegrantesTable form={form} setForm={setForm} />
           <div className="card tool-calc-card">
@@ -345,12 +348,15 @@ export function OpcExpedienteForm({
       {tab === "estancia" && (
         <div className="card tool-calc-card">
           <div className="card-heading">Datos de estancia</div>
-          <TextField label="Agencia" testId="opc-agencia" placeholder="ej. Booking" value={form.agencia} onChange={(v) => patch("agencia", v)} />
-          <TextField label="# Noches" testId="opc-nights" type="number" placeholder="ej. 4" value={form.nights} onChange={(v) => patch("nights", v)} />
-          <TextField label="Categoría de habitación" testId="opc-room-type" placeholder="ej. Deluxe" value={form.roomType} onChange={(v) => patch("roomType", v)} />
-          <TextField label="Costo por noche" testId="opc-rate" type="number" placeholder="ej. 180" value={form.rate} onChange={(v) => patch("rate", v)} />
-          <TextField label="# de habitación" testId="opc-room-number" placeholder="ej. 1204" value={form.roomNumber} onChange={(v) => patch("roomNumber", v)} />
-          <TextField label="Total" testId="opc-total" type="number" placeholder="ej. 720" value={form.total} onChange={(v) => patch("total", v)} />
+          <div className="card-sub">Agencia, noches y habitación de la estancia.</div>
+          <div className="client-survey-compact opc-card-grid">
+            <TextField label="Agencia" testId="opc-agencia" placeholder="ej. Booking" value={form.agencia} onChange={(v) => patch("agencia", v)} />
+            <TextField label="# Noches" testId="opc-nights" type="number" placeholder="ej. 4" value={form.nights} onChange={(v) => patch("nights", v)} />
+            <TextField label="Categoría de habitación" testId="opc-room-type" placeholder="ej. Deluxe" value={form.roomType} onChange={(v) => patch("roomType", v)} />
+            <TextField label="Costo por noche" testId="opc-rate" type="number" placeholder="ej. 180" value={form.rate} onChange={(v) => patch("rate", v)} />
+            <TextField label="# de habitación" testId="opc-room-number" placeholder="ej. 1204" value={form.roomNumber} onChange={(v) => patch("roomNumber", v)} />
+            <TextField label="Total" testId="opc-total" type="number" placeholder="ej. 720" value={form.total} onChange={(v) => patch("total", v)} />
+          </div>
           <NotesField
             label="Notas"
             testId="opc-notas-estancia"
@@ -364,18 +370,20 @@ export function OpcExpedienteForm({
       {tab === "invitacion" && (
         <div className="card tool-calc-card">
           <div className="card-heading">Datos de la invitación</div>
-          <FieldRow label="Fecha de la cita">
-            <input className="input" type="date" data-testid="opc-fecha" value={form.fecha} onChange={(e) => patch("fecha", e.target.value)} />
-          </FieldRow>
-          <FieldRow label="Hora">
-            <input className="input" type="time" data-testid="opc-hora" value={form.hora} onChange={(e) => patch("hora", e.target.value)} />
-          </FieldRow>
-          <div className="frow tool-frow readonly-soft">
-            <div className="flabel">Ola</div>
-            <input className="input" readOnly tabIndex={-1} value={matchedOla ? `${matchedOla.etiqueta} (${normalizeHora(matchedOla.hora)})` : "Sin ola para esa hora"} />
+          <div className="card-sub">Fecha, hora, ola, calificación y regalo de la cita.</div>
+          <div className="client-survey-compact opc-card-grid">
+            <FieldBox label="Fecha de la cita">
+              <input className="input" type="date" data-testid="opc-fecha" value={form.fecha} onChange={(e) => patch("fecha", e.target.value)} />
+            </FieldBox>
+            <FieldBox label="Hora">
+              <input className="input" type="time" data-testid="opc-hora" value={form.hora} onChange={(e) => patch("hora", e.target.value)} />
+            </FieldBox>
+            <FieldBox label="Ola">
+              <input className="input" readOnly tabIndex={-1} value={matchedOla ? `${matchedOla.etiqueta} (${normalizeHora(matchedOla.hora)})` : "Sin ola para esa hora"} />
+            </FieldBox>
+            <TextField label="Calificación" testId="opc-calif" placeholder="ej. Q" value={form.calificacion} onChange={(v) => patch("calificacion", v)} />
+            <TextField label="Regalo" testId="opc-regalo" placeholder="ej. Cena para dos" value={form.regalo} onChange={(v) => patch("regalo", v)} />
           </div>
-          <TextField label="Calificación" testId="opc-calif" placeholder="ej. Q" value={form.calificacion} onChange={(v) => patch("calificacion", v)} />
-          <TextField label="Regalo" testId="opc-regalo" placeholder="ej. Cena para dos" value={form.regalo} onChange={(v) => patch("regalo", v)} />
           <NotesField
             label="Notas"
             testId="opc-notas-invitacion"

@@ -2,11 +2,12 @@ import { useEffect, useMemo } from "react";
 import { CollapsibleSection } from "@/components/ui/collapsible-section.jsx";
 import { CampoMonedaCaptura } from "@/components/currency/campo-moneda-captura.jsx";
 import {
-  RH_EXTRA_DP_PLAZO_DIAS,
   calcularMensualidad,
+  costoUnitarioRegalo,
   montoVentaWorksheet,
+  ordenarRegalosExcel,
   toDateStr,
-  fechaLimiteExtraDp,
+  totalLineaRegalo,
 } from "@/lib/calculations/royal-holiday.js";
 import { parseMoney } from "@/lib/format/money";
 
@@ -66,78 +67,147 @@ function plazoSubtitle(tasa) {
   return t === 0 ? "Sin intereses" : "Tasa fija anual";
 }
 
-function ExtraCollapsible({ title, rows, max, readOnly, onChange, onAdd, hint }) {
+function emptyExtraItem() {
+  return { regaloId: "", cantidad: "1" };
+}
+
+function ExtraCatalogTable({
+  rows = [],
+  regalos = [],
+  cuotaAnual = 0,
+  readOnly,
+  onChange,
+  fmtResult,
+  testId,
+}) {
+  const catalog = ordenarRegalosExcel(regalos).filter((g) => costoUnitarioRegalo(g, { cuotaAnual }) != null);
+  const byId = new Map(catalog.map((g) => [String(g.id), g]));
+  const subtotal = rows.reduce((sum, row) => {
+    const g = byId.get(String(row.regaloId));
+    if (!g) return sum;
+    return sum + totalLineaRegalo(g, { qty: Number(row.cantidad) || 0, cuotaAnual });
+  }, 0);
+
+  const patchRow = (idx, next) => {
+    const copy = rows.map((r, i) => (i === idx ? { ...r, ...next } : r));
+    onChange(copy);
+  };
+  const fmt = fmtResult || ((n) => String(n ?? ""));
+
+  return (
+    <div className="rh-extra-catalog" data-testid={testId}>
+      <div className="rh-regalos-table-wrap">
+        <table className="client-table rh-regalos-table rh-extra-catalog-table">
+          <thead>
+            <tr>
+              <th className="rh-col-name">Concepto</th>
+              <th className="rh-col-qty">Cantidad</th>
+              <th className="rh-col-cost">Costo unit.</th>
+              <th className="rh-col-total">Total</th>
+              <th />
+            </tr>
+          </thead>
+          <tbody>
+            {rows.length === 0 ? (
+              <tr><td colSpan={5} className="muted">Sin renglones. Pulsa + para agregar un concepto del catálogo.</td></tr>
+            ) : null}
+            {rows.map((row, idx) => {
+              const g = byId.get(String(row.regaloId));
+              const unit = g ? costoUnitarioRegalo(g, { cuotaAnual }) : null;
+              const total = g ? totalLineaRegalo(g, { qty: Number(row.cantidad) || 0, cuotaAnual }) : 0;
+              return (
+                <tr key={`${row.regaloId || "new"}-${idx}`}>
+                  <td className="rh-col-name">
+                    <select
+                      className="input"
+                      disabled={readOnly}
+                      value={row.regaloId || ""}
+                      aria-label="Concepto"
+                      onChange={(e) => patchRow(idx, { regaloId: e.target.value, cantidad: row.cantidad || "1" })}
+                    >
+                      <option value="">Selecciona un concepto</option>
+                      {catalog.map((item) => (
+                        <option key={item.id} value={item.id}>{item.nombre}</option>
+                      ))}
+                    </select>
+                  </td>
+                  <td className="rh-col-qty">
+                    <input
+                      type="number"
+                      min="1"
+                      max="99"
+                      step="1"
+                      className="input input-compact rh-qty-input"
+                      disabled={readOnly || !row.regaloId}
+                      value={row.cantidad ?? "1"}
+                      aria-label="Cantidad"
+                      onChange={(e) => patchRow(idx, { cantidad: e.target.value })}
+                    />
+                  </td>
+                  <td className="rh-col-cost">{unit == null ? "—" : fmt(unit)}</td>
+                  <td className="rh-col-total">{g ? fmt(total) : "—"}</td>
+                  <td>
+                    {!readOnly && (
+                      <button
+                        type="button"
+                        className="btn btn-ghost btn-sm"
+                        aria-label="Quitar renglón"
+                        onClick={() => onChange(rows.filter((_, i) => i !== idx))}
+                      >
+                        ×
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      <div className="rh-extra-catalog-foot">
+        {!readOnly && (
+          <button
+            type="button"
+            className="btn btn-ghost btn-sm rh-fin-extra-add"
+            onClick={() => onChange([...rows, emptyExtraItem()])}
+          >
+            +
+          </button>
+        )}
+        <div className="rh-extra-catalog-subtotal">
+          Subtotal {fmt(subtotal)}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ExtraCollapsible({
+  title,
+  catalogRows,
+  regalos,
+  cuotaAnual,
+  readOnly,
+  onCatalogChange,
+  fmtResult,
+  hint,
+  testId,
+}) {
   return (
     <CollapsibleSection
       title={title}
       defaultOpen={false}
       className="rh-fin-nested-collapsible"
     >
-      <table className="client-table rh-mini-table">
-        <thead>
-          <tr>
-            <th>% Extra</th>
-            <th>Fecha</th>
-            <th />
-          </tr>
-        </thead>
-        <tbody>
-          {rows.length === 0 && (
-            <tr><td colSpan={3} className="muted">Sin extras</td></tr>
-          )}
-          {rows.map((row, idx) => (
-            <tr key={idx}>
-              <td>
-                <input
-                  type="number"
-                  className="input input-compact"
-                  disabled={readOnly}
-                  value={row.porcentaje}
-                  onChange={(e) => {
-                    const next = [...rows];
-                    next[idx] = { ...next[idx], porcentaje: e.target.value };
-                    onChange(next);
-                  }}
-                />
-              </td>
-              <td>
-                <input
-                  type="date"
-                  className="input input-compact"
-                  disabled={readOnly}
-                  value={row.fecha}
-                  onChange={(e) => {
-                    const next = [...rows];
-                    next[idx] = { ...next[idx], fecha: e.target.value };
-                    onChange(next);
-                  }}
-                />
-              </td>
-              <td>
-                {!readOnly && (
-                  <button
-                    type="button"
-                    className="btn btn-ghost btn-sm"
-                    onClick={() => onChange(rows.filter((_, i) => i !== idx))}
-                  >
-                    ×
-                  </button>
-                )}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      {!readOnly && (
-        <button
-          type="button"
-          className="btn btn-ghost btn-sm rh-fin-extra-add"
-          disabled={rows.length >= max}
-          onClick={onAdd}
-        >
-          + Agregar extra
-        </button>
-      )}
+      <ExtraCatalogTable
+        rows={catalogRows}
+        regalos={regalos}
+        cuotaAnual={cuotaAnual}
+        readOnly={readOnly}
+        onChange={onCatalogChange}
+        fmtResult={fmtResult}
+        testId={testId}
+      />
       {hint ? <p className="muted rh-hint">{hint}</p> : null}
     </CollapsibleSection>
   );
@@ -165,11 +235,13 @@ function PaymentCaptureBlock({
   onPagoBlur,
   readOnly,
   extraTitle,
-  extraRows,
-  extraMax,
-  onExtraChange,
-  onExtraAdd,
+  extraCatalogRows,
+  extraRegalos,
+  extraCuotaAnual,
+  onExtraCatalogChange,
+  extraFmtResult,
   extraHint,
+  extraTestId,
   topContent,
 }) {
   const hoyAmount = Number(hoyValue) || 0;
@@ -305,12 +377,14 @@ function PaymentCaptureBlock({
         {extraTitle ? (
           <ExtraCollapsible
             title={extraTitle}
-            rows={extraRows}
-            max={extraMax}
+            catalogRows={extraCatalogRows}
+            regalos={extraRegalos}
+            cuotaAnual={extraCuotaAnual}
             readOnly={readOnly}
-            onChange={onExtraChange}
-            onAdd={onExtraAdd}
+            onCatalogChange={onExtraCatalogChange}
+            fmtResult={extraFmtResult}
             hint={extraHint}
+            testId={extraTestId}
           />
         ) : null}
       </div>
@@ -367,12 +441,8 @@ export function WorksheetRhFinancingPanel({
   const pctGastoHoy = gastoTotalCapture > 0 ? (gastoHoy / gastoTotalCapture) * 100 : 0;
   const pctSaldoGasto = gastoTotalCapture > 0 ? (saldoGasto / gastoTotalCapture) * 100 : 0;
 
-  const maxDp = catalogo?.parametros?.max_extra_dp ?? 6;
-  const maxCc = catalogo?.parametros?.max_extra_cc ?? 6;
   const adminOptions = (catalogo?.costo_administrativo || []).map((c) => c.monto_usd);
   const tarjetas = catalogo?.parametros?.tarjetas_internas || ["Invex", "RCI"];
-  const fechaVentaRef = toDateStr(new Date());
-  const extraDpLimite = fechaLimiteExtraDp(fechaVentaRef);
 
   const balanceFinanciarOperational = ws.totales?.balanceAFinanciar != null
     ? Number(ws.totales.balanceAFinanciar)
@@ -501,14 +571,13 @@ export function WorksheetRhFinancingPanel({
             onPagoBlur={(idx, raw) => handlePagoBlur("enganche_pagos", idx, raw)}
             readOnly={readOnly}
             extraTitle="(+) Extra enganche"
-            extraRows={form.extrasDp}
-            extraMax={maxDp}
-            onExtraChange={(rows) => set("extrasDp", rows)}
-            onExtraAdd={() => setForm((f) => ({
-              ...f,
-              extrasDp: [...f.extrasDp, { porcentaje: "10", fecha: toDateStr(new Date()) }],
-            }))}
-            extraHint={`Máximo ${maxDp}. Extra DP: fecha dentro de ${RH_EXTRA_DP_PLAZO_DIAS} días desde la venta${extraDpLimite ? ` (hasta ${toDateStr(extraDpLimite)})` : ""}.`}
+            extraCatalogRows={form.extrasEngancheItems}
+            extraRegalos={catalogo?.regalos || []}
+            extraCuotaAnual={Number(ws.bottom_line?.cuota_anual_mfee) || 0}
+            extraFmtResult={fmtResult}
+            extraTestId="rh-extra-enganche"
+            onExtraCatalogChange={(rows) => set("extrasEngancheItems", rows)}
+            extraHint="Concepto del catálogo de regalos. El costo unitario se completa solo; el total es cantidad × costo. Independiente de «Regalos y cargos»."
           />
 
           <PaymentCaptureBlock
@@ -531,15 +600,14 @@ export function WorksheetRhFinancingPanel({
             onPagosChange={(rows) => set("gasto_pagos", rows)}
             onPagoBlur={(idx, raw) => handlePagoBlur("gasto_pagos", idx, raw)}
             readOnly={readOnly}
-            extraTitle="(+) Extra gasto administrativo"
-            extraRows={form.extrasCc}
-            extraMax={maxCc}
-            onExtraChange={(rows) => set("extrasCc", rows)}
-            onExtraAdd={() => setForm((f) => ({
-              ...f,
-              extrasCc: [...f.extrasCc, { porcentaje: "10", fecha: toDateStr(new Date()) }],
-            }))}
-            extraHint={`Máximo ${maxCc} extras de gasto administrativo.`}
+            extraTitle="(+) Extra closing cost"
+            extraCatalogRows={form.extrasClosingItems}
+            extraRegalos={catalogo?.regalos || []}
+            extraCuotaAnual={Number(ws.bottom_line?.cuota_anual_mfee) || 0}
+            extraFmtResult={fmtResult}
+            extraTestId="rh-extra-closing"
+            onExtraCatalogChange={(rows) => set("extrasClosingItems", rows)}
+            extraHint="Mismo catálogo que Extra enganche. Captura independiente: no suma a «Regalos y cargos»."
             topContent={(
               <>
                 <div className="frow tool-frow rh-fin-gasto-select">

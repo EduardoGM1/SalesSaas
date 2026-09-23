@@ -20,8 +20,6 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-import paramiko
-
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "scripts" / ".rh-schema-sync-staging.json"
 RH_ID = "0aee9ad0-5a5e-4532-8b86-95b801f8ee88"
@@ -112,20 +110,9 @@ def load_env():
 
 
 def ssh_connect(env):
-    pwd = env.get("VPS_PASSWORD") or os.environ.get("VPS_PASSWORD")
-    if not pwd:
-        sys.exit("Falta VPS_PASSWORD")
-    client = paramiko.SSHClient()
-    client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-    client.connect(
-        env.get("VPS_HOST", "187.77.14.148"),
-        username=env.get("VPS_USER", "root"),
-        password=pwd,
-        timeout=30,
-        allow_agent=False,
-        look_for_keys=False,
-    )
-    return client
+    sys.path.insert(0, str(ROOT / "scripts"))
+    from vps_ssh import connect_vps
+    return connect_vps(env)
 
 
 def run(client, cmd, timeout=180):

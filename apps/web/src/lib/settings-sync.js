@@ -1,4 +1,4 @@
-import { UserSettings } from "@/lib/storage/types";
+/** @typedef {import("@/lib/storage/types").UserSettings} UserSettings */
 
 const LIVE_PREVIEW_KEYS = ["language", "currency", "exchangeRate", "exchangeMode"];
 

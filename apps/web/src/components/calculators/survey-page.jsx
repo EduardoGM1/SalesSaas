@@ -24,6 +24,7 @@ import {
   serializeDiscovery,
 } from "@/lib/survey/discovery-storage.js";
 import { useSurveyQuestions } from "@/hooks/use-survey-questions.js";
+import { SubTabsDrawer } from "@/components/clients/client-folder-nav.jsx";
 import { MotivacionesPanel } from "@/components/calculators/survey/motivaciones-panel.jsx";
 import { TimesharePanel } from "@/components/calculators/survey/timeshare-panel.jsx";
 import { GastosPanel } from "@/components/calculators/survey/gastos-panel.jsx";
@@ -44,6 +45,7 @@ const EMPTY_DATA: Record<string, string> = {
   disc_json: "",
 };
 
+const CLIENTE_TAB = { id: "cliente", labelKey: "tools.survey.tab.cliente" };
 const TABS = [
   { id: "motivaciones", labelKey: "tools.survey.tab.motivaciones" },
   { id: "timeshare", labelKey: "tools.survey.tab.timeshare" },
@@ -86,7 +88,7 @@ export function SurveyPage({ clientId, shared, embedded }: SurveyPageProps) {
   const [data, setData] = useState<Record<string, string>>({ ...EMPTY_DATA });
   const [sType, setSType] = useState("hotel");
   const [futureType, setFutureType] = useState<"real" | "dream">("real");
-  const [tab, setTab] = useState("motivaciones");
+  const [tab, setTab] = useState("cliente");
   const [saved, setSaved] = useState(false);
   const [configOpen, setConfigOpen] = useState(false);
   const [configSection, setConfigSection] = useState("motivaciones");
@@ -173,12 +175,15 @@ export function SurveyPage({ clientId, shared, embedded }: SurveyPageProps) {
   const progressPct = totalQuestions ? Math.round((answered / totalQuestions) * 100) : 0;
 
   const visibleTabs = useMemo(() => {
-    if (flagsStatus === "unavailable") return [];
-    if (!hasCatalog) return TABS;
-    return TABS.filter((item) => {
-      const flagKey = SURVEY_TAB_FLAGS[item.id];
-      return !flagKey || flags[flagKey] === true;
-    });
+    const rest = flagsStatus === "unavailable"
+      ? []
+      : (!hasCatalog
+        ? TABS
+        : TABS.filter((item) => {
+          const flagKey = SURVEY_TAB_FLAGS[item.id];
+          return !flagKey || flags[flagKey] === true;
+        }));
+    return [CLIENTE_TAB, ...rest];
   }, [hasCatalog, flags, flagsStatus]);
 
   useEffect(() => {
@@ -377,7 +382,27 @@ export function SurveyPage({ clientId, shared, embedded }: SurveyPageProps) {
         <SharedToolBanner show={ready && isShared && readOnly} peers={peers} />
 
         <fieldset className="shared-tool-fieldset" disabled={readOnly}>
-          <div className={`card client-survey-prospect${isFileMode ? " show" : ""}`}>
+          {tab !== "cliente" && (
+            <div className="disc-progress-bar" aria-live="polite">
+              <span className="card-sub" style={{ marginBottom: 0 }}>
+                {answered} de {totalQuestions} respondidas · {progressPct}%
+              </span>
+              <div className="progress" aria-hidden>
+                <div className="progress-fill" style={{ width: `${progressPct}%` }} />
+              </div>
+            </div>
+          )}
+
+          <SubTabsDrawer
+            tabs={visibleTabs.map((item) => ({ id: item.id, label: t(item.labelKey) }))}
+            activeId={tab}
+            onSelect={setTab}
+            tone="blue"
+            ariaLabel="Secciones del Survey"
+          />
+
+          {tab === "cliente" && (
+            <div className="card client-survey-prospect show" role="tabpanel">
             <div className="card-heading">{t("tools.survey.prospectTitle")}</div>
             <div className="card-sub">{t("tools.survey.prospectSub")}</div>
             <div className="client-survey-compact">
@@ -478,34 +503,10 @@ export function SurveyPage({ clientId, shared, embedded }: SurveyPageProps) {
                 </CollabField>
               </div>
             </div>
-          </div>
-
-          <div className="disc-progress-bar" aria-live="polite">
-            <span className="card-sub" style={{ marginBottom: 0 }}>
-              {answered} de {totalQuestions} respondidas · {progressPct}%
-            </span>
-            <div className="progress" aria-hidden>
-              <div className="progress-fill" style={{ width: `${progressPct}%` }} />
-            </div>
-          </div>
-
-          {visibleTabs.length > 0 && (
-            <div className="seg disc-tabs" role="tablist" aria-label="Secciones del Discovery">
-              {visibleTabs.map((item) => (
-                <button
-                  key={item.id}
-                  type="button"
-                  role="tab"
-                  aria-selected={tab === item.id}
-                  className={`seg-btn${tab === item.id ? " on" : ""}`}
-                  onClick={() => setTab(item.id)}
-                >
-                  {t(item.labelKey)}
-                </button>
-              ))}
             </div>
           )}
 
+          {tab !== "cliente" && (
           <div className="card disc-tab-panel" role="tabpanel">
             {tab === "motivaciones" && visibleTabs.some((item) => item.id === "motivaciones") && (
               <MotivacionesPanel
@@ -556,6 +557,7 @@ export function SurveyPage({ clientId, shared, embedded }: SurveyPageProps) {
               <ResumenPanel discovery={discovery} result={result} fmtResult={fmtResult} grouped={grouped} />
             )}
           </div>
+          )}
         </fieldset>
 
         {!readOnly && tab !== "resumen" && (

@@ -18,6 +18,8 @@ export const DEFAULT_RH_FORM = {
   regalosSplit: {},
   extrasDp: [],
   extrasCc: [],
+  extrasEngancheItems: [],
+  extrasClosingItems: [],
   enganche_num_pagos: "3",
   enganche_pagos: [],
   gasto_num_pagos: "2",
@@ -44,6 +46,12 @@ export function mergeRhForm(base, loaded) {
     gasto_pagos: Array.isArray(loaded.gasto_pagos) ? loaded.gasto_pagos : base.gasto_pagos,
     extrasDp: Array.isArray(loaded.extrasDp) ? loaded.extrasDp : base.extrasDp,
     extrasCc: Array.isArray(loaded.extrasCc) ? loaded.extrasCc : base.extrasCc,
+    extrasEngancheItems: Array.isArray(loaded.extrasEngancheItems)
+      ? loaded.extrasEngancheItems
+      : base.extrasEngancheItems,
+    extrasClosingItems: Array.isArray(loaded.extrasClosingItems)
+      ? loaded.extrasClosingItems
+      : base.extrasClosingItems,
     regalosElegidos: loaded.regalosElegidos && typeof loaded.regalosElegidos === "object"
       ? loaded.regalosElegidos
       : base.regalosElegidos,

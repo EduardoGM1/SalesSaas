@@ -1,16 +1,33 @@
 /**
- * Shell de carpetas (Nivel 1) + bandeja de sub-tabs (Nivel 2).
+ * Carpetas de expediente: Nivel 1 (pestaña trapecio) + bandeja de sub-tabs.
  *
- * Nivel 1: fila de cards grandes (estantería), nunca columna ni chips.
- * Nivel 2 SOLO en Worksheet con flag worksheet.royal_holiday.
- *
- * Pendientes de producto (no decidir ni implementar aquí):
- * - Si las carpetas Venta / Notas tendrán sub-tabs a futuro
- * - Persistencia del último tab entre sesiones
- * - Límite de carpetas en mobile
+ * `FolderTab` / `ClientFolderStrip` cubren TODA carpeta de nivel 1 con hijos
+ * (Survey, Vacaciones, Worksheet, Datos Cliente, Venta, Notas).
+ * `SubTabsDrawer` es la bandeja de Nivel 2 (Survey, Worksheet RH, etc.).
  */
 
-import { ChevronDown } from "lucide-react";
+export function FolderTab({ folder, selected }) {
+  const Icon = folder.icon;
+  const tone = folder.tone || "blue";
+  return (
+    <button
+      type="button"
+      role="tab"
+      aria-selected={selected}
+      className={`exp-folder-tab tone-${tone}${selected ? " is-active" : ""}`}
+      onClick={folder.onClick}
+    >
+      <span className="exp-folder-tab-ear">
+        {Icon ? <Icon size={14} aria-hidden /> : null}
+        <span className="exp-folder-tab-ear-label">{folder.label}</span>
+      </span>
+      <span className="exp-folder-tab-body">
+        <span className="exp-folder-tab-title">{folder.label}</span>
+        {folder.desc ? <span className="exp-folder-tab-desc">{folder.desc}</span> : null}
+      </span>
+    </button>
+  );
+}
 
 export function ClientFolderStrip({ folders, activeTab }) {
   return (
@@ -19,28 +36,13 @@ export function ClientFolderStrip({ folders, activeTab }) {
       role="tablist"
       aria-label="Carpetas del expediente"
     >
-      {folders.map((folder) => {
-        const Icon = folder.icon;
-        const selected = folder.id === activeTab;
-        const tone = folder.tone || "blue";
-        return (
-          <button
-            key={folder.id}
-            type="button"
-            role="tab"
-            aria-selected={selected}
-            className={`exp-folder-card exp-folder-card--shelf tone-${tone}${selected ? " is-active" : ""}`}
-            onClick={folder.onClick}
-          >
-            <div className={`tool-icon ${tone}`}><Icon size={18} /></div>
-            <ChevronDown className="exp-folder-chevron" size={16} aria-hidden />
-            <div className="exp-folder-card-text">
-              <div className="tool-name">{folder.label}</div>
-              {folder.desc ? <div className="tool-desc">{folder.desc}</div> : null}
-            </div>
-          </button>
-        );
-      })}
+      {folders.map((folder) => (
+        <FolderTab
+          key={folder.id}
+          folder={folder}
+          selected={folder.id === activeTab}
+        />
+      ))}
     </div>
   );
 }
@@ -60,5 +62,26 @@ export function ClientFolderSubnav({ tabs, activeId, onSelect, ariaLabel = "Secc
         </button>
       ))}
     </nav>
+  );
+}
+
+/** Bandeja bajo la carpeta activa: franja del color heredado + sub-tabs. */
+export function SubTabsDrawer({
+  tabs,
+  activeId,
+  onSelect,
+  tone = "blue",
+  ariaLabel = "Secciones",
+}) {
+  if (!tabs?.length) return null;
+  return (
+    <div className={`exp-subtabs-drawer tone-${tone}`}>
+      <ClientFolderSubnav
+        tabs={tabs}
+        activeId={activeId}
+        onSelect={onSelect}
+        ariaLabel={ariaLabel}
+      />
+    </div>
   );
 }
