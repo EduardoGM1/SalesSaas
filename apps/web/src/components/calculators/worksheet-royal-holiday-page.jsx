@@ -171,6 +171,7 @@ export function WorksheetRoyalHolidayPage({
       : 0;
     const tmr = setTimeout(async () => {
       try {
+        const costoAdminTyped = String(form.costo_administrativo_usd ?? "").replace(/,/g, "").trim();
         const p = await royalHolidayApi.preview(empresaId, {
           holiday_credits: form.holiday_credits,
           monto_venta: operationalMonto || undefined,
@@ -178,13 +179,10 @@ export function WorksheetRoyalHolidayPage({
           posicion: form.posicion,
           nacionalidad: form.nacionalidad,
           plazo_meses: form.plazo_meses || undefined,
-          costo_administrativo_usd: form.costo_administrativo_usd || undefined,
+          costo_administrativo_usd: costoAdminTyped === "" ? 0 : Number(costoAdminTyped),
           balance_anterior: balanceAnterior || undefined,
         });
         setPreview(p);
-        if (!form.costo_administrativo_usd && p.costo_administrativo_usd != null) {
-          setForm((f) => ({ ...f, costo_administrativo_usd: String(p.costo_administrativo_usd) }));
-        }
       } catch (err) {
         setPreview(null);
         if (import.meta.env.DEV) console.warn("[worksheet-rh] preview:", err?.message);

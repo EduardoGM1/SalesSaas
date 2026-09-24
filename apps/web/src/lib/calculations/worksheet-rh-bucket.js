@@ -26,6 +26,12 @@ export const DEFAULT_RH_FORM = {
     cert_vuelos: "",
     tours: "",
   },
+  extrasVentaGastos: {
+    flyback: false,
+    move_in: "",
+    cert_vuelos: "",
+    tours: "",
+  },
   enganche_num_pagos: "3",
   enganche_pagos: [],
   gasto_num_pagos: "2",
@@ -62,6 +68,12 @@ export function mergeRhForm(base, loaded) {
       ...base.extrasVentaEnganche,
       ...(loaded.extrasVentaEnganche && typeof loaded.extrasVentaEnganche === "object"
         ? loaded.extrasVentaEnganche
+        : {}),
+    },
+    extrasVentaGastos: {
+      ...base.extrasVentaGastos,
+      ...(loaded.extrasVentaGastos && typeof loaded.extrasVentaGastos === "object"
+        ? loaded.extrasVentaGastos
         : {}),
     },
     regalosElegidos: loaded.regalosElegidos && typeof loaded.regalosElegidos === "object"

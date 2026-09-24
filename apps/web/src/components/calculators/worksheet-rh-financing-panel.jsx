@@ -223,8 +223,26 @@ function emptyExtrasVentaEnganche() {
   return { flyback: false, all_inclusive: "", cert_vuelos: "", tours: "" };
 }
 
-function ExtrasVentaEnganche({ value, readOnly, onChange, captureCurrency }) {
-  const row = { ...emptyExtrasVentaEnganche(), ...(value || {}) };
+function emptyExtrasVentaGastos() {
+  return { flyback: false, move_in: "", cert_vuelos: "", tours: "" };
+}
+
+const EXTRAS_VENTA_GASTOS = [
+  { key: "move_in", label: "MOVE IN" },
+  { key: "cert_vuelos", label: "CERT. VUELOS" },
+  { key: "tours", label: "TOURS" },
+];
+
+function ExtrasVentaEnganche({
+  value,
+  readOnly,
+  onChange,
+  captureCurrency,
+  items = EXTRAS_VENTA_ENGANCHE,
+  testId = "rh-extras-venta-enganche",
+  emptyValue = emptyExtrasVentaEnganche,
+}) {
+  const row = { ...emptyValue(), ...(value || {}) };
   const patch = (next) => onChange?.({ ...row, ...next });
 
   return (
@@ -233,7 +251,7 @@ function ExtrasVentaEnganche({ value, readOnly, onChange, captureCurrency }) {
       defaultOpen={false}
       className="rh-fin-nested-collapsible"
     >
-      <div className="rh-extras-venta" data-testid="rh-extras-venta-enganche">
+      <div className="rh-extras-venta" data-testid={testId}>
         <div className="rh-extras-venta-head">
           <span>Concepto</span>
           <span>Monto</span>
@@ -250,7 +268,7 @@ function ExtrasVentaEnganche({ value, readOnly, onChange, captureCurrency }) {
             Incluido (sí / no)
           </span>
         </label>
-        {EXTRAS_VENTA_ENGANCHE.map((item) => (
+        {items.map((item) => (
           <div key={item.key} className="rh-extras-venta-row">
             <span>{item.label}</span>
             <CampoMonedaCaptura
@@ -510,7 +528,6 @@ export function WorksheetRhFinancingPanel({
   const pctGastoHoy = gastoTotalCapture > 0 ? (gastoHoy / gastoTotalCapture) * 100 : 0;
   const pctSaldoGasto = gastoTotalCapture > 0 ? (saldoGasto / gastoTotalCapture) * 100 : 0;
 
-  const adminOptions = (catalogo?.costo_administrativo || []).map((c) => c.monto_usd);
   const tarjetas = catalogo?.parametros?.tarjetas_internas || ["Invex", "RCI"];
 
   const balanceFinanciarOperational = ws.totales?.balanceAFinanciar != null
@@ -652,7 +669,7 @@ export function WorksheetRhFinancingPanel({
           />
 
           <PaymentCaptureBlock
-            title="Datos de gastos administrativos"
+            title="Datos de Venta - Gastos Administrativos"
             tone="green"
             captureCurrency={captureCurrency}
             hoyLabel="Hoy (pago inicial)"
@@ -671,35 +688,28 @@ export function WorksheetRhFinancingPanel({
             onPagosChange={(rows) => set("gasto_pagos", rows)}
             onPagoBlur={(idx, raw) => handlePagoBlur("gasto_pagos", idx, raw)}
             readOnly={readOnly}
-            extraTitle="(+) Extra closing cost"
-            extraCatalogRows={form.extrasClosingItems}
-            extraRegalos={catalogo?.regalos || []}
-            extraCuotaAnual={Number(ws.bottom_line?.cuota_anual_mfee) || 0}
-            extraFmtResult={fmtResult}
-            extraTestId="rh-extra-closing"
-            onExtraCatalogChange={(rows) => set("extrasClosingItems", rows)}
-            extraHint="Mismo catálogo que Extra enganche. Captura independiente: no suma a «Regalos y cargos»."
+            extraNode={(
+              <ExtrasVentaEnganche
+                value={form.extrasVentaGastos}
+                readOnly={readOnly}
+                captureCurrency={captureCurrency}
+                items={EXTRAS_VENTA_GASTOS}
+                testId="rh-extras-venta-gastos"
+                emptyValue={emptyExtrasVentaGastos}
+                onChange={(next) => set("extrasVentaGastos", next)}
+              />
+            )}
             topContent={(
-              <>
-                <div className="frow tool-frow rh-fin-gasto-select">
-                  <div className="flabel">Gasto Adm.</div>
-                  <select
-                    className="input"
-                    disabled={readOnly}
-                    value={form.costo_administrativo_usd}
-                    onChange={(e) => set("costo_administrativo_usd", e.target.value)}
-                  >
-                    {adminOptions.length === 0 && <option value="">—</option>}
-                    {adminOptions.map((m) => (
-                      <option key={m} value={m}>{m} USD</option>
-                    ))}
-                  </select>
-                </div>
-                <p className="muted rh-hint">
-                  Costo admin: 750 USD (enganche ≥15%), 950 USD (enganche ≥27.5%).
-                  {regalosClosing > 0 ? " El total de arriba suma los regalos a closing." : ""}
-                </p>
-              </>
+              <div className="frow tool-frow rh-fin-gasto-select">
+                <div className="flabel">Gasto Adm.</div>
+                <CampoMonedaCaptura
+                  currency={captureCurrency}
+                  value={form.costo_administrativo_usd}
+                  readOnly={readOnly}
+                  onChange={(value) => set("costo_administrativo_usd", value)}
+                  onBlurCapture={() => onMoneyBlur?.("costo_administrativo_usd", formatCapture(form.costo_administrativo_usd))}
+                />
+              </div>
             )}
           />
           </div>
