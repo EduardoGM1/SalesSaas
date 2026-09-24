@@ -11768,6 +11768,7 @@ body,
   border-bottom-color: var(--folder-tone, var(--blue));
 }
 .exp-folder-panel { min-width: 0; }
+.exp-folder-panel [hidden] { display: none !important; }
 @media (max-width: 1100px) {
   .exp-folder-strip--shelf {
     grid-template-columns: repeat(3, minmax(0, 1fr));

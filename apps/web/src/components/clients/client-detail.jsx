@@ -75,13 +75,6 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
   const rhWorksheetFlag = useFlag(WORKSHEET_ROYAL_HOLIDAY_FLAG);
   const rhMoneyBoxFlag = useFlag(WORKSHEET_RH_MONEY_BOX_TAB_FLAG);
   const { tab: folderTab, sub: folderSub, setFolder, setSub } = useExpedienteFolderNav();
-  const toggleFolder = (nextTab, nextSub) => {
-    if (folderTab === nextTab) {
-      setFolder("");
-      return;
-    }
-    setFolder(nextTab, nextSub);
-  };
   const toolsReady = flagsReady && permReady;
   const worksheetRhActive = rhWorksheetFlag.enabled === true;
   const { active } = useWorkspace();
@@ -337,13 +330,21 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
   );
 
   const isQuick = !!c.quickExpedient && !c.completedExpedient;
+  const selectFolder = (nextTab, nextSub) => {
+    const current = folderTab || (!isQuick ? EXPEDIENTE_TABS.cliente : "");
+    if (current === nextTab) return;
+    if (!sharedRemote && (nextTab === "survey" || nextTab === "vacaciones" || nextTab === "worksheet")) {
+      setToolMode("client", id);
+    }
+    setFolder(nextTab, nextSub);
+  };
   const clienteFolder = {
     id: EXPEDIENTE_TABS.cliente,
     label: t("exp.folder.cliente"),
     desc: t("exp.folder.clienteDesc"),
     icon: User,
     tone: "blue",
-    onClick: () => toggleFolder(EXPEDIENTE_TABS.cliente),
+    onClick: () => selectFolder(EXPEDIENTE_TABS.cliente),
   };
   const ventaFolder = (canEdit || sharedRemote)
     ? {
@@ -352,7 +353,7 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
         desc: t("exp.card.saleDesc"),
         icon: DollarSign,
         tone: "green",
-        onClick: () => toggleFolder(EXPEDIENTE_TABS.venta),
+        onClick: () => selectFolder(EXPEDIENTE_TABS.venta),
       }
     : null;
   const notasFolder = (canComment || sharedRemote)
@@ -362,7 +363,7 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
         desc: t("exp.card.notesDesc"),
         icon: MessageSquare,
         tone: "blue",
-        onClick: () => toggleFolder(EXPEDIENTE_TABS.notas),
+        onClick: () => selectFolder(EXPEDIENTE_TABS.notas),
       }
     : null;
   const toolFolders = TOOL_DEFS
@@ -375,16 +376,10 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
       tone: tool.tone,
       onClick: () => {
         if (sharedRemote && !contactId) return;
-        if (!sharedRemote) setToolMode("client", id);
-        if (folderTab === tool.key) {
-          setFolder("");
-          return;
-        }
-        if (tool.key === "worksheet" && worksheetRhActive) {
-          setFolder("worksheet", "financiamiento");
-        } else {
-          setFolder(tool.key);
-        }
+        selectFolder(
+          tool.key,
+          tool.key === "worksheet" && worksheetRhActive ? "financiamiento" : undefined,
+        );
       },
     }));
   const folderCards = isQuick
@@ -395,14 +390,15 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
         ...(ventaFolder ? [ventaFolder] : []),
         ...(notasFolder ? [notasFolder] : []),
       ];
-  const validFolder = folderCards.some((f) => f.id === folderTab) ? folderTab : "";
+  const explicitFolder = folderCards.some((f) => f.id === folderTab) ? folderTab : "";
+  const effectiveTab = explicitFolder || (!isQuick && clienteFolder ? EXPEDIENTE_TABS.cliente : "");
   const rhSubTabs = [
     { id: "financiamiento", label: "Datos Financiamiento" },
     { id: "venta", label: "Datos Venta" },
     ...(rhMoneyBoxFlag.enabled ? [{ id: "moneybox", label: "Money Box" }] : []),
     { id: "worksheet", label: "Worksheet" },
   ];
-  const showRhSubnav = validFolder === "worksheet" && worksheetRhActive;
+  const showRhSubnav = effectiveTab === "worksheet" && worksheetRhActive;
   const activeRhSub = rhSubTabs.some((s) => s.id === folderSub)
     ? folderSub
     : "financiamiento";
@@ -486,16 +482,16 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
           onCapabilities={setSalaCapabilities}
         />
 
-        <div className={`exp-layout exp-layout--folders${validFolder ? " exp-layout--folder-open" : ""}`}>
+        <div className={`exp-layout exp-layout--folders${effectiveTab ? " exp-layout--folder-open" : ""}`}>
           <div className="exp-folders-rail">
             <div className="section-label" id="exp-tool-section-label">{t("exp.section.info")}</div>
             <div className="exp-tool-list" id="exp-tool-list">
               {!toolsReady ? (
                 Array.from({ length: isQuick ? 2 : 3 }, (_, i) => <ToolCardSkeleton key={`exp-skel-${i}`} />)
               ) : (
-                <ClientFolderStrip folders={folderCards} activeTab={validFolder} />
+                <ClientFolderStrip folders={folderCards} activeTab={effectiveTab} />
               )}
-              {toolsReady && !validFolder && !isQuick && !folderCards.some((card) => card.id === "worksheet") && !worksheetRhActive && (
+              {toolsReady && !folderTab && !isQuick && !folderCards.some((card) => card.id === "worksheet") && !worksheetRhActive && (
                 <div className="tool-card-stack">{moneyBoxCard}</div>
               )}
               {isQuick && (
@@ -514,7 +510,7 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
             </div>
           </div>
 
-          {validFolder ? (
+          {effectiveTab ? (
             <div className="exp-folder-stage">
               {showRhSubnav && (
                 <SubTabsDrawer
@@ -527,13 +523,13 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
               )}
               <div className="exp-folder-panel" data-testid="exp-folder-panel">
                 <Suspense fallback={<ToolCardSkeleton />}>
-                  {validFolder === "survey" && (
+                  {effectiveTab === "survey" && (
                     <SurveyPage clientId={id} shared={toolShared} embedded />
                   )}
-                  {validFolder === "vacaciones" && (
+                  {effectiveTab === "vacaciones" && (
                     <VacacionesPage clientId={id} shared={toolShared} embedded />
                   )}
-                  {validFolder === "worksheet" && (
+                  {effectiveTab === "worksheet" && (
                     <>
                       <WorksheetPage
                         clientId={id}
@@ -547,36 +543,47 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
                     </>
                   )}
                 </Suspense>
-                {validFolder === "cliente" && (
-                  <div className="card prospect-summary-card">
-                    <div className="prospect-summary-head prospect-summary-head--actions">
-                      <div className="prospect-summary-title">{t("exp.prospect.title")}</div>
-                      {canEdit && (
-                        <button type="button" className="btn btn-ghost btn-sm" onClick={openEdit}>{t("exp.prospect.edit")}</button>
-                      )}
-                    </div>
-                    <div className="prospect-summary-list prospect-summary-grid" id="prospect-summary-list">
-                      <div className="ps-grid-row ps-grid-row--full">
-                        {psCell("#", t("exp.prospect.id"), psValue(c.prospectCode, true))}
+                {!isQuick && (
+                  <div hidden={effectiveTab !== EXPEDIENTE_TABS.cliente}>
+                    <CollapsibleSection
+                      defaultOpen={
+                        typeof window !== "undefined"
+                        && window.matchMedia("(min-width: 769px)").matches
+                        && !sharedRemote
+                      }
+                      className="card exp-side-card prospect-summary-card exp-collapsible-card"
+                      title={<div className="prospect-summary-title">{t("exp.prospect.title")}</div>}
+                      subtitle={t("exp.prospect.sub")}
+                      bodyClassName="prospect-summary-body"
+                    >
+                      <div className="prospect-summary-head prospect-summary-head--actions">
+                        {canEdit && (
+                          <button type="button" className="btn btn-ghost btn-sm" onClick={openEdit}>{t("exp.prospect.edit")}</button>
+                        )}
                       </div>
-                      <div className="ps-grid-row ps-grid-row--pair">
-                        {psCell("👤", t("exp.prospect.name"), psValue(c.name1 || c.name, true))}
-                        {psCell("🏷", t("exp.prospect.tourType"), psValue(c.tipo_tour, true))}
+                      <div className="prospect-summary-list prospect-summary-grid" id="prospect-summary-list">
+                        <div className="ps-grid-row ps-grid-row--full">
+                          {psCell("#", t("exp.prospect.id"), psValue(c.prospectCode, true))}
+                        </div>
+                        <div className="ps-grid-row ps-grid-row--pair">
+                          {psCell("👤", t("exp.prospect.name"), psValue(c.name1 || c.name, true))}
+                          {psCell("🏷", t("exp.prospect.tourType"), psValue(c.tipo_tour, true))}
+                        </div>
+                        <div className="ps-grid-row ps-grid-row--full">
+                          {psCell("📍", t("exp.prospect.location"), psValue(cityCountry))}
+                        </div>
+                        <div className="ps-grid-row ps-grid-row--pair">
+                          {psCell("▣", t("exp.prospect.contract"), psValue(c.contract))}
+                          {psCell("◉", t("exp.prospect.status"), <span className="ps-pill">{statusLabel(c.status || "", lang)}</span>)}
+                        </div>
+                        <div className="ps-grid-row ps-grid-row--full">
+                          {psCell("📊", t("exp.prospect.quantifiable"), psValue(c.tour_cuantificable !== false ? t("clients.yes") : t("clients.no"), true))}
+                        </div>
                       </div>
-                      <div className="ps-grid-row ps-grid-row--full">
-                        {psCell("📍", t("exp.prospect.location"), psValue(cityCountry))}
-                      </div>
-                      <div className="ps-grid-row ps-grid-row--pair">
-                        {psCell("▣", t("exp.prospect.contract"), psValue(c.contract))}
-                        {psCell("◉", t("exp.prospect.status"), <span className="ps-pill">{statusLabel(c.status || "", lang)}</span>)}
-                      </div>
-                      <div className="ps-grid-row ps-grid-row--full">
-                        {psCell("📊", t("exp.prospect.quantifiable"), psValue(c.tour_cuantificable !== false ? t("clients.yes") : t("clients.no"), true))}
-                      </div>
-                    </div>
+                    </CollapsibleSection>
                   </div>
                 )}
-                {validFolder === "venta" && (
+                {effectiveTab === "venta" && (
                   <div className="card activity-card" id="client-sales-card">
                     <div className="card-heading">{t("exp.sales.title")}</div>
                     <p className="card-sub">{t("exp.sales.sub")}</p>
@@ -616,7 +623,7 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
                     </div>
                   </div>
                 )}
-                {validFolder === "notas" && (
+                {effectiveTab === "notas" && (
                   <div className="card activity-card" id="client-activity-card">
                     <div className="card-heading">{t("exp.activity.title")}</div>
                     <p className="card-sub">{t("exp.activity.sub")}</p>
@@ -699,7 +706,7 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
           </CollapsibleSection>
         ))}
 
-        {!validFolder && (
+        {!folderTab && (
           <>
         <CollapsibleSection
           mobileOnly
