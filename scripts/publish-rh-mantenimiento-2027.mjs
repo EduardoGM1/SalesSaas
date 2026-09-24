@@ -11,6 +11,7 @@ import { readFileSync, existsSync } from "fs";
 import { dirname, resolve } from "path";
 import { fileURLToPath } from "url";
 import { createClient } from "@supabase/supabase-js";
+import ws from "ws";
 import { publishMantenimientos2027 } from "../apps/api/src/services/royal-holiday-service.js";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -44,7 +45,10 @@ if (!url || !key) {
   process.exit(1);
 }
 
-const admin = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
+const admin = createClient(url, key, {
+  auth: { persistSession: false, autoRefreshToken: false },
+  realtime: { transport: ws },
+});
 const empresaId = process.argv.find((arg) => /^[0-9a-f-]{36}$/i.test(arg));
 let target = empresaId;
 if (!target) {
