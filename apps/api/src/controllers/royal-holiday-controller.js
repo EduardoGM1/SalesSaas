@@ -18,7 +18,17 @@ function workspaceQuery(query) {
 export async function obtenerCatalogo(auth, req) {
   const empresaId = req.params.empresaId;
   await guardRhRequest(auth.supabase, auth.userId, empresaId, { flags: RH_CATALOG_FLAGS });
-  return royalHolidayService.getCatalogoVigente(auth.supabase, empresaId);
+  const fecha = req.query?.fecha ? String(req.query.fecha).slice(0, 10) : null;
+  const prospectId = req.query?.prospectId ? String(req.query.prospectId) : null;
+  const resolved = await royalHolidayService.resolveFechaCatalogo(auth.supabase, empresaId, {
+    fecha_venta: fecha,
+    prospect_id: prospectId,
+  });
+  return royalHolidayService.getCatalogoVigente(
+    auth.supabase,
+    empresaId,
+    resolved ? { fecha: resolved } : {},
+  );
 }
 
 export async function previsualizarCalculo(auth, req, body) {

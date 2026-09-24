@@ -154,14 +154,17 @@ export function WorksheetRoyalHolidayPage({
     let cancelled = false;
     (async () => {
       try {
-        const cat = await royalHolidayApi.getCatalogo(empresaId);
+        const cat = await royalHolidayApi.getCatalogo(
+          empresaId,
+          clientId ? { prospectId: clientId } : undefined,
+        );
         if (!cancelled) setCatalogo(cat);
       } catch (err) {
         toast.error(err.message);
       }
     })();
     return () => { cancelled = true; };
-  }, [empresaId]);
+  }, [empresaId, clientId]);
 
   useEffect(() => {
     if (!empresaId) return;
@@ -181,6 +184,7 @@ export function WorksheetRoyalHolidayPage({
           plazo_meses: form.plazo_meses || undefined,
           costo_administrativo_usd: costoAdminTyped === "" ? 0 : Number(costoAdminTyped),
           balance_anterior: balanceAnterior || undefined,
+          prospect_id: clientId || undefined,
         });
         setPreview(p);
       } catch (err) {
@@ -201,6 +205,7 @@ export function WorksheetRoyalHolidayPage({
     form.plazo_meses,
     form.costo_administrativo_usd,
     form.monto_pendiente,
+    clientId,
     captureCurrency,
     currencyMeta,
     moneda.ctx,

@@ -45,7 +45,10 @@ export function lookupBottomLineByMonto(rows, monto) {
   );
   let best = null;
   for (const row of sorted) {
-    if (Number(row.precio_minimo_con_iva) <= m) best = row;
+    const precio = Number(row.precio_minimo_con_iva);
+    // Sin precio de board (0): el anexo 2027 no lo trae y no debe ganar esta búsqueda.
+    if (!Number.isFinite(precio) || precio <= 0) continue;
+    if (precio <= m) best = row;
   }
   return best;
 }

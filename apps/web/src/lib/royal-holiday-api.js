@@ -21,7 +21,7 @@ function qs(params = {}) {
 }
 
 export const royalHolidayApi = {
-  getCatalogo: (empresaId) => apiFetch(`/royal-holiday/${empresaId}/catalogo`),
+  getCatalogo: (empresaId, params) => apiFetch(`/royal-holiday/${empresaId}/catalogo${qs(params)}`),
   preview: (empresaId, body) =>
     apiFetch(`/royal-holiday/${empresaId}/preview`, { method: "POST", body: JSON.stringify(body) }),
   saveVenta: (empresaId, body) =>

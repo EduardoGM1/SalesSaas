@@ -21,6 +21,13 @@ import {
   validarComisionesFtb,
   RH_EXTRA_DP_PLAZO_DIAS,
 } from "@salesapp/shared/calculations/royal-holiday.js";
+import {
+  RH_MANTENIMIENTO_2027_DESDE,
+  RH_MANTENIMIENTO_2027_DESDE_ISO,
+  RH_MANTENIMIENTO_2027_NOTAS,
+  catalogoParaFecha,
+  filasBottomLine2027,
+} from "@salesapp/shared/calculations/royal-holiday-bottom-line-2027.js";
 import { logger } from "../lib/logger.js";
 
 const CATALOG_TTL_MS = 45_000;
@@ -30,13 +37,18 @@ const catalogCache = new Map();
 const catalogInflight = new Map();
 
 export function invalidateCatalogoVigenteCache(empresaId) {
-  if (empresaId) {
-    catalogCache.delete(empresaId);
-    catalogInflight.delete(empresaId);
+  if (!empresaId) {
+    catalogCache.clear();
+    catalogInflight.clear();
     return;
   }
-  catalogCache.clear();
-  catalogInflight.clear();
+  const prefix = `${empresaId}@`;
+  for (const key of catalogCache.keys()) {
+    if (key === empresaId || key.startsWith(prefix)) catalogCache.delete(key);
+  }
+  for (const key of catalogInflight.keys()) {
+    if (key === empresaId || key.startsWith(prefix)) catalogInflight.delete(key);
+  }
 }
 
 async function loadCatalogBundle(client, catalogoId) {
@@ -84,32 +96,72 @@ async function fetchCatalogoVigente(client, empresaId) {
  * Catálogo vigente por empresa. Cache 45s + coalescing in-flight para que
  * GET /catalogo y POST /preview no disparen 8 queries cada vez.
  */
-export async function getCatalogoVigente(client, empresaId, { skipCache = false } = {}) {
+async function fetchCatalogoEnFecha(client, empresaId, fecha) {
+  const { data, error } = await client
+    .from("catalogo_configuracion")
+    .select("id, version, vigente_desde, vigente_hasta")
+    .eq("empresa_id", empresaId);
+  if (error) throw new ServiceError(error.message, 400);
+  const rows = Array.isArray(data) ? data : [];
+  const chosen = catalogoParaFecha(rows, fecha);
+  if (!chosen) throw new ServiceError("No hay catálogo para esa fecha de venta.", 404);
+  return loadCatalogBundle(client, chosen.id);
+}
+
+/**
+ * Fecha de catálogo. Una venta ya guardada antes del 23-sep-2026 sigue en 2026.
+ * Sin esa venta, null = catálogo abierto (2027 desde el corte).
+ */
+export async function resolveFechaCatalogo(client, empresaId, body = {}) {
+  const explicit = body.fecha_venta || body.fecha_catalogo;
+  if (explicit) return String(explicit).slice(0, 10);
+  if (body.fecha_evento) return toDateStr(body.fecha_evento);
+  if (!body.prospect_id) return null;
+  const { data, error } = await client
+    .from("rh_ventas")
+    .select("fecha_venta")
+    .eq("empresa_id", empresaId)
+    .eq("prospect_id", body.prospect_id)
+    .order("fecha_venta", { ascending: false })
+    .limit(1);
+  if (error) throw new ServiceError(error.message, 400);
+  const fecha = data?.[0]?.fecha_venta;
+  if (fecha && String(fecha).slice(0, 10) < RH_MANTENIMIENTO_2027_DESDE) {
+    return String(fecha).slice(0, 10);
+  }
+  return null;
+}
+
+export async function getCatalogoVigente(client, empresaId, { skipCache = false, fecha = null } = {}) {
   if (!client) throw new ServiceError("Cliente Supabase requerido.", 500);
   if (!empresaId) throw new ServiceError("empresa_id requerido.", 400);
+  const cacheKey = fecha ? `${empresaId}@${fecha}` : empresaId;
 
   if (!skipCache) {
-    const hit = catalogCache.get(empresaId);
+    const hit = catalogCache.get(cacheKey);
     if (hit && hit.expires > Date.now()) {
       logger.info("rh.catalog.cache", { hit: true, empresa_id: empresaId });
       return hit.bundle;
     }
-    const pending = catalogInflight.get(empresaId);
+    const pending = catalogInflight.get(cacheKey);
     if (pending) {
       logger.info("rh.catalog.cache", { hit: "inflight", empresa_id: empresaId });
       return pending;
     }
   }
 
-  const pending = fetchCatalogoVigente(client, empresaId)
+  const load = fecha
+    ? fetchCatalogoEnFecha(client, empresaId, fecha)
+    : fetchCatalogoVigente(client, empresaId);
+  const pending = load
     .then((bundle) => {
-      catalogCache.set(empresaId, { expires: Date.now() + CATALOG_TTL_MS, bundle });
+      catalogCache.set(cacheKey, { expires: Date.now() + CATALOG_TTL_MS, bundle });
       return bundle;
     })
     .finally(() => {
-      catalogInflight.delete(empresaId);
+      catalogInflight.delete(cacheKey);
     });
-  if (!skipCache) catalogInflight.set(empresaId, pending);
+  if (!skipCache) catalogInflight.set(cacheKey, pending);
   logger.info("rh.catalog.cache", { hit: false, empresa_id: empresaId });
   return pending;
 }
@@ -143,7 +195,8 @@ function assertExtrasExtraDp(extras, fechaVenta, maxExtraDp) {
 }
 
 export async function previewCalculo(client, empresaId, body) {
-  const bundle = await getCatalogoVigente(client, empresaId);
+  const fecha = await resolveFechaCatalogo(client, empresaId, body);
+  const bundle = await getCatalogoVigente(client, empresaId, fecha ? { fecha } : {});
   const hc = Number(body.holiday_credits) || 0;
   const monto = Number(body.monto_venta) || 0;
   const eng = normalizeEnganchePct(body.enganche_pct);
@@ -166,7 +219,8 @@ export async function previewCalculo(client, empresaId, body) {
     costoAdmin,
     balanceAnterior: Number(body.balance_anterior) || 0,
   });
-  const board = bl ? Number(bl.precio_minimo_con_iva) : null;
+  const boardRaw = bl ? Number(bl.precio_minimo_con_iva) : null;
+  const board = boardRaw > 0 ? boardRaw : null;
   return {
     catalogo_configuracion_id: bundle.catalogo.id,
     bottom_line: bl,
@@ -547,6 +601,111 @@ export async function publishNuevaVersion(admin, empresaId, actorId, patch = {})
       .eq("id", prevCatalogoId);
     throw err instanceof ServiceError ? err : new ServiceError(
       err instanceof Error ? err.message : "Error al publicar catálogo.",
+      400,
+    );
+  }
+
+  invalidateCatalogoVigenteCache(empresaId);
+  const bundle = await loadCatalogBundle(admin, cid);
+  catalogCache.set(empresaId, { expires: Date.now() + CATALOG_TTL_MS, bundle });
+  return bundle;
+}
+
+function cloneCatalogRows(rows, catalogoId) {
+  return (rows || []).map((row) => {
+    const next = { ...row, catalogo_configuracion_id: catalogoId };
+    delete next.id;
+    delete next.created_at;
+    delete next.updated_at;
+    for (const [key, value] of Object.entries(next)) {
+      if (key === "catalogo_configuracion_id" || key === "programa" || key === "nacionalidad" || key === "posicion" || key === "nombre" || key === "notas") continue;
+      if (key === "cargas_permitidas") {
+        next[key] = Array.isArray(value) ? value : String(value || "").split(",").map((item) => item.trim()).filter(Boolean);
+        continue;
+      }
+      if (key === "restricciones" || key === "impuestos") continue;
+      if (typeof value === "string" && value !== "" && !Number.isNaN(Number(value))) next[key] = Number(value);
+    }
+    return next;
+  });
+}
+
+/**
+ * Publica los 61 mantenimientos 2027 sin pisar el catálogo 2026.
+ * El corte es el 23-sep-2026 (medianoche México), no el momento del deploy.
+ * Idempotente si la versión abierta ya es el Anexo A.
+ */
+export async function publishMantenimientos2027(admin, empresaId, actorId) {
+  if (!admin) throw new ServiceError("Cliente admin requerido.", 500);
+  if (!empresaId) throw new ServiceError("empresa_id requerido.", 400);
+  const { data: versions, error: listErr } = await admin
+    .from("catalogo_configuracion")
+    .select("*")
+    .eq("empresa_id", empresaId)
+    .order("version", { ascending: false });
+  if (listErr) throw new ServiceError(listErr.message, 400);
+  const ya = (versions || []).find((version) => (
+    String(version.notas || "").includes("SDD-03 Anexo A") && !version.vigente_hasta
+  ));
+  if (ya) return loadCatalogBundle(admin, ya.id);
+
+  const abierto = (versions || []).find((version) => !version.vigente_hasta);
+  if (!abierto) throw new ServiceError("No hay catálogo vigente para esta empresa.", 404);
+  const previo = await loadCatalogBundle(admin, abierto.id);
+
+  const { error: closeErr } = await admin
+    .from("catalogo_configuracion")
+    .update({ vigente_hasta: RH_MANTENIMIENTO_2027_DESDE_ISO })
+    .eq("id", abierto.id);
+  if (closeErr) throw new ServiceError(closeErr.message, 400);
+
+  const { data: nuevo, error } = await admin
+    .from("catalogo_configuracion")
+    .insert({
+      empresa_id: empresaId,
+      version: Number(abierto.version) + 1,
+      vigente_desde: RH_MANTENIMIENTO_2027_DESDE_ISO,
+      creado_por: actorId || null,
+      notas: RH_MANTENIMIENTO_2027_NOTAS,
+    })
+    .select()
+    .single();
+  if (error) {
+    await admin.from("catalogo_configuracion").update({ vigente_hasta: null }).eq("id", abierto.id);
+    throw new ServiceError(error.message, 400);
+  }
+
+  const cid = nuevo.id;
+  try {
+    const bl = filasBottomLine2027(previo.bottom_line).map((row) => ({
+      ...row,
+      catalogo_configuracion_id: cid,
+    }));
+    if (bl.length !== 61) throw new ServiceError(`Se esperaban 61 rangos y hay ${bl.length}.`, 400);
+    if (bl.some((row) => Number(row.holiday_credits) > 920001)) {
+      throw new ServiceError("Hay un rango por encima de 940,000 HC.", 400);
+    }
+    await admin.from("rh_bottom_line").insert(bl);
+    const fin = cloneCatalogRows(previo.financiamiento, cid);
+    const com = cloneCatalogRows(previo.comisiones, cid);
+    const reg = cloneCatalogRows(previo.regalos, cid);
+    const ca = cloneCatalogRows(previo.costo_administrativo, cid);
+    assertComisionesFtb(com);
+    if (fin.length) await admin.from("rh_financiamiento").insert(fin);
+    if (com.length) await admin.from("rh_comisiones").insert(com);
+    if (reg.length) await admin.from("rh_regalos").insert(reg);
+    if (ca.length) await admin.from("rh_costo_administrativo").insert(ca);
+    const pg = { ...(previo.parametros || {}) };
+    delete pg.id;
+    delete pg.created_at;
+    delete pg.updated_at;
+    pg.catalogo_configuracion_id = cid;
+    await admin.from("rh_parametros_generales").insert(pg);
+  } catch (err) {
+    await admin.from("catalogo_configuracion").delete().eq("id", cid);
+    await admin.from("catalogo_configuracion").update({ vigente_hasta: null }).eq("id", abierto.id);
+    throw err instanceof ServiceError ? err : new ServiceError(
+      err instanceof Error ? err.message : "Error al publicar mantenimientos 2027.",
       400,
     );
   }
