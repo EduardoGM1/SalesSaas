@@ -20,6 +20,12 @@ export const DEFAULT_RH_FORM = {
   extrasCc: [],
   extrasEngancheItems: [],
   extrasClosingItems: [],
+  extrasVentaEnganche: {
+    flyback: false,
+    all_inclusive: "",
+    cert_vuelos: "",
+    tours: "",
+  },
   enganche_num_pagos: "3",
   enganche_pagos: [],
   gasto_num_pagos: "2",
@@ -52,6 +58,12 @@ export function mergeRhForm(base, loaded) {
     extrasClosingItems: Array.isArray(loaded.extrasClosingItems)
       ? loaded.extrasClosingItems
       : base.extrasClosingItems,
+    extrasVentaEnganche: {
+      ...base.extrasVentaEnganche,
+      ...(loaded.extrasVentaEnganche && typeof loaded.extrasVentaEnganche === "object"
+        ? loaded.extrasVentaEnganche
+        : {}),
+    },
     regalosElegidos: loaded.regalosElegidos && typeof loaded.regalosElegidos === "object"
       ? loaded.regalosElegidos
       : base.regalosElegidos,

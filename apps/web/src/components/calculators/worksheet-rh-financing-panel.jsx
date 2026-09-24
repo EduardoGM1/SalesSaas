@@ -11,7 +11,7 @@ import {
 } from "@/lib/calculations/royal-holiday.js";
 import { parseMoney } from "@/lib/format/money";
 
-const PAGO_OPTS = [0, 2, 3, 4, 5, 6, 8, 10, 12];
+const PAGO_OPTS = [1, 0, 2, 3, 4, 5, 6, 8, 10, 12];
 
 function pagoOptLabel(n) {
   return `${n} ${n === 1 ? "pago" : "pagos"}`;
@@ -19,7 +19,7 @@ function pagoOptLabel(n) {
 
 function pagoSelectOptions(current) {
   const n = Number(current);
-  if (n === 1) return [0, 1, ...PAGO_OPTS.filter((x) => x !== 0)];
+  if (Number.isFinite(n) && !PAGO_OPTS.includes(n)) return [...PAGO_OPTS, n].sort((a, b) => a - b);
   return PAGO_OPTS;
 }
 
@@ -213,6 +213,60 @@ function ExtraCollapsible({
   );
 }
 
+const EXTRAS_VENTA_ENGANCHE = [
+  { key: "all_inclusive", label: "ALL INCLUSIVE" },
+  { key: "cert_vuelos", label: "CERT. VUELOS" },
+  { key: "tours", label: "TOURS" },
+];
+
+function emptyExtrasVentaEnganche() {
+  return { flyback: false, all_inclusive: "", cert_vuelos: "", tours: "" };
+}
+
+function ExtrasVentaEnganche({ value, readOnly, onChange, captureCurrency }) {
+  const row = { ...emptyExtrasVentaEnganche(), ...(value || {}) };
+  const patch = (next) => onChange?.({ ...row, ...next });
+
+  return (
+    <CollapsibleSection
+      title="(+) Extras venta"
+      defaultOpen={false}
+      className="rh-fin-nested-collapsible"
+    >
+      <div className="rh-extras-venta" data-testid="rh-extras-venta-enganche">
+        <div className="rh-extras-venta-head">
+          <span>Concepto</span>
+          <span>Monto</span>
+        </div>
+        <label className="rh-extras-venta-row">
+          <span>FLYBACK</span>
+          <span className="rh-extras-venta-check">
+            <input
+              type="checkbox"
+              checked={!!row.flyback}
+              disabled={readOnly}
+              onChange={(e) => patch({ flyback: e.target.checked })}
+            />
+            Incluido (sí / no)
+          </span>
+        </label>
+        {EXTRAS_VENTA_ENGANCHE.map((item) => (
+          <div key={item.key} className="rh-extras-venta-row">
+            <span>{item.label}</span>
+            <CampoMonedaCaptura
+              currency={captureCurrency}
+              value={row[item.key] ?? ""}
+              readOnly={readOnly}
+              placeholder=""
+              onChange={(next) => patch({ [item.key]: next })}
+            />
+          </div>
+        ))}
+      </div>
+    </CollapsibleSection>
+  );
+}
+
 function PaymentCaptureBlock({
   title,
   tone = "blue",
@@ -242,6 +296,9 @@ function PaymentCaptureBlock({
   extraFmtResult,
   extraHint,
   extraTestId,
+  extraNode,
+  pctEditable,
+  onPctHoyChange,
   topContent,
 }) {
   const hoyAmount = Number(hoyValue) || 0;
@@ -268,7 +325,22 @@ function PaymentCaptureBlock({
               onBlurCapture={onHoyBlur}
               className="rh-fin-hoy-mfield"
             />
-            <span className={`rh-fin-pct-badge rh-fin-pct-badge--${tone}`}>{fmtPct(pctHoy)}</span>
+            {pctEditable ? (
+              <label className="rh-fin-pct-edit">
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  className="input input-compact"
+                  disabled={readOnly}
+                  aria-label="Porcentaje del pago inicial"
+                  value={pctHoy}
+                  onChange={(e) => onPctHoyChange?.(e.target.value.replace(/[^\d.]/g, ""))}
+                />
+                <span>%</span>
+              </label>
+            ) : (
+              <span className={`rh-fin-pct-badge rh-fin-pct-badge--${tone}`}>{fmtPct(pctHoy)}</span>
+            )}
           </div>
           <div className="rh-fin-hoy-block-meta">
             {pctHoyLabel ? (
@@ -306,21 +378,6 @@ function PaymentCaptureBlock({
             </select>
           </div>
           {saldoHint ? <p className="muted rh-hint rh-fin-saldo-hint">{saldoHint}</p> : null}
-        </div>
-
-        <div className="frow tool-frow rh-fin-pagos-frow">
-          <div className="flabel">Número de pagos</div>
-          <select
-            id={`${pagosSelectId}-d`}
-            className="input"
-            disabled={readOnly}
-            value={numPagos}
-            onChange={(e) => onNumPagosChange(e.target.value)}
-          >
-            {pagoSelectOptions(numPagos).map((n) => (
-              <option key={n} value={String(n)}>{pagoOptLabel(n)}</option>
-            ))}
-          </select>
         </div>
 
         {pagos.length > 0 && (
@@ -374,6 +431,7 @@ function PaymentCaptureBlock({
           </>
         )}
 
+        {extraNode}
         {extraTitle ? (
           <ExtraCollapsible
             title={extraTitle}
@@ -432,7 +490,18 @@ export function WorksheetRhFinancingPanel({
     : (montoContratoCapture * engPct) / 100;
   const engancheHoy = parseMoney(form.enganche_hoy);
   const saldoEnganche = Math.max(0, engancheTotalCapture - engancheHoy);
-  const pctEngancheHoy = montoContratoCapture > 0 ? (engancheHoy / montoContratoCapture) * 100 : 0;
+  const montoVentaCapture = parseMoney(form.monto_venta);
+  const pctEngancheHoy = montoVentaCapture > 0 ? (engancheHoy / montoVentaCapture) * 100 : 0;
+  const engancheHoyPctInput = pctEngancheHoy ? String(roundMoney(pctEngancheHoy)) : "";
+  const onEngancheHoyPctChange = (raw) => {
+    const pct = Number(raw);
+    if (!raw) {
+      set("enganche_hoy", "");
+      return;
+    }
+    if (!Number.isFinite(pct) || montoVentaCapture <= 0) return;
+    set("enganche_hoy", String(roundMoney((montoVentaCapture * pct) / 100)));
+  };
   const pctSaldoEnganche = montoContratoCapture > 0 ? (saldoEnganche / montoContratoCapture) * 100 : 0;
 
   const gastoTotalCapture = toCaptureDisplay(Number(ws.costo_administrativo_usd || 0));
@@ -550,14 +619,16 @@ export function WorksheetRhFinancingPanel({
 
           <div className="rh-fin-accordions">
           <PaymentCaptureBlock
-            title="Datos de enganche"
+            title="Datos de Venta - Enganche"
             tone="blue"
             captureCurrency={captureCurrency}
             hoyLabel="Hoy (pago inicial)"
             hoyValue={form.enganche_hoy}
             onHoyChange={(v) => set("enganche_hoy", v)}
             onHoyBlur={() => onMoneyBlur?.("enganche_hoy", formatCapture(form.enganche_hoy))}
-            pctHoy={pctEngancheHoy}
+            pctEditable
+            pctHoy={engancheHoyPctInput}
+            onPctHoyChange={onEngancheHoyPctChange}
             pctPactado={Number(form.enganche_pct) || 0}
             pctHoyLabel="Pagos hoy."
             saldo={saldoEnganche}
@@ -570,14 +641,14 @@ export function WorksheetRhFinancingPanel({
             onPagosChange={(rows) => set("enganche_pagos", rows)}
             onPagoBlur={(idx, raw) => handlePagoBlur("enganche_pagos", idx, raw)}
             readOnly={readOnly}
-            extraTitle="(+) Extra enganche"
-            extraCatalogRows={form.extrasEngancheItems}
-            extraRegalos={catalogo?.regalos || []}
-            extraCuotaAnual={Number(ws.bottom_line?.cuota_anual_mfee) || 0}
-            extraFmtResult={fmtResult}
-            extraTestId="rh-extra-enganche"
-            onExtraCatalogChange={(rows) => set("extrasEngancheItems", rows)}
-            extraHint="Concepto del catálogo de regalos. El costo unitario se completa solo; el total es cantidad × costo. Independiente de «Regalos y cargos»."
+            extraNode={(
+              <ExtrasVentaEnganche
+                value={form.extrasVentaEnganche}
+                readOnly={readOnly}
+                captureCurrency={captureCurrency}
+                onChange={(next) => set("extrasVentaEnganche", next)}
+              />
+            )}
           />
 
           <PaymentCaptureBlock
