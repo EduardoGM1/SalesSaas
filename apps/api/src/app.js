@@ -24,13 +24,12 @@ export function createApp() {
 
   app.use(requestContextMiddleware);
   app.use(helmet({
-    contentSecurityPolicy: {
-      useDefaults: false,
-      directives: {
-        defaultSrc: ["'none'"],
-        frameAncestors: ["'none'"],
-      },
-    },
+    // CSP, X-Frame-Options y nosniff los pone Nginx (snippet del vhost).
+    // Si Helmet también los manda, /health y /api los duplican.
+    contentSecurityPolicy: false,
+    frameguard: false,
+    noSniff: false,
+    referrerPolicy: false,
     crossOriginEmbedderPolicy: false,
     // Saletse en VPS aún se sirve por HTTP; HSTS rompería el acceso.
     hsts: false,
