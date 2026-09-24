@@ -1,17 +1,22 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { normalizeCollaborationId, readCollaborationId } from "./collaboration-id.js";
+import { readCollaborationId } from "./collaboration-id.js";
 
-test("acepta letras y números y conserva ambos", () => {
-  assert.equal(normalizeCollaborationId("VLO12"), "VLO12");
-  assert.throws(() => readCollaborationId("C-2048", "Contrato"), /letras y números/);
-  assert.equal(readCollaborationId("P99421", "Prospect ID"), "P99421");
+test("conserva espacios y guiones tal como se escribieron", () => {
+  assert.equal(readCollaborationId("RH 2026 20", "Contrato"), "RH 2026 20");
+  assert.equal(readCollaborationId("RH 2026-20", "VLO"), "RH 2026-20");
+  assert.equal(readCollaborationId("RH202620", "Prospect ID"), "RH202620");
   assert.equal(readCollaborationId("  ", "VLO"), null);
   assert.equal(readCollaborationId(null, "VLO"), null);
 });
 
-test("no recorta a 15 ni exige una sola palabra de solo letras", () => {
-  const largo = "AB12CD34EF56GH78IJ90";
-  assert.equal(normalizeCollaborationId(largo), largo);
-  assert.equal(largo.length > 15, true);
+test("no aplica la regla de una sola palabra ni recorta a 15", () => {
+  const escrito = "AB12 CD34-EF56 GH78";
+  assert.equal(readCollaborationId(escrito, "Contrato"), escrito);
+  assert.equal(escrito.length > 15, true);
+  assert.throws(() => readCollaborationId("RH_2026", "Contrato"), /espacios y guiones/);
+  assert.throws(
+    () => readCollaborationId("R".repeat(41), "Contrato"),
+    /espacios y guiones/,
+  );
 });

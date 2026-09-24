@@ -23,11 +23,11 @@ alter table public.prospect_workflows
   add column if not exists estatus_venta text;
 
 comment on column public.prospect_workflows.contrato is
-  'Identificador de contrato. Letras y números, columna propia.';
+  'Identificador de contrato. Letras, números, espacios y guiones, tal como se escribieron.';
 comment on column public.prospect_workflows.vlo is
-  'Identificador VLO. Letras y números, columna propia.';
+  'Identificador VLO. Letras, números, espacios y guiones, tal como se escribieron.';
 comment on column public.prospect_workflows.resultado_prospect_id is
-  'Prospect ID de colaboración (texto). No es el uuid del expediente.';
+  'Prospect ID de colaboración (texto). Letras, números, espacios y guiones. No es el uuid del expediente.';
 comment on column public.prospect_workflows.calificacion_final is
   'Pendiente de catálogo (Mich). Sin valores hasta que se definan.';
 comment on column public.prospect_workflows.estatus_tour is

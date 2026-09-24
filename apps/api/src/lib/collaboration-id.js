@@ -1,24 +1,21 @@
 /**
  * Identificadores de colaboración (Contrato, VLO, Prospect ID).
- * Letras y números. No usa la regla de nombre (una palabra, solo letras, 15).
+ * Letras, números, espacios y guiones, tal como se escribieron.
+ * No usa la regla de nombre (una palabra, solo letras, 15).
  */
 const COLLABORATION_ID_MAX = 40;
-
-export function normalizeCollaborationId(value) {
-  return String(value ?? "")
-    .normalize("NFC")
-    .replace(/[^\p{L}\p{N}]/gu, "")
-    .slice(0, COLLABORATION_ID_MAX);
-}
+const COLLABORATION_ID_PATTERN = /^[\p{L}\p{N} -]+$/u;
 
 export function readCollaborationId(value, label) {
-  const raw = String(value ?? "").trim();
-  if (!raw) return null;
-  const normalized = normalizeCollaborationId(raw);
-  if (!normalized || normalized !== raw) {
-    const error = new Error(`${label} solo acepta letras y números (máximo ${COLLABORATION_ID_MAX}).`);
+  if (value == null) return null;
+  const raw = String(value);
+  if (raw.trim() === "") return null;
+  if (raw.length > COLLABORATION_ID_MAX || !COLLABORATION_ID_PATTERN.test(raw)) {
+    const error = new Error(
+      `${label} solo acepta letras, números, espacios y guiones (máximo ${COLLABORATION_ID_MAX}).`,
+    );
     error.status = 400;
     throw error;
   }
-  return normalized;
+  return raw;
 }
