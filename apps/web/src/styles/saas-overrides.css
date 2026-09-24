@@ -10608,6 +10608,36 @@ body,
   flex: 1;
   min-width: 0;
 }
+/* Datos de la venta: label y control en la misma fila.
+   En el expediente el worksheet no lleva .sales-page.tool-calc-page, así que
+   la regla móvil .sales-page .frow (columna) sí le aplica y hay que ganarle. */
+.worksheet-rh .rh-fin-left > .tool-calc-fields > .tool-frow {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.worksheet-rh .rh-fin-left > .tool-calc-fields > .tool-frow > .flabel {
+  flex: 1 1 auto;
+  min-width: 0;
+  line-height: 1.3;
+}
+.worksheet-rh .rh-fin-left > .tool-calc-fields > .tool-frow > .mfield,
+.worksheet-rh .rh-fin-left > .tool-calc-fields > .tool-frow > .frow-inline,
+.worksheet-rh .rh-fin-left > .tool-calc-fields > .tool-frow > .rh-fin-field-val {
+  width: auto;
+  max-width: min(190px, 52%);
+  flex: 0 1 190px;
+  min-width: 0;
+}
+.worksheet-rh .rh-fin-left > .tool-calc-fields > .tool-frow > .frow-inline {
+  justify-content: flex-end;
+}
+.worksheet-rh .rh-fin-left > .tool-calc-fields > .tool-frow > .frow-inline .tool-num-input {
+  width: 72px;
+  max-width: 100%;
+  min-width: 0;
+}
 .rh-fin-totales { margin-top: 14px; }
 .rh-fin-options-banner {
   margin: 10px 0 12px;
