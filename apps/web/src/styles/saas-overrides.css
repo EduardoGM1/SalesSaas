@@ -9872,6 +9872,34 @@ body,
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
   gap: 8px;
 }
+.prospect-collab-group {
+  margin-top: 12px;
+}
+.prospect-collab-group h3 {
+  margin: 0 0 8px;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--saas-text-muted, #64748b);
+}
+.prospect-collab-field {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+}
+.prospect-collab-field .auth-input {
+  width: 100%;
+  min-width: 0;
+}
+.prospect-collab-clear {
+  margin-top: 6px;
+  align-self: flex-start;
+}
+.prospect-collab-cerrador-name {
+  align-self: center;
+  font-size: 13px;
+  color: var(--saas-text, #0f172a);
+}
 .prospect-workflow-participant {
   display: flex;
   align-items: flex-start;

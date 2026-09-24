@@ -24,6 +24,15 @@ export async function asignarCerrador(auth, req, body) {
   );
 }
 
+export async function actualizarColaboracion(auth, req, body) {
+  return prospectParticipantsService.updateCollaboration(
+    auth.supabase,
+    auth.userId,
+    req.params.id,
+    body,
+  );
+}
+
 export async function asignarRepresentante(auth, req, body) {
   return prospectParticipantsService.assignRepresentante(
     auth.supabase,

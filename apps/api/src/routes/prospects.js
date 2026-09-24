@@ -15,6 +15,7 @@ router.delete("/prospects/:id", rutaAutenticada((auth, req) => prospectsControll
 
 router.get("/workflow/inbox", rutaAutenticada(workflowController.listarExpedientesActivos, { wrap: "data" }));
 router.get("/prospects/:id/participants", rutaAutenticada(workflowController.obtenerParticipantes, { wrap: "data" }));
+router.patch("/prospects/:id/participants", rutaAutenticada(workflowController.actualizarColaboracion, { cuerpo: true, wrap: "data" }));
 router.get("/prospects/:id/workflow", rutaAutenticada(workflowController.obtenerParticipantes, { wrap: "data" }));
 router.get("/prospects/:id/workflow/timeline", rutaAutenticada(workflowController.listarTimeline, { wrap: "data" }));
 router.post("/prospects/:id/workflow/assign-closer", rutaAutenticada(workflowController.asignarCerrador, { cuerpo: true, wrap: "data" }));

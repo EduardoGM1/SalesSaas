@@ -10,6 +10,7 @@ router.get("/workspace/peers", rutaAutenticada(workspaceController.listarParesSa
 router.get("/workspace/invite/search", rateLimit({ name: "workspace-invite-search", windowMs: 60_000, max: 40 }), rutaAutenticada(workspaceController.buscarInvitables, { wrap: "data" }));
 router.get("/workspace/closers/search", rateLimit({ name: "workspace-closer-search", windowMs: 60_000, max: 40 }), rutaAutenticada(workspaceController.buscarCerradores, { wrap: "data" }));
 router.get("/workspace/representantes/search", rateLimit({ name: "workspace-representante-search", windowMs: 60_000, max: 40 }), rutaAutenticada(workspaceController.buscarRepresentantes, { wrap: "data" }));
+router.get("/workspace/members/search", rateLimit({ name: "workspace-member-search", windowMs: 60_000, max: 40 }), rutaAutenticada(workspaceController.buscarMiembrosSala, { wrap: "data" }));
 router.get("/workspace/team/prospects", rutaAutenticada(workspaceController.listarExpedientesEquipo, { wrap: "data" }));
 router.post("/workspace/invite", rateLimit({ name: "workspace-invite", windowMs: 60_000, max: 20 }), rutaAutenticada(workspaceController.invitarASala, { cuerpo: true, wrap: "data", successStatus: 201 }));
 router.get("/workspace/team/roles", rutaAutenticada(workspaceController.listarRolesAsignables, { wrap: "data" }));

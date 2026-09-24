@@ -75,22 +75,13 @@ async function ensureProspectSalaSideEffects(supabase, userId, workspaceId, pros
   const admin = createServiceSupabaseClient();
   if (!admin) return;
 
-  const { data: gerente } = await admin
-    .from("workspace_miembros")
-    .select("usuario_id")
-    .eq("workspace_id", workspaceId)
-    .eq("rol_en_workspace", "gerente")
-    .limit(1)
-    .maybeSingle();
-
   await admin.from("prospect_workflows").upsert({
     prospect_id: prospectId,
     workspace_id: workspaceId,
     representante_id: userId,
-    gerente_id: gerente?.usuario_id || null,
     created_by: userId,
     estado: "en_progreso",
-  }, { onConflict: "prospect_id" });
+  }, { onConflict: "prospect_id", ignoreDuplicates: true });
 
   try {
     await admin.rpc("sync_prospect_chat_members", { p_prospect_id: prospectId });

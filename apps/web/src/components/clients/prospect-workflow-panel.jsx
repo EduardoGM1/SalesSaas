@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { BadgeCheck, Clock3, MessageSquare, Pencil, Plus, UserRound, UserRoundCheck } from "lucide-react";
+import { Clock3, MessageSquare, Pencil, Plus } from "lucide-react";
 import { AdminStatusBadge } from "@/components/admin/admin-ui.jsx";
+import { ProspectCollaborationGroups } from "@/components/clients/prospect-collaboration-groups.jsx";
 import { ProspectParticipantAssignModal } from "@/components/clients/prospect-participant-assign-modal.jsx";
 import { CollapsibleSection } from "@/components/ui/collapsible-section.jsx";
 import { participantsApi } from "@/lib/participants-api.js";
@@ -77,44 +78,19 @@ export function ProspectParticipantsPanel({ prospectId, enabled = true, onCapabi
   const state = payload?.state;
   const capabilities = payload?.capabilities || {};
 
-  const roleCards = useMemo(() => {
-    if (!state) return [];
-    return [
-      {
-        key: "gerente",
-        icon: BadgeCheck,
-        label: "Gerente",
-        profile: state.gerente,
-        emptyLabel: "Sin gerente",
-        editable: false,
-      },
-      {
-        key: "vendedor",
-        icon: UserRound,
-        label: "Vendedor",
-        profile: state.representante,
-        emptyLabel: "Sin vendedor",
-        canAssign: capabilities.can_assign_representante,
-        canReassign: capabilities.can_reassign_representante,
-        searchPath: "workspace/representantes/search",
-        save: (userId) => participantsApi.assignRepresentante(prospectId, userId),
-        assignSuccess: "Vendedor asignado",
-        reassignSuccess: "Vendedor reasignado",
-      },
-      {
-        key: "cerrador",
-        icon: UserRoundCheck,
-        label: "Cerrador",
-        profile: state.cerrador,
-        emptyLabel: "Sin asignar",
-        canAssign: capabilities.can_assign_closer,
-        canReassign: capabilities.can_reassign_closer,
-        searchPath: "workspace/closers/search",
-        save: (userId) => participantsApi.assignCloser(prospectId, userId),
-        assignSuccess: "Cerrador asignado",
-        reassignSuccess: "Cerrador reasignado",
-      },
-    ];
+  const cerradorCard = useMemo(() => {
+    if (!state) return null;
+    return {
+      key: "cerrador",
+      label: "Cerrador",
+      profile: state.cerrador,
+      canAssign: capabilities.can_assign_closer,
+      canReassign: capabilities.can_reassign_closer,
+      searchPath: "workspace/closers/search",
+      save: (userId) => participantsApi.assignCloser(prospectId, userId),
+      assignSuccess: "Cerrador asignado",
+      reassignSuccess: "Cerrador reasignado",
+    };
   }, [state, capabilities, prospectId]);
 
   const openAssignModal = (card, reassign) => {
@@ -154,56 +130,70 @@ export function ProspectParticipantsPanel({ prospectId, enabled = true, onCapabi
       {state ? (
         <>
           <div className="prospect-workflow-participants" aria-label="Participantes del expediente">
-            <div className="prospect-workflow-participants-grid">
-              {roleCards.map((card) => {
-                const Icon = card.icon;
-                const assignedId = card.key === "vendedor"
-                  ? state.representante_id
-                  : card.key === "cerrador"
-                    ? state.cerrador_id
-                    : state.gerente_id;
-                const assigned = Boolean(assignedId);
-                const displayName = personName(card.profile, card.emptyLabel);
-                const showAssign = card.canAssign && !assigned;
-                const showEdit = card.canReassign && assigned;
-
-                return (
-                  <div key={card.key} className="prospect-workflow-participant">
-                    <Icon size={15} aria-hidden />
-                    <div className="prospect-workflow-participant-body">
-                      <div className="prospect-workflow-participant-head">
-                        <span>{card.label}</span>
-                        {showEdit ? (
-                          <button
-                            type="button"
-                            className="prospect-workflow-participant-edit"
-                            aria-label={`Editar ${String(card.label || "").toLowerCase()}`}
-                            disabled={pending}
-                            onClick={() => openAssignModal(card, true)}
-                          >
-                            <Pencil size={13} />
-                          </button>
-                        ) : null}
-                      </div>
-                      {showAssign ? (
-                        <button
-                          type="button"
-                          className="btn btn-ghost btn-sm prospect-workflow-participant-assign"
-                          disabled={pending}
-                          onClick={() => openAssignModal(card, false)}
-                        >
-                          <Plus size={14} aria-hidden />
-                          Asignar {card.label}
-                        </button>
-                      ) : (
-                        <strong title={displayName}>{displayName}</strong>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+            <ProspectCollaborationGroups
+              state={state}
+              canEdit={Boolean(capabilities.can_edit)}
+              pending={pending}
+              vendedorCaps={{
+                canAssign: capabilities.can_assign_representante,
+                canReassign: capabilities.can_reassign_representante,
+              }}
+              onAssignUser={(field, reassign) => {
+                if (field.legacy) {
+                  openAssignModal({
+                    key: "vendedor",
+                    label: "Vendedor",
+                    profile: state.representante,
+                    searchPath: "workspace/representantes/search",
+                    save: (userId) => participantsApi.assignRepresentante(prospectId, userId),
+                    assignSuccess: "Vendedor asignado",
+                    reassignSuccess: "Vendedor reasignado",
+                  }, reassign);
+                  return;
+                }
+                openAssignModal({
+                  key: field.key,
+                  label: field.label,
+                  profile: state[field.alias],
+                  searchPath: "workspace/members/search",
+                  save: (userId) => participantsApi.saveCollaboration(prospectId, { [field.key]: userId }),
+                  assignSuccess: `${field.label} asignado`,
+                  reassignSuccess: `${field.label} reasignado`,
+                }, reassign);
+              }}
+              onClearUser={(field) => run(
+                () => participantsApi.saveCollaboration(prospectId, { [field.key]: null }),
+                `${field.label} quitado`,
+              )}
+              onSaveTexts={(texts) => run(
+                () => participantsApi.saveCollaboration(prospectId, texts),
+                "Colaboración guardada",
+              )}
+            />
             <div className="btn-row" style={{ marginTop: 8 }}>
+              {cerradorCard?.canAssign && !state.cerrador_id ? (
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-sm"
+                  disabled={pending}
+                  onClick={() => openAssignModal(cerradorCard, false)}
+                >
+                  <Plus size={14} aria-hidden /> Asignar Cerrador
+                </button>
+              ) : null}
+              {cerradorCard?.canReassign && state.cerrador_id ? (
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-sm"
+                  disabled={pending}
+                  onClick={() => openAssignModal(cerradorCard, true)}
+                >
+                  <Pencil size={14} aria-hidden /> Asignar Cerrador
+                </button>
+              ) : null}
+              {state.cerrador ? (
+                <span className="prospect-collab-cerrador-name">{personName(state.cerrador, "Sin asignar")}</span>
+              ) : null}
               <button
                 type="button"
                 className="btn btn-ghost btn-sm"

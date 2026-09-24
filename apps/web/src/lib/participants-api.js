@@ -16,6 +16,10 @@ async function participantsJson(path, { method = "GET", body } = {}) {
 
 export const participantsApi = {
   get: (prospectId) => participantsJson(`prospects/${prospectId}/participants`),
+  saveCollaboration: (prospectId, body) => participantsJson(
+    `prospects/${prospectId}/participants`,
+    { method: "PATCH", body },
+  ),
   active: () => participantsJson("prospects/active"),
   assignCloser: (prospectId, cerradorId) => participantsJson(
     `prospects/${prospectId}/participants/assign-closer`,

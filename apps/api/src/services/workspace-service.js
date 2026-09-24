@@ -534,6 +534,33 @@ export async function listSalaPeers(supabase, userId) {
   return listSalaMembersInternal(active.id, userId);
 }
 
+/** Miembros de la sala activa para los selectores de colaboración. */
+export async function searchSalaMembers(supabase, userId, rawQuery) {
+  const list = await listUserWorkspaces(supabase, userId);
+  const workspaceId = await resolveActiveWorkspaceId(supabase, userId, null, list);
+  const active = list.find((w) => w.id === workspaceId) || null;
+  if (!active || active.tipo !== "sala_de_venta") {
+    throw new ServiceError("Solo disponible en una sala de venta activa.", 403);
+  }
+  const query = normalizeUserSearchQuery(rawQuery);
+  if (query.length < INVITE_SEARCH_MIN) return [];
+  if (query.length > INVITE_SEARCH_MAX) throw new ServiceError("Búsqueda demasiado larga.", 400);
+  const members = await listSalaMembersInternal(active.id, null);
+  const q = query.toLowerCase();
+  return members
+    .filter((member) => {
+      const hay = [member.full_name, member.email].filter(Boolean).join(" ").toLowerCase();
+      return hay.includes(q);
+    })
+    .slice(0, INVITE_SEARCH_LIMIT)
+    .map((member) => ({
+      id: member.id,
+      full_name: member.full_name,
+      email: member.email,
+      avatar_url: member.avatar_url,
+    }));
+}
+
 async function listSalaMembersInternal(workspaceId, excludeUserId = null) {
   const admin = createServiceSupabaseClient();
   if (!admin) throw new ServiceError("Service role no configurado.", 500);

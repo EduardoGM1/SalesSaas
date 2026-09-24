@@ -8,6 +8,43 @@ import { getRequestWorkspaceContext, requireWorkspacePermission } from "../lib/w
 import { canEditProspectRecord } from "../lib/prospect-edit-access.js";
 import { notifyCloserAssigned } from "./push-notifications-service.js";
 import { rpcEffectiveWorkspacePermissions } from "../lib/workspace-permission-rpc.js";
+import { readCollaborationId } from "../lib/collaboration-id.js";
+
+const COLAB_USER_COLUMNS = [
+  ["hostes_id", "hostes"],
+  ["filtro_id", "filtro"],
+  ["opc_id", "opc"],
+  ["liner_id", "liner"],
+  ["ftb_id", "ftb"],
+  ["inhouse_closer1_id", "inhouse_closer1"],
+  ["inhouse_closer2_id", "inhouse_closer2"],
+  ["imagen_id", "imagen"],
+  ["self_gen_id", "self_gen"],
+  ["members_closer1_id", "members_closer1"],
+  ["members_closer2_id", "members_closer2"],
+];
+
+const COLAB_TEXT_FIELDS = [
+  ["contrato", "Contrato"],
+  ["vlo", "VLO"],
+  ["resultado_prospect_id", "Prospect ID"],
+];
+
+const COLAB_CATALOG_FIELDS = ["calificacion_final", "estatus_tour", "estatus_venta"];
+
+function collaborationColumnList() {
+  return [
+    ...COLAB_USER_COLUMNS.map(([column]) => column),
+    ...COLAB_TEXT_FIELDS.map(([column]) => column),
+    ...COLAB_CATALOG_FIELDS,
+  ].join(", ");
+}
+
+function collaborationEmbeds(profileColumns) {
+  return COLAB_USER_COLUMNS
+    .map(([column, alias]) => `${alias}:profiles!prospect_workflows_${column}_fkey(${profileColumns})`)
+    .join(", ");
+}
 
 function adminClient() {
   const client = createServiceSupabaseClient();
@@ -96,20 +133,12 @@ async function ensureParticipants(access, actorId) {
   if (error) throw new ServiceError(error.message, 500);
   if (existing) return existing;
 
-  const { data: managerMembership } = await admin
-    .from("workspace_miembros")
-    .select("usuario_id")
-    .eq("workspace_id", prospect.workspace_id)
-    .eq("rol_en_workspace", "gerente")
-    .limit(1)
-    .maybeSingle();
   const { data, error: insertError } = await admin
     .from("prospect_workflows")
     .upsert({
       prospect_id: prospect.id,
       workspace_id: prospect.workspace_id,
       representante_id: prospect.user_id,
-      gerente_id: managerMembership?.usuario_id || null,
       created_by: actorId,
       // etapa_actual deprecada: default de columna; no hay pipeline.
       estado: "en_progreso",
@@ -162,7 +191,7 @@ async function participantsAfterAuth(access, actorId) {
 async function participantsPayload(admin, prospectId) {
   const { data, error } = await admin
     .from("prospect_workflows")
-    .select("prospect_id, workspace_id, representante_id, gerente_id, cerrador_id, estado, updated_at, created_at, representante:profiles!prospect_workflows_representante_id_fkey(id, full_name, email), gerente:profiles!prospect_workflows_gerente_id_fkey(id, full_name, email), cerrador:profiles!prospect_workflows_cerrador_id_fkey(id, full_name, email)")
+    .select(`prospect_id, workspace_id, representante_id, gerente_id, cerrador_id, estado, updated_at, created_at, ${collaborationColumnList()}, representante:profiles!prospect_workflows_representante_id_fkey(id, full_name, email), gerente:profiles!prospect_workflows_gerente_id_fkey(id, full_name, email), cerrador:profiles!prospect_workflows_cerrador_id_fkey(id, full_name, email), ${collaborationEmbeds("id, full_name, email")}`)
     .eq("prospect_id", prospectId)
     .single();
   if (error) throw new ServiceError(error.message, 500);
@@ -336,6 +365,80 @@ export async function assignRepresentante(_supabase, actorId, prospectId, repres
   return data;
 }
 
+function isUuid(value) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(value || ""));
+}
+
+async function assertSalaMember(access, userId) {
+  if (!isUuid(userId)) throw new ServiceError("Usuario inválido.", 400);
+  const { data, error } = await access.admin
+    .from("workspace_miembros")
+    .select("usuario_id")
+    .eq("workspace_id", access.prospect.workspace_id)
+    .eq("usuario_id", userId)
+    .maybeSingle();
+  if (error) throw new ServiceError(error.message, 500);
+  if (!data) throw new ServiceError("El usuario no pertenece a la sala.", 400);
+}
+
+/** Guarda columnas de colaboración. No vacía un gerente ya asignado. */
+export async function updateCollaboration(_supabase, actorId, prospectId, body) {
+  const access = await loadAccess(actorId, prospectId);
+  await participantsAfterAuth(access, actorId);
+  const current = await ensureParticipants(access, actorId);
+  const canEdit = canEditProspectRecord({
+    actorId,
+    prospect: access.prospect,
+    workflow: current,
+    permissions: access.permissions,
+    memberRole: access.member?.rol_en_workspace || null,
+  });
+  if (!canEdit) throw new ServiceError("No puedes editar este expediente.", 403);
+  if (current.estado === "cancelado") throw new ServiceError("El expediente está cancelado.", 409);
+  if (!body || typeof body !== "object" || Array.isArray(body)) {
+    throw new ServiceError("Cuerpo inválido.", 400);
+  }
+
+  for (const key of COLAB_CATALOG_FIELDS) {
+    if (Object.prototype.hasOwnProperty.call(body, key) && String(body[key] ?? "").trim() !== "") {
+      throw new ServiceError("Ese catálogo todavía no tiene valores.", 400);
+    }
+  }
+
+  const patch = {};
+  if (Object.prototype.hasOwnProperty.call(body, "gerente_id")) {
+    const next = body.gerente_id || null;
+    if (current.gerente_id && !next) {
+      throw new ServiceError("El gerente ya asignado no se vacía desde este campo.", 400);
+    }
+    if (next) await assertSalaMember(access, next);
+    patch.gerente_id = next;
+  }
+  for (const [column] of COLAB_USER_COLUMNS) {
+    if (!Object.prototype.hasOwnProperty.call(body, column)) continue;
+    const next = body[column] || null;
+    if (next) await assertSalaMember(access, next);
+    patch[column] = next;
+  }
+  for (const [column, label] of COLAB_TEXT_FIELDS) {
+    if (!Object.prototype.hasOwnProperty.call(body, column)) continue;
+    try {
+      patch[column] = readCollaborationId(body[column], label);
+    } catch (err) {
+      throw new ServiceError(err.message, err.status || 400);
+    }
+  }
+
+  if (Object.keys(patch).length) {
+    const { error } = await access.admin
+      .from("prospect_workflows")
+      .update(patch)
+      .eq("prospect_id", prospectId);
+    if (error) throw new ServiceError(error.message, 400);
+  }
+  return getParticipants(_supabase, actorId, prospectId);
+}
+
 /** Lista expedientes activos de la sala según rol (sin filtrar por etapa). */
 export async function listActiveProspects(supabase, actorId) {
   const ctx = await getRequestWorkspaceContext(supabase, actorId);
@@ -355,7 +458,7 @@ export async function listActiveProspects(supabase, actorId) {
 
   let query = admin
     .from("prospect_workflows")
-    .select("prospect_id, workspace_id, representante_id, gerente_id, cerrador_id, estado, updated_at, prospects(id, name, name1, prospect_code, status, updated_at), representante:profiles!prospect_workflows_representante_id_fkey(full_name), cerrador:profiles!prospect_workflows_cerrador_id_fkey(full_name)")
+    .select(`prospect_id, workspace_id, representante_id, gerente_id, cerrador_id, estado, updated_at, ${collaborationColumnList()}, prospects(id, name, name1, prospect_code, status, updated_at), representante:profiles!prospect_workflows_representante_id_fkey(full_name), gerente:profiles!prospect_workflows_gerente_id_fkey(full_name), cerrador:profiles!prospect_workflows_cerrador_id_fkey(full_name), ${collaborationEmbeds("full_name")}`)
     .eq("workspace_id", workspaceId)
     .neq("estado", "cancelado")
     .order("updated_at", { ascending: false });
@@ -400,9 +503,17 @@ export async function listActiveProspects(supabase, actorId) {
       last_activity_by: last?.full_name || null,
       prospects: row.prospects,
       representante: row.representante,
+      gerente: row.gerente,
       cerrador: row.cerrador,
       representante_id: row.representante_id,
       cerrador_id: row.cerrador_id,
+      colaboracion_busqueda: [
+        row.gerente?.full_name,
+        ...COLAB_USER_COLUMNS.map(([, alias]) => row[alias]?.full_name),
+        row.contrato,
+        row.vlo,
+        row.resultado_prospect_id,
+      ].filter(Boolean).join(" "),
     };
   });
 }

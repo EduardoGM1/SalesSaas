@@ -26,6 +26,10 @@ export async function buscarRepresentantes(auth, req) {
   return workspaceService.searchRepresentanteCandidates(auth.supabase, auth.userId, req.query.q);
 }
 
+export async function buscarMiembrosSala(auth, req) {
+  return workspaceService.searchSalaMembers(auth.supabase, auth.userId, req.query.q);
+}
+
 export async function listarExpedientesEquipo(auth, req) {
   const memberId = typeof req.query.member_id === "string" ? req.query.member_id : null;
   const { limit, offset } = parseLimitOffset(req.query);

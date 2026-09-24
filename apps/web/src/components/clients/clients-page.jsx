@@ -74,6 +74,8 @@ function matchesQuery(row, q, showTeamCols) {
     row.status,
     showTeamCols && row.team?.vendedor,
     showTeamCols && row.team?.cerrador,
+    showTeamCols && row.team?.gerente,
+    showTeamCols && row.team?.colaboracion,
     showTeamCols && row.team?.lastActivityBy,
   ].filter(Boolean).join(" ").toLowerCase();
   return hay.includes(q);
@@ -214,6 +216,8 @@ export function ClientsPage() {
           if (!row?.prospect_id) continue;
           map[row.prospect_id] = {
             vendedor: row.representante?.full_name || "—",
+            gerente: row.gerente?.full_name || "",
+            colaboracion: row.colaboracion_busqueda || "",
             cerrador: row.cerrador?.full_name || t("clients.unassignedCloser"),
             lastActivityBy: row.last_activity_by || null,
             lastActivityAt: row.last_activity_at || row.updated_at || null,
