@@ -1,9 +1,26 @@
 import { ServiceError } from "../lib/service-error.js";
+import { logger } from "../lib/logger.js";
 import { getCurrentMembership, listPremiumFeatures } from "./membership-service.js";
 import { resolveUserPermissions } from "@salesapp/shared/auth/resolve-permissions.js";
 import { resolveSessionFlags } from "./flags-service.js";
 import * as workspaceService from "./workspace-service.js";
 import { resolveSalaSessionPermissionKeys } from "../lib/workspace-permission-rpc.js";
+
+const SESSION_TTL_MS = 45_000;
+/** @type {Map<string, { expires: number, payload: object }>} */
+const sessionCache = new Map();
+/** @type {Map<string, Promise<object>>} */
+const sessionInflight = new Map();
+
+export function invalidateSessionCache(userId) {
+  if (userId) {
+    sessionCache.delete(userId);
+    sessionInflight.delete(userId);
+    return;
+  }
+  sessionCache.clear();
+  sessionInflight.clear();
+}
 
 async function loadRolePermissionKeys(supabase, roleId) {
   if (!roleId) return [];
@@ -61,6 +78,32 @@ async function resolveSessionPermissionKeys(supabase, userId, profile, workspace
 }
 
 export async function getSession(supabase, userId) {
+  const hit = sessionCache.get(userId);
+  if (hit && hit.expires > Date.now()) {
+    logger.info("session.cache", { hit: true });
+    return hit.payload;
+  }
+  const pending = sessionInflight.get(userId);
+  if (pending) {
+    logger.info("session.cache", { hit: "inflight" });
+    return pending;
+  }
+
+  const work = loadSession(supabase, userId)
+    .then((payload) => {
+      const ok = payload?.permissions_status === "ok" && payload?.flags_status === "ok";
+      if (ok) sessionCache.set(userId, { expires: Date.now() + SESSION_TTL_MS, payload });
+      return payload;
+    })
+    .finally(() => {
+      sessionInflight.delete(userId);
+    });
+  sessionInflight.set(userId, work);
+  logger.info("session.cache", { hit: false });
+  return work;
+}
+
+async function loadSession(supabase, userId) {
   const { data: { user } } = await supabase.auth.getUser();
   let profile = null;
   {
@@ -184,6 +227,7 @@ export async function getSession(supabase, userId) {
 }
 
 export async function switchWorkspace(supabase, userId, workspaceId) {
+  invalidateSessionCache(userId);
   await workspaceService.setActiveWorkspace(supabase, userId, workspaceId);
   return getSession(supabase, userId);
 }
