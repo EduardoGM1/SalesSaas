@@ -9883,6 +9883,10 @@ body,
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
+.prospect-collab-skeleton {
+  min-height: 88px;
+  background: var(--saas-surface-muted, #f1f5f9);
+}
 .prospect-collab-group {
   margin-top: 0;
   min-width: 0;

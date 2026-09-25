@@ -21,6 +21,16 @@ function personName(profile, fallback) {
   return profile?.full_name || profile?.email || fallback;
 }
 
+function CollaborationPlaceholder() {
+  return (
+    <div className="prospect-collab-groups" aria-hidden="true">
+      {Array.from({ length: 6 }, (_, index) => (
+        <div key={index} className="prospect-collab-group prospect-collab-skeleton" />
+      ))}
+    </div>
+  );
+}
+
 /**
  * Participantes del expediente (sin pipeline).
  * Gerente, Vendedor y Cerrador colaboran sobre el mismo registro.
@@ -107,7 +117,8 @@ export function ProspectParticipantsPanel({ prospectId, enabled = true, onCapabi
     });
   };
 
-  if (!enabled || hidden || (!payload && !error)) return null;
+  if (!enabled || hidden) return null;
+  const loading = !payload && !error;
 
   return (
     <CollapsibleSection
@@ -127,6 +138,11 @@ export function ProspectParticipantsPanel({ prospectId, enabled = true, onCapabi
       bodyClassName="prospect-workflow-collab-body"
     >
       {error ? <div className="auth-error">{error}</div> : null}
+      {loading ? (
+        <div aria-busy="true" aria-live="polite">
+          <CollaborationPlaceholder />
+        </div>
+      ) : null}
       {state ? (
         <>
           <div className="prospect-workflow-participants" aria-label="Participantes del expediente">
