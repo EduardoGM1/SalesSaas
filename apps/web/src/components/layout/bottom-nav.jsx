@@ -11,7 +11,7 @@ const COMPACT_NAV_MQ = "(max-width: 390px)";
 export function BottomNav() {
   const { pathname } = useLocation();
   const { lang: language, t } = useI18n();
-  const { mobileBottomItems } = useAppNav();
+  const { mobileBottomItems, bottomNavReady } = useAppNav();
   const [compactLabels, setCompactLabels] = useState(() => {
     if (typeof window === "undefined") return false;
     return window.matchMedia(COMPACT_NAV_MQ).matches;
@@ -26,7 +26,7 @@ export function BottomNav() {
     return () => mq.removeEventListener("change", sync);
   }, []);
 
-  if (!mobileBottomItems.length) return null;
+  if (!bottomNavReady || !mobileBottomItems.length) return null;
 
   const labelFor = compactLabels ? navLabelCompact : navLabel;
 

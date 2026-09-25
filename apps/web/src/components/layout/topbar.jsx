@@ -14,8 +14,8 @@ export function Topbar({ title, subtitle, showMonthNav, admin }) {
   const calMonth = useAppStore((s) => s.calMonth);
   const calPrev = useAppStore((s) => s.calPrev);
   const calNext = useAppStore((s) => s.calNext);
-  const pendingOutbound = useSyncStore((s) => s.pendingOutbound);
   const syncStatus = useSyncStore((s) => s.status);
+  const syncError = useSyncStore((s) => s.lastError);
 
   if (admin) {
     const { permissions, isSuperAdmin, pathname } = admin;
@@ -80,23 +80,13 @@ export function Topbar({ title, subtitle, showMonthNav, admin }) {
               <button type="button" className="tb-nav-btn" onClick={calNext} aria-label={t("common.nextMonth")}>›</button>
             </div>
           )}
-          {(pendingOutbound || syncStatus === "syncing" || syncStatus === "offline") && (
+          {syncStatus === "error" && (
             <span
               className="tb-sync-chip"
-              title={
-                syncStatus === "offline"
-                  ? "Sin conexión — cambios pendientes"
-                  : syncStatus === "syncing"
-                    ? "Sincronizando…"
-                    : "Pendiente de sincronizar"
-              }
+              title={syncError || "Error de sincronización"}
               aria-live="polite"
             >
-              {syncStatus === "offline"
-                ? "Offline"
-                : syncStatus === "syncing"
-                  ? "Sync…"
-                  : "Pendiente"}
+              Error
             </span>
           )}
           <DesktopTopNavActions />

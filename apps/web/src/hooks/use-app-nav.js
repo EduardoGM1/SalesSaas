@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useMounted } from "@/hooks/use-mounted";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { hasAnyAdminAccess } from "@/lib/auth/permissions";
@@ -31,12 +31,18 @@ export function useAppNav() {
   const [roleSlug, setRoleSlug] = useState(null);
   const [empresaId, setEmpresaId] = useState(null);
   const [sessionFlags, setSessionFlags] = useState({});
+  const [bottomNavReady, setBottomNavReady] = useState(false);
   const [unreadMessages, setUnreadMessages] = useState(() => getUnreadMessagesCount());
+  const adminCheckSeq = useRef(0);
 
   useEffect(() => {
-    if (!isSupabaseConfigured()) return;
-    return watchSession((session) => {
+    if (!isSupabaseConfigured()) {
+      setBottomNavReady(true);
+      return undefined;
+    }
+    const stop = watchSession((session) => {
       const profile = session?.profile;
+      const req = ++adminCheckSeq.current;
       if (!profile) {
         setIsAdmin(false);
         setAvatarUrl(null);
@@ -46,6 +52,7 @@ export function useAppNav() {
         setRoleSlug(null);
         setEmpresaId(null);
         setSessionFlags({});
+        setBottomNavReady(false);
         return;
       }
       setUserProfile(profile);
@@ -56,29 +63,28 @@ export function useAppNav() {
         is_super_admin: profile.is_super_admin === true,
         admin_permissions: Array.isArray(profile.admin_permissions) ? profile.admin_permissions : [],
       });
-      setIsAdmin(platformAdmin);
-      if (platformAdmin) {
-        // Calentar cache para que /admin no blankee el shell.
-        void fetch("/api/v1/admin/me", { credentials: "include" })
-          .then(async (response) => (response.ok ? response.json() : null))
-          .then((adminSession) => {
-            if (adminSession) warmAdminSession(adminSession);
-          })
-          .catch(() => {});
-      } else {
-        fetch("/api/v1/admin/me", { credentials: "include" })
-          .then(async (response) => {
-            if (!response.ok) return null;
-            return response.json();
-          })
-          .then((adminSession) => {
-            if (adminSession?.userId === profile.id) {
-              warmAdminSession(adminSession);
-              setIsAdmin(true);
-            }
-          })
-          .catch(() => {});
-      }
+      // No marcar admin (ni pintar el menú) hasta que /admin/me responda.
+      // Si ya había un resultado, se conserva hasta esta respuesta: un poll
+      // no debe bajar isAdmin a false y mostrar el recorte de 3 iconos.
+      fetch("/api/v1/admin/me", { credentials: "include" })
+        .then(async (response) => (response.ok ? response.json() : null))
+        .then((adminSession) => {
+          if (req !== adminCheckSeq.current) return;
+          if (adminSession?.userId === profile.id) {
+            warmAdminSession(adminSession);
+            setIsAdmin(true);
+          } else {
+            setIsAdmin(platformAdmin);
+          }
+        })
+        .catch(() => {
+          if (req !== adminCheckSeq.current) return;
+          setIsAdmin(platformAdmin);
+        })
+        .finally(() => {
+          if (req !== adminCheckSeq.current) return;
+          setBottomNavReady(true);
+        });
       const ws = session?.workspace_activo;
       const tipo = ws?.tipo || "personal";
       setWorkspaceTipo(tipo);
@@ -88,6 +94,10 @@ export function useAppNav() {
       const rawFlags = session?.flags ?? session?.profile?.flags;
       setSessionFlags(rawFlags && typeof rawFlags === "object" ? rawFlags : {});
     });
+    return () => {
+      adminCheckSeq.current += 1;
+      stop();
+    };
   }, []);
 
   useEffect(() => {
@@ -163,5 +173,6 @@ export function useAppNav() {
     sidebarGroups,
     mobileBottomItems,
     mobileHeaderItems,
+    bottomNavReady,
   };
 }
