@@ -63,7 +63,8 @@ function personName(profile) {
 }
 
 /**
- * Cinco grupos de colaboración. Cada campo es su propia columna.
+ * Seis grupos de colaboración. Cada campo es su propia columna.
+ * Cerrador es solo la tarjeta: la asignación sigue en assignCloser.
  * Los catálogos de resultado quedan vacíos hasta que Mich defina los valores.
  */
 export function ProspectCollaborationGroups({
@@ -71,6 +72,7 @@ export function ProspectCollaborationGroups({
   canEdit = false,
   pending = false,
   vendedorCaps = {},
+  cerrador = null,
   onAssignUser,
   onClearUser,
   onSaveTexts,
@@ -94,6 +96,7 @@ export function ProspectCollaborationGroups({
     || texts.resultado_prospect_id !== (state?.resultado_prospect_id || "");
 
   return (
+    <>
     <div className="prospect-collab-groups">
       {GROUPS.map((group) => (
         <section key={group.id} className="prospect-collab-group" aria-label={group.title}>
@@ -182,18 +185,55 @@ export function ProspectCollaborationGroups({
           </div>
         </section>
       ))}
-      {canEdit ? (
-        <div className="btn-row" style={{ marginTop: 8 }}>
-          <button
-            type="button"
-            className="btn btn-primary btn-sm"
-            disabled={pending || !dirty}
-            onClick={() => onSaveTexts?.(texts)}
-          >
-            Guardar Contrato, VLO y Prospect ID
-          </button>
+      <section className="prospect-collab-group" aria-label="Cerrador">
+        <h3>Cerrador</h3>
+        <div className="prospect-workflow-participants-grid">
+          <div className="prospect-workflow-participant">
+            <div className="prospect-workflow-participant-body">
+              <div className="prospect-workflow-participant-head">
+                <span>Cerrador</span>
+                {cerrador?.canReassign && cerrador?.assigned ? (
+                  <button
+                    type="button"
+                    className="prospect-workflow-participant-edit"
+                    aria-label="Editar Cerrador"
+                    disabled={pending}
+                    onClick={() => cerrador.onReassign?.()}
+                  >
+                    <Pencil size={13} />
+                  </button>
+                ) : null}
+              </div>
+              {cerrador?.canAssign && !cerrador?.assigned ? (
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-sm prospect-workflow-participant-assign"
+                  disabled={pending}
+                  onClick={() => cerrador.onAssign?.()}
+                >
+                  <Plus size={14} aria-hidden />
+                  Asignar Cerrador
+                </button>
+              ) : (
+                <strong title={cerrador?.name || "Sin asignar"}>{cerrador?.name || "Sin asignar"}</strong>
+              )}
+            </div>
+          </div>
         </div>
-      ) : null}
+      </section>
     </div>
+    {canEdit ? (
+      <div className="btn-row" style={{ marginTop: 8 }}>
+        <button
+          type="button"
+          className="btn btn-primary btn-sm"
+          disabled={pending || !dirty}
+          onClick={() => onSaveTexts?.(texts)}
+        >
+          Guardar Contrato, VLO y Prospect ID
+        </button>
+      </div>
+    ) : null}
+    </>
   );
 }

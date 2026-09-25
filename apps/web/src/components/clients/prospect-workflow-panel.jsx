@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Clock3, MessageSquare, Pencil, Plus } from "lucide-react";
+import { Clock3, MessageSquare } from "lucide-react";
 import { AdminStatusBadge } from "@/components/admin/admin-ui.jsx";
 import { ProspectCollaborationGroups } from "@/components/clients/prospect-collaboration-groups.jsx";
 import { ProspectParticipantAssignModal } from "@/components/clients/prospect-participant-assign-modal.jsx";
@@ -169,31 +169,16 @@ export function ProspectParticipantsPanel({ prospectId, enabled = true, onCapabi
                 () => participantsApi.saveCollaboration(prospectId, texts),
                 "Colaboración guardada",
               )}
+              cerrador={cerradorCard ? {
+                assigned: Boolean(state.cerrador_id),
+                name: personName(state.cerrador, "Sin asignar"),
+                canAssign: cerradorCard.canAssign,
+                canReassign: cerradorCard.canReassign,
+                onAssign: () => openAssignModal(cerradorCard, false),
+                onReassign: () => openAssignModal(cerradorCard, true),
+              } : null}
             />
             <div className="btn-row" style={{ marginTop: 8 }}>
-              {cerradorCard?.canAssign && !state.cerrador_id ? (
-                <button
-                  type="button"
-                  className="btn btn-ghost btn-sm"
-                  disabled={pending}
-                  onClick={() => openAssignModal(cerradorCard, false)}
-                >
-                  <Plus size={14} aria-hidden /> Asignar Cerrador
-                </button>
-              ) : null}
-              {cerradorCard?.canReassign && state.cerrador_id ? (
-                <button
-                  type="button"
-                  className="btn btn-ghost btn-sm"
-                  disabled={pending}
-                  onClick={() => openAssignModal(cerradorCard, true)}
-                >
-                  <Pencil size={14} aria-hidden /> Asignar Cerrador
-                </button>
-              ) : null}
-              {state.cerrador ? (
-                <span className="prospect-collab-cerrador-name">{personName(state.cerrador, "Sin asignar")}</span>
-              ) : null}
               <button
                 type="button"
                 className="btn btn-ghost btn-sm"
