@@ -10,6 +10,7 @@ import { toast } from "@/lib/toast";
 import {
   RH_EXTRA_DP_PLAZO_DIAS,
   extraDpFechaDentroPlazo,
+  lookupBottomLine,
   toDateStr,
   fechaLimiteExtraDp,
 } from "@/lib/calculations/royal-holiday.js";
@@ -79,6 +80,7 @@ export function WorksheetRoyalHolidayPage({
   const [form, setForm] = useState({ ...DEFAULT_RH_FORM });
   const dirtyKeysRef = useRef(new Set());
   const hydratedRef = useRef(false);
+  const creditsAnchorRef = useRef(null);
   const skipAutosaveRef = useRef(true);
   const autosaveTimerRef = useRef(null);
   const prevTabRef = useRef(activeTab);
@@ -107,14 +109,17 @@ export function WorksheetRoyalHolidayPage({
     if (restored) {
       if (!hydratedRef.current) {
         hydratedRef.current = true;
+        creditsAnchorRef.current = String(restored.form.holiday_credits ?? "");
         setForm(restored.form);
         if (!externalTab) setTab(restored.tab);
       } else if (dirtyKeysRef.current.size === 0) {
+        creditsAnchorRef.current = String(restored.form.holiday_credits ?? "");
         setForm(restored.form);
         if (!externalTab) setTab(restored.tab);
       }
     } else if (!hydratedRef.current) {
       hydratedRef.current = true;
+      creditsAnchorRef.current = String(form.holiday_credits ?? "");
     }
     skipAutosaveRef.current = true;
   }, [ready, clientId, getBucket, shared?.prospectId, toolsRevision]);
@@ -210,6 +215,25 @@ export function WorksheetRoyalHolidayPage({
     currencyMeta,
     moneda.ctx,
   ]);
+
+  // Créditos → Monto de venta. El precio del tier pisa cualquier captura manual.
+  // Editar Monto de venta no vuelve a calcular créditos.
+  useEffect(() => {
+    if (!ready || readOnly) return;
+    if (creditsAnchorRef.current == null) return;
+    const hc = String(form.holiday_credits ?? "");
+    if (hc === creditsAnchorRef.current) return;
+    if (!catalogo?.bottom_line?.length) return;
+    const row = lookupBottomLine(catalogo.bottom_line, hc);
+    const precio = Number(row?.precio_minimo_con_iva);
+    creditsAnchorRef.current = hc;
+    if (!Number.isFinite(precio) || precio <= 0) return;
+    const captured = moneda.formatCapture(moneda.toCaptureDisplay(precio));
+    if (!captured) return;
+    setForm((prev) => (prev.monto_venta === captured ? prev : { ...prev, monto_venta: captured }));
+    markFieldsDirty(dirtyKeysRef, "monto_venta");
+    recordMoneyCapture("monto_venta", captured);
+  }, [form.holiday_credits, catalogo, ready, readOnly, moneda, recordMoneyCapture]);
 
   const operationalForm = useMemo(
     () => rhFormToOperational(form, captureCurrency, currencyMeta, moneda.ctx),
