@@ -11,7 +11,7 @@ import {
 } from "@/lib/calculations/royal-holiday.js";
 import { parseMoney } from "@/lib/format/money";
 
-const PAGO_OPTS = [1, 0, 2, 3, 4, 5, 6, 8, 10, 12];
+const PAGO_OPTS = [0, 1, 2, 3, 4, 5, 6, 8, 10, 12];
 
 function pagoOptLabel(n) {
   return `${n} ${n === 1 ? "pago" : "pagos"}`;
