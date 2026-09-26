@@ -439,8 +439,11 @@ export function AdminUsersPage() {
   const assignableRoles = useMemo(() => {
     const list = Array.isArray(rolesData) ? rolesData : [];
     return list.filter((r) => {
-      if (r.slug === "superadmin") return false;
-      // Solo Superadmin puede otorgar el rol Admin.
+      // Puestos de sala/empresa y el Liner global huérfano no se asignan aquí.
+      // El alta sin workspace sigue usando esa fila Liner por su UUID, en otro camino.
+      if (r.empresa_id) return false;
+      if ((r.scope || "plataforma") !== "plataforma") return false;
+      if (r.slug !== "admin" && r.slug !== "soporte") return false;
       if (r.slug === "admin" && !viewerIsSuper) return false;
       return true;
     });
