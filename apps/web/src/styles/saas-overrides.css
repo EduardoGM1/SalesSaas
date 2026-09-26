@@ -2955,7 +2955,14 @@ button.tool-card {
 .admin-perms-grid { display: flex; flex-direction: column; gap: 10px; }
 .admin-perm-item { display: flex; align-items: flex-start; gap: 10px; font-size: 14px; line-height: 1.4; cursor: pointer; }
 .admin-perm-item input { margin-top: 3px; }
-.admin-perms-modal { max-width: 480px; max-height: min(90vh, 640px); overflow-y: auto; }
+.admin-perm-item.is-disabled { opacity: 0.45; cursor: not-allowed; }
+.admin-perm-key { display: block; margin-top: 1px; font-size: 11px; line-height: 1.3; color: var(--muted, #8b93a7); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+.admin-role-editor-body { max-height: min(58vh, 520px); overflow: auto; padding-top: 4px; }
+.admin-role-zone + .admin-role-zone { margin-top: 18px; padding-top: 14px; border-top: 1px solid rgba(148, 163, 184, 0.35); }
+.admin-role-perm-group { margin: 0 0 12px; }
+.admin-role-perm-heading { font-size: 12px; font-weight: 700; letter-spacing: 0.02em; margin: 0 0 6px; }
+.admin-role-editor-foot { margin: 0 20px 4px; }
+.admin-perms-modal { max-width: 640px; max-height: min(92vh, 820px); overflow: hidden; display: flex; flex-direction: column; }
 .admin-perms-modal .admin-perms-grid { padding: 0 20px 4px; }
 .admin-perms-modal .btn-row { padding: 16px 20px 20px; }
 

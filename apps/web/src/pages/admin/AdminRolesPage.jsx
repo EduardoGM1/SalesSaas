@@ -1,5 +1,10 @@
 import { useMemo, useState } from "react";
 import { useOutletContext } from "react-router-dom";
+import {
+  FLAG_TOOL_PERMISSIONS,
+  PERMISSION_CATALOG,
+  PERMISSION_MODULES,
+} from "@salesapp/shared/auth/permission-catalog.js";
 import { AdminDataView, AdminPageHeader, AdminPageState } from "@/components/admin/admin-ui.jsx";
 import { useAdminFetch } from "@/hooks/use-admin-session.js";
 import { hasPermission } from "@/lib/auth/permissions";
@@ -40,30 +45,69 @@ function sortPlatformRoles(roles) {
   });
 }
 
-function ModuleCheckboxTree({ nodes, selected, onToggle, depth = 0 }) {
-  return (nodes || []).map((node) => (
-    <div key={node.id} style={{ marginLeft: depth * 14, marginBottom: 6 }}>
-      <label className="admin-perm-item">
-        <input
-          type="checkbox"
-          checked={selected.has(node.clave)}
-          onChange={() => onToggle(node)}
-        />
-        <span>
-          {node.nombre_visible}
-          <span className="admin-cell-muted" style={{ marginLeft: 6, fontSize: 11 }}>{node.clave}</span>
-        </span>
-      </label>
-      {node.children?.length > 0 && (
-        <ModuleCheckboxTree
-          nodes={node.children}
-          selected={selected}
-          onToggle={onToggle}
-          depth={depth + 1}
-        />
-      )}
-    </div>
-  ));
+const TOOL_FLAG_ORDER = ["survey", "worksheet", "analysis", "proyeccion_vacaciones"];
+
+function findFlagNode(nodes, clave) {
+  for (const node of collectFlagKeys(nodes)) {
+    if (node.clave === clave) return node;
+  }
+  return null;
+}
+
+function dropDisallowedToolPerms(flagKeys, permKeys) {
+  const next = new Set(permKeys);
+  for (const [flag, perms] of Object.entries(FLAG_TOOL_PERMISSIONS)) {
+    if (flagKeys.has(flag)) continue;
+    for (const perm of perms) next.delete(perm);
+  }
+  return next;
+}
+
+function normalizeFlagSelection(nodes, selected, parentOn = true, next = new Set()) {
+  for (const node of nodes || []) {
+    const on = parentOn && selected.has(node.clave);
+    if (on) next.add(node.clave);
+    if (node.children?.length) normalizeFlagSelection(node.children, selected, on, next);
+  }
+  return next;
+}
+
+function ModuleCheckboxTree({ nodes, selected, onToggle, depth = 0, parentOn = true }) {
+  return (nodes || []).map((node) => {
+    const on = parentOn && selected.has(node.clave);
+    const disabled = !parentOn;
+    return (
+      <div key={node.id} style={{ marginLeft: depth * 14, marginBottom: 6 }}>
+        <label className={`admin-perm-item${disabled ? " is-disabled" : ""}`}>
+          <input
+            type="checkbox"
+            checked={on}
+            disabled={disabled}
+            onChange={() => {
+              if (!disabled) onToggle(node);
+            }}
+          />
+          <span>
+            <span>{node.nombre_visible}</span>
+            <span className="admin-perm-key">{node.clave}</span>
+          </span>
+        </label>
+        {node.children?.length > 0 && (
+          <ModuleCheckboxTree
+            nodes={node.children}
+            selected={selected}
+            onToggle={onToggle}
+            depth={depth + 1}
+            parentOn={on}
+          />
+        )}
+      </div>
+    );
+  });
+}
+
+function catalogPerm(clave) {
+  return PERMISSION_CATALOG.find((item) => item.clave === clave) || null;
 }
 
 function RoleEditor({ role, flagTree, onClose, onSaved }) {
@@ -71,7 +115,11 @@ function RoleEditor({ role, flagTree, onClose, onSaved }) {
   const isNew = !role?.id;
   const [nombre, setNombre] = useState(role?.nombre ?? "");
   const [keys, setKeys] = useState(() => (
-    isNew ? new Set() : flagKeysForRole(flagTree, role.id)
+    isNew ? new Set() : normalizeFlagSelection(flagTree, flagKeysForRole(flagTree, role.id))
+  ));
+  const [permKeys, setPermKeys] = useState(() => dropDisallowedToolPerms(
+    isNew ? new Set() : normalizeFlagSelection(flagTree, flagKeysForRole(flagTree, role.id)),
+    new Set(role?.permission_keys || []),
   ));
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
@@ -80,13 +128,30 @@ function RoleEditor({ role, flagTree, onClose, onSaved }) {
     setKeys((prev) => {
       const next = new Set(prev);
       const turningOn = !next.has(node.clave);
+      const affected = [node, ...collectFlagKeys(node.children || [])];
       if (turningOn) {
-        next.add(node.clave);
-        for (const child of collectFlagKeys(node.children || [])) next.add(child.clave);
+        for (const item of affected) next.add(item.clave);
       } else {
-        next.delete(node.clave);
-        for (const child of collectFlagKeys(node.children || [])) next.delete(child.clave);
+        for (const item of affected) next.delete(item.clave);
+        const drop = new Set();
+        for (const item of affected) {
+          for (const perm of FLAG_TOOL_PERMISSIONS[item.clave] || []) drop.add(perm);
+        }
+        setPermKeys((perms) => {
+          const pnext = new Set(perms);
+          for (const perm of drop) pnext.delete(perm);
+          return pnext;
+        });
       }
+      return next;
+    });
+  };
+
+  const togglePerm = (clave) => {
+    setPermKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(clave)) next.delete(clave);
+      else next.add(clave);
       return next;
     });
   };
@@ -97,14 +162,16 @@ function RoleEditor({ role, flagTree, onClose, onSaved }) {
     setError("");
     try {
       const flag_keys = [...keys];
+      const permission_keys = [...dropDisallowedToolPerms(keys, permKeys)];
       if (isNew) {
-        await adminJson("roles", { method: "POST", body: { nombre, flag_keys } });
+        await adminJson("roles", { method: "POST", body: { nombre, flag_keys, permission_keys } });
       } else {
         await adminJson(`roles/${role.id}`, {
           method: "PATCH",
           body: {
             nombre: role.es_sistema ? undefined : nombre,
             flag_keys,
+            permission_keys,
           },
         });
       }
@@ -124,7 +191,7 @@ function RoleEditor({ role, flagTree, onClose, onSaved }) {
   return (
     <>
       <button type="button" className="modal-backdrop" aria-label={t("common.cancel")} onClick={onClose} />
-      <div className="admin-confirm-panel admin-perms-modal" role="dialog" aria-modal="true" style={{ maxWidth: 560 }}>
+      <div className="admin-confirm-panel admin-perms-modal" role="dialog" aria-modal="true">
         <div className="admin-confirm-head">
           <span className="admin-confirm-title">
             {isNew ? t("admin.roles.createTitle") : t("admin.roles.editTitle")}
@@ -143,14 +210,61 @@ function RoleEditor({ role, flagTree, onClose, onSaved }) {
               disabled={role?.es_sistema === true}
               required={isNew || !role?.es_sistema}
             />
-            <p className="admin-confirm-sub" style={{ marginTop: 10 }}>
-              {t("admin.roles.modulesHint")}
-            </p>
           </div>
-          <div className="admin-confirm-body" style={{ maxHeight: 360, overflow: "auto" }}>
-            <div className="section-label" style={{ marginBottom: 8 }}>{t("admin.roles.modulesTitle")}</div>
-            <ModuleCheckboxTree nodes={flagTree} selected={keys} onToggle={toggle} />
+          <div className="admin-confirm-body admin-role-editor-body">
+            <section className="admin-role-zone">
+              <div className="section-label" style={{ marginBottom: 8 }}>{t("admin.roles.zone.sees")}</div>
+              <ModuleCheckboxTree nodes={flagTree} selected={keys} onToggle={toggle} />
+            </section>
+            <section className="admin-role-zone">
+              <div className="section-label" style={{ marginBottom: 4 }}>{t("admin.roles.zone.does")}</div>
+              <p className="admin-confirm-sub" style={{ marginBottom: 10 }}>{t("admin.roles.zone.doesHint")}</p>
+              {TOOL_FLAG_ORDER.map((flag) => {
+                if (!keys.has(flag)) return null;
+                const node = findFlagNode(flagTree, flag);
+                const perms = FLAG_TOOL_PERMISSIONS[flag] || [];
+                return (
+                  <div key={flag} className="admin-role-perm-group">
+                    <div className="admin-role-perm-heading">{node?.nombre_visible || flag}</div>
+                    {perms.map((clave) => {
+                      const item = catalogPerm(clave);
+                      if (!item) return null;
+                      return (
+                        <label key={clave} className="admin-perm-item">
+                          <input
+                            type="checkbox"
+                            checked={permKeys.has(clave)}
+                            onChange={() => togglePerm(clave)}
+                          />
+                          <span>{item.nombre_visible}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                );
+              })}
+              {PERMISSION_MODULES.filter((mod) => mod.id !== "herramientas").map((mod) => {
+                const items = PERMISSION_CATALOG.filter((item) => item.modulo === mod.id);
+                if (!items.length) return null;
+                return (
+                  <div key={mod.id} className="admin-role-perm-group">
+                    <div className="admin-role-perm-heading">{mod.label}</div>
+                    {items.map((item) => (
+                      <label key={item.clave} className="admin-perm-item">
+                        <input
+                          type="checkbox"
+                          checked={permKeys.has(item.clave)}
+                          onChange={() => togglePerm(item.clave)}
+                        />
+                        <span>{item.nombre_visible}</span>
+                      </label>
+                    ))}
+                  </div>
+                );
+              })}
+            </section>
           </div>
+          <p className="admin-confirm-sub admin-role-editor-foot">{t("admin.roles.footer.sala")}</p>
           {error && <div className="auth-error" style={{ margin: "0 20px 12px" }}>{error}</div>}
           <div className="btn-row">
             <button type="button" className="btn btn-ghost" onClick={onClose}>{t("common.cancel")}</button>

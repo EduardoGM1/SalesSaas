@@ -83,6 +83,17 @@ export const PERMISSION_CATALOG = [
 
 export const ALL_PERMISSION_KEYS = PERMISSION_CATALOG.map((p) => p.clave);
 
+/**
+ * Permisos de herramienta que solo existen si el flag del módulo está encendido.
+ * El primero de cada lista es el que el guardado antiguo reponía solo.
+ */
+export const FLAG_TOOL_PERMISSIONS = {
+  survey: ["herramientas:survey", "herramientas:survey_configurar_preguntas"],
+  proyeccion_vacaciones: ["herramientas:vacaciones"],
+  worksheet: ["herramientas:worksheet"],
+  analysis: ["herramientas:analysis"],
+};
+
 export const APP_PERMISSION_KEYS = PERMISSION_CATALOG.filter((p) => p.capa === "app").map((p) => p.clave);
 
 export const ADMIN_PERMISSION_KEYS = PERMISSION_CATALOG.filter((p) => p.capa === "admin").map((p) => p.clave);

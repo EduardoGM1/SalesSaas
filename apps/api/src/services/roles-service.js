@@ -2,6 +2,7 @@ import { ServiceError } from "../lib/service-error.js";
 import { isSuperAdmin } from "@salesapp/shared/auth/permissions.js";
 import {
   ALL_PERMISSION_KEYS,
+  FLAG_TOOL_PERMISSIONS,
   OVERRIDABLE_APP_FEATURES,
   PERMISSION_CATALOG,
 } from "@salesapp/shared/auth/permission-catalog.js";
@@ -74,12 +75,9 @@ export async function listPermissionCatalog() {
   return PERMISSION_CATALOG;
 }
 
-const FLAG_TO_TOOL_PERM = {
-  survey: "herramientas:survey",
-  proyeccion_vacaciones: "herramientas:vacaciones",
-  worksheet: "herramientas:worksheet",
-  analysis: "herramientas:analysis",
-};
+const FLAG_TO_TOOL_PERM = Object.fromEntries(
+  Object.entries(FLAG_TOOL_PERMISSIONS).map(([flag, perms]) => [flag, perms[0]]),
+);
 
 /** Deriva permission_keys de herramientas a partir de flag_keys de módulos. */
 export function permissionKeysFromFlagKeys(flagKeys, baseKeys = []) {
@@ -90,8 +88,29 @@ export function permissionKeysFromFlagKeys(flagKeys, baseKeys = []) {
   for (const [flagClave, perm] of Object.entries(FLAG_TO_TOOL_PERM)) {
     if (flags.has(flagClave)) next.add(perm);
   }
-  if (flags.has("survey")) next.add("herramientas:survey");
   return [...next];
+}
+
+/**
+ * Lista explícita del modal: se guarda tal cual, filtrada al catálogo.
+ * Un permiso herramientas:* solo permanece si su flag está encendido.
+ */
+export function permissionKeysRespectingFlags(flagKeys, permissionKeys) {
+  const flags = new Set((flagKeys || []).map(String));
+  const allowedTools = new Set();
+  for (const [flag, perms] of Object.entries(FLAG_TOOL_PERMISSIONS)) {
+    if (!flags.has(flag)) continue;
+    for (const perm of perms) allowedTools.add(perm);
+  }
+  const seen = new Set();
+  const clean = [];
+  for (const key of permissionKeys || []) {
+    if (!ALL_PERMISSION_KEYS.includes(key) || seen.has(key)) continue;
+    if (String(key).startsWith("herramientas:") && !allowedTools.has(key)) continue;
+    seen.add(key);
+    clean.push(key);
+  }
+  return clean;
 }
 
 export async function createRole(supabase, adminProfile, body, actorId = null) {
@@ -99,9 +118,12 @@ export async function createRole(supabase, adminProfile, body, actorId = null) {
   const name = String(body?.nombre ?? "").trim();
   if (!name) throw new ServiceError("Nombre requerido.");
   const flagKeys = Array.isArray(body?.flag_keys) ? body.flag_keys.map(String) : null;
-  const clean = flagKeys
-    ? permissionKeysFromFlagKeys(flagKeys, body?.permission_keys)
-    : (Array.isArray(body?.permission_keys) ? body.permission_keys : []).filter((k) => ALL_PERMISSION_KEYS.includes(k));
+  const explicitPerms = Array.isArray(body?.permission_keys);
+  const clean = flagKeys && explicitPerms
+    ? permissionKeysRespectingFlags(flagKeys, body.permission_keys)
+    : flagKeys
+      ? permissionKeysFromFlagKeys(flagKeys, body?.permission_keys)
+      : (Array.isArray(body?.permission_keys) ? body.permission_keys : []).filter((k) => ALL_PERMISSION_KEYS.includes(k));
   const { data, error } = await supabase.rpc("admin_create_role", {
     p_nombre: name,
     p_permission_keys: clean,
@@ -128,10 +150,13 @@ export async function updateRole(supabase, adminProfile, roleId, body, actorId =
   assertSuperAdmin(adminProfile);
   if (!roleId) throw new ServiceError("Rol inválido.");
   const flagKeys = Array.isArray(body?.flag_keys) ? body.flag_keys.map(String) : null;
-  let clean = Array.isArray(body?.permission_keys)
+  const explicitPerms = Array.isArray(body?.permission_keys);
+  let clean = explicitPerms
     ? body.permission_keys.filter((k) => ALL_PERMISSION_KEYS.includes(k))
     : null;
-  if (flagKeys) {
+  if (flagKeys && explicitPerms) {
+    clean = permissionKeysRespectingFlags(flagKeys, body.permission_keys);
+  } else if (flagKeys) {
     const { data: existing } = await supabase.rpc("admin_list_roles");
     const current = (existing ?? []).find((r) => r.id === roleId);
     clean = permissionKeysFromFlagKeys(flagKeys, current?.permission_keys || []);
