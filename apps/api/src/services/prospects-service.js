@@ -174,10 +174,31 @@ export async function deleteProspect(supabase, userId, id) {
     }
   }
 
+  const { data: saleRows, error: saleReadErr } = await scopeByWorkspace(
+    supabase.from("sales").select("id").eq("prospect_id", id).eq("user_id", userId),
+    workspaceId,
+  );
+  if (saleReadErr) throw new ServiceError(saleReadErr.message, 400);
+  const saleIds = (saleRows ?? []).map((row) => row.id).filter(Boolean);
+
   let q = supabase.from("prospects").delete({ count: "exact" }).eq("id", id).eq("user_id", userId);
   q = scopeByWorkspace(q, workspaceId);
   const { error, count } = await q;
-  if (error) throw new ServiceError(error.message, 400);
+  if (error) {
+    const raw = String(error.message || "");
+    if (raw.includes("historial del workflow es inmutable")) {
+      throw new ServiceError("Este expediente tiene historial de actividad y no se puede eliminar", 409);
+    }
+    throw new ServiceError(error.message, 400);
+  }
   if (!count) throw new ServiceError("Expediente no encontrado.", 404);
+
+  if (saleIds.length) {
+    const { error: saleDelErr } = await scopeByWorkspace(
+      supabase.from("sales").delete().in("id", saleIds).eq("user_id", userId),
+      workspaceId,
+    );
+    if (saleDelErr) throw new ServiceError(saleDelErr.message, 400);
+  }
   return { ok: true };
 }

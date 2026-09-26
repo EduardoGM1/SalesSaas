@@ -8,6 +8,7 @@ import { toast } from "@/lib/toast";
 import { confirmDialog } from "@/lib/confirm";
 import {
   isCloudAvailable,
+  persistProspectDelete,
   persistProspectOnlineFirst,
   prospectRowToClient,
 } from "@/lib/prospects-persist.js";
@@ -121,7 +122,18 @@ export function saveClientEdit(client, form) {
 export async function deleteClientWithConfirm(clientId, displayName) {
   const ok = await confirmDialog(translate("toast.client.deleteConfirm", { name: displayName }));
   if (!ok) return false;
-  useDbStore.getState().deleteClient(clientId);
+  if (!isCloudAvailable()) {
+    toast.error(translate("toast.client.deleteOffline"));
+    return false;
+  }
+  try {
+    await persistProspectDelete(clientId);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    toast.error(message || translate("toast.client.deleteFailed"));
+    return false;
+  }
+  useDbStore.getState().deleteClient(clientId, { skipCloud: true });
   toast.success(translate("toast.client.deleted"));
   return true;
 }
