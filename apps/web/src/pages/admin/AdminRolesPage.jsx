@@ -1,13 +1,14 @@
 import { useMemo, useState } from "react";
 import { useOutletContext } from "react-router-dom";
-import { AdminDataView, AdminPageHeader, AdminPageState, AdminStatusBadge } from "@/components/admin/admin-ui.jsx";
+import { AdminDataView, AdminPageHeader, AdminPageState } from "@/components/admin/admin-ui.jsx";
 import { useAdminFetch } from "@/hooks/use-admin-session.js";
 import { hasPermission } from "@/lib/auth/permissions";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { adminJson } from "@/lib/admin/api.js";
 
 /** Orden de jerarquía de roles de plataforma (gobierno). */
-const SYSTEM_ROLE_ORDER = ["superadmin", "admin", "soporte", "liner"];
+const PLATFORM_ROLE_ORDER = ["superadmin", "admin", "soporte"];
+const LEGACY_ROLE_SLUG = "liner";
 
 function collectFlagKeys(nodes, acc = []) {
   for (const n of nodes || []) {
@@ -28,10 +29,10 @@ function flagKeysForRole(flagTree, roleId) {
   return keys;
 }
 
-function sortSystemRoles(roles) {
+function sortPlatformRoles(roles) {
   return [...roles].sort((a, b) => {
-    const ia = SYSTEM_ROLE_ORDER.indexOf(a.slug);
-    const ib = SYSTEM_ROLE_ORDER.indexOf(b.slug);
+    const ia = PLATFORM_ROLE_ORDER.indexOf(a.slug);
+    const ib = PLATFORM_ROLE_ORDER.indexOf(b.slug);
     const ra = ia === -1 ? 99 : ia;
     const rb = ib === -1 ? 99 : ib;
     if (ra !== rb) return ra - rb;
@@ -173,8 +174,7 @@ function RolesTable({
   onRemove,
   t,
   emptyLabel,
-  showEmpresa = false,
-  readOnly = false,
+  allowDelete = false,
 }) {
   if (!roles.length) {
     return <div className="admin-empty" style={{ padding: 16 }}>{emptyLabel}</div>;
@@ -186,40 +186,32 @@ function RolesTable({
           <tr>
             <th>{t("admin.roles.col.name")}</th>
             <th>{t("admin.roles.col.slug")}</th>
-            {showEmpresa ? <th>Empresa</th> : null}
-            <th>Capa</th>
             <th style={{ textAlign: "right" }}>{t("admin.roles.col.modules")}</th>
-            {!readOnly ? <th className="admin-cell-actions">{t("admin.users.col.actions")}</th> : null}
+            <th className="admin-cell-actions">{t("admin.users.col.actions")}</th>
           </tr>
         </thead>
         <tbody>
-          {roles.map((role) => (
-            <tr key={role.id}>
-              <td className="admin-cell-name">{role.nombre}</td>
-              <td className="admin-cell-muted"><code>{role.slug}</code></td>
-              {showEmpresa ? (
-                <td className="admin-cell-muted">{role.empresa_nombre || role.empresa_id || "—"}</td>
-              ) : null}
-              <td>
-                <AdminStatusBadge tone={role.empresa_id ? "info" : "success"}>
-                  {role.empresa_id ? "Tenant" : "Global"}
-                </AdminStatusBadge>
-              </td>
-              <td className="admin-cell-num" style={{ textAlign: "right" }}>
-                {moduleCounts.get(role.id) ?? (Array.isArray(role.permission_keys) ? role.permission_keys.length : 0)}
-              </td>
-              {!readOnly ? (
+          {roles.map((role) => {
+            const canEdit = role.slug !== "superadmin";
+            return (
+              <tr key={role.id}>
+                <td className="admin-cell-name">{role.nombre}</td>
+                <td className="admin-cell-muted"><code>{role.slug}</code></td>
+                <td className="admin-cell-num" style={{ textAlign: "right" }}>
+                  {moduleCounts.get(role.id) ?? 0}
+                </td>
                 <td className="admin-cell-actions">
                   <div className="admin-table-actions">
-                    <button
-                      type="button"
-                      className="btn btn-sm btn-ghost"
-                      onClick={() => onEdit(role)}
-                      disabled={role.slug === "superadmin"}
-                    >
-                      {t("admin.roles.action.edit")}
-                    </button>
-                    {!role.es_sistema && (
+                    {canEdit ? (
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-ghost"
+                        onClick={() => onEdit(role)}
+                      >
+                        {t("admin.roles.action.edit")}
+                      </button>
+                    ) : null}
+                    {allowDelete && !role.es_sistema ? (
                       <button
                         type="button"
                         className="btn btn-sm btn-danger"
@@ -228,12 +220,12 @@ function RolesTable({
                       >
                         {t("admin.roles.action.delete")}
                       </button>
-                    )}
+                    ) : null}
                   </div>
                 </td>
-              ) : null}
-            </tr>
-          ))}
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>
@@ -259,35 +251,31 @@ export function AdminRolesPage() {
     () => (Array.isArray(data) ? data : []),
     [data],
   );
-  const platformRoles = useMemo(
+  const globalRoles = useMemo(
     () => allRoles.filter((r) => !r.empresa_id),
     [allRoles],
   );
-  const tenantRoles = useMemo(
-    () => [...allRoles.filter((r) => r.empresa_id)].sort((a, b) => {
-      const emp = String(a.empresa_nombre || "").localeCompare(String(b.empresa_nombre || ""), "es");
-      if (emp !== 0) return emp;
-      return String(a.slug || "").localeCompare(String(b.slug || ""), "es");
-    }),
-    [allRoles],
+  const platformRoles = useMemo(
+    () => sortPlatformRoles(globalRoles.filter((r) => PLATFORM_ROLE_ORDER.includes(r.slug))),
+    [globalRoles],
   );
-  const systemRoles = useMemo(
-    () => sortSystemRoles(platformRoles.filter((r) => r.es_sistema)),
-    [platformRoles],
+  const legacyRoles = useMemo(
+    () => globalRoles.filter((r) => r.slug === LEGACY_ROLE_SLUG),
+    [globalRoles],
   );
   const customRoles = useMemo(
-    () => [...platformRoles.filter((r) => !r.es_sistema)].sort((a, b) =>
+    () => [...globalRoles.filter((r) => !r.es_sistema && r.slug !== LEGACY_ROLE_SLUG)].sort((a, b) =>
       String(a.nombre || "").localeCompare(String(b.nombre || ""), "es")),
-    [platformRoles],
+    [globalRoles],
   );
 
   const moduleCounts = useMemo(() => {
     const map = new Map();
-    for (const role of platformRoles) {
+    for (const role of globalRoles) {
       map.set(role.id, flagKeysForRole(flagTree, role.id).size);
     }
     return map;
-  }, [platformRoles, flagTree]);
+  }, [globalRoles, flagTree]);
 
   if (!canManageRoles) {
     return <div className="admin-page admin-empty">{t("admin.roles.forbidden")}</div>;
@@ -317,20 +305,18 @@ export function AdminRolesPage() {
       <AdminPageHeader
         eyebrow="Gobierno de acceso"
         title={t("admin.roles.title")}
-        subtitle="Globales (plataforma) y Tenant (por empresa). Los puestos de sala se editan en Empresas → Acceso; aquí se listan para auditoría."
         actions={<button type="button" className="btn btn-primary" onClick={() => setEditor({})}>
           {t("admin.roles.create")}
         </button>}
       />
       <AdminPageState loading={loading} error={error}>
-        <AdminDataView empty={!allRoles.length} emptyTitle={t("admin.roles.empty")}>
+        <AdminDataView empty={!globalRoles.length} emptyTitle={t("admin.roles.empty")}>
           <section className="admin-roles-section">
             <div className="admin-roles-section-head">
-              <h2 className="admin-roles-section-title">Globales — sistema</h2>
-              <p className="admin-roles-section-sub">{t("admin.roles.section.systemSub")}</p>
+              <h2 className="admin-roles-section-title">{t("admin.roles.section.platform")}</h2>
             </div>
             <RolesTable
-              roles={systemRoles}
+              roles={platformRoles}
               moduleCounts={moduleCounts}
               busyId={busyId}
               onEdit={setEditor}
@@ -342,8 +328,23 @@ export function AdminRolesPage() {
 
           <section className="admin-roles-section">
             <div className="admin-roles-section-head">
-              <h2 className="admin-roles-section-title">Globales — personalizados</h2>
-              <p className="admin-roles-section-sub">{t("admin.roles.section.customSub")}</p>
+              <h2 className="admin-roles-section-title">{t("admin.roles.section.legacy")}</h2>
+              <p className="admin-roles-section-sub">{t("admin.roles.section.legacySub")}</p>
+            </div>
+            <RolesTable
+              roles={legacyRoles}
+              moduleCounts={moduleCounts}
+              busyId={busyId}
+              onEdit={setEditor}
+              onRemove={removeRole}
+              t={t}
+              emptyLabel={t("admin.roles.empty")}
+            />
+          </section>
+
+          <section className="admin-roles-section">
+            <div className="admin-roles-section-head">
+              <h2 className="admin-roles-section-title">{t("admin.roles.section.created")}</h2>
             </div>
             <RolesTable
               roles={customRoles}
@@ -353,27 +354,7 @@ export function AdminRolesPage() {
               onRemove={removeRole}
               t={t}
               emptyLabel={t("admin.roles.emptyCustom")}
-            />
-          </section>
-
-          <section className="admin-roles-section">
-            <div className="admin-roles-section-head">
-              <h2 className="admin-roles-section-title">Tenant — por empresa</h2>
-              <p className="admin-roles-section-sub">
-                Gerente, Liner, Cerrador y puestos custom por empresa ({tenantRoles.length} en total).
-                Solo lectura aquí; editar en Empresas → Acceso. Admin de Empresa es membresía (`es_admin`), no una fila de este catálogo.
-              </p>
-            </div>
-            <RolesTable
-              roles={tenantRoles}
-              moduleCounts={moduleCounts}
-              busyId={busyId}
-              onEdit={() => {}}
-              onRemove={() => {}}
-              t={t}
-              emptyLabel="No hay roles de tenant en la base de datos."
-              showEmpresa
-              readOnly
+              allowDelete
             />
           </section>
         </AdminDataView>
