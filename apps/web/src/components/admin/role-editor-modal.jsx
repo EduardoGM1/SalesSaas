@@ -1,11 +1,12 @@
+import {
+  dropDisallowedToolPerms,
+  permisosVisiblesParaFlags,
+} from "@salesapp/shared/auth/permission-catalog.js";
 import { AdminStatusBadge } from "@/components/admin/admin-ui.jsx";
 import { ModuleChecklist } from "@/components/admin/module-checklist.jsx";
 import { PermissionMatrix } from "@/components/admin/permission-matrix.jsx";
 import { RolePermissionsReadonly } from "@/components/admin/role-permissions-readonly.jsx";
 import { SalesModal } from "@/components/ui/sales-modal";
-
-/** Fase 2: pasar true para habilitar matriz editable en puestos custom. */
-const ENABLE_CUSTOM_ROLE_PERMISSION_EDIT = false;
 
 /**
  * Modal amplio para editar un puesto: nombre, módulos y acciones (lectura o edición).
@@ -25,8 +26,11 @@ export function RoleEditorModal({
 
   const scopeLabel = role.scope === "empresa" ? "Administración de empresa" : "Puesto de sala";
   const moduleCount = form.flag_keys?.length ?? 0;
-  const actionCount = role.permission_keys?.length ?? 0;
-  const showEditablePermissions = ENABLE_CUSTOM_ROLE_PERMISSION_EDIT && !role.es_sistema;
+  const showEditablePermissions = !role.es_sistema;
+  const actionCount = showEditablePermissions
+    ? (form.permission_keys?.length ?? 0)
+    : (role.permission_keys?.length ?? 0);
+  const visiblePermisos = permisosVisiblesParaFlags(permissions, form.flag_keys);
 
   return (
     <SalesModal
@@ -81,7 +85,11 @@ export function RoleEditorModal({
               value={form.flag_keys}
               idPrefix="role-edit"
               className="role-editor-checklist"
-              onChange={(flag_keys) => onFormChange((current) => ({ ...current, flag_keys }))}
+              onChange={(flag_keys) => onFormChange((current) => ({
+                ...current,
+                flag_keys,
+                permission_keys: [...dropDisallowedToolPerms(flag_keys, current.permission_keys || [])],
+              }))}
             />
           </section>
 
@@ -97,9 +105,12 @@ export function RoleEditorModal({
             {showEditablePermissions ? (
               <div className="role-editor-permissions">
                 <PermissionMatrix
-                  permisos={permissions}
-                  value={role.permission_keys || []}
-                  onChange={() => {}}
+                  permisos={visiblePermisos}
+                  value={form.permission_keys || []}
+                  onChange={(permission_keys) => onFormChange((current) => ({
+                    ...current,
+                    permission_keys,
+                  }))}
                   emptyLabel="Sin acciones en este puesto."
                 />
               </div>

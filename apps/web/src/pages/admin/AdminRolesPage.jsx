@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import {
+  dropDisallowedToolPerms,
   FLAG_TOOL_PERMISSIONS,
   PERMISSION_CATALOG,
   PERMISSION_MODULES,
@@ -52,15 +53,6 @@ function findFlagNode(nodes, clave) {
     if (node.clave === clave) return node;
   }
   return null;
-}
-
-function dropDisallowedToolPerms(flagKeys, permKeys) {
-  const next = new Set(permKeys);
-  for (const [flag, perms] of Object.entries(FLAG_TOOL_PERMISSIONS)) {
-    if (flagKeys.has(flag)) continue;
-    for (const perm of perms) next.delete(perm);
-  }
-  return next;
 }
 
 function normalizeFlagSelection(nodes, selected, parentOn = true, next = new Set()) {

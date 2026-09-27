@@ -94,6 +94,40 @@ export const FLAG_TOOL_PERMISSIONS = {
   analysis: ["herramientas:analysis"],
 };
 
+function flagKeySet(flagKeys) {
+  return flagKeys instanceof Set ? flagKeys : new Set(flagKeys || []);
+}
+
+/**
+ * Quita permisos herramientas:* cuyo módulo no está en flagKeys.
+ * Devuelve un Set (mismo tipo que usa el editor de roles de plataforma).
+ */
+export function dropDisallowedToolPerms(flagKeys, permKeys) {
+  const flags = flagKeySet(flagKeys);
+  const next = new Set(permKeys instanceof Set ? permKeys : (permKeys || []));
+  for (const [flag, perms] of Object.entries(FLAG_TOOL_PERMISSIONS)) {
+    if (flags.has(flag)) continue;
+    for (const perm of perms) next.delete(perm);
+  }
+  return next;
+}
+
+/** Catálogo visible en el editor: capa app; herramientas solo con su flag activo. */
+export function permisosVisiblesParaFlags(permisos, flagKeys) {
+  const flags = flagKeySet(flagKeys);
+  const allowedTools = new Set();
+  for (const [flag, perms] of Object.entries(FLAG_TOOL_PERMISSIONS)) {
+    if (!flags.has(flag)) continue;
+    for (const perm of perms) allowedTools.add(perm);
+  }
+  return (permisos || []).filter((perm) => {
+    if (perm?.capa && perm.capa !== "app") return false;
+    const clave = String(perm?.clave || "");
+    if (clave.startsWith("herramientas:")) return allowedTools.has(clave);
+    return true;
+  });
+}
+
 export const APP_PERMISSION_KEYS = PERMISSION_CATALOG.filter((p) => p.capa === "app").map((p) => p.clave);
 
 export const ADMIN_PERMISSION_KEYS = PERMISSION_CATALOG.filter((p) => p.capa === "admin").map((p) => p.clave);

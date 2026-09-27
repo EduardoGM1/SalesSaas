@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Building2, Boxes, Puzzle, ShieldCheck, UsersRound } from "lucide-react";
+import { dropDisallowedToolPerms } from "@salesapp/shared/auth/permission-catalog.js";
 import { EXTENSION_POINT_META } from "@/lib/custom-modules/extension-points.js";
 import {
   AdminCard,
@@ -300,6 +301,7 @@ export function TenantCompanyAdministration({
     setEditRoleForm({
       nombre: role.nombre,
       flag_keys: Array.isArray(role.flag_keys) ? role.flag_keys : [],
+      permission_keys: Array.isArray(role.permission_keys) ? role.permission_keys : [],
     });
   };
 
@@ -312,6 +314,12 @@ export function TenantCompanyAdministration({
         || [...current].some((key) => !baseline.has(key));
       const body = { nombre: editRoleForm.nombre };
       if (modulesChanged) body.flag_keys = editRoleForm.flag_keys;
+      if (!editingRole.es_sistema) {
+        body.permission_keys = [...dropDisallowedToolPerms(
+          editRoleForm.flag_keys || [],
+          editRoleForm.permission_keys || [],
+        )];
+      }
       await adminJson(`tenant/empresas/${companyId}/roles/${editingRole.id}`, {
         method: "PATCH",
         body,
