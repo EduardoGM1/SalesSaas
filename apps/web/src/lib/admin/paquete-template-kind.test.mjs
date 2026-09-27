@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 import {
   isLibraryModuleTemplate,
   isRoleTechnicalPackage,
+  snapshotFromLibraryTemplate,
 } from "./paquete-template-kind.js";
 
 describe("paquete-template-kind", () => {
@@ -37,5 +38,21 @@ describe("paquete-template-kind", () => {
       }),
       true,
     );
+  });
+});
+
+describe("snapshotFromLibraryTemplate", () => {
+  it("copia módulos de la plantilla y acciones del puesto homólogo, sin paquete_id", () => {
+    const snap = snapshotFromLibraryTemplate(
+      {
+        slug: "liner",
+        paquete_flags: [{ activo: true, flags: { clave: "survey" } }],
+      },
+      [{ slug: "liner", es_sistema: true, nombre: "Liner", permission_keys: ["workflow:ver", "herramientas:survey"] }],
+    );
+    assert.deepEqual(snap.flag_keys, ["survey"]);
+    assert.deepEqual(snap.permission_keys, ["workflow:ver", "herramientas:survey"]);
+    assert.equal(snap.paquete_id, undefined);
+    assert.equal(snap.sourceRoleName, "Liner");
   });
 });

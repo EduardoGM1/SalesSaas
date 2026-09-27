@@ -5269,6 +5269,25 @@ body,
 .role-editor-panel--permissions {
   background: var(--surface, #fff);
 }
+.role-template-apply {
+  display: grid;
+  gap: 6px;
+  margin: 8px 0 12px;
+}
+.role-template-apply-copy {
+  margin: 0;
+  color: var(--text2, #475569);
+  font-size: 13px;
+  line-height: 1.45;
+}
+.role-template-apply-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.role-template-apply-row .auth-input {
+  flex: 1;
+}
 .admin-acceso-banner {
   margin: 0 0 4px;
   padding: 12px 14px;

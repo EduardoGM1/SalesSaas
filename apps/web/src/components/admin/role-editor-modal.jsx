@@ -5,6 +5,7 @@ import {
 import { AdminStatusBadge } from "@/components/admin/admin-ui.jsx";
 import { ModuleChecklist } from "@/components/admin/module-checklist.jsx";
 import { PermissionMatrix } from "@/components/admin/permission-matrix.jsx";
+import { ApplyRoleTemplate } from "@/components/admin/apply-role-template.jsx";
 import { RolePermissionsReadonly } from "@/components/admin/role-permissions-readonly.jsx";
 import { SalesModal } from "@/components/ui/sales-modal";
 
@@ -21,6 +22,8 @@ export function RoleEditorModal({
   pending = false,
   flags = [],
   permissions = [],
+  templates = [],
+  roles = [],
 }) {
   if (!role) return null;
 
@@ -73,6 +76,16 @@ export function RoleEditorModal({
             autoFocus
           />
         </label>
+
+        {showEditablePermissions ? (
+          <ApplyRoleTemplate
+            templates={templates}
+            roles={roles}
+            mode="edit"
+            hasExisting={(form.flag_keys?.length ?? 0) > 0 || (form.permission_keys?.length ?? 0) > 0}
+            onApply={(snapshot) => onFormChange((current) => ({ ...current, ...snapshot }))}
+          />
+        ) : null}
 
         <div className="role-editor-columns">
           <section className="role-editor-panel">

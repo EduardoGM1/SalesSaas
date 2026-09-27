@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { Building2, Boxes, Puzzle, ShieldCheck, UsersRound } from "lucide-react";
-import { dropDisallowedToolPerms } from "@salesapp/shared/auth/permission-catalog.js";
+import {
+  dropDisallowedToolPerms,
+  permisosVisiblesParaFlags,
+} from "@salesapp/shared/auth/permission-catalog.js";
 import { EXTENSION_POINT_META } from "@/lib/custom-modules/extension-points.js";
 import {
   AdminCard,
@@ -15,12 +18,14 @@ import { AdminOverflowMenu } from "@/components/admin/admin-overflow-menu.jsx";
 import { BuscadorUsuario } from "@/components/admin/buscador-usuario.jsx";
 import { AdminSidePanel } from "@/components/admin/admin-side-panel.jsx";
 import { ModuleChecklist } from "@/components/admin/module-checklist.jsx";
+import { ApplyRoleTemplate } from "@/components/admin/apply-role-template.jsx";
 import { RoleEditorModal } from "@/components/admin/role-editor-modal.jsx";
 import { PermissionMatrix } from "@/components/admin/permission-matrix.jsx";
 import { CollapsibleSection } from "@/components/ui/collapsible-section.jsx";
 import {
   isLibraryModuleTemplate,
   isRoleTechnicalPackage,
+  librarySystemTemplates,
   sortLibraryPackages,
 } from "@/lib/admin/paquete-template-kind.js";
 import { useAdminFetch } from "@/hooks/use-admin-session.js";
@@ -138,10 +143,12 @@ export function TenantCompanyAdministration({
   const [crossRows, setCrossRows] = useState([]);
   const [crossLoading, setCrossLoading] = useState(false);
 
-  const { libraryModuleTemplates, internalRolePackages } = useMemo(() => {
+  const { libraryModuleTemplates, librarySystemTemplatesForRoles, internalRolePackages } = useMemo(() => {
     const packages = state.packages || [];
+    const library = sortLibraryPackages(packages.filter(isLibraryModuleTemplate));
     return {
-      libraryModuleTemplates: sortLibraryPackages(packages.filter(isLibraryModuleTemplate)),
+      libraryModuleTemplates: library,
+      librarySystemTemplatesForRoles: librarySystemTemplates(packages),
       internalRolePackages: packages.filter(isRoleTechnicalPackage),
     };
   }, [state.packages]);
@@ -642,6 +649,14 @@ export function TenantCompanyAdministration({
                       nombre: roleForm.nombre,
                       scope: roleForm.scope,
                       flag_keys: roleForm.flag_keys,
+                      ...(Array.isArray(roleForm.permission_keys)
+                        ? {
+                          permission_keys: [...dropDisallowedToolPerms(
+                            roleForm.flag_keys,
+                            roleForm.permission_keys,
+                          )],
+                        }
+                        : {}),
                     },
                   });
                   setRoleForm({ nombre: "", scope: "workspace", flag_keys: [] });
@@ -658,13 +673,35 @@ export function TenantCompanyAdministration({
                   <option value="workspace">Sala de Ventas</option>
                   <option value="empresa">Empresa</option>
                 </select>
+                <ApplyRoleTemplate
+                  templates={librarySystemTemplatesForRoles}
+                  roles={state.roles}
+                  mode="create"
+                  onApply={(snapshot) => setRoleForm((current) => ({ ...current, ...snapshot }))}
+                />
                 <div className="section-label" style={{ marginTop: 8 }}>Módulos</div>
                 <ModuleChecklist
                   flags={state.flags}
                   value={roleForm.flag_keys}
                   idPrefix="role-create"
-                  onChange={(flag_keys) => setRoleForm((current) => ({ ...current, flag_keys }))}
+                  onChange={(flag_keys) => setRoleForm((current) => ({
+                    ...current,
+                    flag_keys,
+                    permission_keys: Array.isArray(current.permission_keys)
+                      ? [...dropDisallowedToolPerms(flag_keys, current.permission_keys)]
+                      : current.permission_keys,
+                  }))}
                 />
+                {Array.isArray(roleForm.permission_keys) ? (
+                  <>
+                    <div className="section-label" style={{ marginTop: 8 }}>Acciones (permisos)</div>
+                    <PermissionMatrix
+                      permisos={permisosVisiblesParaFlags(state.permissions, roleForm.flag_keys)}
+                      value={roleForm.permission_keys}
+                      onChange={(permission_keys) => setRoleForm((current) => ({ ...current, permission_keys }))}
+                    />
+                  </>
+                ) : null}
                 <div className="btn-row" style={{ marginTop: 8 }}>
                   <button className="btn btn-primary" disabled={pending}>
                     Crear puesto
@@ -1025,6 +1062,8 @@ export function TenantCompanyAdministration({
         pending={pending}
         flags={state.flags}
         permissions={state.permissions}
+        templates={librarySystemTemplatesForRoles}
+        roles={state.roles}
       />
 
       <AdminSidePanel
