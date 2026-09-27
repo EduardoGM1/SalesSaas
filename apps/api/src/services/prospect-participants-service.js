@@ -5,7 +5,7 @@
 import { ServiceError } from "../lib/service-error.js";
 import { createServiceSupabaseClient } from "../lib/supabase-server.js";
 import { getRequestWorkspaceContext, requireWorkspacePermission } from "../lib/workspace-scope.js";
-import { canEditProspectRecord } from "../lib/prospect-edit-access.js";
+import { canEditProspectRecord, canRegisterProspectSale } from "../lib/prospect-edit-access.js";
 import { notifyCloserAssigned } from "./push-notifications-service.js";
 import { rpcEffectiveWorkspacePermissions } from "../lib/workspace-permission-rpc.js";
 import { readCollaborationId } from "../lib/collaboration-id.js";
@@ -225,6 +225,12 @@ export async function getParticipants(_supabase, actorId, prospectId) {
       can_edit: canEditProspectRecord({
         actorId,
         prospect: access.prospect,
+        workflow: state,
+        permissions: access.permissions,
+        memberRole: access.member?.rol_en_workspace || null,
+      }),
+      can_register_sale: canRegisterProspectSale({
+        actorId,
         workflow: state,
         permissions: access.permissions,
         memberRole: access.member?.rol_en_workspace || null,

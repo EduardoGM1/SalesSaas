@@ -13,3 +13,14 @@ export function canEditProspectRecord({ actorId, prospect, workflow, permissions
   if (permissions.has("expedientes:editar") && permissions.has("expedientes:ver_equipo")) return true;
   return false;
 }
+
+/**
+ * Carpeta Venta / registrar venta. No es can_edit:
+ * eje gerente, cerrador asignado a ese expediente, o workflow:cerrar.
+ */
+export function canRegisterProspectSale({ actorId, workflow, permissions = new Set(), memberRole = null }) {
+  if (memberRole === "gerente") return true;
+  if (actorId && workflow?.cerrador_id === actorId) return true;
+  if (permissions.has("workflow:cerrar")) return true;
+  return false;
+}

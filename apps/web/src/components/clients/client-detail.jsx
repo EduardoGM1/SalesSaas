@@ -109,6 +109,9 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
     ? canEditShared(sharePerm)
     : (isPersonalWorkspace || salaCapabilities?.can_edit === true);
   const canComment = sharedRemote ? canCommentShared(sharePerm) : canEdit;
+  const canRegisterSale = sharedRemote || isPersonalWorkspace
+    ? Boolean(canEdit)
+    : (isGerenteSala || salaCapabilities?.can_register_sale === true);
   const canTransfer = isRecordOwner && isPersonalWorkspace && isSupabaseConfigured();
   const canDeleteExpediente = (isRecordOwner && isPersonalWorkspace) || (isGerenteSala && !sharedRemote);
   const showAddToWorkspace = sharedRemote
@@ -346,7 +349,7 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
     tone: "blue",
     onClick: () => selectFolder(EXPEDIENTE_TABS.cliente),
   };
-  const ventaFolder = (canEdit || sharedRemote)
+  const ventaFolder = canRegisterSale
     ? {
         id: EXPEDIENTE_TABS.venta,
         label: t("exp.card.sale"),
@@ -439,7 +442,7 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
           </div>
           {(canEdit || isRecordOwner) && (
             <div className="exp-page-actions">
-              {canEdit ? (
+              {canRegisterSale ? (
                 <button type="button" className="btn btn-primary btn-sm" onClick={() => openSaleModal()}>{t("exp.registerSale")}</button>
               ) : null}
               {isRecordOwner && isSupabaseConfigured() && (

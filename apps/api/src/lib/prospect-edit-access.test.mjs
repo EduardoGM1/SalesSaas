@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { canEditProspectRecord } from "./prospect-edit-access.js";
+import { canEditProspectRecord, canRegisterProspectSale } from "./prospect-edit-access.js";
 
 const ACTOR = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
 const OTHER = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb";
@@ -49,6 +49,54 @@ test("ver_equipo solo no basta para editar expediente ajeno", () => {
       prospect,
       workflow: { representante_id: ACTOR, cerrador_id: null },
       permissions: new Set(["expedientes:ver_equipo"]),
+      memberRole: "vendedor",
+    }),
+    false,
+  );
+});
+
+test("gerente registra venta en expediente ajeno", () => {
+  assert.equal(
+    canRegisterProspectSale({
+      actorId: OTHER,
+      workflow: { cerrador_id: null },
+      permissions: new Set(),
+      memberRole: "gerente",
+    }),
+    true,
+  );
+});
+
+test("cerrador asignado registra venta", () => {
+  assert.equal(
+    canRegisterProspectSale({
+      actorId: OTHER,
+      workflow: { cerrador_id: OTHER },
+      permissions: new Set(),
+      memberRole: "vendedor",
+    }),
+    true,
+  );
+});
+
+test("workflow:cerrar registra venta aunque no esté asignado", () => {
+  assert.equal(
+    canRegisterProspectSale({
+      actorId: OTHER,
+      workflow: { cerrador_id: null },
+      permissions: new Set(["workflow:cerrar"]),
+      memberRole: "vendedor",
+    }),
+    true,
+  );
+});
+
+test("liner dueño no registra venta solo por ser dueño", () => {
+  assert.equal(
+    canRegisterProspectSale({
+      actorId: ACTOR,
+      workflow: { representante_id: ACTOR, cerrador_id: null },
+      permissions: new Set(["expedientes:editar"]),
       memberRole: "vendedor",
     }),
     false,
