@@ -8,6 +8,7 @@ import { normalizeIds } from "@salesapp/shared/data/mappers.js";
 import { ServiceError } from "../lib/service-error.js";
 import { logger } from "../lib/logger.js";
 import { getRequestWorkspaceContext } from "../lib/workspace-scope.js";
+import { createServiceSupabaseClient } from "../lib/supabase-server.js";
 
 /** Descarga la base completa del usuario en su workspace activo. */
 export async function obtenerBaseDatosUsuario(supabase, userId) {
@@ -24,6 +25,15 @@ export async function obtenerBaseDatosUsuario(supabase, userId) {
 }
 
 /** Reconcilia el blob local con el servidor y devuelve el estado resultante. */
+/** Borra tombstones de más de 90 días. Lo llama el cron mensual. */
+export async function purgarTombstonesExpedientes() {
+  const admin = createServiceSupabaseClient();
+  if (!admin) throw new ServiceError("Supabase no configurado.", 503);
+  const { data, error } = await admin.rpc("purge_prospect_tombstones");
+  if (error) throw new ServiceError(error.message, 500);
+  return { deleted: data ?? 0 };
+}
+
 export async function reconciliarBaseDatosUsuario(supabase, userId, incoming) {
   const t0 = Date.now();
   if (!incoming || typeof incoming !== "object" || Array.isArray(incoming)) {

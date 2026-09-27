@@ -9,6 +9,7 @@ import { authorizeCron } from "../lib/cron-auth.js";
 import * as notificationsController from "../controllers/notifications-controller.js";
 import * as supportController from "../controllers/support-controller.js";
 import * as royalHolidayController from "../controllers/royal-holiday-controller.js";
+import * as syncController from "../controllers/sync-controller.js";
 
 const router = Router();
 
@@ -25,5 +26,6 @@ function cronRoute(path, task) {
 cronRoute("/cron/flush-reminders", () => notificationsController.vaciarRecordatoriosCron());
 cronRoute("/cron/cleanup-support-attachments", () => supportController.limpiarAdjuntosSoporteCron());
 cronRoute("/cron/rh-extra-dp", () => royalHolidayController.procesarExtraDpCron());
+cronRoute("/cron/purge-prospect-tombstones", () => syncController.purgarTombstonesExpedientesCron());
 
 export default router;

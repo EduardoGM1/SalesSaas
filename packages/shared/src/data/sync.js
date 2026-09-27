@@ -134,29 +134,81 @@ async function applyExplicitDeletes(sb, db, userId, workspaceId = null) {
   await deleteByIds(sb, "prospects", userId, pd.prospects, workspaceId);
 }
 
+const TOMBSTONE_RE = /prospect_tombstone/i;
+
+async function loadTombstones(sb, userId, prospects) {
+  const ids = uniqIds(prospects.map((p) => p.id));
+  const codes = [...new Set(prospects.map((p) => p.prospect_code).filter((c) => typeof c === "string" && c))];
+  const blockedIds = new Set();
+  const blockedCodes = new Set();
+  if (ids.length) {
+    const { data, error } = await sb.from("prospects_deleted").select("prospect_id").in("prospect_id", ids);
+    if (error) throw new Error(`tombstones: ${error.message}`);
+    for (const row of data ?? []) blockedIds.add(row.prospect_id);
+  }
+  if (codes.length && userId) {
+    const { data, error } = await sb
+      .from("prospects_deleted")
+      .select("prospect_code")
+      .eq("user_id", userId)
+      .in("prospect_code", codes);
+    if (error) throw new Error(`tombstones: ${error.message}`);
+    for (const row of data ?? []) {
+      if (row.prospect_code) blockedCodes.add(row.prospect_code);
+    }
+  }
+  return { blockedIds, blockedCodes };
+}
+
+function isTombstoned(row, tombstones) {
+  return tombstones.blockedIds.has(row.id) || tombstones.blockedCodes.has(row.prospect_code);
+}
+
+async function upsertProspects(sb, rows) {
+  if (!rows.length) return;
+  const { error } = await sb.from("prospects").upsert(rows);
+  if (!error) return;
+  if (!TOMBSTONE_RE.test(error.message || "")) {
+    throw new Error(`upsert prospects: ${error.message}`);
+  }
+  for (const row of rows) {
+    const { error: one } = await sb.from("prospects").upsert(row);
+    if (one && !TOMBSTONE_RE.test(one.message || "")) {
+      throw new Error(`upsert prospects: ${one.message}`);
+    }
+  }
+}
+
 async function reconcile(sb, db, userId, workspaceId = null, { teamScope = false } = {}) {
   const rows = dbToRows(db, userId, workspaceId);
   // En teamScope el gerente puede ver filas ajenas: solo reconciliar las propias
   // para no robar ownership ni fallar inserts ajenos (RLS insert exige auth.uid = user_id).
-  const ownProspects = teamScope
+  let ownProspects = teamScope
     ? rows.prospects.filter((r) => r.user_id === userId)
     : rows.prospects;
+  const tombstones = await loadTombstones(sb, userId, ownProspects);
+  ownProspects = ownProspects.filter((r) => !isTombstoned(r, tombstones));
   const ownProspectIds = new Set(ownProspects.map((r) => r.id));
-  const ownSales = teamScope
+  const keepChild = (r) => !r.prospect_id || ownProspectIds.has(r.prospect_id);
+  const ownSales = (teamScope
     ? rows.sales.filter((r) => r.user_id === userId && (!r.prospect_id || ownProspectIds.has(r.prospect_id) || !r.prospect_id))
-    : rows.sales;
-  const ownActivities = teamScope
+    : rows.sales
+  ).filter(keepChild);
+  const ownActivities = (teamScope
     ? rows.activities.filter((r) => r.user_id === userId)
-    : rows.activities;
+    : rows.activities
+  ).filter(keepChild);
   const ownTools = (teamScope
     ? rows.tool_calculations.filter((r) => r.user_id === userId)
     : rows.tool_calculations
-  ).filter((r) => r.data && typeof r.data === "object" && Object.keys(r.data).length > 0);
-  const ownCalendar = teamScope
+  ).filter((r) => r.data && typeof r.data === "object" && Object.keys(r.data).length > 0)
+    .filter(keepChild);
+  const ownCalendar = (teamScope
     ? rows.calendar_entries.filter((r) => r.user_id === userId)
-    : rows.calendar_entries;
+    : rows.calendar_entries
+  ).filter(keepChild);
 
-  await upsert(sb, "prospects", ownProspects);
+  await upsertProspects(sb, ownProspects);
   await upsert(sb, "sales", ownSales);
   await upsert(sb, "calendar_entries", ownCalendar);
   await upsert(sb, "activities", ownActivities);

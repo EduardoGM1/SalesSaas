@@ -149,6 +149,7 @@ def main():
         f'0 9 * * * curl -sf -H "Authorization: Bearer $CRON_SECRET" "$WEB_ORIGIN/api/v1/cron/flush-reminders" >/dev/null 2>&1',
         f'0 10 * * * curl -sf -H "Authorization: Bearer $CRON_SECRET" "$WEB_ORIGIN/api/v1/cron/cleanup-support-attachments" >/dev/null 2>&1',
         f'15 8 * * * curl -sf -H "Authorization: Bearer $CRON_SECRET" "$WEB_ORIGIN/api/v1/cron/rh-extra-dp" >/dev/null 2>&1',
+        f'0 4 1 * * curl -sf -H "Authorization: Bearer $CRON_SECRET" "$WEB_ORIGIN/api/v1/cron/purge-prospect-tombstones" >/dev/null 2>&1',
         "",
     ])
     run(client, f"cat > /etc/cron.d/saletse << 'CRONEOF'\n{cron_lines}CRONEOF")

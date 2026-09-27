@@ -11,3 +11,7 @@ export async function obtenerSincronizacion(auth) {
 export async function reconciliarSincronizacion(auth, incoming) {
   return syncService.reconciliarBaseDatosUsuario(auth.supabase, auth.userId, incoming);
 }
+
+export async function purgarTombstonesExpedientesCron() {
+  return syncService.purgarTombstonesExpedientes();
+}
