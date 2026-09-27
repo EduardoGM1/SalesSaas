@@ -150,7 +150,7 @@ export function VacacionesPage({ clientId, shared, embedded }: VacacionesPagePro
           </div>
         )}
 
-        <SharedToolBanner show={ready && isShared && readOnly} peers={peers} />
+        <SharedToolBanner show={ready && isShared && readOnly} peers={peers} embedded={embedded} />
 
         <fieldset className="shared-tool-fieldset" disabled={readOnly}>
         <SelectorMoneda

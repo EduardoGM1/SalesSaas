@@ -209,7 +209,7 @@ function WorksheetStandardPage({ clientId, shared, embedded }) {
           </div>
         )}
 
-        <SharedToolBanner show={ready && isShared && readOnly} peers={peers} />
+        <SharedToolBanner show={ready && isShared && readOnly} peers={peers} embedded={embedded} />
 
         <fieldset className="shared-tool-fieldset" disabled={readOnly}>
         <SelectorMoneda

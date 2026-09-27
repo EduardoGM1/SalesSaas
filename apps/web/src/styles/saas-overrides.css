@@ -2700,6 +2700,8 @@ select.collab-field-locked {
 
 .exp-presence-peer {
   position: relative;
+  display: flex;
+  align-items: center;
   margin-left: -6px;
   cursor: default;
 }
@@ -2709,8 +2711,13 @@ select.collab-field-locked {
 }
 
 .exp-presence-peer .network-avatar-wrap {
+  box-sizing: border-box;
   border: 2px solid var(--surface);
   border-radius: 999px;
+}
+
+.exp-presence-peer .network-avatar {
+  line-height: 1;
 }
 
 .exp-presence-peer.is-editing .network-avatar-wrap {

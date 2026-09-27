@@ -379,7 +379,7 @@ export function SurveyPage({ clientId, shared, embedded }: SurveyPageProps) {
           </div>
         )}
 
-        <SharedToolBanner show={ready && isShared && readOnly} peers={peers} />
+        <SharedToolBanner show={ready && isShared && readOnly} peers={peers} embedded={embedded} />
 
         <fieldset className="shared-tool-fieldset" disabled={readOnly}>
           {tab !== "cliente" && (
