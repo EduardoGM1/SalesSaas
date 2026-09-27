@@ -10058,7 +10058,9 @@ body,
   min-width: 0;
 }
 .worksheet-rh-stage > .worksheet-rh-pane[data-active="false"] {
-  visibility: hidden;
+  /* display:none (no visibility:hidden): panes inactivos no inflan la fila del grid;
+     los nodos siguen en el DOM → React mantiene estado al cambiar de pestaña. */
+  display: none;
   pointer-events: none;
 }
 .worksheet-rh-tabs {
