@@ -1,10 +1,14 @@
 import { AdminStatusBadge } from "@/components/admin/admin-ui.jsx";
 import { ModuleChecklist } from "@/components/admin/module-checklist.jsx";
 import { PermissionMatrix } from "@/components/admin/permission-matrix.jsx";
+import { RolePermissionsReadonly } from "@/components/admin/role-permissions-readonly.jsx";
 import { SalesModal } from "@/components/ui/sales-modal";
 
+/** Fase 2: pasar true para habilitar matriz editable en puestos custom. */
+const ENABLE_CUSTOM_ROLE_PERMISSION_EDIT = false;
+
 /**
- * Modal amplio para editar un puesto: nombre, módulos y vista de acciones base.
+ * Modal amplio para editar un puesto: nombre, módulos y acciones (lectura o edición).
  */
 export function RoleEditorModal({
   open,
@@ -22,6 +26,7 @@ export function RoleEditorModal({
   const scopeLabel = role.scope === "empresa" ? "Administración de empresa" : "Puesto de sala";
   const moduleCount = form.flag_keys?.length ?? 0;
   const actionCount = role.permission_keys?.length ?? 0;
+  const showEditablePermissions = ENABLE_CUSTOM_ROLE_PERMISSION_EDIT && !role.es_sistema;
 
   return (
     <SalesModal
@@ -30,7 +35,7 @@ export function RoleEditorModal({
         if (!nextOpen) onClose?.();
       }}
       title={`Editar puesto · ${role.nombre}`}
-      sub="Ajusta el nombre visible y los módulos. Las acciones base son solo referencia en esta fase."
+      sub="Ajusta el nombre visible y los módulos del puesto."
       maxWidth={860}
       modalClassName="role-editor-modal modal-wide"
     >
@@ -80,22 +85,32 @@ export function RoleEditorModal({
             />
           </section>
 
-          <section className="role-editor-panel role-editor-panel--readonly">
+          <section className="role-editor-panel role-editor-panel--permissions">
             <header className="role-editor-panel-head">
               <h3>Acciones (permisos)</h3>
-              <p>
-                Acciones base del puesto. La edición desde aquí llegará en una fase posterior;
-                los asistentes reciben acciones adicionales en Administradores → Delegar permisos.
-              </p>
+              {!showEditablePermissions ? (
+                <p>Referencia de lo que puede hacer hoy quien tenga este puesto.</p>
+              ) : (
+                <p>Marca las acciones permitidas. Las de herramientas dependen de los módulos activos.</p>
+              )}
             </header>
-            <div className="role-editor-permissions">
-              <PermissionMatrix
+            {showEditablePermissions ? (
+              <div className="role-editor-permissions">
+                <PermissionMatrix
+                  permisos={permissions}
+                  value={role.permission_keys || []}
+                  onChange={() => {}}
+                  emptyLabel="Sin acciones en este puesto."
+                />
+              </div>
+            ) : (
+              <RolePermissionsReadonly
+                roleName={role.nombre}
+                variant={role.es_sistema ? "system" : "custom"}
+                permissionKeys={role.permission_keys}
                 permisos={permissions}
-                value={role.permission_keys || []}
-                readOnly
-                emptyLabel="Sin acciones base en este puesto."
               />
-            </div>
+            )}
           </section>
         </div>
 

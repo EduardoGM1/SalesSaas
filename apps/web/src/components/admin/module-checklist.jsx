@@ -1,5 +1,5 @@
 /**
- * Checklist reutilizable de módulos (flags) para Puestos y Paquetes.
+ * Checklist reutilizable de módulos (flags) para Puestos y plantillas de módulos.
  */
 export function ModuleChecklist({
   flags = [],

@@ -16,6 +16,12 @@ import { AdminSidePanel } from "@/components/admin/admin-side-panel.jsx";
 import { ModuleChecklist } from "@/components/admin/module-checklist.jsx";
 import { RoleEditorModal } from "@/components/admin/role-editor-modal.jsx";
 import { PermissionMatrix } from "@/components/admin/permission-matrix.jsx";
+import { CollapsibleSection } from "@/components/ui/collapsible-section.jsx";
+import {
+  isLibraryModuleTemplate,
+  isRoleTechnicalPackage,
+  sortLibraryPackages,
+} from "@/lib/admin/paquete-template-kind.js";
 import { useAdminFetch } from "@/hooks/use-admin-session.js";
 import { adminJson } from "@/lib/admin/api.js";
 import {
@@ -30,7 +36,7 @@ const TABS = [
   { id: "rooms", label: "Salas y miembros", icon: UsersRound },
   { id: "admins", label: "Administradores", icon: ShieldCheck },
   { id: "roles", label: "Puestos", icon: UsersRound },
-  { id: "packages", label: "Paquetes", icon: Boxes },
+  { id: "packages", label: "Plantillas de módulos", icon: Boxes },
   { id: "modules", label: "Módulos custom", icon: Puzzle },
   { id: "catalogo-rh", label: "Catálogo RH", icon: Boxes },
   { id: "branding", label: "Branding y plan", icon: Building2 },
@@ -130,6 +136,14 @@ export function TenantCompanyAdministration({
   const [crossGerenteId, setCrossGerenteId] = useState("");
   const [crossRows, setCrossRows] = useState([]);
   const [crossLoading, setCrossLoading] = useState(false);
+
+  const { libraryModuleTemplates, internalRolePackages } = useMemo(() => {
+    const packages = state.packages || [];
+    return {
+      libraryModuleTemplates: sortLibraryPackages(packages.filter(isLibraryModuleTemplate)),
+      internalRolePackages: packages.filter(isRoleTechnicalPackage),
+    };
+  }, [state.packages]);
 
   useEffect(() => {
     if (companyId || !options[0]?.id) return;
@@ -595,6 +609,18 @@ export function TenantCompanyAdministration({
 
         {tab === "roles" ? (
           <div className="admin-company-layout">
+            <p className="admin-acceso-banner" role="note">
+              Un <strong>puesto</strong>
+              {" "}
+              es el rol que asignas a una persona en una sala (Liner, Cerrador…). Define
+              {" "}
+              <strong>qué pantallas ve</strong>
+              {" "}
+              y
+              {" "}
+              <strong>qué puede hacer</strong>
+              .
+            </p>
             <AdminCard
               title="Crear puesto"
               subtitle="El puesto controla qué módulos ve el usuario. Para editar un puesto existente, usa el menú de acciones en su tarjeta."
@@ -713,7 +739,7 @@ export function TenantCompanyAdministration({
           <div className="admin-company-layout">
             <AdminCard
               title="Crear módulo custom"
-              subtitle="Solo visible para esta empresa. Actívalo en un Paquete de Acceso para que el puesto lo use."
+              subtitle="Solo visible para esta empresa. Inclúyelo en una plantilla de módulos o en un puesto."
             >
               <form
                 className="admin-inline-form"
@@ -774,7 +800,7 @@ export function TenantCompanyAdministration({
             </AdminCard>
             <div className="admin-room-cards">
               {(state.modulos || []).length === 0 ? (
-                <AdminEmptyState title="Sin módulos custom" body="Crea el primero con el formulario. Luego inclúyelo en un paquete." />
+                <AdminEmptyState title="Sin módulos custom" body="Crea el primero con el formulario. Luego inclúyelo en una plantilla o en un puesto." />
               ) : (state.modulos || []).map((mod) => (
                 <AdminCard
                   key={mod.id}
@@ -796,18 +822,28 @@ export function TenantCompanyAdministration({
 
         {tab === "packages" ? (
           <div className="admin-company-layout">
+            <p className="admin-acceso-banner" role="note">
+              Guarda combinaciones de herramientas para aplicarlas al crear o editar un puesto.
+              {" "}
+              <strong>No asigna personas</strong>
+              {" "}
+              — eso es en
+              {" "}
+              <strong>Salas y miembros</strong>
+              .
+            </p>
             <AdminCard
               title="Crear plantilla de módulos"
-              subtitle="Paquete reutilizable: define un conjunto de módulos para asignar a varios puestos sin repetir la configuración."
+              subtitle="Define un conjunto de módulos reutilizable para copiar a uno o varios puestos."
             >
               <form className="admin-inline-form" onSubmit={(event) => {
                 event.preventDefault();
                 void mutate(async () => {
                   await adminJson(`tenant/empresas/${companyId}/packages`, { method: "POST", body: packageForm });
                   setPackageForm({ nombre: "", descripcion: "", flag_keys: [] });
-                }, "Paquete creado");
+                }, "Plantilla creada");
               }}>
-                <input className="auth-input" placeholder="Nombre del paquete" value={packageForm.nombre} onChange={(event) => setPackageForm((current) => ({ ...current, nombre: event.target.value }))} required />
+                <input className="auth-input" placeholder="Nombre de la plantilla" value={packageForm.nombre} onChange={(event) => setPackageForm((current) => ({ ...current, nombre: event.target.value }))} required />
                 <input className="auth-input" placeholder="Descripción" value={packageForm.descripcion} onChange={(event) => setPackageForm((current) => ({ ...current, descripcion: event.target.value }))} />
                 <div className="section-label">Módulos incluidos</div>
                 <ModuleChecklist
@@ -816,22 +852,46 @@ export function TenantCompanyAdministration({
                   idPrefix="pkg"
                   onChange={(flag_keys) => setPackageForm((current) => ({ ...current, flag_keys }))}
                 />
-                <button className="btn btn-primary" disabled={pending}>Crear paquete</button>
+                <button className="btn btn-primary" disabled={pending}>Crear plantilla</button>
               </form>
             </AdminCard>
             <div className="admin-room-cards">
-              {state.packages.map((pack) => (
+              {libraryModuleTemplates.map((pack) => (
                 <AdminCard
                   key={pack.id}
                   title={pack.nombre}
                   subtitle={pack.descripcion || "Plantilla reutilizable de módulos"}
-                  action={!pack.es_sistema ? <AdminOverflowMenu label={`Acciones de ${pack.nombre}`} items={[{ id: "delete", label: "Eliminar paquete", danger: true, onSelect: () => void mutate(() => adminJson(`tenant/empresas/${companyId}/packages/${pack.id}`, { method: "DELETE" }), "Paquete eliminado") }]} /> : null}
+                  action={!pack.es_sistema ? <AdminOverflowMenu label={`Acciones de ${pack.nombre}`} items={[{ id: "delete", label: "Eliminar plantilla", danger: true, onSelect: () => void mutate(() => adminJson(`tenant/empresas/${companyId}/packages/${pack.id}`, { method: "DELETE" }), "Plantilla eliminada") }]} /> : null}
                 >
                   <p className="admin-card-muted">{(pack.paquete_flags?.length ?? 0)} módulos</p>
                   <div className="admin-tenant-tag-list">{(pack.paquete_flags || []).map((entry) => <AdminStatusBadge key={entry.flag_id} tone="info">{entry.flags?.nombre_visible || entry.flags?.clave}</AdminStatusBadge>)}</div>
                 </AdminCard>
               ))}
+              {!libraryModuleTemplates.length ? (
+                <AdminEmptyState title="Sin plantillas" body="Crea una plantilla arriba o usa las de sistema cuando estén disponibles." />
+              ) : null}
             </div>
+            {internalRolePackages.length > 0 ? (
+              <CollapsibleSection
+                className="admin-internal-packages card exp-collapsible-card"
+                title="Uso interno"
+                subtitle="Paquetes generados al personalizar módulos de un puesto concreto. No hace falta editarlos aquí."
+                defaultOpen={false}
+                bodyClassName="admin-internal-packages-body"
+              >
+                <div className="admin-room-cards">
+                  {internalRolePackages.map((pack) => (
+                    <AdminCard
+                      key={pack.id}
+                      title={pack.nombre}
+                      subtitle={pack.slug ? `Slug: ${pack.slug}` : pack.descripcion || "Paquete técnico del puesto"}
+                    >
+                      <p className="admin-card-muted">{(pack.paquete_flags?.length ?? 0)} módulos</p>
+                    </AdminCard>
+                  ))}
+                </div>
+              </CollapsibleSection>
+            ) : null}
           </div>
         ) : null}
 
