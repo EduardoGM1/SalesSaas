@@ -520,10 +520,16 @@ export async function getSalaOverview(actorId, workspaceId) {
     throw new ServiceError("No puedes administrar esta sala.", 403);
   }
   const admin = adminClient();
-  const [{ count: members }, { count: prospects }, { count: sales }] = await Promise.all([
+  const [{ count: members }, { count: prospects }, { count: sales }, { count: rhVentas }] = await Promise.all([
     admin.from("workspace_miembros").select("usuario_id", { count: "exact", head: true }).eq("workspace_id", workspaceId),
     admin.from("prospects").select("id", { count: "exact", head: true }).eq("workspace_id", workspaceId),
     admin.from("sales").select("id", { count: "exact", head: true }).eq("workspace_id", workspaceId),
+    admin.from("rh_ventas").select("id", { count: "exact", head: true }).eq("workspace_id", workspaceId).is("sale_id", null),
   ]);
-  return { salas: 1, miembros: members ?? 0, expedientes: prospects ?? 0, ventas: sales ?? 0 };
+  return {
+    salas: 1,
+    miembros: members ?? 0,
+    expedientes: prospects ?? 0,
+    ventas: (sales ?? 0) + (rhVentas ?? 0),
+  };
 }
