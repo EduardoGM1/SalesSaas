@@ -108,11 +108,6 @@ export async function updateTenantRole(actorId, empresaId, roleId, body) {
           400,
         );
       }
-      const systemSlug = role.slug === "liner"
-        ? "liner"
-        : role.slug === "cerrador"
-          ? "cierre"
-          : undefined;
       const packageId = await ensureRolePackageFromFlags(admin, {
         empresaId,
         actorId,
@@ -120,7 +115,6 @@ export async function updateTenantRole(actorId, empresaId, roleId, body) {
         slug: role.slug,
         flagKeys: nextKeys,
         existingPackageId: role.paquete_id,
-        systemSlug,
       });
       if (packageId && packageId !== role.paquete_id) {
         await admin.from("roles").update({ paquete_id: packageId }).eq("id", roleId);
@@ -238,7 +232,15 @@ async function loadRoleFlagKeys(admin, paqueteId) {
   );
 }
 
-/** Crea/actualiza el paquete ligado al puesto a partir de flag_keys (módulos). */
+const LIBRARY_PACKAGE_SLUGS = new Set([
+  "operacion-base",
+  "cierre",
+  "liner",
+  "marketing",
+  "opc-lobby",
+]);
+
+/** Crea/actualiza el paquete técnico del puesto. Nunca escribe sobre una plantilla de biblioteca. */
 async function ensureRolePackageFromFlags(admin, {
   empresaId,
   actorId,
@@ -246,13 +248,21 @@ async function ensureRolePackageFromFlags(admin, {
   slug,
   flagKeys,
   existingPackageId,
-  systemSlug,
 }) {
   const clean = [...new Set((flagKeys || []).map(String).filter(Boolean))];
   let packageId = existingPackageId || null;
 
+  if (packageId) {
+    const { data: currentPack } = await admin
+      .from("paquetes_acceso")
+      .select("slug")
+      .eq("id", packageId)
+      .maybeSingle();
+    if (LIBRARY_PACKAGE_SLUGS.has(currentPack?.slug)) packageId = null;
+  }
+
   if (!packageId) {
-    const packSlug = systemSlug || `puesto-${slug || normalizeSlug(nombre)}`;
+    const packSlug = `puesto-${slug || normalizeSlug(nombre)}`;
     const { data: created, error } = await admin
       .from("paquetes_acceso")
       .insert({
@@ -260,21 +270,22 @@ async function ensureRolePackageFromFlags(admin, {
         nombre: `${nombre} (módulos)`,
         slug: packSlug,
         descripcion: `Módulos del puesto ${nombre}`,
-        es_sistema: Boolean(systemSlug),
+        es_sistema: false,
         activo: true,
         creado_por: actorId || null,
       })
       .select("id")
       .single();
     if (error) {
-      // Si el slug ya existe (liner/cierre), reutilizar.
       const { data: existing } = await admin
         .from("paquetes_acceso")
-        .select("id")
+        .select("id, slug")
         .eq("empresa_id", empresaId)
         .eq("slug", packSlug)
         .maybeSingle();
-      if (!existing) throw new ServiceError(error.message, 400);
+      if (!existing || LIBRARY_PACKAGE_SLUGS.has(existing.slug)) {
+        throw new ServiceError(error.message, 400);
+      }
       packageId = existing.id;
     } else {
       packageId = created.id;

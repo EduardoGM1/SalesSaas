@@ -18,6 +18,59 @@ const PREMANIFIESTO_CHILD_FLAGS = new Set([
 
 const BASE_PACKAGE_FLAG_FILTER = (clave) => !PREMANIFIESTO_CHILD_FLAGS.has(clave);
 
+const LIBRARY_PACKAGE_SLUGS = new Set([
+  "operacion-base",
+  "cierre",
+  "liner",
+  "marketing",
+  "opc-lobby",
+]);
+
+/**
+ * Paquete propio del puesto (puesto-{slug}). Copia los flags de la plantilla
+ * solo al crearlo. No reenlaza ni reescribe si el puesto ya tiene paquete técnico.
+ */
+async function ensureForkedRolePackage(admin, empresaId, { roleSlug, roleNombre, libraryPackageId }) {
+  const slug = `puesto-${roleSlug}`;
+  const { data: existing } = await admin
+    .from("paquetes_acceso")
+    .select("id")
+    .eq("empresa_id", empresaId)
+    .eq("slug", slug)
+    .maybeSingle();
+  if (existing?.id) return existing.id;
+
+  const { data: created, error } = await admin
+    .from("paquetes_acceso")
+    .insert({
+      empresa_id: empresaId,
+      nombre: `${roleNombre} (módulos)`,
+      slug,
+      descripcion: `Módulos del puesto ${roleNombre}`,
+      es_sistema: false,
+      activo: true,
+    })
+    .select("id")
+    .single();
+  if (error) throw new ServiceError(error.message, 400);
+
+  if (libraryPackageId) {
+    const { data: flags, error: flagErr } = await admin
+      .from("paquete_flags")
+      .select("flag_id, activo")
+      .eq("paquete_id", libraryPackageId);
+    if (flagErr) throw new ServiceError(flagErr.message, 500);
+    const rows = (flags || [])
+      .filter((row) => row.activo !== false)
+      .map((row) => ({ paquete_id: created.id, flag_id: row.flag_id, activo: true }));
+    if (rows.length) {
+      const { error: copyErr } = await admin.from("paquete_flags").insert(rows);
+      if (copyErr) throw new ServiceError(copyErr.message, 400);
+    }
+  }
+  return created.id;
+}
+
 /**
  * Idempotente por (empresa_id, slug): paquetes + puestos operativos
  * (Gerente, Liner, Cerrador) **por empresa**.
@@ -135,9 +188,17 @@ export async function ensureEmpresaOperationalRoles(admin, empresaId) {
   ];
 
   for (const spec of rolesSpec) {
+    const technicalPackageId = spec.packageSlug
+      ? await ensureForkedRolePackage(admin, empresaId, {
+        roleSlug: spec.slug,
+        roleNombre: spec.nombre,
+        libraryPackageId: packageIds[spec.packageSlug],
+      })
+      : null;
+
     const { data: existing } = await admin
       .from("roles")
-      .select("id")
+      .select("id, paquete_id, paquetes_acceso(slug)")
       .eq("empresa_id", empresaId)
       .eq("slug", spec.slug)
       .maybeSingle();
@@ -151,7 +212,7 @@ export async function ensureEmpresaOperationalRoles(admin, empresaId) {
           nombre: spec.nombre,
           slug: spec.slug,
           scope: spec.scope,
-          paquete_id: spec.packageSlug ? (packageIds[spec.packageSlug] || null) : null,
+          paquete_id: technicalPackageId,
           es_sistema: true,
         })
         .select("id")
@@ -160,7 +221,11 @@ export async function ensureEmpresaOperationalRoles(admin, empresaId) {
       roleId = created.id;
     } else {
       const patch = { scope: spec.scope };
-      if (spec.packageSlug) patch.paquete_id = packageIds[spec.packageSlug] || null;
+      const currentSlug = existing.paquetes_acceso?.slug;
+      const pointsAtLibrary = !existing.paquete_id || LIBRARY_PACKAGE_SLUGS.has(currentSlug);
+      if (spec.packageSlug && pointsAtLibrary && technicalPackageId) {
+        patch.paquete_id = technicalPackageId;
+      }
       await admin.from("roles").update(patch).eq("id", roleId);
     }
 
