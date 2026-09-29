@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, Navigate } from "react-router-dom";
 import { Users } from "lucide-react";
+import { PERMISSION_CATALOG } from "@salesapp/shared/auth/permission-catalog.js";
 import { BuscadorUsuario } from "@/components/admin/buscador-usuario.jsx";
 import { DelegacionChecklist } from "@/components/admin/delegacion-checklist.jsx";
 import { Topbar } from "@/components/layout/topbar";
@@ -260,6 +261,15 @@ export function TeamPage() {
     }
   };
 
+  const applyExtrasChange = async (nextKeys) => {
+    const prev = extrasOverrides;
+    const removed = prev.filter((clave) => !nextKeys.includes(clave));
+    const added = nextKeys.filter((clave) => !prev.includes(clave));
+    for (const clave of [...removed, ...added]) {
+      await toggleExtra(clave);
+    }
+  };
+
   const selectedLabel = useMemo(() => {
     if (!selectedId) return t("team.allProspects");
     const m = members.find((x) => x.id === selectedId);
@@ -456,30 +466,17 @@ export function TeamPage() {
         open={extrasModalOpen}
         onOpenChange={closeExtrasModal}
         title={t("team.extrasTitle", { name: extrasMember ? memberLabel(extrasMember) : "" })}
-        maxWidth={520}
+        maxWidth={640}
       >
-        <p className="team-hint team-hint--modal">{t("team.extrasHint")}</p>
-        {extrasLoading ? (
-          <p className="team-loading">{t("common.loading")}</p>
-        ) : (
-          <ul className="team-extras-list">
-            {extrasCeiling.map((clave) => (
-              <li key={clave}>
-                <label className="team-extra-item">
-                  <input
-                    type="checkbox"
-                    checked={extrasOverrides.includes(clave)}
-                    onChange={() => toggleExtra(clave)}
-                  />
-                  <span>{clave}</span>
-                </label>
-              </li>
-            ))}
-            {!extrasCeiling.length && (
-              <li className="team-empty">{t("team.extrasEmpty")}</li>
-            )}
-          </ul>
-        )}
+        <p className="admin-acceso-banner" role="note">{t("team.extrasHint")}</p>
+        <DelegacionChecklist
+          permisos={PERMISSION_CATALOG}
+          ceiling={extrasCeiling}
+          selected={extrasOverrides}
+          onChange={applyExtrasChange}
+          loading={extrasLoading}
+          emptyLabel={t("team.extrasEmpty")}
+        />
         <div className="btn-row team-modal-actions">
           <button type="button" className="btn btn-ghost" onClick={() => closeExtrasModal(false)}>
             {t("common.cancel")}
