@@ -11,6 +11,7 @@ import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { isExpedienteUuid } from "@/lib/expediente-realtime.js";
 import { markLocalToolSave } from "@/lib/collab-remote-notify.js";
 import { runWithoutOutboundSync } from "@/lib/sync-suspend.js";
+import { isToolWriteDenied, retainToolWriteScope } from "@/lib/tool-write-denial.js";
 
 /** Unifica carga/guardado local (store) y remoto (expediente compartido). */
 export function useToolSession({ clientId, shared, section }) {
@@ -45,6 +46,11 @@ export function useToolSession({ clientId, shared, section }) {
         : isExpedienteUuid(clientId)
           ? clientId
           : null);
+
+  useEffect(() => {
+    if (useShared || !clientId) return undefined;
+    return retainToolWriteScope(clientId);
+  }, [useShared, clientId]);
 
   const localCollab = useExpedienteRealtime({
     prospectId: localProspectId,
@@ -113,6 +119,7 @@ export function useToolSession({ clientId, shared, section }) {
   const saveBucket = useCallback(async (tool, data) => {
     const pid = useShared ? shared?.prospectId : localProspectId;
     if (pid) markLocalToolSave(pid, tool);
+    if (!useShared && isToolWriteDenied(clientId, tool)) return { permissionDenied: true };
     if (useShared) {
       await sharedSession.saveTool(tool, data);
       return;

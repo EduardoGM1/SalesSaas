@@ -17,6 +17,8 @@ import { useFlushLibreToolOnLeave } from "@/hooks/use-flush-libre-tool-on-leave.
 import { CollabField, collabFieldId } from "@/components/clients/collab-field.jsx";
 import { applyRemoteFormState, fieldKeyFromCollabId, markFieldsDirty, clearDirtyFields } from "@/lib/collab-form-merge.js";
 import { useDbStore } from "@/stores/db-store";
+import { useSyncStore } from "@/stores/sync-store";
+import { isToolWriteDenied } from "@/lib/tool-write-denial.js";
 import { shallow } from "zustand/shallow";
 import {
   countAnswered,
@@ -68,6 +70,7 @@ export function SurveyPage({ clientId, shared, embedded }: SurveyPageProps) {
     isFileMode, isShared, prospectId, peers, toolsRevision, collab,
   } = session;
   const fid = (key) => collabFieldId("survey", key);
+  const toolEditDenied = useSyncStore((s) => s.toolEditDenied);
   const saveClient = useDbStore((s) => s.saveClient);
   const getClient = useDbStore((s) => s.getClient);
   const moneySettings = useDbStore((s) => s.db.settings, shallow);
@@ -308,6 +311,7 @@ export function SurveyPage({ clientId, shared, embedded }: SurveyPageProps) {
   // Autoguardado con el mismo bucket survey (tras hidratar; sin validar nombre para no bloquear captura).
   useEffect(() => {
     if (!ready || readOnly) return;
+    if (!isShared && isToolWriteDenied(clientId, "survey")) return;
     if (skipAutosaveRef.current) {
       skipAutosaveRef.current = false;
       return;
@@ -319,7 +323,7 @@ export function SurveyPage({ clientId, shared, embedded }: SurveyPageProps) {
       })();
     }, 700);
     return () => clearTimeout(timer);
-  }, [data, sType, futureType, captureCurrency, currencyMetaSerialized, ready, readOnly, saveBucket, appendMonedaPayload]);
+  }, [data, sType, futureType, captureCurrency, currencyMetaSerialized, ready, readOnly, saveBucket, appendMonedaPayload, isShared, clientId, toolEditDenied]);
 
   const handleClear = async () => {
     if (readOnly) return;

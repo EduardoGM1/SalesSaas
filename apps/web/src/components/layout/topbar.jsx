@@ -16,6 +16,7 @@ export function Topbar({ title, subtitle, showMonthNav, admin }) {
   const calNext = useAppStore((s) => s.calNext);
   const syncStatus = useSyncStore((s) => s.status);
   const syncError = useSyncStore((s) => s.lastError);
+  const toolEditDenied = useSyncStore((s) => s.toolEditDenied);
 
   if (admin) {
     const { permissions, isSuperAdmin, pathname } = admin;
@@ -83,10 +84,19 @@ export function Topbar({ title, subtitle, showMonthNav, admin }) {
           {syncStatus === "error" && (
             <span
               className="tb-sync-chip"
-              title={syncError || "Error de sincronización"}
+              title={syncError || t("sync.error")}
               aria-live="polite"
             >
               Error
+            </span>
+          )}
+          {syncStatus !== "error" && toolEditDenied && (
+            <span
+              className="tb-sync-chip tb-sync-chip--denied"
+              title={t("sync.editDeniedDetail")}
+              aria-live="polite"
+            >
+              {t("sync.editDenied")}
             </span>
           )}
           <DesktopTopNavActions />

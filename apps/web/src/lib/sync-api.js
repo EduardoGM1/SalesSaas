@@ -1,4 +1,5 @@
 import { normalizeIds } from "@/lib/data/mappers";
+import { omitDeniedToolWrites } from "@/lib/tool-write-denial.js";
 
 export async function pullViaApi() {
   const res = await fetch("/api/v1/sync", {
@@ -11,7 +12,7 @@ export async function pullViaApi() {
 }
 
 export async function reconcileViaApi(db) {
-  const { db: norm } = normalizeIds(db);
+  const { db: norm } = normalizeIds(omitDeniedToolWrites(db));
   const res = await fetch("/api/v1/sync", {
     method: "PUT",
     credentials: "include",

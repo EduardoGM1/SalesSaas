@@ -74,10 +74,34 @@ async function pullAll(sb, userId, workspaceId = null, { teamScope = false } = {
   return rowsToDb(rows);
 }
 
+function isToolPermissionError(error) {
+  const code = String(error?.code || "");
+  const msg = String(error?.message || "");
+  return code === "42501"
+    || /row-level security|permission denied|no tienes permiso/i.test(msg);
+}
+
 async function upsert(sb, table, rows, onConflict) {
   if (rows.length === 0) return;
   const { error } = await sb.from(table).upsert(rows, onConflict ? { onConflict } : void 0);
   if (error) throw new Error(`upsert ${table}: ${error.message}`);
+}
+
+/** Un tool sin permiso no aborta el reconcile del resto de las tablas. */
+async function upsertToolsBestEffort(sb, rows) {
+  if (rows.length === 0) return;
+  const conflict = { onConflict: "user_id,prospect_id,tool" };
+  const { error } = await sb.from("tool_calculations").upsert(rows, conflict);
+  if (!error) return;
+  if (!isToolPermissionError(error)) {
+    throw new Error(`upsert tool_calculations: ${error.message}`);
+  }
+  for (const row of rows) {
+    const { error: one } = await sb.from("tool_calculations").upsert(row, conflict);
+    if (one && !isToolPermissionError(one)) {
+      throw new Error(`upsert tool_calculations: ${one.message}`);
+    }
+  }
 }
 
 function uniqIds(ids) {
@@ -213,12 +237,7 @@ async function reconcile(sb, db, userId, workspaceId = null, { teamScope = false
   await upsert(sb, "calendar_entries", ownCalendar);
   await upsert(sb, "activities", ownActivities);
   await upsert(sb, "goals", rows.goals, "user_id,year,month");
-  await upsert(
-    sb,
-    "tool_calculations",
-    ownTools,
-    "user_id,prospect_id,tool",
-  );
+  await upsertToolsBestEffort(sb, ownTools);
   // Borrados solo si el cliente los marcó explícitamente (cola pendingDeletes).
   await applyExplicitDeletes(sb, db, userId, workspaceId);
 }

@@ -21,6 +21,8 @@ import { WorksheetRhMoneyBoxPanel } from "@/components/calculators/worksheet-rh-
 import { useFlag } from "@/hooks/use-flag.js";
 import { WORKSHEET_RH_MONEY_BOX_TAB_FLAG } from "@/lib/auth/tool-flags.js";
 import { useDbStore } from "@/stores/db-store";
+import { useSyncStore } from "@/stores/sync-store";
+import { isToolWriteDenied } from "@/lib/tool-write-denial.js";
 import { buildRhWorksheetState } from "@/lib/calculations/worksheet-rh-preview.js";
 import { montoVentaWorksheet } from "@/lib/calculations/royal-holiday.js";
 import {
@@ -85,7 +87,11 @@ export function WorksheetRoyalHolidayPage({
   const autosaveTimerRef = useRef(null);
   const prevTabRef = useRef(activeTab);
 
+  const toolEditDenied = useSyncStore((s) => s.toolEditDenied);
+  const worksheetDenied = !shared?.prospectId && isToolWriteDenied(clientId, "worksheet");
+
   const persistRhBucket = async () => {
+    if (worksheetDenied || (!shared?.prospectId && isToolWriteDenied(clientId, "worksheet"))) return;
     const snapshot = new Set(dirtyKeysRef.current);
     dirtyKeysRef.current = new Set();
     try {
@@ -125,7 +131,7 @@ export function WorksheetRoyalHolidayPage({
   }, [ready, clientId, getBucket, shared?.prospectId, toolsRevision]);
 
   useEffect(() => {
-    if (!ready || readOnly) return;
+    if (!ready || readOnly || worksheetDenied) return;
     if (skipAutosaveRef.current) {
       skipAutosaveRef.current = false;
       return;
@@ -135,7 +141,7 @@ export function WorksheetRoyalHolidayPage({
       void persistRhBucket();
     }, 700);
     return () => clearTimeout(autosaveTimerRef.current);
-  }, [form, captureCurrency, currencyMetaSerialized, ready, readOnly]);
+  }, [form, captureCurrency, currencyMetaSerialized, ready, readOnly, worksheetDenied, toolEditDenied]);
 
   // El id de pestaña no es un cambio de datos. Si había edición pendiente,
   // se guarda al salir de la pestaña; un click solo no dispara PUT.

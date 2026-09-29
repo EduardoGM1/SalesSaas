@@ -61,6 +61,7 @@ export function SettingsPage() {
   const [fxDate, setFxDate] = useState(null);
   const syncStatus = useSyncStore((s) => s.status);
   const syncError = useSyncStore((s) => s.lastError);
+  const toolEditDenied = useSyncStore((s) => s.toolEditDenied);
   const skipDbToLocalSyncRef = useRef(false);
 
   useEffect(() => {
@@ -568,6 +569,7 @@ export function SettingsPage() {
                   <div className="hint" style={{ marginBottom: 12 }}>
                     {ti("settings.account.sync")} {t(`sync.${syncStatus}`, settings.language || "es") || syncStatus}
                     {syncStatus === "error" && syncError ? ` - ${syncError}` : ""}
+                    {syncStatus !== "error" && toolEditDenied ? ` - ${ti("sync.editDeniedDetail")}` : ""}
                   </div>
                   {profileErr && <div className="auth-error" style={{ marginBottom: 12 }}>{profileErr}</div>}
                   {profileMsg && <div className="auth-ok" style={{ marginBottom: 12 }}>{profileMsg}</div>}

@@ -12,6 +12,7 @@ import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { sharingApi } from "@/lib/network-api.js";
 import { prospectRowToClient, canEditShared, canCommentShared, canAddToWorkspace } from "@/lib/shared-prospect";
 import { useExpedienteRealtime } from "@/hooks/use-expediente-realtime.js";
+import { retainToolWriteScope } from "@/lib/tool-write-denial.js";
 import { ExpedientePresenceBar } from "@/components/clients/expediente-presence-bar.jsx";
 import { ProspectParticipantsPanel } from "@/components/clients/prospect-workflow-panel.jsx";
 import { useWorkspace } from "@/hooks/use-workspace.js";
@@ -157,6 +158,11 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
     const data = await sharingApi.getSharedProspect(id);
     applySharedPayload(data);
   };
+
+  useEffect(() => {
+    if (sharedRemote || !id) return undefined;
+    return retainToolWriteScope(id);
+  }, [sharedRemote, id]);
 
   const collab = useExpedienteRealtime({
     prospectId: id,

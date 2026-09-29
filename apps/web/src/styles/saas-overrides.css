@@ -3640,6 +3640,12 @@ body,
   text-overflow: ellipsis;
 }
 
+.tb-sync-chip--denied {
+  max-width: 12rem;
+  color: #7a4b00;
+  background: color-mix(in srgb, #e8a317 24%, white);
+}
+
 .topbar {
   padding-left: max(14px, var(--safe-left));
   padding-right: max(14px, var(--safe-right));

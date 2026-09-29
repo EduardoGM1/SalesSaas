@@ -4,6 +4,7 @@
  */
 import { markOutboxDirty } from "@/lib/sync-outbox.js";
 import { requestSyncPush } from "@/lib/sync-outbound.js";
+import { beginToolWrite, isToolWriteDenied, markToolWriteDenied } from "@/lib/tool-write-denial.js";
 import {
   isCloudAvailable,
   persistProspectCreate,
@@ -173,21 +174,51 @@ export async function persistGoalUpsert(year, month, goal) {
   return { ok: true };
 }
 
+const toolPutInflight = new Map();
+
 export async function persistToolUpsert(tool, mode, data, clientId) {
   const payload = stripToolMeta(data);
   const prospectId = mode === "client" && clientId ? clientId : "libre";
-  if (!Object.keys(payload).length) {
-    const q = prospectId === "libre" ? "prospect_id=libre" : `prospect_id=${prospectId}`;
-    await apiJson("DELETE", `/tool-calculations?tool=${encodeURIComponent(tool)}&${q}`);
-    return { ok: true };
+  const deniedKey = prospectId !== "libre" ? `${prospectId}:${tool}` : null;
+  if (deniedKey && isToolWriteDenied(prospectId, tool)) {
+    return { ok: false, permissionDenied: true };
   }
-  await apiJson("PUT", "/tool-calculations", {
-    tool,
-    prospect_id: prospectId,
-    prospectId,
-    data: payload,
-  });
-  return { ok: true };
+  if (deniedKey && toolPutInflight.has(deniedKey)) return toolPutInflight.get(deniedKey);
+
+  const run = async () => {
+    const endPending = beginToolWrite(prospectId, tool);
+    try {
+      if (!Object.keys(payload).length) {
+        const q = prospectId === "libre" ? "prospect_id=libre" : `prospect_id=${prospectId}`;
+        await apiJson("DELETE", `/tool-calculations?tool=${encodeURIComponent(tool)}&${q}`);
+        return { ok: true };
+      }
+      await apiJson("PUT", "/tool-calculations", {
+        tool,
+        prospect_id: prospectId,
+        prospectId,
+        data: payload,
+      });
+      return { ok: true };
+    } catch (err) {
+      if (err?.status === 403 && deniedKey) {
+        markToolWriteDenied(prospectId, tool);
+        return { ok: false, permissionDenied: true };
+      }
+      throw err;
+    } finally {
+      endPending();
+    }
+  };
+
+  const pending = run();
+  if (deniedKey) {
+    toolPutInflight.set(deniedKey, pending);
+    pending.finally(() => {
+      if (toolPutInflight.get(deniedKey) === pending) toolPutInflight.delete(deniedKey);
+    });
+  }
+  return pending;
 }
 
 /**
