@@ -3,6 +3,8 @@
  * mientras el expediente sigue abierto. No se reintenta ni se ensucia el outbox.
  * Al salir del expediente (último consumidor) se olvida, y al volver se intenta una vez.
  */
+import { translate } from "@/lib/i18n.js";
+import { toast } from "@/lib/toast";
 import { useSyncStore } from "@/stores/sync-store";
 
 const TOOLS = ["survey", "vacaciones", "worksheet"];
@@ -33,8 +35,15 @@ export function beginToolWrite(prospectId, tool) {
 
 export function markToolWriteDenied(prospectId, tool) {
   if (!prospectId || prospectId === "libre" || !tool) return;
-  denied.add(keyOf(prospectId, tool));
+  const key = keyOf(prospectId, tool);
+  const wasNew = !denied.has(key);
+  denied.add(key);
   publish();
+  if (wasNew) {
+    toast.error(translate("sync.editDeniedDetail"), {
+      groupKey: `tool-write-denied:${prospectId}`,
+    });
+  }
 }
 
 /**

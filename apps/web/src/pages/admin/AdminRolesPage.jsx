@@ -11,6 +11,7 @@ import { useAdminFetch } from "@/hooks/use-admin-session.js";
 import { hasPermission } from "@/lib/auth/permissions";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { adminJson } from "@/lib/admin/api.js";
+import { toast } from "@/lib/toast";
 
 /** Orden de jerarquía de roles de plataforma (gobierno). */
 const PLATFORM_ROLE_ORDER = ["superadmin", "admin", "soporte"];
@@ -400,7 +401,7 @@ export function AdminRolesPage() {
       await adminJson(`roles/${role.id}`, { method: "DELETE" });
       refresh();
     } catch (err) {
-      window.alert(err instanceof Error ? err.message : t("admin.roles.error.delete"));
+      toast.error(err instanceof Error ? err.message : t("admin.roles.error.delete"));
     } finally {
       setBusyId(null);
     }
