@@ -60,6 +60,7 @@ import {
   RhPropinasPage,
 } from "@/routes/lazy-pages.js";
 import { RH_TOOL_FLAGS } from "@/lib/auth/tool-flags.js";
+import { ClientMoneyBoxRedirect } from "@/routes/client-money-box-redirect.jsx";
 
 function Lazy({ children }) {
   return <Suspense fallback={<RouteFallback />}>{children}</Suspense>;
@@ -88,7 +89,6 @@ function ClientToolRoute({ tool }) {
   if (tool === "survey") return gatedTool(tool, <Lazy><SurveyPage clientId={id} /></Lazy>);
   if (tool === "vacaciones") return gatedTool(tool, <Lazy><VacacionesPage clientId={id} /></Lazy>);
   if (tool === "worksheet") return gatedTool(tool, <Lazy><WorksheetPage clientId={id} /></Lazy>);
-  if (tool === "money-box") return <Lazy><MoneyBoxPage clientId={id} /></Lazy>;
   if (tool === "analysis") return gatedTool(tool, <Lazy><AnalysisPage clientId={id} /></Lazy>);
   return null;
 }
@@ -150,7 +150,7 @@ export function AppRoutes() {
         <Route path="clients/:id/survey" element={<ClientToolRoute tool="survey" />} />
         <Route path="clients/:id/vacaciones" element={<ClientToolRoute tool="vacaciones" />} />
         <Route path="clients/:id/worksheet" element={<ClientToolRoute tool="worksheet" />} />
-        <Route path="clients/:id/money-box" element={<ClientToolRoute tool="money-box" />} />
+        <Route path="clients/:id/money-box" element={<ClientMoneyBoxRedirect />} />
         <Route path="clients/:id/analysis" element={<ClientToolRoute tool="analysis" />} />
         <Route path="network" element={<Lazy><NetworkPage /></Lazy>} />
         <Route path="red/contacto/:contactId" element={<ContactRoute />} />
