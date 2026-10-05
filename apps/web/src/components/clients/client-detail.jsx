@@ -1,13 +1,12 @@
 
 import { Suspense, useEffect, useRef, useState } from "react";
 import {  useNavigate  } from "react-router-dom";
-import { FileText, Palmtree, DollarSign, MessageSquare, Wallet, User } from "lucide-react";
+import { FileText, Palmtree, DollarSign, MessageSquare, User } from "lucide-react";
 import { SalesModal } from "@/components/ui/sales-modal";
 import { ClientRecordModal } from "@/components/clients/client-record-modal.jsx";
 import { CollapsibleSection } from "@/components/ui/collapsible-section.jsx";
 import { ShareProspectModal } from "@/components/network/share-prospect-modal.jsx";
 import { MoveProspectModal } from "@/components/clients/move-prospect-modal.jsx";
-import { PremiumFeatureCard } from "@/components/premium/premium-feature-card.jsx";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { sharingApi } from "@/lib/network-api.js";
 import { prospectRowToClient, canEditShared, canCommentShared, canAddToWorkspace } from "@/lib/shared-prospect";
@@ -413,23 +412,6 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
     : "financiamiento";
   const sales = [...(c.sales || [])].sort((a, b) => (b.ts || 0) - (a.ts || 0));
   const toolShared = sharedRemote ? { prospectId: id, contactId } : undefined;
-  const moneyBoxTo = sharedRemote
-    ? (contactId ? `/red/contacto/${contactId}/expediente/${id}/money-box` : undefined)
-    : `/clients/${id}/money-box`;
-  const moneyBoxCard = (
-    <PremiumFeatureCard
-      featureKey="money_box"
-      title={t("moneyBox.title")}
-      description={t("moneyBox.cardDesc")}
-      icon={Wallet}
-      tone="green"
-      to={moneyBoxTo}
-      onBeforeOpen={() => {
-        if (!sharedRemote) setToolMode("client", id);
-      }}
-    />
-  );
-
   return (
     <>
       <Topbar title={t("exp.title")} subtitle={t("exp.subtitle")} />
@@ -500,9 +482,6 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
               ) : (
                 <ClientFolderStrip folders={folderCards} activeTab={effectiveTab} />
               )}
-              {toolsReady && !folderTab && !isQuick && !folderCards.some((card) => card.id === "worksheet") && !worksheetRhActive && (
-                <div className="tool-card-stack">{moneyBoxCard}</div>
-              )}
               {isQuick && (
                 <button type="button" className="tool-card" onClick={() => {
                   completeClientExpedient(id);
@@ -548,7 +527,6 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
                         externalTab={worksheetRhActive ? activeRhSub : undefined}
                         onTabChange={worksheetRhActive ? setSub : undefined}
                       />
-                      {!worksheetRhActive && moneyBoxCard}
                     </>
                   )}
                 </Suspense>
