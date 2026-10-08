@@ -354,6 +354,28 @@ export function WorksheetRhVentaPanel({
               <div className="flabel">Cuota anual</div>
               <div className="rh-readonly rh-field-val">{cuotaAnual}</div>
             </div>
+            <div className="frow tool-frow">
+              <div className="flabel">Noches Privilege</div>
+              <input
+                className="input tool-num-input"
+                type="number"
+                min="0"
+                disabled={readOnly}
+                value={form.noches_privilege ?? ""}
+                onChange={(e) => set("noches_privilege", e.target.value)}
+              />
+            </div>
+            <div className="frow tool-frow">
+              <div className="flabel">Semanas</div>
+              <input
+                className="input tool-num-input"
+                type="number"
+                min="0"
+                disabled={readOnly}
+                value={form.semanas ?? ""}
+                onChange={(e) => set("semanas", e.target.value)}
+              />
+            </div>
           </div>
         </div>
 

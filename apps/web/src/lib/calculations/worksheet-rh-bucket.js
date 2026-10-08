@@ -1,6 +1,8 @@
 /** Estado inicial del worksheet Royal Holiday (moneda de captura). */
 export const DEFAULT_RH_FORM = {
   holiday_credits: "10000",
+  noches_privilege: "",
+  semanas: "",
   valor: "",
   valores: ["", "", "", ""],
   epvFvi: ["", "", "", "", ""],
