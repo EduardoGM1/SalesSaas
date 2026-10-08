@@ -247,7 +247,7 @@ function ExtrasVentaEnganche({
 
   return (
     <CollapsibleSection
-      title="(+) Extras venta"
+      title="Beneficios incluidos"
       defaultOpen={false}
       className="rh-fin-nested-collapsible"
     >
