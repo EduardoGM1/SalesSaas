@@ -3,9 +3,20 @@ import { CollapsibleSection } from "@/components/ui/collapsible-section.jsx";
 import { CampoMonedaCaptura } from "@/components/currency/campo-moneda-captura.jsx";
 import {
   calcularMensualidad,
+  cantidadDefaultRegalo,
+  cantidadEsEditable,
+  cantidadRegalo,
+  cargaEsAmbos,
+  cargaIncluyeClosing,
+  cargaIncluyeVenta,
   costoUnitarioRegalo,
+  escalarSplitMontos,
+  evaluarRegaloWorksheet,
   montoVentaWorksheet,
   ordenarRegalosExcel,
+  permiteCargaDualRegalo,
+  resolverToggleCargaRegalo,
+  restriccionesRegalo,
   toDateStr,
   totalLineaRegalo,
 } from "@/lib/calculations/royal-holiday.js";
@@ -213,37 +224,87 @@ function ExtraCollapsible({
   );
 }
 
-const EXTRAS_VENTA_ENGANCHE = [
-  { key: "all_inclusive", label: "ALL INCLUSIVE" },
-  { key: "cert_vuelos", label: "CERT. VUELOS" },
-  { key: "tours", label: "TOURS" },
-];
-
-function emptyExtrasVentaEnganche() {
-  return { flyback: false, all_inclusive: "", cert_vuelos: "", tours: "" };
+function cargaToken(cargas, column) {
+  const list = Array.isArray(cargas) ? cargas : [];
+  const isVenta = (c) => /venta/i.test(String(c || ""));
+  const isClosing = (c) => /closing/i.test(String(c || ""));
+  if (column === "venta") return list.find(isVenta) || list.find((c) => !isClosing(c)) || list[0] || "";
+  return list.find(isClosing) || "";
 }
 
-function emptyExtrasVentaGastos() {
-  return { flyback: false, move_in: "", cert_vuelos: "", tours: "" };
-}
-
-const EXTRAS_VENTA_GASTOS = [
-  { key: "move_in", label: "MOVE IN" },
-  { key: "cert_vuelos", label: "CERT. VUELOS" },
-  { key: "tours", label: "TOURS" },
-];
-
-function ExtrasVentaEnganche({
-  value,
+function BeneficiosIncluidos({
+  column,
+  form,
+  setForm,
+  regalos = [],
+  cuotaAnual = 0,
+  holidayCredits = 0,
+  montoVenta = 0,
   readOnly,
-  onChange,
-  captureCurrency,
-  items = EXTRAS_VENTA_ENGANCHE,
-  testId = "rh-extras-venta-enganche",
-  emptyValue = emptyExtrasVentaEnganche,
+  fmtResult,
+  testId,
 }) {
-  const row = { ...emptyValue(), ...(value || {}) };
-  const patch = (next) => onChange?.({ ...row, ...next });
+  const fmt = fmtResult || ((n) => String(n ?? ""));
+  const rows = useMemo(() => {
+    return ordenarRegalosExcel(regalos).map((regalo) => {
+      const qty = cantidadRegalo(regalo, form.regalosCantidad);
+      const ev = evaluarRegaloWorksheet(regalo, {
+        holidayCredits,
+        montoVenta,
+        cuotaAnual,
+        qty,
+      });
+      const lineTotal = totalLineaRegalo(regalo, { qty, cuotaAnual });
+      return { regalo, ev, qty, lineTotal };
+    }).filter(({ ev }) => (column === "venta" ? ev.permiteVenta : ev.permiteClosing));
+  }, [regalos, form.regalosCantidad, column, holidayCredits, montoVenta, cuotaAnual]);
+
+  const toggle = (regalo, ev, checked, lineTotal) => {
+    if (ev.estado !== "elegible" || readOnly) return;
+    setForm((f) => {
+      const next = resolverToggleCargaRegalo({
+        dual: permiteCargaDualRegalo(regalo),
+        current: f.regalosElegidos?.[regalo.id],
+        column,
+        checked,
+        tokenVenta: cargaToken(regalo.cargas_permitidas, "venta"),
+        tokenClosing: cargaToken(regalo.cargas_permitidas, "closing"),
+        lineTotal,
+      });
+      const regalosElegidos = { ...(f.regalosElegidos || {}), [regalo.id]: next.carga || "" };
+      const out = { ...f, regalosElegidos };
+      if (next.split !== undefined) {
+        const regalosSplit = { ...(f.regalosSplit || {}) };
+        if (next.split) regalosSplit[regalo.id] = next.split;
+        else delete regalosSplit[regalo.id];
+        out.regalosSplit = regalosSplit;
+      }
+      return out;
+    });
+  };
+
+  const setQty = (regalo, raw) => {
+    setForm((f) => {
+      const next = {
+        ...f,
+        regalosCantidad: { ...(f.regalosCantidad || {}), [regalo.id]: raw },
+      };
+      if (permiteCargaDualRegalo(regalo) && cargaEsAmbos(f.regalosElegidos?.[regalo.id])) {
+        const oldQty = cantidadRegalo(regalo, f.regalosCantidad);
+        const parsed = raw === "" || raw == null
+          ? cantidadDefaultRegalo(regalo)
+          : Number(String(raw).replace(",", "."));
+        const newQty = Number.isFinite(parsed) ? parsed : oldQty;
+        const oldLine = totalLineaRegalo(regalo, { qty: oldQty, cuotaAnual });
+        const newLine = totalLineaRegalo(regalo, { qty: newQty, cuotaAnual });
+        next.regalosSplit = {
+          ...(f.regalosSplit || {}),
+          [regalo.id]: escalarSplitMontos(f.regalosSplit?.[regalo.id], oldLine, newLine),
+        };
+      }
+      return next;
+    });
+  };
 
   return (
     <CollapsibleSection
@@ -252,34 +313,64 @@ function ExtrasVentaEnganche({
       className="rh-fin-nested-collapsible"
     >
       <div className="rh-extras-venta" data-testid={testId}>
-        <div className="rh-extras-venta-head">
-          <span>Concepto</span>
-          <span>Monto</span>
-        </div>
-        <label className="rh-extras-venta-row">
-          <span>FLYBACK</span>
-          <span className="rh-extras-venta-check">
-            <input
-              type="checkbox"
-              checked={!!row.flyback}
-              disabled={readOnly}
-              onChange={(e) => patch({ flyback: e.target.checked })}
-            />
-            Incluido (sí / no)
-          </span>
-        </label>
-        {items.map((item) => (
-          <div key={item.key} className="rh-extras-venta-row">
-            <span>{item.label}</span>
-            <CampoMonedaCaptura
-              currency={captureCurrency}
-              value={row[item.key] ?? ""}
-              readOnly={readOnly}
-              placeholder=""
-              onChange={(next) => patch({ [item.key]: next })}
-            />
+        {rows.length === 0 ? (
+          <p className="muted rh-hint">Sin beneficios de catálogo para este concepto.</p>
+        ) : (
+          <div className="rh-regalos-table-wrap">
+            <table className="client-table rh-regalos-table rh-extra-catalog-table">
+              <thead>
+                <tr>
+                  <th>Incluido</th>
+                  <th className="rh-col-name">Concepto</th>
+                  <th className="rh-col-qty">Cantidad</th>
+                  <th className="rh-col-cost">Costo unit.</th>
+                  <th className="rh-col-total">Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map(({ regalo, ev, lineTotal }) => {
+                  const carga = form.regalosElegidos?.[regalo.id];
+                  const checked = column === "venta" ? cargaIncluyeVenta(carga) : cargaIncluyeClosing(carga);
+                  const qtyEditable = cantidadEsEditable(regalo);
+                  const unit = ev.costoUnitario;
+                  return (
+                    <tr key={regalo.id}>
+                      <td>
+                        <input
+                          type="checkbox"
+                          disabled={readOnly || ev.estado !== "elegible"}
+                          checked={!!checked}
+                          aria-label={`Incluir ${regalo.nombre || "beneficio"}`}
+                          data-testid={`${testId}-${regalo.id}`}
+                          onChange={(e) => toggle(regalo, ev, e.target.checked, lineTotal)}
+                        />
+                      </td>
+                      <td>{regalo.nombre}</td>
+                      <td>
+                        {qtyEditable ? (
+                          <input
+                            type="number"
+                            min="1"
+                            max="99"
+                            className="input input-compact rh-qty-input"
+                            disabled={readOnly || !checked}
+                            value={form.regalosCantidad?.[regalo.id] ?? ""}
+                            aria-label={`Cantidad ${regalo.nombre || ""}`}
+                            onChange={(e) => setQty(regalo, e.target.value)}
+                          />
+                        ) : (
+                          restriccionesRegalo(regalo).cantidad_default ?? "1"
+                        )}
+                      </td>
+                      <td>{unit == null ? "—" : fmt(unit)}</td>
+                      <td>{checked ? fmt(lineTotal) : "—"}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
-        ))}
+        )}
       </div>
     </CollapsibleSection>
   );
@@ -659,11 +750,17 @@ export function WorksheetRhFinancingPanel({
             onPagoBlur={(idx, raw) => handlePagoBlur("enganche_pagos", idx, raw)}
             readOnly={readOnly}
             extraNode={(
-              <ExtrasVentaEnganche
-                value={form.extrasVentaEnganche}
+              <BeneficiosIncluidos
+                column="venta"
+                form={form}
+                setForm={setForm}
+                regalos={catalogo?.regalos || []}
+                cuotaAnual={Number(ws.bottom_line?.cuota_anual_mfee) || 0}
+                holidayCredits={Number(form.holiday_credits) || 0}
+                montoVenta={Number(montoOperational) || montoCapture || 0}
                 readOnly={readOnly}
-                captureCurrency={captureCurrency}
-                onChange={(next) => set("extrasVentaEnganche", next)}
+                fmtResult={fmtResult}
+                testId="rh-beneficios-enganche"
               />
             )}
           />
@@ -689,14 +786,17 @@ export function WorksheetRhFinancingPanel({
             onPagoBlur={(idx, raw) => handlePagoBlur("gasto_pagos", idx, raw)}
             readOnly={readOnly}
             extraNode={(
-              <ExtrasVentaEnganche
-                value={form.extrasVentaGastos}
+              <BeneficiosIncluidos
+                column="closing"
+                form={form}
+                setForm={setForm}
+                regalos={catalogo?.regalos || []}
+                cuotaAnual={Number(ws.bottom_line?.cuota_anual_mfee) || 0}
+                holidayCredits={Number(form.holiday_credits) || 0}
+                montoVenta={Number(montoOperational) || montoCapture || 0}
                 readOnly={readOnly}
-                captureCurrency={captureCurrency}
-                items={EXTRAS_VENTA_GASTOS}
-                testId="rh-extras-venta-gastos"
-                emptyValue={emptyExtrasVentaGastos}
-                onChange={(next) => set("extrasVentaGastos", next)}
+                fmtResult={fmtResult}
+                testId="rh-beneficios-gastos"
               />
             )}
             topContent={(
