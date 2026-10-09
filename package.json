@@ -41,7 +41,8 @@
     "test:e2e:egress": "playwright test e2e/egress-payload.spec.js e2e/egress-realtime-idle.spec.js e2e/egress-sync-empty-local.spec.js",
     "audit:egress": "node scripts/audit-egress.js",
     "test:video-pdf": "node scripts/test-survey-calc.mjs && playwright test e2e/video-corrections.spec.js",
-    "test:money-box": "node scripts/test-money-box.mjs"
+    "test:money-box": "node scripts/test-money-box.mjs",
+    "test:rh-regalos": "node scripts/test-rh-regalos-cantidad-total.mjs"
   },
   "devDependencies": {
     "@playwright/test": "^1.52.0",
