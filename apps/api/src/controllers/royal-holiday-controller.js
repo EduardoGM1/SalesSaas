@@ -5,6 +5,8 @@
 import * as royalHolidayService from "../services/royal-holiday-service.js";
 import {
   assertEmpresaIdMatch,
+  assertOpsConfigReadAccess,
+  assertOpsConfigWriteAccess,
   guardRhRequest,
   RH_CATALOG_FLAGS,
   RH_FLAGS,
@@ -87,13 +89,18 @@ export async function eliminarDiaDescanso(auth, req) {
 
 export async function obtenerOpsConfig(auth, req) {
   const empresaId = req.params.empresaId;
-  await guardRhRequest(auth.supabase, auth.userId, empresaId, { flag: RH_FLAGS.ops });
+  await assertOpsConfigReadAccess(
+    auth.supabase,
+    auth.userId,
+    empresaId,
+    workspaceQuery(req.query),
+  );
   return royalHolidayService.getOpsConfig(auth.supabase, empresaId);
 }
 
 export async function guardarOpsConfig(auth, req, body) {
   const empresaId = req.params.empresaId;
-  await guardRhRequest(auth.supabase, auth.userId, empresaId, { flag: RH_FLAGS.ops });
+  await assertOpsConfigWriteAccess(auth.supabase, auth.userId, empresaId);
   return royalHolidayService.saveOpsConfig(auth.supabase, auth.userId, empresaId, body.config || body);
 }
 
