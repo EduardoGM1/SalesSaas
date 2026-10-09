@@ -511,18 +511,33 @@ export function WorksheetRhVentaPanel({
                       {!qtyEditable ? (
                         <span className="rh-cell-na">{ev.permiteSinCosto ? "—" : qty}</span>
                       ) : (
-                        <input
-                          type="number"
-                          min={r.cantidad_es_monto ? 0 : 1}
-                          max={r.cantidad_es_monto ? undefined : 99}
-                          step={r.cantidad_es_monto ? "0.01" : "1"}
-                          className={`input input-compact rh-qty-input${r.cantidad_es_monto ? " rh-qty-amount" : ""}`}
-                          disabled={readOnly}
-                          placeholder={String(cantidadDefaultRegalo(g))}
-                          value={qtyValue ?? qty}
-                          onChange={(e) => setRegaloQty(g, e.target.value)}
-                          onBlur={(e) => commitRegaloQty(g, e.target.value)}
-                        />
+                        <>
+                          <input
+                            type="number"
+                            min={r.cantidad_es_monto ? 0 : 1}
+                            max={r.cantidad_es_monto ? undefined : 99}
+                            step={r.cantidad_es_monto ? "0.01" : "1"}
+                            className={`input input-compact rh-qty-input${r.cantidad_es_monto ? " rh-qty-amount" : ""}`}
+                            disabled={readOnly}
+                            placeholder={String(cantidadDefaultRegalo(g))}
+                            value={qtyValue ?? qty}
+                            aria-label={
+                              r.cantidad_es_monto
+                                ? `Monto en USD de ${g.nombre || "regalo"}`
+                                : `Cantidad de ${g.nombre || "regalo"}`
+                            }
+                            onChange={(e) => setRegaloQty(g, e.target.value)}
+                            onBlur={(e) => commitRegaloQty(g, e.target.value)}
+                          />
+                          {r.cantidad_es_monto ? (
+                            <span
+                              className="rh-qty-caption"
+                              data-testid={`rh-regalo-monto-caption-${g.id}`}
+                            >
+                              Monto (USD)
+                            </span>
+                          ) : null}
+                        </>
                       )}
                     </td>
                     <td className="rh-col-cost">{fmtRegaloCosto(ev, fmtResult)}</td>

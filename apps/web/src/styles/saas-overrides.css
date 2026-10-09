@@ -10419,6 +10419,13 @@ body,
 .rh-regalo-bonus { margin-top: 4px; font-size: 11px; }
 .rh-qty-input { width: 64px; text-align: center; margin-inline: auto; display: block; }
 .rh-qty-input.rh-qty-amount { width: 88px; text-align: right; }
+.rh-qty-caption {
+  display: block;
+  margin-top: 2px;
+  font-size: 11px;
+  text-align: center;
+  color: var(--muted);
+}
 .rh-carga-check {
   display: flex;
   align-items: center;

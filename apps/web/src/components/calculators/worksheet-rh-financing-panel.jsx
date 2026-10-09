@@ -333,6 +333,8 @@ function BeneficiosIncluidos({
                   const checked = column === "venta" ? cargaIncluyeVenta(carga) : cargaIncluyeClosing(carga);
                   const qtyEditable = cantidadEsEditable(regalo);
                   const unit = ev.costoUnitario;
+                  const r = restriccionesRegalo(regalo);
+                  const esMonto = !!r.cantidad_es_monto;
                   return (
                     <tr key={regalo.id}>
                       <td>
@@ -346,23 +348,39 @@ function BeneficiosIncluidos({
                         />
                       </td>
                       <td>{regalo.nombre}</td>
-                      <td>
+                      <td className="rh-col-qty">
                         {qtyEditable ? (
-                          <input
-                            type="number"
-                            min="1"
-                            max="99"
-                            className="input input-compact rh-qty-input"
-                            disabled={readOnly || !checked}
-                            value={form.regalosCantidad?.[regalo.id] ?? ""}
-                            aria-label={`Cantidad ${regalo.nombre || ""}`}
-                            onChange={(e) => setQty(regalo, e.target.value)}
-                          />
+                          <>
+                            <input
+                              type="number"
+                              min={esMonto ? 0 : 1}
+                              max={esMonto ? undefined : 99}
+                              step={esMonto ? "0.01" : "1"}
+                              className={`input input-compact rh-qty-input${esMonto ? " rh-qty-amount" : ""}`}
+                              disabled={readOnly || !checked}
+                              value={form.regalosCantidad?.[regalo.id] ?? ""}
+                              placeholder={String(cantidadDefaultRegalo(regalo))}
+                              aria-label={
+                                esMonto
+                                  ? `Monto en USD de ${regalo.nombre || "beneficio"}`
+                                  : `Cantidad ${regalo.nombre || ""}`
+                              }
+                              onChange={(e) => setQty(regalo, e.target.value)}
+                            />
+                            {esMonto ? (
+                              <span
+                                className="rh-qty-caption"
+                                data-testid={`rh-regalo-monto-caption-${regalo.id}`}
+                              >
+                                Monto (USD)
+                              </span>
+                            ) : null}
+                          </>
                         ) : (
-                          restriccionesRegalo(regalo).cantidad_default ?? "1"
+                          r.cantidad_default ?? "1"
                         )}
                       </td>
-                      <td>{unit == null ? "—" : fmt(unit)}</td>
+                      <td>{unit == null ? (esMonto ? "Monto" : "—") : fmt(unit)}</td>
                       <td>{checked ? fmt(lineTotal) : "—"}</td>
                     </tr>
                   );
