@@ -91,11 +91,22 @@ export function WorksheetRhVentaPanel({
   regalosCatalogo,
   showExtras = false,
 }) {
-  const { fmtResult } = moneda;
+  const { fmtResult, monedaOperativa, language } = moneda;
   const hc = Number(form.holiday_credits) || 0;
   const mv = Number(montoOperational) || 0;
   const cuotaAnualNum = Number(bl?.cuota_anual_mfee) || 0;
-  const mxnToUsd = (n) => moneda.convertir(n, "MXN", moneda.monedaOperativa);
+  /** Toda línea (MXN o USD) → moneda operativa antes de sumar. */
+  const toOperativa = (n, from) => moneda.convertir(n, from || "USD", moneda.monedaOperativa);
+  /** Cajas de totales: etiqueta = moneda operativa real (no “USD” fijo). */
+  const fmtRegaloBox = (n) => {
+    const code = monedaOperativa === "MXN" ? "MXN" : (monedaOperativa || "USD");
+    const num = Number(n) || 0;
+    const formatted = num.toLocaleString(language === "en" ? "en-US" : "es-MX", {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2,
+    });
+    return code === "MXN" ? `$${formatted} MXN` : `USD ${formatted}`;
+  };
 
   const regalosEvaluados = useMemo(() => {
     const list = ordenarRegalosExcel(regalosCatalogo || []);
@@ -149,9 +160,9 @@ export function WorksheetRhVentaPanel({
       holidayCredits: hc,
       montoVenta: mv,
       cuotaAnual: cuotaAnualNum,
-      mxnToUsd,
+      toOperativa,
     }),
-    [regalosCatalogo, form.regalosElegidos, form.regalosCantidad, form.regalosSplit, hc, mv, cuotaAnualNum, moneda.ctx],
+    [regalosCatalogo, form.regalosElegidos, form.regalosCantidad, form.regalosSplit, hc, mv, cuotaAnualNum, moneda.ctx, moneda.monedaOperativa],
   );
 
   const cuotaAnual = bl?.cuota_anual_mfee != null ? fmtResult(bl.cuota_anual_mfee) : "—";
@@ -618,21 +629,21 @@ export function WorksheetRhVentaPanel({
           <div className="vbox green rh-total-box">
             <div className="vbox-val rh-total-with-icon">
               <ShoppingCart size={16} aria-hidden />
-              {fmtResult(regaloTotals.venta)}
+              {fmtRegaloBox(regaloTotals.venta)}
             </div>
             <div className="vbox-label">Total aplicado a Monto venta</div>
           </div>
           <div className="vbox purple rh-total-box">
             <div className="vbox-val rh-total-with-icon">
               <Landmark size={16} aria-hidden />
-              {fmtResult(regaloTotals.closing)}
+              {fmtRegaloBox(regaloTotals.closing)}
             </div>
             <div className="vbox-label">Total aplicado a Gasto adm.</div>
           </div>
           <div className="vbox rh-total-box rh-regalos-total-combined">
             <div className="vbox-val rh-total-with-icon">
               <Gift size={16} aria-hidden />
-              {fmtResult(regaloTotals.total)}
+              {fmtRegaloBox(regaloTotals.total)}
             </div>
             <div className="vbox-label">Total regalos aplicados</div>
             <div className="vbox-sub">Venta + Gasto adm.</div>

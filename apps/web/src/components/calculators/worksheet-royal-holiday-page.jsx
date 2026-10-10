@@ -270,7 +270,7 @@ export function WorksheetRoyalHolidayPage({
 
   const ws = useMemo(
     () => buildRhWorksheetState(catalogo, preview, operationalForm, {
-      mxnToUsd: (n) => moneda.convertir(n, "MXN", moneda.monedaOperativa),
+      toOperativa: (n, from) => moneda.convertir(n, from || "USD", moneda.monedaOperativa),
     }),
     [catalogo, preview, operationalForm, moneda.ctx, moneda.monedaOperativa],
   );

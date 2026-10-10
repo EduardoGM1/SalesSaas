@@ -419,13 +419,29 @@ export function totalLineaRegalo(regalo, { qty, cuotaAnual } = {}) {
   return unit * Math.max(0, Number(qty) || 0);
 }
 
-export function totalLineaRegaloUsd(regalo, opts, mxnToUsd) {
-  const total = totalLineaRegalo(regalo, opts);
-  if (restriccionesRegalo(regalo).moneda_costo === "MXN") {
-    const converted = typeof mxnToUsd === "function" ? mxnToUsd(total) : null;
-    return Number.isFinite(converted) ? converted : 0;
+/**
+ * Convierte un monto de la moneda del regalo a moneda operativa.
+ * @param {(amount: number, fromCurrency: string) => number} toOperativa
+ * @param {(amount: number) => number} [mxnToUsd] legado: solo convierte MXN; USD se deja igual
+ */
+function resolveToOperativa({ toOperativa, mxnToUsd } = {}) {
+  if (typeof toOperativa === "function") return toOperativa;
+  if (typeof mxnToUsd === "function") {
+    return (amount, currency) => (currency === "MXN" ? mxnToUsd(amount) : amount);
   }
-  return total;
+  return (amount) => amount;
+}
+
+/** Total de línea ya convertido a moneda operativa (MXN y USD). */
+export function totalLineaRegaloUsd(regalo, opts, convertOrMxnToUsd) {
+  const total = totalLineaRegalo(regalo, opts);
+  const moneda = restriccionesRegalo(regalo).moneda_costo || "USD";
+  // Firma nueva: toOperativa(amount, currency). Legado: mxnToUsd(amount) solo para MXN.
+  const toOperativa = typeof convertOrMxnToUsd === "function" && convertOrMxnToUsd.length >= 2
+    ? convertOrMxnToUsd
+    : resolveToOperativa({ mxnToUsd: convertOrMxnToUsd });
+  const converted = toOperativa(total, moneda);
+  return Number.isFinite(converted) ? converted : 0;
 }
 
 /**
@@ -490,7 +506,14 @@ export function evaluarRegaloWorksheet(regalo, {
   return { ...base, estado: "elegible", motivo: null, aviso, bonoHc };
 }
 
-export function totalesRegalosAplicados(regalos, form, { holidayCredits, montoVenta, cuotaAnual, mxnToUsd } = {}) {
+export function totalesRegalosAplicados(regalos, form, {
+  holidayCredits,
+  montoVenta,
+  cuotaAnual,
+  toOperativa,
+  mxnToUsd,
+} = {}) {
+  const convert = resolveToOperativa({ toOperativa, mxnToUsd });
   let venta = 0;
   let closing = 0;
   const grupoMontosOtros = {};
@@ -501,7 +524,7 @@ export function totalesRegalosAplicados(regalos, form, { holidayCredits, montoVe
     const r = restriccionesRegalo(g);
     if (!r.grupo_tope) continue;
     const qty = cantidadRegalo(g, form?.regalosCantidad);
-    const line = totalLineaRegaloUsd(g, { qty, cuotaAnual }, mxnToUsd);
+    const line = totalLineaRegaloUsd(g, { qty, cuotaAnual }, convert);
     grupoMontosOtros[r.grupo_tope] = (grupoMontosOtros[r.grupo_tope] || 0) + line;
   }
 
@@ -512,7 +535,7 @@ export function totalesRegalosAplicados(regalos, form, { holidayCredits, montoVe
     const r = restriccionesRegalo(g);
     const others = { ...grupoMontosOtros };
     if (r.grupo_tope) {
-      others[r.grupo_tope] = Math.max(0, (others[r.grupo_tope] || 0) - totalLineaRegaloUsd(g, { qty, cuotaAnual }, mxnToUsd));
+      others[r.grupo_tope] = Math.max(0, (others[r.grupo_tope] || 0) - totalLineaRegaloUsd(g, { qty, cuotaAnual }, convert));
     }
     const ev = evaluarRegaloWorksheet(g, {
       holidayCredits,
@@ -522,7 +545,7 @@ export function totalesRegalosAplicados(regalos, form, { holidayCredits, montoVe
       grupoMontosOtros: others,
     });
     if (ev.estado !== "elegible") continue;
-    const line = totalLineaRegaloUsd(g, { qty, cuotaAnual }, mxnToUsd);
+    const line = totalLineaRegaloUsd(g, { qty, cuotaAnual }, convert);
     if (cargaEsAmbos(carga) && permiteCargaDualRegalo(g)) {
       const split = form?.regalosSplit?.[g.id];
       const effective = splitMontosValido(split, line)

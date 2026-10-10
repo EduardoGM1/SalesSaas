@@ -14,7 +14,7 @@ import {
 } from "@/lib/calculations/royal-holiday.js";
 
 /** Une preview API + catálogo vigente para que el worksheet refleje siempre la configuración RH. */
-export function buildRhWorksheetState(catalogo, preview, form, { mxnToUsd } = {}) {
+export function buildRhWorksheetState(catalogo, preview, form, { toOperativa, mxnToUsd } = {}) {
   const hc = Number(form.holiday_credits) || 0;
   const monto = montoVentaWorksheet(form);
   const eng = form.enganche_pct;
@@ -35,6 +35,7 @@ export function buildRhWorksheetState(catalogo, preview, form, { mxnToUsd } = {}
     holidayCredits: hc,
     montoVenta: monto,
     cuotaAnual,
+    toOperativa,
     mxnToUsd,
   });
   const montoContrato = monto + (regalosTotales.venta || 0);
