@@ -46,7 +46,7 @@ async function login(page) {
 }
 
 async function walk(page, label) {
-  const imgDir = path.join(__dir, "../apps/web/public/presentacion/img");
+  const imgDir = path.join(__dir, "../public/presentacion/img");
   const eagerFiles = fs.readdirSync(imgDir).filter((f) => /^(01|02)\./.test(f));
   const diskEager = eagerFiles.reduce((a, f) => a + fs.statSync(path.join(imgDir, f)).size, 0);
 

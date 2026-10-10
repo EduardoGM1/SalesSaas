@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Idempotente: lee docs/presentacion/img-originales/ (+ display-sizes.json)
- * y escribe apps/web/public/presentacion/img/ + reporte JSON.
+ * y escribe public/presentacion/img/ + reporte JSON.
  *
  * Estrategia:
  * - Redimensiona solo si original > 2× tamaño mostrado.
@@ -18,7 +18,7 @@ import { ssim as ssimJs } from "ssim.js";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const ORIG = path.join(ROOT, "docs/presentacion/img-originales");
-const OUT = path.join(ROOT, "apps/web/public/presentacion/img");
+const OUT = path.join(ROOT, "public/presentacion/img");
 const MANIFEST = path.join(ROOT, "docs/presentacion/img-manifest.json");
 const DISPLAY = path.join(ROOT, "docs/presentacion/display-sizes.json");
 const REPORT = path.join(ROOT, "docs/presentacion/optimize-report.json");
@@ -256,7 +256,7 @@ async function optimizeOne(img, display) {
 }
 
 async function rewriteHtmlRoutes(mapping, rows) {
-  const htmlPath = path.join(ROOT, "apps/web/public/presentacion/index.html");
+  const htmlPath = path.join(ROOT, "public/presentacion/index.html");
   if (!fs.existsSync(htmlPath)) return;
   let html = fs.readFileSync(htmlPath, "utf8");
   for (const [from, to] of mapping) {

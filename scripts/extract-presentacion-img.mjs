@@ -2,7 +2,7 @@
 /**
  * Extrae las 35 imágenes base64 del HTML fuente a:
  *   docs/presentacion/img-originales/   (conservar, no servir)
- *   apps/web/public/presentacion/img/   (servidas; luego las optimiza otro script)
+ *   public/presentacion/img/   (servidas; luego las optimiza otro script)
  * y escribe docs/presentacion/img-manifest.json
  */
 import fs from "fs";
@@ -13,7 +13,7 @@ import sharp from "sharp";
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const SRC = path.join(ROOT, "docs/presentacion/Presentacion-Royal-Holiday.source.html");
 const OUT_ORIG = path.join(ROOT, "docs/presentacion/img-originales");
-const OUT_PUBLIC = path.join(ROOT, "apps/web/public/presentacion/img");
+const OUT_PUBLIC = path.join(ROOT, "public/presentacion/img");
 const MANIFEST = path.join(ROOT, "docs/presentacion/img-manifest.json");
 
 fs.mkdirSync(OUT_ORIG, { recursive: true });

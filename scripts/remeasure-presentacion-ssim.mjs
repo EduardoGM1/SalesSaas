@@ -11,7 +11,7 @@ import { ssim as ssimJs } from "ssim.js";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const ORIG = path.join(ROOT, "docs/presentacion/img-originales");
-const OUT = path.join(ROOT, "apps/web/public/presentacion/img");
+const OUT = path.join(ROOT, "public/presentacion/img");
 const MANIFEST = path.join(ROOT, "docs/presentacion/img-manifest.json");
 const REPORT = path.join(ROOT, "docs/presentacion/optimize-report.json");
 const SSIM_MIN = 0.985;

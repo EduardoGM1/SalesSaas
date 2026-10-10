@@ -12,7 +12,7 @@ const out = path.join(ROOT, "docs/presentacion/comparativa.html");
 const rows = report.images
   .map((img) => {
     const orig = `img-originales/${img.sourceFile}`;
-    const opt = `../../apps/web/public/presentacion/img/${img.outputFile}`;
+    const opt = `../../public/presentacion/img/${img.outputFile}`;
     return `<tr>
   <td>#${img.order}<br><small>${img.role || ""}</small></td>
   <td><img src="${orig}" alt="orig ${img.order}"><div class="meta">${img.dimBefore} · ${img.kbBefore} KB · ${img.formatIn}</div></td>

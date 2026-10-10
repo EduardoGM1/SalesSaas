@@ -8,8 +8,8 @@ import path from "path";
 import { fileURLToPath } from "url";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const HTML = path.join(ROOT, "apps/web/public/presentacion/index.html");
-const IMG_DIR = path.join(ROOT, "apps/web/public/presentacion/img");
+const HTML = path.join(ROOT, "public/presentacion/index.html");
+const IMG_DIR = path.join(ROOT, "public/presentacion/img");
 const REPORT = path.join(ROOT, "docs/presentacion/optimize-report.json");
 const BUDGET = 150 * 1024;
 /** Justificados: foto hero vimg / detalle grande / moneda a resolución de pantalla. */

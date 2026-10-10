@@ -2,7 +2,7 @@
 /**
  * Reescribe el HTML fuente reemplazando data: URLs base64 por
  * /presentacion/img/NN.ext (orden de aparición = manifest).
- * Salida: apps/web/public/presentacion/index.html
+ * Salida: public/presentacion/index.html
  */
 import fs from "fs";
 import path from "path";
@@ -11,7 +11,7 @@ import { fileURLToPath } from "url";
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const SRC = path.join(ROOT, "docs/presentacion/Presentacion-Royal-Holiday.source.html");
 const MANIFEST = path.join(ROOT, "docs/presentacion/img-manifest.json");
-const OUT = path.join(ROOT, "apps/web/public/presentacion/index.html");
+const OUT = path.join(ROOT, "public/presentacion/index.html");
 
 const manifest = JSON.parse(fs.readFileSync(MANIFEST, "utf8"));
 const byOrder = new Map(manifest.images.map((img) => [img.order, img]));
