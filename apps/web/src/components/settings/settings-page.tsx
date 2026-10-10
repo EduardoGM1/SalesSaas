@@ -28,6 +28,11 @@ import { NotificationsSettings } from "@/components/settings/notifications-setti
 import { HelpSettings } from "@/components/settings/help-settings.jsx";
 import { PwaInstallSettings } from "@/components/settings/pwa-install-settings.jsx";
 import { livePreviewSettingsEqual } from "@/lib/settings-sync.js";
+import {
+  isUnusualUsdToMxnRate,
+  resolveUsdToMxnRate,
+  unusualUsdToMxnRateMessage,
+} from "@/lib/currency/moneda-service";
 
 type SettingsSection = "user" | "worksheet" | "tourTypes" | "money" | "language" | "apis" | "backup" | "account" | "notifications" | "help" | "pwa" | null;
 
@@ -428,8 +433,19 @@ export function SettingsPage() {
                       value={settings.usdToMxnRate ?? settings.exchangeRate ?? 18}
                       onChange={(e) => setSetting("usdToMxnRate", Number(e.target.value) || 18)}
                       style={{ width: 160, textAlign: "right" }}
+                      aria-describedby={isUnusualUsdToMxnRate(resolveUsdToMxnRate(settings)) ? "settings-fx-unusual" : undefined}
                     />
                   </div>
+                  {isUnusualUsdToMxnRate(resolveUsdToMxnRate(settings)) ? (
+                    <div
+                      id="settings-fx-unusual"
+                      className="settings-fx-warning"
+                      role="status"
+                      data-testid="settings-fx-unusual-warning"
+                    >
+                      {unusualUsdToMxnRateMessage(resolveUsdToMxnRate(settings))}
+                    </div>
+                  ) : null}
                   <div className="settings-row">
                     <input
                       type="number"

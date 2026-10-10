@@ -41,6 +41,16 @@ export function resolveUsdToMxnRate(settings?: MonedaSettingsLike | null): numbe
   return 18;
 }
 
+/** TC captura USD→MXN ≤ 1 es casi siempre un error de configuración. */
+export function isUnusualUsdToMxnRate(rate: number | null | undefined): boolean {
+  const n = Number(rate);
+  return Number.isFinite(n) && n > 0 && n <= 1;
+}
+
+export function unusualUsdToMxnRateMessage(_rate?: number | null): string | null {
+  return "Tipo de cambio inusual: 1 USD = 1 MXN";
+}
+
 export function getMonedaContext(settings?: MonedaSettingsLike | null): MonedaContext {
   const monedaOperativa = settings?.currency ?? "USD";
   const usdToMxn = resolveUsdToMxnRate(settings);

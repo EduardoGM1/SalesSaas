@@ -254,6 +254,17 @@
   max-width: 220px;
   line-height: 1.4;
 }
+.settings-fx-warning {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border-radius: var(--r-sm);
+  border: 1px solid rgba(217, 119, 6, 0.35);
+  background: rgba(245, 158, 11, 0.12);
+  color: #92400e;
+  font-size: 12px;
+  line-height: 1.4;
+  font-weight: 600;
+}
 .auth-input { width: 100%; background: var(--surface2); border: 1px solid var(--border2); border-radius: var(--r-sm); color: var(--text); font-family: inherit; font-size: 14px; padding: 11px 13px; outline: none; transition: all 0.15s; }
 .auth-input:focus { border-color: var(--blue-lt); box-shadow: 0 0 0 3px var(--blue-glow); }
 .auth-error { background: rgba(220, 38, 38, 0.08); border: 1px solid rgba(220, 38, 38, 0.2); color: var(--red); border-radius: var(--r-sm); padding: 10px 12px; font-size: 12px; margin-bottom: 14px; line-height: 1.4; }
