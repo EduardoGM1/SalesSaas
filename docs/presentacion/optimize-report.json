@@ -1,0 +1,3191 @@
+{
+  "generatedAt": "2026-10-10T14:04:37.399Z",
+  "ssimMin": 0.985,
+  "budgetKb": 150,
+  "deliveryFormatPolicy": "WebP preferred; JPEG/PNG fallback; AVIF probed but not selected (iOS Safari baseline)",
+  "totalBytesBefore": 3824279,
+  "totalBytesAfter": 2041398,
+  "totalKbBefore": 3734.6,
+  "totalKbAfter": 1993.6,
+  "savingsPct": 46.6,
+  "images": [
+    {
+      "order": 1,
+      "role": "hero-logo",
+      "sourceFile": "01.png",
+      "outputFile": "01.webp",
+      "formatIn": "png",
+      "formatOut": "webp",
+      "encoder": "webp-q80",
+      "bytesBefore": 370093,
+      "bytesAfter": 71584,
+      "kbBefore": 361.4,
+      "kbAfter": 69.9,
+      "savingsPct": 80.7,
+      "dimBefore": "1191x786",
+      "dimAfter": "640x422",
+      "displayMax": "320x211.17",
+      "target2x": "640x423",
+      "ssim": 0.9994,
+      "ssimPass": true,
+      "keptOriginal": false,
+      "overBudget": false,
+      "avifProbeKb": 27.4,
+      "candidates": [
+        {
+          "label": "webp-q95",
+          "kb": 88,
+          "ssim": 0.9998,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "webp-q92",
+          "kb": 82.3,
+          "ssim": 0.9998,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "webp-q90",
+          "kb": 79,
+          "ssim": 0.9997,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "webp-q85",
+          "kb": 73.7,
+          "ssim": 0.9996,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "webp-q80",
+          "kb": 69.9,
+          "ssim": 0.9994,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "jpeg-q95",
+          "kb": 24.3,
+          "ssim": 0.2848,
+          "pass": false,
+          "probeOnly": false
+        },
+        {
+          "label": "jpeg-q92",
+          "kb": 19.8,
+          "ssim": 0.2854,
+          "pass": false,
+          "probeOnly": false
+        },
+        {
+          "label": "jpeg-q90",
+          "kb": 18.1,
+          "ssim": 0.2857,
+          "pass": false,
+          "probeOnly": false
+        },
+        {
+          "label": "jpeg-q85",
+          "kb": 14.8,
+          "ssim": 0.2868,
+          "pass": false,
+          "probeOnly": false
+        },
+        {
+          "label": "jpeg-q80",
+          "kb": 13,
+          "ssim": 0.2878,
+          "pass": false,
+          "probeOnly": false
+        },
+        {
+          "label": "avif-q60",
+          "kb": 31.3,
+          "ssim": 0.9993,
+          "pass": true,
+          "probeOnly": true
+        },
+        {
+          "label": "avif-q55",
+          "kb": 27.4,
+          "ssim": 0.999,
+          "pass": true,
+          "probeOnly": true
+        }
+      ]
+    },
+    {
+      "order": 2,
+      "role": "photo",
+      "sourceFile": "02.jpg",
+      "outputFile": "02.webp",
+      "formatIn": "jpeg",
+      "formatOut": "webp",
+      "encoder": "webp-q80",
+      "bytesBefore": 206316,
+      "bytesAfter": 177422,
+      "kbBefore": 201.5,
+      "kbAfter": 173.3,
+      "savingsPct": 14,
+      "dimBefore": "1400x788",
+      "dimAfter": "1400x788",
+      "displayMax": "777.59x622.06",
+      "target2x": "1556x1245",
+      "ssim": 0.998,
+      "ssimPass": true,
+      "keptOriginal": false,
+      "overBudget": true,
+      "avifProbeKb": 111.8,
+      "candidates": [
+        {
+          "label": "webp-q95",
+          "kb": 339.2,
+          "ssim": 0.9985,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "webp-q92",
+          "kb": 283.5,
+          "ssim": 0.9984,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "webp-q90",
+          "kb": 260,
+          "ssim": 0.9984,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "webp-q85",
+          "kb": 204.4,
+          "ssim": 0.9982,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "webp-q80",
+          "kb": 173.3,
+          "ssim": 0.998,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "jpeg-q95",
+          "kb": 278.3,
+          "ssim": 0.9998,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "jpeg-q92",
+          "kb": 248,
+          "ssim": 0.9998,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "jpeg-q90",
+          "kb": 237.9,
+          "ssim": 0.9998,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "jpeg-q85",
+          "kb": 218.7,
+          "ssim": 0.9996,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "jpeg-q80",
+          "kb": 201,
+          "ssim": 0.9997,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "avif-q60",
+          "kb": 134.3,
+          "ssim": 0.999,
+          "pass": true,
+          "probeOnly": true
+        },
+        {
+          "label": "avif-q55",
+          "kb": 111.8,
+          "ssim": 0.9986,
+          "pass": true,
+          "probeOnly": true
+        }
+      ]
+    },
+    {
+      "order": 3,
+      "role": "graphic",
+      "sourceFile": "03.png",
+      "outputFile": "03.png",
+      "formatIn": "png",
+      "formatOut": "png",
+      "encoder": "png-max",
+      "bytesBefore": 36982,
+      "bytesAfter": 6483,
+      "kbBefore": 36.1,
+      "kbAfter": 6.3,
+      "savingsPct": 82.5,
+      "dimBefore": "475x120",
+      "dimAfter": "222x56",
+      "displayMax": "110.83x28",
+      "target2x": "222x56",
+      "ssim": 1,
+      "ssimPass": true,
+      "keptOriginal": false,
+      "overBudget": false,
+      "avifProbeKb": null,
+      "candidates": [
+        {
+          "label": "webp-lossless",
+          "kb": 9.3,
+          "ssim": 1,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "webp-q95",
+          "kb": 9.6,
+          "ssim": 0.9999,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "webp-q90",
+          "kb": 8.4,
+          "ssim": 0.9998,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "png-max",
+          "kb": 6.3,
+          "ssim": 1,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "png-full",
+          "kb": 6.3,
+          "ssim": 1,
+          "pass": true,
+          "probeOnly": false
+        }
+      ]
+    },
+    {
+      "order": 4,
+      "role": "graphic",
+      "sourceFile": "04.png",
+      "outputFile": "04.png",
+      "formatIn": "png",
+      "formatOut": "png",
+      "encoder": "png-max",
+      "bytesBefore": 34227,
+      "bytesAfter": 5920,
+      "kbBefore": 33.4,
+      "kbAfter": 5.8,
+      "savingsPct": 82.7,
+      "dimBefore": "329x120",
+      "dimAfter": "154x56",
+      "displayMax": "76.77x28",
+      "target2x": "154x56",
+      "ssim": 1,
+      "ssimPass": true,
+      "keptOriginal": false,
+      "overBudget": false,
+      "avifProbeKb": null,
+      "candidates": [
+        {
+          "label": "webp-lossless",
+          "kb": 8.5,
+          "ssim": 1,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "webp-q95",
+          "kb": 8.8,
+          "ssim": 1,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "webp-q90",
+          "kb": 7.8,
+          "ssim": 0.9999,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "png-max",
+          "kb": 5.8,
+          "ssim": 1,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "png-full",
+          "kb": 5.8,
+          "ssim": 1,
+          "pass": true,
+          "probeOnly": false
+        }
+      ]
+    },
+    {
+      "order": 5,
+      "role": "graphic",
+      "sourceFile": "05.png",
+      "outputFile": "05.png",
+      "formatIn": "png",
+      "formatOut": "png",
+      "encoder": "png-max",
+      "bytesBefore": 49854,
+      "bytesAfter": 7249,
+      "kbBefore": 48.7,
+      "kbAfter": 7.1,
+      "savingsPct": 85.5,
+      "dimBefore": "477x120",
+      "dimAfter": "223x56",
+      "displayMax": "111.3x28",
+      "target2x": "223x56",
+      "ssim": 1,
+      "ssimPass": true,
+      "keptOriginal": false,
+      "overBudget": false,
+      "avifProbeKb": null,
+      "candidates": [
+        {
+          "label": "webp-lossless",
+          "kb": 10.5,
+          "ssim": 1,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "webp-q95",
+          "kb": 10.9,
+          "ssim": 0.9999,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "webp-q90",
+          "kb": 9.5,
+          "ssim": 0.9999,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "png-max",
+          "kb": 7.1,
+          "ssim": 1,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "png-full",
+          "kb": 7.1,
+          "ssim": 1,
+          "pass": true,
+          "probeOnly": false
+        }
+      ]
+    },
+    {
+      "order": 6,
+      "role": "bilingual-es",
+      "sourceFile": "06.jpg",
+      "outputFile": "06.webp",
+      "formatIn": "jpeg",
+      "formatOut": "webp",
+      "encoder": "webp-q80",
+      "bytesBefore": 147709,
+      "bytesAfter": 84156,
+      "kbBefore": 144.2,
+      "kbAfter": 82.2,
+      "savingsPct": 43,
+      "dimBefore": "1200x655",
+      "dimAfter": "1000x546",
+      "displayMax": "500x272.72",
+      "target2x": "1000x546",
+      "ssim": 0.9948,
+      "ssimPass": true,
+      "keptOriginal": false,
+      "overBudget": false,
+      "avifProbeKb": 47.3,
+      "candidates": [
+        {
+          "label": "webp-q95",
+          "kb": 168.2,
+          "ssim": 0.9963,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "webp-q92",
+          "kb": 140.3,
+          "ssim": 0.9962,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "webp-q90",
+          "kb": 124.7,
+          "ssim": 0.996,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "webp-q85",
+          "kb": 98.7,
+          "ssim": 0.9955,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "webp-q80",
+          "kb": 82.2,
+          "ssim": 0.9948,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "jpeg-q95",
+          "kb": 173.2,
+          "ssim": 0.9986,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "jpeg-q92",
+          "kb": 141.2,
+          "ssim": 0.9985,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "jpeg-q90",
+          "kb": 128.6,
+          "ssim": 0.9986,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "jpeg-q85",
+          "kb": 103.3,
+          "ssim": 0.9985,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "jpeg-q80",
+          "kb": 89.1,
+          "ssim": 0.9981,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "avif-q60",
+          "kb": 57.3,
+          "ssim": 0.9968,
+          "pass": true,
+          "probeOnly": true
+        },
+        {
+          "label": "avif-q55",
+          "kb": 47.3,
+          "ssim": 0.9959,
+          "pass": true,
+          "probeOnly": true
+        }
+      ]
+    },
+    {
+      "order": 7,
+      "role": "bilingual-en",
+      "sourceFile": "07.jpg",
+      "outputFile": "07.webp",
+      "formatIn": "jpeg",
+      "formatOut": "webp",
+      "encoder": "webp-q80",
+      "bytesBefore": 147271,
+      "bytesAfter": 82608,
+      "kbBefore": 143.8,
+      "kbAfter": 80.7,
+      "savingsPct": 43.9,
+      "dimBefore": "1200x655",
+      "dimAfter": "1000x546",
+      "displayMax": "500x272.72",
+      "target2x": "1000x546",
+      "ssim": 0.9948,
+      "ssimPass": true,
+      "keptOriginal": false,
+      "overBudget": false,
+      "avifProbeKb": 45.4,
+      "candidates": [
+        {
+          "label": "webp-q95",
+          "kb": 169.3,
+          "ssim": 0.9962,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "webp-q92",
+          "kb": 140.8,
+          "ssim": 0.996,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "webp-q90",
+          "kb": 125.1,
+          "ssim": 0.9959,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "webp-q85",
+          "kb": 98.3,
+          "ssim": 0.9954,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "webp-q80",
+          "kb": 80.7,
+          "ssim": 0.9948,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "jpeg-q95",
+          "kb": 173.2,
+          "ssim": 0.9986,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "jpeg-q92",
+          "kb": 140.7,
+          "ssim": 0.9986,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "jpeg-q90",
+          "kb": 127.9,
+          "ssim": 0.9986,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "jpeg-q85",
+          "kb": 102.6,
+          "ssim": 0.9985,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "jpeg-q80",
+          "kb": 88.2,
+          "ssim": 0.9981,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "avif-q60",
+          "kb": 55.2,
+          "ssim": 0.9968,
+          "pass": true,
+          "probeOnly": true
+        },
+        {
+          "label": "avif-q55",
+          "kb": 45.4,
+          "ssim": 0.996,
+          "pass": true,
+          "probeOnly": true
+        }
+      ]
+    },
+    {
+      "order": 8,
+      "role": "photo",
+      "sourceFile": "08.jpg",
+      "outputFile": "08.webp",
+      "formatIn": "jpeg",
+      "formatOut": "webp",
+      "encoder": "webp-q80",
+      "bytesBefore": 264693,
+      "bytesAfter": 199820,
+      "kbBefore": 258.5,
+      "kbAfter": 195.1,
+      "savingsPct": 24.5,
+      "dimBefore": "981x762",
+      "dimAfter": "981x762",
+      "displayMax": "600x466.05",
+      "target2x": "1200x933",
+      "ssim": 0.9966,
+      "ssimPass": true,
+      "keptOriginal": false,
+      "overBudget": true,
+      "avifProbeKb": 111.9,
+      "candidates": [
+        {
+          "label": "webp-q95",
+          "kb": 347.6,
+          "ssim": 0.9972,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "webp-q92",
+          "kb": 296.2,
+          "ssim": 0.9972,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "webp-q90",
+          "kb": 278.1,
+          "ssim": 0.9971,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "webp-q85",
+          "kb": 226.5,
+          "ssim": 0.9969,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "webp-q80",
+          "kb": 195.1,
+          "ssim": 0.9966,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "jpeg-q95",
+          "kb": 307.6,
+          "ssim": 0.9998,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "jpeg-q92",
+          "kb": 272.9,
+          "ssim": 0.9998,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "jpeg-q90",
+          "kb": 259.7,
+          "ssim": 0.9998,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "jpeg-q85",
+          "kb": 223.1,
+          "ssim": 0.9996,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "jpeg-q80",
+          "kb": 195.8,
+          "ssim": 0.9994,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "avif-q60",
+          "kb": 135.4,
+          "ssim": 0.9987,
+          "pass": true,
+          "probeOnly": true
+        },
+        {
+          "label": "avif-q55",
+          "kb": 111.9,
+          "ssim": 0.998,
+          "pass": true,
+          "probeOnly": true
+        }
+      ]
+    },
+    {
+      "order": 9,
+      "role": "photo",
+      "sourceFile": "09.jpg",
+      "outputFile": "09.jpg",
+      "formatIn": "jpeg",
+      "formatOut": "jpg",
+      "encoder": "jpeg-q80",
+      "bytesBefore": 164051,
+      "bytesAfter": 98799,
+      "kbBefore": 160.2,
+      "kbAfter": 96.5,
+      "savingsPct": 39.8,
+      "dimBefore": "720x480",
+      "dimAfter": "638x425",
+      "displayMax": "389.86x212.12",
+      "target2x": "780x425",
+      "ssim": 0.9941,
+      "ssimPass": true,
+      "keptOriginal": false,
+      "overBudget": false,
+      "avifProbeKb": 69.1,
+      "candidates": [
+        {
+          "label": "webp-q95",
+          "kb": 187.4,
+          "ssim": 0.9971,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "webp-q92",
+          "kb": 167.4,
+          "ssim": 0.9969,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "webp-q90",
+          "kb": 157,
+          "ssim": 0.9968,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "webp-q85",
+          "kb": 133.4,
+          "ssim": 0.9963,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "webp-q80",
+          "kb": 118.3,
+          "ssim": 0.9956,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "jpeg-q95",
+          "kb": 172.4,
+          "ssim": 0.9972,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "jpeg-q92",
+          "kb": 145.7,
+          "ssim": 0.9967,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "jpeg-q90",
+          "kb": 133.9,
+          "ssim": 0.9963,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "jpeg-q85",
+          "kb": 111.1,
+          "ssim": 0.9961,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "jpeg-q80",
+          "kb": 96.5,
+          "ssim": 0.9941,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "avif-q60",
+          "kb": 82.4,
+          "ssim": 0.9928,
+          "pass": true,
+          "probeOnly": true
+        },
+        {
+          "label": "avif-q55",
+          "kb": 69.1,
+          "ssim": 0.9894,
+          "pass": true,
+          "probeOnly": true
+        }
+      ]
+    },
+    {
+      "order": 10,
+      "role": "photo",
+      "sourceFile": "10.jpg",
+      "outputFile": "10.jpg",
+      "formatIn": "jpeg",
+      "formatOut": "jpg",
+      "encoder": "jpeg-q80",
+      "bytesBefore": 79800,
+      "bytesAfter": 50498,
+      "kbBefore": 77.9,
+      "kbAfter": 49.3,
+      "savingsPct": 36.7,
+      "dimBefore": "720x480",
+      "dimAfter": "638x425",
+      "displayMax": "389.86x212.12",
+      "target2x": "780x425",
+      "ssim": 0.994,
+      "ssimPass": true,
+      "keptOriginal": false,
+      "overBudget": false,
+      "avifProbeKb": 30.2,
+      "candidates": [
+        {
+          "label": "webp-q95",
+          "kb": 94.3,
+          "ssim": 0.995,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "webp-q92",
+          "kb": 79.4,
+          "ssim": 0.9947,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "webp-q90",
+          "kb": 74.2,
+          "ssim": 0.9945,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "webp-q85",
+          "kb": 58.3,
+          "ssim": 0.9934,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "webp-q80",
+          "kb": 49.8,
+          "ssim": 0.9921,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "jpeg-q95",
+          "kb": 93.4,
+          "ssim": 0.9959,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "jpeg-q92",
+          "kb": 76.8,
+          "ssim": 0.9957,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "jpeg-q90",
+          "kb": 70.5,
+          "ssim": 0.9957,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "jpeg-q85",
+          "kb": 57.1,
+          "ssim": 0.9958,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "jpeg-q80",
+          "kb": 49.3,
+          "ssim": 0.994,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "avif-q60",
+          "kb": 36.3,
+          "ssim": 0.9913,
+          "pass": true,
+          "probeOnly": true
+        },
+        {
+          "label": "avif-q55",
+          "kb": 30.2,
+          "ssim": 0.9889,
+          "pass": true,
+          "probeOnly": true
+        }
+      ]
+    },
+    {
+      "order": 11,
+      "role": "photo",
+      "sourceFile": "11.jpg",
+      "outputFile": "11.jpg",
+      "formatIn": "jpeg",
+      "formatOut": "jpg",
+      "encoder": "jpeg-q80",
+      "bytesBefore": 81642,
+      "bytesAfter": 54313,
+      "kbBefore": 79.7,
+      "kbAfter": 53,
+      "savingsPct": 33.5,
+      "dimBefore": "720x480",
+      "dimAfter": "638x425",
+      "displayMax": "389.86x212.12",
+      "target2x": "780x425",
+      "ssim": 0.9927,
+      "ssimPass": true,
+      "keptOriginal": false,
+      "overBudget": false,
+      "avifProbeKb": 32.7,
+      "candidates": [
+        {
+          "label": "webp-q95",
+          "kb": 106.8,
+          "ssim": 0.9949,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "webp-q92",
+          "kb": 89.3,
+          "ssim": 0.9945,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "webp-q90",
+          "kb": 80.5,
+          "ssim": 0.9942,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "webp-q85",
+          "kb": 63.4,
+          "ssim": 0.9929,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "webp-q80",
+          "kb": 53.6,
+          "ssim": 0.9911,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "jpeg-q95",
+          "kb": 101,
+          "ssim": 0.9957,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "jpeg-q92",
+          "kb": 82.5,
+          "ssim": 0.9952,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "jpeg-q90",
+          "kb": 75.3,
+          "ssim": 0.9955,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "jpeg-q85",
+          "kb": 61.3,
+          "ssim": 0.9959,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "jpeg-q80",
+          "kb": 53,
+          "ssim": 0.9927,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "avif-q60",
+          "kb": 39.2,
+          "ssim": 0.9901,
+          "pass": true,
+          "probeOnly": true
+        },
+        {
+          "label": "avif-q55",
+          "kb": 32.7,
+          "ssim": 0.9866,
+          "pass": true,
+          "probeOnly": true
+        }
+      ]
+    },
+    {
+      "order": 12,
+      "role": "photo",
+      "sourceFile": "12.jpg",
+      "outputFile": "12.jpg",
+      "formatIn": "jpeg",
+      "formatOut": "jpg",
+      "encoder": "jpeg-q80",
+      "bytesBefore": 124915,
+      "bytesAfter": 76262,
+      "kbBefore": 122,
+      "kbAfter": 74.5,
+      "savingsPct": 38.9,
+      "dimBefore": "720x480",
+      "dimAfter": "638x425",
+      "displayMax": "389.86x212.12",
+      "target2x": "780x425",
+      "ssim": 0.9944,
+      "ssimPass": true,
+      "keptOriginal": false,
+      "overBudget": false,
+      "avifProbeKb": 51.6,
+      "candidates": [
+        {
+          "label": "webp-q95",
+          "kb": 145.3,
+          "ssim": 0.9961,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "webp-q92",
+          "kb": 124.3,
+          "ssim": 0.9959,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "webp-q90",
+          "kb": 114.2,
+          "ssim": 0.9957,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "webp-q85",
+          "kb": 96.7,
+          "ssim": 0.995,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "webp-q80",
+          "kb": 83.3,
+          "ssim": 0.994,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "jpeg-q95",
+          "kb": 135.5,
+          "ssim": 0.9967,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "jpeg-q92",
+          "kb": 113.5,
+          "ssim": 0.9963,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "jpeg-q90",
+          "kb": 103.9,
+          "ssim": 0.9963,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "jpeg-q85",
+          "kb": 85.8,
+          "ssim": 0.9962,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "jpeg-q80",
+          "kb": 74.5,
+          "ssim": 0.9944,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "avif-q60",
+          "kb": 61.2,
+          "ssim": 0.9927,
+          "pass": true,
+          "probeOnly": true
+        },
+        {
+          "label": "avif-q55",
+          "kb": 51.6,
+          "ssim": 0.9905,
+          "pass": true,
+          "probeOnly": true
+        }
+      ]
+    },
+    {
+      "order": 13,
+      "role": "photo",
+      "sourceFile": "13.jpg",
+      "outputFile": "13.jpg",
+      "formatIn": "jpeg",
+      "formatOut": "jpg",
+      "encoder": "jpeg-q80",
+      "bytesBefore": 118719,
+      "bytesAfter": 77186,
+      "kbBefore": 115.9,
+      "kbAfter": 75.4,
+      "savingsPct": 35,
+      "dimBefore": "720x480",
+      "dimAfter": "638x425",
+      "displayMax": "389.86x212.12",
+      "target2x": "780x425",
+      "ssim": 0.9953,
+      "ssimPass": true,
+      "keptOriginal": false,
+      "overBudget": false,
+      "avifProbeKb": 47.9,
+      "candidates": [
+        {
+          "label": "webp-q95",
+          "kb": 146.5,
+          "ssim": 0.9969,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "webp-q92",
+          "kb": 124.8,
+          "ssim": 0.9967,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "webp-q90",
+          "kb": 116.1,
+          "ssim": 0.9966,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "webp-q85",
+          "kb": 96,
+          "ssim": 0.996,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "webp-q80",
+          "kb": 83.3,
+          "ssim": 0.9951,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "jpeg-q95",
+          "kb": 134.1,
+          "ssim": 0.9974,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "jpeg-q92",
+          "kb": 112.7,
+          "ssim": 0.9971,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "jpeg-q90",
+          "kb": 103.4,
+          "ssim": 0.9971,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "jpeg-q85",
+          "kb": 85.8,
+          "ssim": 0.9967,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "jpeg-q80",
+          "kb": 75.4,
+          "ssim": 0.9953,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "avif-q60",
+          "kb": 56.5,
+          "ssim": 0.9939,
+          "pass": true,
+          "probeOnly": true
+        },
+        {
+          "label": "avif-q55",
+          "kb": 47.9,
+          "ssim": 0.9918,
+          "pass": true,
+          "probeOnly": true
+        }
+      ]
+    },
+    {
+      "order": 14,
+      "role": "photo",
+      "sourceFile": "14.jpg",
+      "outputFile": "14.jpg",
+      "formatIn": "jpeg",
+      "formatOut": "jpg",
+      "encoder": "jpeg-q80",
+      "bytesBefore": 95971,
+      "bytesAfter": 57727,
+      "kbBefore": 93.7,
+      "kbAfter": 56.4,
+      "savingsPct": 39.8,
+      "dimBefore": "720x480",
+      "dimAfter": "638x425",
+      "displayMax": "389.86x212.12",
+      "target2x": "780x425",
+      "ssim": 0.9868,
+      "ssimPass": true,
+      "keptOriginal": false,
+      "overBudget": false,
+      "avifProbeKb": 46.6,
+      "candidates": [
+        {
+          "label": "webp-q95",
+          "kb": 121.2,
+          "ssim": 0.9909,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "webp-q92",
+          "kb": 101.3,
+          "ssim": 0.9904,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "webp-q90",
+          "kb": 94.2,
+          "ssim": 0.9901,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "webp-q85",
+          "kb": 74,
+          "ssim": 0.9886,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "webp-q80",
+          "kb": 61.2,
+          "ssim": 0.9864,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "jpeg-q95",
+          "kb": 115.3,
+          "ssim": 0.9917,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "jpeg-q92",
+          "kb": 93.3,
+          "ssim": 0.9909,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "jpeg-q90",
+          "kb": 84.1,
+          "ssim": 0.9915,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "jpeg-q85",
+          "kb": 66.7,
+          "ssim": 0.993,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "jpeg-q80",
+          "kb": 56.4,
+          "ssim": 0.9868,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "avif-q60",
+          "kb": 46.6,
+          "ssim": 0.9853,
+          "pass": true,
+          "probeOnly": true
+        },
+        {
+          "label": "avif-q55",
+          "kb": 37.8,
+          "ssim": 0.9811,
+          "pass": false,
+          "probeOnly": true
+        }
+      ]
+    },
+    {
+      "order": 15,
+      "role": "photo",
+      "sourceFile": "15.jpg",
+      "outputFile": "15.jpg",
+      "formatIn": "jpeg",
+      "formatOut": "jpg",
+      "encoder": "jpeg-q80",
+      "bytesBefore": 125502,
+      "bytesAfter": 75051,
+      "kbBefore": 122.6,
+      "kbAfter": 73.3,
+      "savingsPct": 40.2,
+      "dimBefore": "720x480",
+      "dimAfter": "638x425",
+      "displayMax": "389.86x212.12",
+      "target2x": "780x425",
+      "ssim": 0.9913,
+      "ssimPass": true,
+      "keptOriginal": false,
+      "overBudget": false,
+      "avifProbeKb": 51.6,
+      "candidates": [
+        {
+          "label": "webp-q95",
+          "kb": 144.4,
+          "ssim": 0.9945,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "webp-q92",
+          "kb": 127.1,
+          "ssim": 0.9942,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "webp-q90",
+          "kb": 115.9,
+          "ssim": 0.994,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "webp-q85",
+          "kb": 95.3,
+          "ssim": 0.9931,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "webp-q80",
+          "kb": 81.4,
+          "ssim": 0.9918,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "jpeg-q95",
+          "kb": 141.3,
+          "ssim": 0.995,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "jpeg-q92",
+          "kb": 116.5,
+          "ssim": 0.9943,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "jpeg-q90",
+          "kb": 105.9,
+          "ssim": 0.9943,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "jpeg-q85",
+          "kb": 85.7,
+          "ssim": 0.9949,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "jpeg-q80",
+          "kb": 73.3,
+          "ssim": 0.9913,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "avif-q60",
+          "kb": 62.7,
+          "ssim": 0.9895,
+          "pass": true,
+          "probeOnly": true
+        },
+        {
+          "label": "avif-q55",
+          "kb": 51.6,
+          "ssim": 0.9858,
+          "pass": true,
+          "probeOnly": true
+        }
+      ]
+    },
+    {
+      "order": 16,
+      "role": "photo",
+      "sourceFile": "16.jpg",
+      "outputFile": "16.jpg",
+      "formatIn": "jpeg",
+      "formatOut": "jpg",
+      "encoder": "jpeg-q85",
+      "bytesBefore": 105557,
+      "bytesAfter": 72140,
+      "kbBefore": 103.1,
+      "kbAfter": 70.4,
+      "savingsPct": 31.7,
+      "dimBefore": "720x480",
+      "dimAfter": "638x425",
+      "displayMax": "389.86x212.12",
+      "target2x": "780x425",
+      "ssim": 0.9914,
+      "ssimPass": true,
+      "keptOriginal": false,
+      "overBudget": false,
+      "avifProbeKb": null,
+      "candidates": [
+        {
+          "label": "webp-q95",
+          "kb": 128.9,
+          "ssim": 0.9895,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "webp-q92",
+          "kb": 107.6,
+          "ssim": 0.989,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "webp-q90",
+          "kb": 99.3,
+          "ssim": 0.9885,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "webp-q85",
+          "kb": 78.6,
+          "ssim": 0.9868,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "webp-q80",
+          "kb": 64.3,
+          "ssim": 0.984,
+          "pass": false,
+          "probeOnly": false
+        },
+        {
+          "label": "jpeg-q95",
+          "kb": 123.8,
+          "ssim": 0.9904,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "jpeg-q92",
+          "kb": 99.7,
+          "ssim": 0.9897,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "jpeg-q90",
+          "kb": 89.4,
+          "ssim": 0.9903,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "jpeg-q85",
+          "kb": 70.4,
+          "ssim": 0.9914,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "jpeg-q80",
+          "kb": 59.2,
+          "ssim": 0.9849,
+          "pass": false,
+          "probeOnly": false
+        },
+        {
+          "label": "avif-q60",
+          "kb": 51,
+          "ssim": 0.9825,
+          "pass": false,
+          "probeOnly": true
+        },
+        {
+          "label": "avif-q55",
+          "kb": 41.4,
+          "ssim": 0.9779,
+          "pass": false,
+          "probeOnly": true
+        }
+      ]
+    },
+    {
+      "order": 17,
+      "role": "photo",
+      "sourceFile": "17.jpg",
+      "outputFile": "17.jpg",
+      "formatIn": "jpeg",
+      "formatOut": "jpg",
+      "encoder": "jpeg-q80",
+      "bytesBefore": 96478,
+      "bytesAfter": 63408,
+      "kbBefore": 94.2,
+      "kbAfter": 61.9,
+      "savingsPct": 34.3,
+      "dimBefore": "720x480",
+      "dimAfter": "638x425",
+      "displayMax": "389.86x212.12",
+      "target2x": "780x425",
+      "ssim": 0.9905,
+      "ssimPass": true,
+      "keptOriginal": false,
+      "overBudget": false,
+      "avifProbeKb": 46.3,
+      "candidates": [
+        {
+          "label": "webp-q95",
+          "kb": 123.2,
+          "ssim": 0.9933,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "webp-q92",
+          "kb": 105.2,
+          "ssim": 0.9928,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "webp-q90",
+          "kb": 97.1,
+          "ssim": 0.9925,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "webp-q85",
+          "kb": 79.6,
+          "ssim": 0.9912,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "webp-q80",
+          "kb": 66.5,
+          "ssim": 0.9893,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "jpeg-q95",
+          "kb": 115.1,
+          "ssim": 0.9943,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "jpeg-q92",
+          "kb": 95.3,
+          "ssim": 0.9938,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "jpeg-q90",
+          "kb": 87.2,
+          "ssim": 0.9939,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "jpeg-q85",
+          "kb": 71.4,
+          "ssim": 0.9944,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "jpeg-q80",
+          "kb": 61.9,
+          "ssim": 0.9905,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "avif-q60",
+          "kb": 46.3,
+          "ssim": 0.9878,
+          "pass": true,
+          "probeOnly": true
+        },
+        {
+          "label": "avif-q55",
+          "kb": 39,
+          "ssim": 0.9842,
+          "pass": false,
+          "probeOnly": true
+        }
+      ]
+    },
+    {
+      "order": 18,
+      "role": "graphic",
+      "sourceFile": "18.png",
+      "outputFile": "18.webp",
+      "formatIn": "png",
+      "formatOut": "webp",
+      "encoder": "webp-q90",
+      "bytesBefore": 8953,
+      "bytesAfter": 2452,
+      "kbBefore": 8.7,
+      "kbAfter": 2.4,
+      "savingsPct": 72.6,
+      "dimBefore": "80x72",
+      "dimAfter": "49x44",
+      "displayMax": "32x22",
+      "target2x": "64x44",
+      "ssim": 0.9998,
+      "ssimPass": true,
+      "keptOriginal": false,
+      "overBudget": false,
+      "avifProbeKb": null,
+      "candidates": [
+        {
+          "label": "webp-lossless",
+          "kb": 3.5,
+          "ssim": 1,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "webp-q95",
+          "kb": 2.7,
+          "ssim": 0.9999,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "webp-q90",
+          "kb": 2.4,
+          "ssim": 0.9998,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "png-max",
+          "kb": 2.7,
+          "ssim": 1,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "png-full",
+          "kb": 2.7,
+          "ssim": 1,
+          "pass": true,
+          "probeOnly": false
+        }
+      ]
+    },
+    {
+      "order": 19,
+      "role": "graphic",
+      "sourceFile": "19.png",
+      "outputFile": "19.webp",
+      "formatIn": "png",
+      "formatOut": "webp",
+      "encoder": "webp-q90",
+      "bytesBefore": 9079,
+      "bytesAfter": 1798,
+      "kbBefore": 8.9,
+      "kbAfter": 1.8,
+      "savingsPct": 80.2,
+      "dimBefore": "146x72",
+      "dimAfter": "64x32",
+      "displayMax": "32x22",
+      "target2x": "64x44",
+      "ssim": 0.9997,
+      "ssimPass": true,
+      "keptOriginal": false,
+      "overBudget": false,
+      "avifProbeKb": null,
+      "candidates": [
+        {
+          "label": "webp-lossless",
+          "kb": 2.1,
+          "ssim": 1,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "webp-q95",
+          "kb": 2,
+          "ssim": 0.9998,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "webp-q90",
+          "kb": 1.8,
+          "ssim": 0.9997,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "png-max",
+          "kb": 2.1,
+          "ssim": 1,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "png-full",
+          "kb": 2.1,
+          "ssim": 1,
+          "pass": true,
+          "probeOnly": false
+        }
+      ]
+    },
+    {
+      "order": 20,
+      "role": "graphic",
+      "sourceFile": "20.png",
+      "outputFile": "20.webp",
+      "formatIn": "png",
+      "formatOut": "webp",
+      "encoder": "webp-q90",
+      "bytesBefore": 5763,
+      "bytesAfter": 1812,
+      "kbBefore": 5.6,
+      "kbAfter": 1.8,
+      "savingsPct": 68.6,
+      "dimBefore": "72x72",
+      "dimAfter": "44x44",
+      "displayMax": "32x22",
+      "target2x": "64x44",
+      "ssim": 0.9983,
+      "ssimPass": true,
+      "keptOriginal": false,
+      "overBudget": false,
+      "avifProbeKb": null,
+      "candidates": [
+        {
+          "label": "webp-lossless",
+          "kb": 2.2,
+          "ssim": 1,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "webp-q95",
+          "kb": 2,
+          "ssim": 0.999,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "webp-q90",
+          "kb": 1.8,
+          "ssim": 0.9983,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "png-max",
+          "kb": 2.2,
+          "ssim": 0.9999,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "png-full",
+          "kb": 2.2,
+          "ssim": 0.9999,
+          "pass": true,
+          "probeOnly": false
+        }
+      ]
+    },
+    {
+      "order": 21,
+      "role": "graphic",
+      "sourceFile": "21.png",
+      "outputFile": "21.webp",
+      "formatIn": "png",
+      "formatOut": "webp",
+      "encoder": "webp-q90",
+      "bytesBefore": 6806,
+      "bytesAfter": 1988,
+      "kbBefore": 6.6,
+      "kbAfter": 1.9,
+      "savingsPct": 70.8,
+      "dimBefore": "72x72",
+      "dimAfter": "44x44",
+      "displayMax": "32x22",
+      "target2x": "64x44",
+      "ssim": 0.9996,
+      "ssimPass": true,
+      "keptOriginal": false,
+      "overBudget": false,
+      "avifProbeKb": null,
+      "candidates": [
+        {
+          "label": "webp-lossless",
+          "kb": 2.2,
+          "ssim": 1,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "webp-q95",
+          "kb": 2.2,
+          "ssim": 0.9997,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "webp-q90",
+          "kb": 1.9,
+          "ssim": 0.9996,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "png-max",
+          "kb": 2.3,
+          "ssim": 1,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "png-full",
+          "kb": 2.3,
+          "ssim": 1,
+          "pass": true,
+          "probeOnly": false
+        }
+      ]
+    },
+    {
+      "order": 22,
+      "role": "graphic",
+      "sourceFile": "22.png",
+      "outputFile": "22.webp",
+      "formatIn": "png",
+      "formatOut": "webp",
+      "encoder": "webp-q90",
+      "bytesBefore": 7670,
+      "bytesAfter": 2282,
+      "kbBefore": 7.5,
+      "kbAfter": 2.2,
+      "savingsPct": 70.2,
+      "dimBefore": "100x72",
+      "dimAfter": "61x44",
+      "displayMax": "32x22",
+      "target2x": "64x44",
+      "ssim": 0.9997,
+      "ssimPass": true,
+      "keptOriginal": false,
+      "overBudget": false,
+      "avifProbeKb": null,
+      "candidates": [
+        {
+          "label": "webp-lossless",
+          "kb": 2.8,
+          "ssim": 1,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "webp-q95",
+          "kb": 2.5,
+          "ssim": 0.9998,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "webp-q90",
+          "kb": 2.2,
+          "ssim": 0.9997,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "png-max",
+          "kb": 2.6,
+          "ssim": 1,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "png-full",
+          "kb": 2.6,
+          "ssim": 1,
+          "pass": true,
+          "probeOnly": false
+        }
+      ]
+    },
+    {
+      "order": 23,
+      "role": "graphic",
+      "sourceFile": "23.png",
+      "outputFile": "23.webp",
+      "formatIn": "png",
+      "formatOut": "webp",
+      "encoder": "webp-q90",
+      "bytesBefore": 6647,
+      "bytesAfter": 2034,
+      "kbBefore": 6.5,
+      "kbAfter": 2,
+      "savingsPct": 69.4,
+      "dimBefore": "77x72",
+      "dimAfter": "47x44",
+      "displayMax": "32x22",
+      "target2x": "64x44",
+      "ssim": 0.9998,
+      "ssimPass": true,
+      "keptOriginal": false,
+      "overBudget": false,
+      "avifProbeKb": null,
+      "candidates": [
+        {
+          "label": "webp-lossless",
+          "kb": 2.6,
+          "ssim": 1,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "webp-q95",
+          "kb": 2.3,
+          "ssim": 0.9999,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "webp-q90",
+          "kb": 2,
+          "ssim": 0.9998,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "png-max",
+          "kb": 2.4,
+          "ssim": 1,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "png-full",
+          "kb": 2.4,
+          "ssim": 1,
+          "pass": true,
+          "probeOnly": false
+        }
+      ]
+    },
+    {
+      "order": 24,
+      "role": "graphic",
+      "sourceFile": "24.png",
+      "outputFile": "24.webp",
+      "formatIn": "png",
+      "formatOut": "webp",
+      "encoder": "webp-q90",
+      "bytesBefore": 8017,
+      "bytesAfter": 2278,
+      "kbBefore": 7.8,
+      "kbAfter": 2.2,
+      "savingsPct": 71.6,
+      "dimBefore": "101x72",
+      "dimAfter": "62x44",
+      "displayMax": "32x22",
+      "target2x": "64x44",
+      "ssim": 0.9994,
+      "ssimPass": true,
+      "keptOriginal": false,
+      "overBudget": false,
+      "avifProbeKb": null,
+      "candidates": [
+        {
+          "label": "webp-lossless",
+          "kb": 2.8,
+          "ssim": 1,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "webp-q95",
+          "kb": 2.6,
+          "ssim": 0.9997,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "webp-q90",
+          "kb": 2.2,
+          "ssim": 0.9994,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "png-max",
+          "kb": 2.5,
+          "ssim": 1,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "png-full",
+          "kb": 2.5,
+          "ssim": 1,
+          "pass": true,
+          "probeOnly": false
+        }
+      ]
+    },
+    {
+      "order": 25,
+      "role": "graphic",
+      "sourceFile": "25.png",
+      "outputFile": "25.png",
+      "formatIn": "png",
+      "formatOut": "png",
+      "encoder": "png-max",
+      "bytesBefore": 106247,
+      "bytesAfter": 6132,
+      "kbBefore": 103.8,
+      "kbAfter": 6,
+      "savingsPct": 94.2,
+      "dimBefore": "746x80",
+      "dimAfter": "224x24",
+      "displayMax": "111.89x12",
+      "target2x": "224x24",
+      "ssim": 1,
+      "ssimPass": true,
+      "keptOriginal": false,
+      "overBudget": false,
+      "avifProbeKb": null,
+      "candidates": [
+        {
+          "label": "webp-lossless",
+          "kb": 8.7,
+          "ssim": 1,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "webp-q95",
+          "kb": 7.7,
+          "ssim": 0.9999,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "webp-q90",
+          "kb": 6.9,
+          "ssim": 0.9999,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "png-max",
+          "kb": 6,
+          "ssim": 1,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "png-full",
+          "kb": 6,
+          "ssim": 1,
+          "pass": true,
+          "probeOnly": false
+        }
+      ]
+    },
+    {
+      "order": 26,
+      "role": "graphic",
+      "sourceFile": "26.png",
+      "outputFile": "26.png",
+      "formatIn": "png",
+      "formatOut": "png",
+      "encoder": "png-max",
+      "bytesBefore": 25991,
+      "bytesAfter": 11829,
+      "kbBefore": 25.4,
+      "kbAfter": 11.6,
+      "savingsPct": 54.5,
+      "dimBefore": "387x150",
+      "dimAfter": "361x140",
+      "displayMax": "180.59x70",
+      "target2x": "362x140",
+      "ssim": 1,
+      "ssimPass": true,
+      "keptOriginal": false,
+      "overBudget": false,
+      "avifProbeKb": null,
+      "candidates": [
+        {
+          "label": "webp-lossless",
+          "kb": 17.6,
+          "ssim": 1,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "webp-q95",
+          "kb": 20.5,
+          "ssim": 1,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "webp-q90",
+          "kb": 18,
+          "ssim": 1,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "png-max",
+          "kb": 11.6,
+          "ssim": 1,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "png-full",
+          "kb": 11.6,
+          "ssim": 1,
+          "pass": true,
+          "probeOnly": false
+        }
+      ]
+    },
+    {
+      "order": 27,
+      "role": "graphic",
+      "sourceFile": "27.png",
+      "outputFile": "27.png",
+      "formatIn": "png",
+      "formatOut": "png",
+      "encoder": "original",
+      "bytesBefore": 4066,
+      "bytesAfter": 4066,
+      "kbBefore": 4,
+      "kbAfter": 4,
+      "savingsPct": 0,
+      "dimBefore": "184x150",
+      "dimAfter": "128x104",
+      "displayMax": "63.78x52",
+      "target2x": "128x104",
+      "ssim": 1,
+      "ssimPass": true,
+      "keptOriginal": true,
+      "overBudget": false,
+      "avifProbeKb": null,
+      "candidates": [
+        {
+          "label": "webp-lossless",
+          "kb": 5,
+          "ssim": 1,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "webp-q95",
+          "kb": 5.9,
+          "ssim": 0.9999,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "webp-q90",
+          "kb": 5.2,
+          "ssim": 0.9999,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "png-max",
+          "kb": 4.1,
+          "ssim": 1,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "png-full",
+          "kb": 4.1,
+          "ssim": 1,
+          "pass": true,
+          "probeOnly": false
+        }
+      ]
+    },
+    {
+      "order": 28,
+      "role": "photo",
+      "sourceFile": "28.jpg",
+      "outputFile": "28.jpg",
+      "formatIn": "jpeg",
+      "formatOut": "jpg",
+      "encoder": "jpeg-q80",
+      "bytesBefore": 156242,
+      "bytesAfter": 79702,
+      "kbBefore": 152.6,
+      "kbAfter": 77.8,
+      "savingsPct": 49,
+      "dimBefore": "960x640",
+      "dimAfter": "720x480",
+      "displayMax": "360x240",
+      "target2x": "720x480",
+      "ssim": 0.9967,
+      "ssimPass": true,
+      "keptOriginal": false,
+      "overBudget": false,
+      "avifProbeKb": 43.5,
+      "candidates": [
+        {
+          "label": "webp-q95",
+          "kb": 144.1,
+          "ssim": 0.9975,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "webp-q92",
+          "kb": 122.3,
+          "ssim": 0.9974,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "webp-q90",
+          "kb": 113.9,
+          "ssim": 0.9973,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "webp-q85",
+          "kb": 92.4,
+          "ssim": 0.9968,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "webp-q80",
+          "kb": 78.2,
+          "ssim": 0.996,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "jpeg-q95",
+          "kb": 142.5,
+          "ssim": 0.998,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "jpeg-q92",
+          "kb": 118,
+          "ssim": 0.9978,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "jpeg-q90",
+          "kb": 108,
+          "ssim": 0.9979,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "jpeg-q85",
+          "kb": 89,
+          "ssim": 0.9977,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "jpeg-q80",
+          "kb": 77.8,
+          "ssim": 0.9967,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "avif-q60",
+          "kb": 51.5,
+          "ssim": 0.9949,
+          "pass": true,
+          "probeOnly": true
+        },
+        {
+          "label": "avif-q55",
+          "kb": 43.5,
+          "ssim": 0.9931,
+          "pass": true,
+          "probeOnly": true
+        }
+      ]
+    },
+    {
+      "order": 29,
+      "role": "photo",
+      "sourceFile": "29.jpg",
+      "outputFile": "29.webp",
+      "formatIn": "jpeg",
+      "formatOut": "webp",
+      "encoder": "webp-q80",
+      "bytesBefore": 92276,
+      "bytesAfter": 34000,
+      "kbBefore": 90.1,
+      "kbAfter": 33.2,
+      "savingsPct": 63.2,
+      "dimBefore": "960x640",
+      "dimAfter": "720x480",
+      "displayMax": "360x240",
+      "target2x": "720x480",
+      "ssim": 0.9884,
+      "ssimPass": true,
+      "keptOriginal": false,
+      "overBudget": false,
+      "avifProbeKb": 24.2,
+      "candidates": [
+        {
+          "label": "webp-q95",
+          "kb": 84.4,
+          "ssim": 0.9928,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "webp-q92",
+          "kb": 64,
+          "ssim": 0.9924,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "webp-q90",
+          "kb": 57.2,
+          "ssim": 0.9922,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "webp-q85",
+          "kb": 41.4,
+          "ssim": 0.9905,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "webp-q80",
+          "kb": 33.2,
+          "ssim": 0.9884,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "jpeg-q95",
+          "kb": 89.4,
+          "ssim": 0.9943,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "jpeg-q92",
+          "kb": 70.5,
+          "ssim": 0.9939,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "jpeg-q90",
+          "kb": 63.4,
+          "ssim": 0.9945,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "jpeg-q85",
+          "kb": 49.1,
+          "ssim": 0.9948,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "jpeg-q80",
+          "kb": 41.3,
+          "ssim": 0.9915,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "avif-q60",
+          "kb": 29,
+          "ssim": 0.9903,
+          "pass": true,
+          "probeOnly": true
+        },
+        {
+          "label": "avif-q55",
+          "kb": 24.2,
+          "ssim": 0.9887,
+          "pass": true,
+          "probeOnly": true
+        }
+      ]
+    },
+    {
+      "order": 30,
+      "role": "photo",
+      "sourceFile": "30.jpg",
+      "outputFile": "30.webp",
+      "formatIn": "jpeg",
+      "formatOut": "webp",
+      "encoder": "webp-q80",
+      "bytesBefore": 156287,
+      "bytesAfter": 64078,
+      "kbBefore": 152.6,
+      "kbAfter": 62.6,
+      "savingsPct": 59,
+      "dimBefore": "960x640",
+      "dimAfter": "720x480",
+      "displayMax": "360x240",
+      "target2x": "720x480",
+      "ssim": 0.992,
+      "ssimPass": true,
+      "keptOriginal": false,
+      "overBudget": false,
+      "avifProbeKb": 36.8,
+      "candidates": [
+        {
+          "label": "webp-q95",
+          "kb": 127.6,
+          "ssim": 0.9948,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "webp-q92",
+          "kb": 107.4,
+          "ssim": 0.9945,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "webp-q90",
+          "kb": 95.1,
+          "ssim": 0.9942,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "webp-q85",
+          "kb": 75.4,
+          "ssim": 0.9933,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "webp-q80",
+          "kb": 62.6,
+          "ssim": 0.992,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "jpeg-q95",
+          "kb": 128.1,
+          "ssim": 0.9955,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "jpeg-q92",
+          "kb": 103.8,
+          "ssim": 0.9953,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "jpeg-q90",
+          "kb": 93.8,
+          "ssim": 0.9955,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "jpeg-q85",
+          "kb": 74.5,
+          "ssim": 0.9958,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "jpeg-q80",
+          "kb": 63.6,
+          "ssim": 0.9932,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "avif-q60",
+          "kb": 45.2,
+          "ssim": 0.9916,
+          "pass": true,
+          "probeOnly": true
+        },
+        {
+          "label": "avif-q55",
+          "kb": 36.8,
+          "ssim": 0.989,
+          "pass": true,
+          "probeOnly": true
+        }
+      ]
+    },
+    {
+      "order": 31,
+      "role": "photo",
+      "sourceFile": "31.jpg",
+      "outputFile": "31.jpg",
+      "formatIn": "jpeg",
+      "formatOut": "jpg",
+      "encoder": "jpeg-q80",
+      "bytesBefore": 169697,
+      "bytesAfter": 71667,
+      "kbBefore": 165.7,
+      "kbAfter": 70,
+      "savingsPct": 57.8,
+      "dimBefore": "960x640",
+      "dimAfter": "720x480",
+      "displayMax": "360x240",
+      "target2x": "720x480",
+      "ssim": 0.987,
+      "ssimPass": true,
+      "keptOriginal": false,
+      "overBudget": false,
+      "avifProbeKb": 56.7,
+      "candidates": [
+        {
+          "label": "webp-q95",
+          "kb": 147,
+          "ssim": 0.9905,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "webp-q92",
+          "kb": 125.2,
+          "ssim": 0.9901,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "webp-q90",
+          "kb": 115.6,
+          "ssim": 0.9898,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "webp-q85",
+          "kb": 88.9,
+          "ssim": 0.9882,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "webp-q80",
+          "kb": 72.8,
+          "ssim": 0.9856,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "jpeg-q95",
+          "kb": 143.5,
+          "ssim": 0.9915,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "jpeg-q92",
+          "kb": 116.1,
+          "ssim": 0.991,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "jpeg-q90",
+          "kb": 104.5,
+          "ssim": 0.992,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "jpeg-q85",
+          "kb": 82.7,
+          "ssim": 0.9927,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "jpeg-q80",
+          "kb": 70,
+          "ssim": 0.987,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "avif-q60",
+          "kb": 56.7,
+          "ssim": 0.9851,
+          "pass": true,
+          "probeOnly": true
+        },
+        {
+          "label": "avif-q55",
+          "kb": 46.7,
+          "ssim": 0.982,
+          "pass": false,
+          "probeOnly": true
+        }
+      ]
+    },
+    {
+      "order": 32,
+      "role": "photo",
+      "sourceFile": "32.jpg",
+      "outputFile": "32.jpg",
+      "formatIn": "jpeg",
+      "formatOut": "jpg",
+      "encoder": "jpeg-q80",
+      "bytesBefore": 271482,
+      "bytesAfter": 129858,
+      "kbBefore": 265.1,
+      "kbAfter": 126.8,
+      "savingsPct": 52.2,
+      "dimBefore": "700x1000",
+      "dimAfter": "560x800",
+      "displayMax": "280x400",
+      "target2x": "560x800",
+      "ssim": 0.9942,
+      "ssimPass": true,
+      "keptOriginal": false,
+      "overBudget": false,
+      "avifProbeKb": 81.7,
+      "candidates": [
+        {
+          "label": "webp-q95",
+          "kb": 242.9,
+          "ssim": 0.9963,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "webp-q92",
+          "kb": 207.9,
+          "ssim": 0.9962,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "webp-q90",
+          "kb": 192.6,
+          "ssim": 0.996,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "webp-q85",
+          "kb": 159.2,
+          "ssim": 0.9954,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "webp-q80",
+          "kb": 138.2,
+          "ssim": 0.9946,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "jpeg-q95",
+          "kb": 233,
+          "ssim": 0.9969,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "jpeg-q92",
+          "kb": 194.5,
+          "ssim": 0.9965,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "jpeg-q90",
+          "kb": 177.9,
+          "ssim": 0.9965,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "jpeg-q85",
+          "kb": 146.3,
+          "ssim": 0.9963,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "jpeg-q80",
+          "kb": 126.8,
+          "ssim": 0.9942,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "avif-q60",
+          "kb": 97.3,
+          "ssim": 0.9932,
+          "pass": true,
+          "probeOnly": true
+        },
+        {
+          "label": "avif-q55",
+          "kb": 81.7,
+          "ssim": 0.9908,
+          "pass": true,
+          "probeOnly": true
+        }
+      ]
+    },
+    {
+      "order": 33,
+      "role": "photo",
+      "sourceFile": "33.jpg",
+      "outputFile": "33.webp",
+      "formatIn": "jpeg",
+      "formatOut": "webp",
+      "encoder": "webp-q80",
+      "bytesBefore": 101338,
+      "bytesAfter": 71548,
+      "kbBefore": 99,
+      "kbAfter": 69.9,
+      "savingsPct": 29.4,
+      "dimBefore": "560x800",
+      "dimAfter": "560x800",
+      "displayMax": "280x400",
+      "target2x": "560x800",
+      "ssim": 0.9939,
+      "ssimPass": true,
+      "keptOriginal": false,
+      "overBudget": false,
+      "avifProbeKb": 41.7,
+      "candidates": [
+        {
+          "label": "webp-q95",
+          "kb": 136.4,
+          "ssim": 0.9976,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "webp-q92",
+          "kb": 113.8,
+          "ssim": 0.9971,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "webp-q90",
+          "kb": 104.1,
+          "ssim": 0.9967,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "webp-q85",
+          "kb": 82.2,
+          "ssim": 0.9953,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "webp-q80",
+          "kb": 69.9,
+          "ssim": 0.9939,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "jpeg-q95",
+          "kb": 119.1,
+          "ssim": 0.9995,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "jpeg-q92",
+          "kb": 105.8,
+          "ssim": 0.9989,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "jpeg-q90",
+          "kb": 100.3,
+          "ssim": 0.9987,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "jpeg-q85",
+          "kb": 85.8,
+          "ssim": 0.9979,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "jpeg-q80",
+          "kb": 74.1,
+          "ssim": 0.9951,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "avif-q60",
+          "kb": 50.2,
+          "ssim": 0.994,
+          "pass": true,
+          "probeOnly": true
+        },
+        {
+          "label": "avif-q55",
+          "kb": 41.7,
+          "ssim": 0.9919,
+          "pass": true,
+          "probeOnly": true
+        }
+      ]
+    },
+    {
+      "order": 34,
+      "role": "photo",
+      "sourceFile": "34.jpg",
+      "outputFile": "34.jpg",
+      "formatIn": "jpeg",
+      "formatOut": "jpg",
+      "encoder": "jpeg-q80",
+      "bytesBefore": 105059,
+      "bytesAfter": 59669,
+      "kbBefore": 102.6,
+      "kbAfter": 58.3,
+      "savingsPct": 43.2,
+      "dimBefore": "720x480",
+      "dimAfter": "640x427",
+      "displayMax": "320x457.14",
+      "target2x": "640x915",
+      "ssim": 0.9907,
+      "ssimPass": true,
+      "keptOriginal": false,
+      "overBudget": false,
+      "avifProbeKb": 35.6,
+      "candidates": [
+        {
+          "label": "webp-q95",
+          "kb": 118.8,
+          "ssim": 0.9936,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "webp-q92",
+          "kb": 101.2,
+          "ssim": 0.9932,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "webp-q90",
+          "kb": 92.4,
+          "ssim": 0.993,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "webp-q85",
+          "kb": 73.1,
+          "ssim": 0.992,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "webp-q80",
+          "kb": 60.4,
+          "ssim": 0.9903,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "jpeg-q95",
+          "kb": 115.8,
+          "ssim": 0.9943,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "jpeg-q92",
+          "kb": 94.6,
+          "ssim": 0.9938,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "jpeg-q90",
+          "kb": 85.8,
+          "ssim": 0.9942,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "jpeg-q85",
+          "kb": 68.4,
+          "ssim": 0.9945,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "jpeg-q80",
+          "kb": 58.3,
+          "ssim": 0.9907,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "avif-q60",
+          "kb": 44.1,
+          "ssim": 0.9891,
+          "pass": true,
+          "probeOnly": true
+        },
+        {
+          "label": "avif-q55",
+          "kb": 35.6,
+          "ssim": 0.9855,
+          "pass": true,
+          "probeOnly": true
+        }
+      ]
+    },
+    {
+      "order": 35,
+      "role": "photo",
+      "sourceFile": "35.jpg",
+      "outputFile": "35.jpg",
+      "formatIn": "jpeg",
+      "formatOut": "jpg",
+      "encoder": "jpeg-q80",
+      "bytesBefore": 332879,
+      "bytesAfter": 233579,
+      "kbBefore": 325.1,
+      "kbAfter": 228.1,
+      "savingsPct": 29.8,
+      "dimBefore": "1100x774",
+      "dimAfter": "1100x774",
+      "displayMax": "600x422.17",
+      "target2x": "1200x845",
+      "ssim": 0.9984,
+      "ssimPass": true,
+      "keptOriginal": false,
+      "overBudget": true,
+      "avifProbeKb": 158.5,
+      "candidates": [
+        {
+          "label": "webp-q95",
+          "kb": 462.5,
+          "ssim": 0.9958,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "webp-q92",
+          "kb": 404.9,
+          "ssim": 0.9957,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "webp-q90",
+          "kb": 369.7,
+          "ssim": 0.9955,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "webp-q85",
+          "kb": 313.9,
+          "ssim": 0.9951,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "webp-q80",
+          "kb": 270.4,
+          "ssim": 0.9944,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "jpeg-q95",
+          "kb": 390.3,
+          "ssim": 0.9996,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "jpeg-q92",
+          "kb": 343.2,
+          "ssim": 0.9994,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "jpeg-q90",
+          "kb": 318.7,
+          "ssim": 0.9994,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "jpeg-q85",
+          "kb": 269.3,
+          "ssim": 0.9991,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "jpeg-q80",
+          "kb": 228.1,
+          "ssim": 0.9984,
+          "pass": true,
+          "probeOnly": false
+        },
+        {
+          "label": "avif-q60",
+          "kb": 193.5,
+          "ssim": 0.9969,
+          "pass": true,
+          "probeOnly": true
+        },
+        {
+          "label": "avif-q55",
+          "kb": 158.5,
+          "ssim": 0.9954,
+          "pass": true,
+          "probeOnly": true
+        }
+      ]
+    }
+  ]
+}

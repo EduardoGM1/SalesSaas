@@ -76,6 +76,8 @@ export default defineConfig({
           "**/OneSignalSDK.page.js",
           "**/OneSignalSDK.page.es6.js",
           "index.html",
+          // Presentación RH: muchas fotos; solo runtime/network, no precache PWA.
+          "**/presentacion/**",
         ],
         runtimeCaching: [
           {
