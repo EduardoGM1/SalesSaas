@@ -6,6 +6,7 @@ export const EXPEDIENTE_TABS = {
   survey: "survey",
   vacaciones: "vacaciones",
   worksheet: "worksheet",
+  presentacion: "presentacion",
   cliente: "cliente",
   venta: "venta",
   notas: "notas",

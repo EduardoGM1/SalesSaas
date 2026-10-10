@@ -1,7 +1,7 @@
 
 import { Suspense, useEffect, useRef, useState } from "react";
 import {  useNavigate  } from "react-router-dom";
-import { FileText, Palmtree, DollarSign, MessageSquare, User } from "lucide-react";
+import { FileText, Palmtree, DollarSign, MessageSquare, User, Presentation } from "lucide-react";
 import { SalesModal } from "@/components/ui/sales-modal";
 import { ClientRecordModal } from "@/components/clients/client-record-modal.jsx";
 import { CollapsibleSection } from "@/components/ui/collapsible-section.jsx";
@@ -34,6 +34,10 @@ import { namedLazy } from "@/lib/lazy-retry.js";
 const SurveyPage = namedLazy(() => import("@/components/calculators/survey-page.jsx"), "SurveyPage");
 const VacacionesPage = namedLazy(() => import("@/components/calculators/vacaciones-page.jsx"), "VacacionesPage");
 const WorksheetPage = namedLazy(() => import("@/components/calculators/worksheet-page.jsx"), "WorksheetPage");
+const PresentacionViewer = namedLazy(
+  () => import("@/components/clients/presentacion-viewer.jsx"),
+  "PresentacionViewer",
+);
 import { useDbStore } from "@/stores/db-store";
 import { useAppStore } from "@/stores/app-store";
 import { shallow } from "zustand/shallow";
@@ -390,11 +394,22 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
         );
       },
     }));
+  const presentacionFolder = worksheetRhActive && !isQuick
+    ? {
+        id: EXPEDIENTE_TABS.presentacion,
+        label: t("exp.tool.presentacion"),
+        desc: t("exp.tool.presentacionDesc"),
+        icon: Presentation,
+        tone: "purple",
+        onClick: () => selectFolder(EXPEDIENTE_TABS.presentacion),
+      }
+    : null;
   const folderCards = isQuick
     ? [ventaFolder, notasFolder].filter(Boolean)
     : [
         clienteFolder,
         ...toolFolders,
+        ...(presentacionFolder ? [presentacionFolder] : []),
         ...(ventaFolder ? [ventaFolder] : []),
         ...(notasFolder ? [notasFolder] : []),
       ];
@@ -528,6 +543,9 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
                         onTabChange={worksheetRhActive ? setSub : undefined}
                       />
                     </>
+                  )}
+                  {effectiveTab === EXPEDIENTE_TABS.presentacion && worksheetRhActive && (
+                    <PresentacionViewer />
                   )}
                 </Suspense>
                 {!isQuick && (

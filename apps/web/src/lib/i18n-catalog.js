@@ -735,6 +735,11 @@ export const ES_EXT = {
   "exp.tool.vacationDesc": "Costo futuro con inflación",
   "exp.tool.worksheet": "Worksheet",
   "exp.tool.worksheetDesc": "Enganche y financiamiento",
+  "exp.tool.presentacion": "Presentación",
+  "exp.tool.presentacionDesc": "Presentación Royal Holiday",
+  "exp.presentacion.fullscreen": "Pantalla completa",
+  "exp.presentacion.exitFullscreen": "Salir de pantalla completa",
+  "exp.presentacion.loading": "Cargando presentación…",
 };
 
 export const EN_EXT = {
@@ -1473,4 +1478,9 @@ export const EN_EXT = {
   "exp.tool.vacationDesc": "Future cost with inflation",
   "exp.tool.worksheet": "Worksheet",
   "exp.tool.worksheetDesc": "Down payment and financing",
+  "exp.tool.presentacion": "Presentation",
+  "exp.tool.presentacionDesc": "Royal Holiday presentation",
+  "exp.presentacion.fullscreen": "Fullscreen",
+  "exp.presentacion.exitFullscreen": "Exit fullscreen",
+  "exp.presentacion.loading": "Loading presentation…",
 };
