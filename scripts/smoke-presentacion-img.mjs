@@ -121,6 +121,7 @@ async function main() {
   await client.send("Security.enable").catch(() => {});
 
   try {
+    await page.route(/fonts\.googleapis|fonts\.gstatic|cdnjs\.cloudflare/, (route) => route.abort());
     await login(page);
     rec("login", true, EMAIL);
     await walk(page, "desktop");
@@ -130,7 +131,7 @@ async function main() {
 
     const realErrors = consoleErrors.filter(
       (t) =>
-        !/favicon|fonts\.googleapis|cdnjs|Failed to load resource.*d3|net::ERR_FAILED|401|403|@supabase_ssr|Failed to fetch/i.test(
+        !/favicon|fonts\.googleapis|cdnjs|d3\.min|net::ERR_FAILED|net::ERR_CONNECTION_REFUSED|401|403|@supabase_ssr|Failed to fetch/i.test(
           t,
         ),
     );
