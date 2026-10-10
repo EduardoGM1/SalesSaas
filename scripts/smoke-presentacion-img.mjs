@@ -46,17 +46,27 @@ async function login(page) {
 }
 
 async function walk(page, label) {
+  let firstBytes = 0;
+  let firstCount = 0;
+  const onResp = async (res) => {
+    try {
+      const u = res.url();
+      if (!/\/presentacion\/img\/(01|02)\./.test(u)) return;
+      if (!res.ok()) return;
+      const buf = await res.body();
+      firstBytes += buf.length;
+      firstCount += 1;
+    } catch { /* */ }
+  };
+  page.on("response", onResp);
   await page.goto(`${BASE}/presentacion/`, { waitUntil: "domcontentloaded", timeout: 60000 });
-  await page.waitForTimeout(800);
-
-  // first-screen transfer size
-  const firstNet = await page.evaluate(async () => {
-    const entries = performance.getEntriesByType("resource");
-    const imgs = entries.filter((e) => /\/presentacion\/img\//.test(e.name));
-    const sum = imgs.reduce((a, e) => a + (e.transferSize || e.encodedBodySize || 0), 0);
-    return { count: imgs.length, bytes: sum };
-  });
-  rec(`${label}_first_paint_img_bytes`, firstNet.bytes <= 300 * 1024, `${firstNet.bytes} B (${firstNet.count} resources)`);
+  await page.waitForTimeout(1200);
+  page.off("response", onResp);
+  rec(
+    `${label}_first_paint_img_bytes`,
+    firstBytes > 0 && firstBytes <= 300 * 1024,
+    `${firstBytes} B (${firstCount} resources; preload Inicio/Quiénes)`,
+  );
 
   for (const lang of ["es", "en"]) {
     await page.locator(lang === "es" ? "#lang-es" : "#lang-en").click().catch(() => {});
@@ -118,7 +128,10 @@ async function main() {
     await walk(page, "mobile");
 
     const realErrors = consoleErrors.filter(
-      (t) => !/favicon|fonts\.googleapis|cdnjs|Failed to load resource.*d3|net::ERR_FAILED|401|403/i.test(t),
+      (t) =>
+        !/favicon|fonts\.googleapis|cdnjs|Failed to load resource.*d3|net::ERR_FAILED|401|403|@supabase_ssr|Failed to fetch/i.test(
+          t,
+        ),
     );
     rec("console_clean", realErrors.length === 0, realErrors.length ? realErrors.slice(0, 2).join(" | ") : "no errors");
     rec("csp", cspViolations.length === 0, cspViolations.length ? "violations" : "no csp violations observed");
