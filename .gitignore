@@ -92,3 +92,7 @@ e2e/artifacts/
 *.pem
 *.p12
 *.key
+
+# Presentación RH — HTML fuente con base64 (usar extract desde Escritorio)
+docs/presentacion/Presentacion-Royal-Holiday.source.html
+docs/presentacion/_structure-preview.html
