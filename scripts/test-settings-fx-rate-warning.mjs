@@ -1,81 +1,98 @@
 #!/usr/bin/env node
 /**
- * Unit: mirrors apps/web/src/lib/currency/moneda-service.ts FX guards
- * and apps/web/src/actions/settings.js buildSettingsPayload usdToMxnRate.
+ * Unit: normalizeUsdToMxnRate + resolve + payload/hydrate mirrors.
  */
-function isUnusualUsdToMxnRate(rate) {
-  const n = Number(rate);
-  return Number.isFinite(n) && n > 0 && n <= 1;
-}
+import { resolve, dirname } from "path";
+import { fileURLToPath, pathToFileURL } from "url";
 
-function unusualUsdToMxnRateMessage(_rate) {
-  return "Tipo de cambio inusual: 1 USD = 1 MXN";
-}
+const __dir = dirname(fileURLToPath(import.meta.url));
+const webSrc = (...parts) => pathToFileURL(resolve(__dir, "../apps/web/src", ...parts)).href;
 
-/** Mirror resolveUsdToMxnRate — never treat USD exchangeRate=1 as TC captura. */
+const { normalizeUsdToMxnRate } = await import(webSrc("lib/currency/usd-to-mxn-normalize.js"));
+const { pickUserGlobalSettings, composeSettings } = await import(webSrc("lib/storage/settings-scope.js"));
+
 function resolveUsdToMxnRate(settings) {
-  const dedicated = Number(settings?.usdToMxnRate);
-  if (Number.isFinite(dedicated) && dedicated > 0) return dedicated;
+  const dedicated = normalizeUsdToMxnRate(settings?.usdToMxnRate);
+  if (dedicated != null) return dedicated;
   if (settings?.currency === "MXN") {
     const er = Number(settings?.exchangeRate);
-    if (Number.isFinite(er) && er > 0) return er;
+    if (Number.isFinite(er) && er > 1) return er;
   }
   return 18;
 }
 
-/** Pre-fix buggy display: usdToMxnRate ?? exchangeRate ?? 18 */
-function displayValueBuggy(settings) {
-  return settings.usdToMxnRate ?? settings.exchangeRate ?? 18;
+function buildSettingsPayload(settings, fullName = "QA") {
+  const payload = {
+    ...settings,
+    userName: fullName,
+    exchangeRate: settings.currency === "USD" ? 1 : Number(settings.exchangeRate || 1),
+    exchangeMode: settings.exchangeMode || "manual",
+  };
+  const normalized = normalizeUsdToMxnRate(settings?.usdToMxnRate);
+  if (normalized != null) payload.usdToMxnRate = normalized;
+  else delete payload.usdToMxnRate;
+  return payload;
 }
 
-/** Pre-fix buggy persist: Number(usdToMxnRate || exchangeRate || 18) */
-function persistBuggy(settings) {
-  return Number(settings.usdToMxnRate || settings.exchangeRate || 18);
-}
-
-/** Fixed persist / display effective rate */
-function persistFixed(settings) {
-  return resolveUsdToMxnRate(settings);
+/** hydrate: local prefs + incoming remoto → compose vía pickUserGlobalSettings */
+function hydrateMerged(localGlobals, incomingRemote) {
+  const local = pickUserGlobalSettings(localGlobals);
+  const remote = pickUserGlobalSettings(incomingRemote || {});
+  return composeSettings({ ...local, ...remote }, {});
 }
 
 function assert(cond, msg) {
   if (!cond) throw new Error(msg);
 }
 
-assert(isUnusualUsdToMxnRate(1) === true, "1 is unusual");
-assert(isUnusualUsdToMxnRate(0.5) === true, "0.5 is unusual");
-assert(isUnusualUsdToMxnRate(0) === false, "0 not unusual (invalid / coerced away)");
-assert(isUnusualUsdToMxnRate(18) === false, "18 is normal");
-assert(isUnusualUsdToMxnRate(17.5) === false, "17.5 is normal");
-assert(isUnusualUsdToMxnRate(null) === false, "null not unusual");
-assert(isUnusualUsdToMxnRate(undefined) === false, "undefined not unusual");
-assert(isUnusualUsdToMxnRate(Number.NaN) === false, "NaN not unusual");
+// --- normalize → efectivo via resolve ---
+const cases = [
+  [1, 18],
+  [0, 18],
+  ["abc", 18],
+  [null, 18],
+  [17.5, 17.5],
+];
+for (const [raw, expected] of cases) {
+  const effective = resolveUsdToMxnRate({ currency: "USD", exchangeRate: 1, usdToMxnRate: raw });
+  assert(effective === expected, `raw=${JSON.stringify(raw)} → ${effective}, expected ${expected}`);
+}
 
-assert(
-  unusualUsdToMxnRateMessage(1) === "Tipo de cambio inusual: 1 USD = 1 MXN",
-  "message text",
+assert(normalizeUsdToMxnRate(1) === undefined, "normalize(1) absent");
+assert(normalizeUsdToMxnRate(0) === undefined, "normalize(0) absent");
+assert(normalizeUsdToMxnRate("abc") === undefined, "normalize(abc) absent");
+assert(normalizeUsdToMxnRate(null) === undefined, "normalize(null) absent");
+assert(normalizeUsdToMxnRate(17.5) === 17.5, "normalize(17.5) kept");
+
+// hydrate: local=1, incoming={} → no reinfecta
+const hydrated = hydrateMerged(
+  { currency: "USD", exchangeRate: 1, usdToMxnRate: 1, language: "es" },
+  {},
 );
+assert(hydrated.usdToMxnRate === undefined, `hydrate stripped local 1, got ${hydrated.usdToMxnRate}`);
+assert(resolveUsdToMxnRate(hydrated) === 18, "hydrate effective 18");
 
-assert((Number("1") || 18) === 1, "Settings onChange keeps 1 (does not coerce to 18)");
-assert((Number("0") || 18) === 18, "Settings onChange coerces 0 → 18");
+const hydratedKeep = hydrateMerged(
+  { currency: "USD", exchangeRate: 1, usdToMxnRate: 17.5 },
+  {},
+);
+assert(hydratedKeep.usdToMxnRate === 17.5, "hydrate keeps 17.5");
 
-assert(resolveUsdToMxnRate({ usdToMxnRate: 1 }) === 1, "usdToMxnRate=1 is stored and resolved");
-assert(isUnusualUsdToMxnRate(resolveUsdToMxnRate({ usdToMxnRate: 1 })) === true, "resolved 1 triggers warning");
+// payload omite usdToMxnRate cuando ≤ 1
+const p1 = buildSettingsPayload({ currency: "USD", exchangeRate: 1, usdToMxnRate: 1 });
+assert(!Object.prototype.hasOwnProperty.call(p1, "usdToMxnRate"), "payload omits usdToMxnRate=1");
+const p0 = buildSettingsPayload({ currency: "USD", exchangeRate: 1, usdToMxnRate: 0 });
+assert(!Object.prototype.hasOwnProperty.call(p0, "usdToMxnRate"), "payload omits usdToMxnRate=0");
+const pAbc = buildSettingsPayload({ currency: "USD", exchangeRate: 1, usdToMxnRate: "abc" });
+assert(!Object.prototype.hasOwnProperty.call(pAbc, "usdToMxnRate"), "payload omits non-numeric");
+const pNull = buildSettingsPayload({ currency: "USD", exchangeRate: 1, usdToMxnRate: null });
+assert(!Object.prototype.hasOwnProperty.call(pNull, "usdToMxnRate"), "payload omits null");
+const pOk = buildSettingsPayload({ currency: "USD", exchangeRate: 1, usdToMxnRate: 17.5 });
+assert(pOk.usdToMxnRate === 17.5, "payload keeps 17.5");
 
-// Root cause: USD sala without dedicated TC
-const usdUnset = { currency: "USD", exchangeRate: 1 };
-assert(displayValueBuggy(usdUnset) === 1, "buggy UI shows exchangeRate=1");
-assert(resolveUsdToMxnRate(usdUnset) === 18, "effective TC remains 18");
-assert(persistBuggy(usdUnset) === 1, "buggy save would persist 1");
-assert(persistFixed(usdUnset) === 18, "fixed save persists effective 18, not exchangeRate");
-assert(isUnusualUsdToMxnRate(resolveUsdToMxnRate(usdUnset)) === false, "warning off when effective is 18");
-
-// MXN operative may still use exchangeRate when usdToMxnRate unset
-const mxn = { currency: "MXN", exchangeRate: 17.25 };
-assert(resolveUsdToMxnRate(mxn) === 17.25, "MXN falls back to exchangeRate");
-assert(persistFixed(mxn) === 17.25, "fixed save keeps MXN exchangeRate as captura TC");
-
-// Explicit unusual dedicated rate still warns
-assert(isUnusualUsdToMxnRate(resolveUsdToMxnRate({ currency: "USD", exchangeRate: 1, usdToMxnRate: 1 })) === true);
+// pickUserGlobalSettings strips
+const picked = pickUserGlobalSettings({ usdToMxnRate: 1, currency: "USD", language: "es" });
+assert(picked.usdToMxnRate === undefined, "pickUserGlobalSettings strips 1");
+assert(picked.currency === "USD", "pick keeps currency");
 
 console.log("PASS test-settings-fx-rate-warning");

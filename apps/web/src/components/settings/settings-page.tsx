@@ -33,6 +33,13 @@ import {
   resolveUsdToMxnRate,
   unusualUsdToMxnRateMessage,
 } from "@/lib/currency/moneda-service";
+import { normalizeUsdToMxnRate } from "@/lib/currency/usd-to-mxn-normalize.js";
+
+function stripInvalidUsdToMxnRate<T extends { usdToMxnRate?: number }>(settings: T): T {
+  const next = { ...settings };
+  if (normalizeUsdToMxnRate(next.usdToMxnRate) == null) delete next.usdToMxnRate;
+  return next;
+}
 
 type SettingsSection = "user" | "worksheet" | "tourTypes" | "money" | "language" | "apis" | "backup" | "account" | "notifications" | "help" | "pwa" | null;
 
@@ -84,9 +91,10 @@ export function SettingsPage() {
         admin_permissions: Array.isArray(data.admin_permissions) ? data.admin_permissions : [],
       } satisfies AdminAccessProfile));
       if (data.settings && typeof data.settings === "object") {
-        const incoming = data.settings as UserSettings;
-        setSettings({ ...db.settings, ...incoming });
-        replaceDb({ ...db, settings: { ...db.settings, ...incoming } });
+        const incoming = stripInvalidUsdToMxnRate(data.settings as UserSettings);
+        const merged = stripInvalidUsdToMxnRate({ ...db.settings, ...incoming });
+        setSettings(merged);
+        replaceDb({ ...db, settings: merged });
       }
     });
     // Carga inicial del perfil remoto; incluir `db` aquí reescribiría el store en bucle.
@@ -432,20 +440,24 @@ export function SettingsPage() {
                       step={0.0001}
                       data-testid="settings-usd-to-mxn-rate"
                       placeholder="18"
-                      value={resolveUsdToMxnRate(settings)}
+                      value={
+                        isUnusualUsdToMxnRate(settings.usdToMxnRate)
+                          ? Number(settings.usdToMxnRate)
+                          : resolveUsdToMxnRate(settings)
+                      }
                       onChange={(e) => setSetting("usdToMxnRate", Number(e.target.value) || 18)}
                       style={{ width: 160, textAlign: "right" }}
-                      aria-describedby={isUnusualUsdToMxnRate(resolveUsdToMxnRate(settings)) ? "settings-fx-unusual" : undefined}
+                      aria-describedby={isUnusualUsdToMxnRate(settings.usdToMxnRate) ? "settings-fx-unusual" : undefined}
                     />
                   </div>
-                  {isUnusualUsdToMxnRate(resolveUsdToMxnRate(settings)) ? (
+                  {isUnusualUsdToMxnRate(settings.usdToMxnRate) ? (
                     <div
                       id="settings-fx-unusual"
                       className="settings-fx-warning"
                       role="status"
                       data-testid="settings-fx-unusual-warning"
                     >
-                      {unusualUsdToMxnRateMessage(resolveUsdToMxnRate(settings))}
+                      {unusualUsdToMxnRateMessage(settings.usdToMxnRate)}
                     </div>
                   ) : null}
                   <div className="settings-row">

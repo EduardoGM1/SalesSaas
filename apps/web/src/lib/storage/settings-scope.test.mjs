@@ -124,3 +124,23 @@ test("hasWorkspaceSettings distingue blob vacío de config real", () => {
   assert.equal(hasWorkspaceSettings({ worksheetConfig: { meses1: "12" } }), true);
   assert.equal(hasWorkspaceSettings({ tourTypes: ["Q"] }), true);
 });
+
+test("pickUserGlobalSettings trata usdToMxnRate ≤ 1 / no numérico como ausente", () => {
+  assert.equal(pickUserGlobalSettings({ usdToMxnRate: 1 }).usdToMxnRate, undefined);
+  assert.equal(pickUserGlobalSettings({ usdToMxnRate: 0 }).usdToMxnRate, undefined);
+  assert.equal(pickUserGlobalSettings({ usdToMxnRate: "abc" }).usdToMxnRate, undefined);
+  assert.equal(pickUserGlobalSettings({ usdToMxnRate: null }).usdToMxnRate, undefined);
+  assert.equal(pickUserGlobalSettings({ usdToMxnRate: 17.5 }).usdToMxnRate, 17.5);
+});
+
+test("hydrate local=1 + incoming={} no reinfecta usdToMxnRate", () => {
+  const local = pickUserGlobalSettings({
+    currency: "USD",
+    exchangeRate: 1,
+    usdToMxnRate: 1,
+    language: "es",
+  });
+  const remote = pickUserGlobalSettings({});
+  const merged = composeSettings({ ...local, ...remote }, {});
+  assert.equal(merged.usdToMxnRate, undefined);
+});

@@ -3,6 +3,8 @@
  * y otras son de la sala/workspace (no deben viajar al switch).
  */
 
+import { normalizeUsdToMxnRate } from "../currency/usd-to-mxn-normalize.js";
+
 export const USER_GLOBAL_SETTING_KEYS = [
   "language",
   "userName",
@@ -42,7 +44,11 @@ function pickKeys(source, keys) {
 }
 
 export function pickUserGlobalSettings(settings) {
-  return pickKeys(settings, USER_GLOBAL_SETTING_KEYS);
+  const out = pickKeys(settings, USER_GLOBAL_SETTING_KEYS);
+  const normalized = normalizeUsdToMxnRate(out.usdToMxnRate);
+  if (normalized != null) out.usdToMxnRate = normalized;
+  else delete out.usdToMxnRate;
+  return out;
 }
 
 export function pickWorkspaceSettings(settings) {

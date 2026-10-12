@@ -30,13 +30,17 @@ export interface MonedaSettingsLike {
   usdToMxnRate?: number;
 }
 
+import { normalizeUsdToMxnRate } from "./usd-to-mxn-normalize.js";
+
+export { normalizeUsdToMxnRate };
+
 /** 1 USD = X MXN — nunca usar exchangeRate=1 de salas en USD como TC MXN. */
 export function resolveUsdToMxnRate(settings?: MonedaSettingsLike | null): number {
-  const dedicated = Number(settings?.usdToMxnRate);
-  if (Number.isFinite(dedicated) && dedicated > 0) return dedicated;
+  const dedicated = normalizeUsdToMxnRate(settings?.usdToMxnRate);
+  if (dedicated != null) return dedicated;
   if (settings?.currency === "MXN") {
     const er = Number(settings?.exchangeRate);
-    if (Number.isFinite(er) && er > 0) return er;
+    if (Number.isFinite(er) && er > 1) return er;
   }
   return 18;
 }
