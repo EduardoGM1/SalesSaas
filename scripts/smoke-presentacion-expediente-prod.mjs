@@ -353,11 +353,21 @@ async function main() {
     rec("other_tabs_cliente", clienteOk > 0, `nodes=${clienteOk}`);
     if (await tabWs.count()) {
       await tabWs.click();
-      await page.waitForTimeout(1200);
+      await page.waitForTimeout(1500);
       const wsOk = await page.locator(".worksheet-rh, .tool-calc-page, [data-testid=exp-folder-panel]").count();
       rec("other_tabs_worksheet", wsOk > 0, `nodes=${wsOk}`);
+      // Datos de Venta / regalos: caption Monto (USD) + cajas de totales
+      const montoUsd = await page.locator("text=Monto (USD)").count();
+      rec("ws_monto_usd", montoUsd > 0, `captions=${montoUsd}`);
+      const datosVenta = await page.getByText(/Datos de Venta/i).count();
+      rec("ws_datos_venta", datosVenta > 0, `blocks=${datosVenta}`);
+      const totales = await page.locator(".rh-regalos-totales, .survey-result-pair").count();
+      rec("ws_cajas_totales", totales > 0, `boxes=${totales}`);
     } else {
-      rec("other_tabs_worksheet", true, "worksheet tab not required for liner");
+      rec("other_tabs_worksheet", false, "worksheet tab missing for liner");
+      rec("ws_monto_usd", false, "no worksheet");
+      rec("ws_datos_venta", false, "no worksheet");
+      rec("ws_cajas_totales", false, "no worksheet");
     }
 
     // Open Presentación (lazy iframe)
