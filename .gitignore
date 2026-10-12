@@ -10,6 +10,7 @@ packages/*/node_modules/
 .env
 .env.*
 !.env.example
+!scripts/.env.*.example
 
 # Logs
 logs/
@@ -81,6 +82,16 @@ extract_pdf.py
 scripts/_*
 scripts/_archive/
 scripts/.*
+!scripts/.env.*.example
+scripts/.smoke-*-shots/
+scripts/.diag-*-shots/
+scripts/.db-cleanup-*.json
+scripts/.vps-env-*.json
+scripts/.prueba-rh-lalo-summary*.json
+scripts/.qa-*-results.json
+scripts/__pycache__/
+scripts/.tmp/
+**/*.err
 scripts/probe-*.py
 scripts/audit-rh-excel-fidelity.mjs
 scripts/cleanup-keep-*.mjs
