@@ -1,0 +1,13 @@
+# EOL explícito (LF) — evita falsos -dirty en Windows al build/deploy.
+# No se renormaliza el resto del repo.
+
+.gitattributes text eol=lf
+
+public/presentacion/** text eol=lf
+
+scripts/**/*.py  text eol=lf
+scripts/**/*.mjs text eol=lf
+scripts/**/*.sh  text eol=lf
+scripts/*.py     text eol=lf
+scripts/*.mjs    text eol=lf
+scripts/*.sh     text eol=lf
