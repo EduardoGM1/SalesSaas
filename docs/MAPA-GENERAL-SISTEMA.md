@@ -23,7 +23,7 @@ Documento de onboarding: cómo funciona el producto **de punta a punta**, según
 | Sync offline-first, outbox, PWA vs desktop | [`INFORME-SYNC-PWA-DESKTOP.md`](./INFORME-SYNC-PWA-DESKTOP.md) |
 | Worksheet / catálogo Royal Holiday | [`royal-holiday/README.md`](./royal-holiday/README.md) · UX por puesto: [`FLUJO-USUARIO-ROYAL-HOLIDAY.md`](./FLUJO-USUARIO-ROYAL-HOLIDAY.md) |
 | Corte Cloud → self-hosted VPS | [`PLAN-MIGRACION-VPS.md`](./PLAN-MIGRACION-VPS.md) |
-| Snapshot RLS / VPS (2026-08-21) | [`inventario-vivo/README.md`](./inventario-vivo/README.md) |
+| Snapshot RLS / VPS (2026-08-21) | Archivado fuera del repo (`respaldo-limpieza-*.zip`, carpeta `docs/inventario-vivo/`) |
 | Catálogo HTTP vivo | [`apps/api/API.md`](../apps/api/API.md) y `GET /api/v1` |
 
 Jerarquía de workspaces, asistentes y acceso cruzado: [`JERARQUIA-WORKSPACES-ENTREGABLE.md`](./JERARQUIA-WORKSPACES-ENTREGABLE.md).
@@ -236,7 +236,7 @@ El catálogo `GET /api/v1` lista flush, cleanup y `rh-extra-dp`, más un índice
 
 ## 3. Estructura de base de datos
 
-Última migración en repo: **`0090_empresa_admin_exclude_capa_admin.sql`**. Inventario de políticas RLS (133 en checkpoint Cloud 2026-08-21): [`inventario-vivo/`](./inventario-vivo/README.md). No se listan aquí.
+Última migración en repo: **`0090_empresa_admin_exclude_capa_admin.sql`**. Inventario RLS checkpoint Cloud 2026-08-21: archivado en zip local (ya no en git). No se listan aquí.
 
 ### 3.1 Dominios y relaciones
 

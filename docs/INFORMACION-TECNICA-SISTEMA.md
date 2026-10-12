@@ -501,7 +501,7 @@ Resolver de flags tenant-aware: migraciones `0072+` + servicios `flags-service` 
 | Migraciones | `npm run db:migrate -- NNNN` o SQL Editor |
 | Env | `.env.example` → `.env.local` (nunca versionar secretos) |
 | Scripts diarios | `scripts/` raíz |
-| Scripts históricos | `scripts/_archive/` |
+| Scripts históricos | Zip de respaldo local (`scripts/_archive/` ya no en disco) |
 
 ---
 
@@ -548,7 +548,7 @@ Compat: prefijos `NEXT_PUBLIC_*` aún aceptados como fallback (legado Next→Vit
 | [`JERARQUIA-WORKSPACES-ENTREGABLE.md`](./JERARQUIA-WORKSPACES-ENTREGABLE.md) | Jerarquía workspaces |
 | Sync / PWA | `INFORME-SYNC-PWA-DESKTOP.md`, `DIAGNOSTICO-SYNC-PERSISTENCIA.md`, … |
 | [`MIGRATION.md`](../MIGRATION.md) | Port Next → Vite/Express (histórico) |
-| `docs/_archive/` | Dumps JSON de auditorías/limpiezas |
+| Dumps JSON de auditorías/limpiezas | Archivados en zip local (fuera del repo) |
 
 ---
 

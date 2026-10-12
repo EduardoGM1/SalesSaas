@@ -1,3 +1,0 @@
-prospect-files|false|10485760
-support-screenshots|false|10485760
-workspace-branding|true|2097152
