@@ -3,6 +3,9 @@
  * Smoke: aviso Settings cuando TC USD→MXN ≤ 1.
  * Credenciales: E2E_EMAIL / E2E_PASSWORD.
  * Base: SMOKE_BASE (default http://127.0.0.1:5173).
+ *
+ * Fuerza 18 → 1 → 18 en el campo "Tipo de cambio USD/MXN (captura)"
+ * (data-testid=settings-usd-to-mxn-rate) para no confundir con exchangeRate=1 de USD.
  */
 import { chromium } from "@playwright/test";
 
@@ -33,13 +36,29 @@ async function openMoneySettings(page) {
   await page.waitForTimeout(600);
 }
 
+function captureRateInput(page) {
+  return page.getByTestId("settings-usd-to-mxn-rate");
+}
+
+async function setCaptureRate(page, value) {
+  const rateInput = captureRateInput(page);
+  await rateInput.click();
+  await rateInput.fill(String(value));
+  await rateInput.dispatchEvent("input");
+  await rateInput.dispatchEvent("change");
+  await rateInput.blur();
+  await page.waitForTimeout(400);
+}
+
 async function main() {
   console.log("BASE", BASE, "user", EMAIL, "start", ts());
   const browser = await chromium.launch({ headless: true });
-  const page = await (await browser.newContext({
-    viewport: { width: 1280, height: 900 },
-    serviceWorkers: "block",
-  })).newPage();
+  const page = await (
+    await browser.newContext({
+      viewport: { width: 1280, height: 900 },
+      serviceWorkers: "block",
+    })
+  ).newPage();
 
   let originalRate = "18";
   let restoreTo = "18";
@@ -52,7 +71,7 @@ async function main() {
     rec("login", true, EMAIL);
 
     await openMoneySettings(page);
-    const rateInput = page.locator(".settings-section input[type=number], .settings-card input[type=number]").first();
+    const rateInput = captureRateInput(page);
     await rateInput.waitFor({ state: "visible", timeout: 15000 });
     originalRate = await rateInput.inputValue();
     restoreTo =
@@ -60,20 +79,21 @@ async function main() {
         ? originalRate
         : "18";
 
-    // Force unusual rate
-    await rateInput.fill("1");
-    await rateInput.blur();
-    await page.waitForTimeout(400);
+    // Baseline known-good (forces onChange even if UI already showed 18)
+    await setCaptureRate(page, 18);
     const warn = page.getByTestId("settings-fx-unusual-warning");
+    const hiddenAt18 = !(await warn.isVisible().catch(() => false));
+    rec("warning_hidden_at_18_baseline", hiddenAt18, hiddenAt18 ? "hidden" : "still visible");
+
+    // Force unusual rate
+    await setCaptureRate(page, 1);
     const visible = await warn.isVisible().catch(() => false);
     const text = visible ? (await warn.innerText()).trim() : "";
     const ok1 = visible && /Tipo de cambio inusual:\s*1 USD = 1 MXN/i.test(text);
     rec("warning_visible_at_1", ok1, `visible=${visible} text=${text}`);
 
-    // Restore to 18 — warning must hide
-    await rateInput.fill("18");
-    await rateInput.blur();
-    await page.waitForTimeout(400);
+    // Back to 18 — warning must hide
+    await setCaptureRate(page, 18);
     const gone = !(await warn.isVisible().catch(() => false));
     rec("warning_hidden_at_18", gone, gone ? "hidden" : "still visible");
 
@@ -85,10 +105,8 @@ async function main() {
   } finally {
     try {
       await openMoneySettings(page);
-      const rateInput = page.locator(".settings-section input[type=number], .settings-card input[type=number]").first();
-      if (await rateInput.count()) {
-        await rateInput.fill(restoreTo);
-        await rateInput.blur();
+      if (await captureRateInput(page).count()) {
+        await setCaptureRate(page, restoreTo);
         const save = page.getByRole("button", { name: /guardar|save/i }).first();
         if (await save.count()) await save.click().catch(() => {});
       }

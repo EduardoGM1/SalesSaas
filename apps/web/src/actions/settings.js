@@ -4,6 +4,7 @@ import { useDbStore } from "@/stores/db-store";
 import { toast } from "@/lib/toast";
 import { buildProfileSettingsBody } from "@/lib/storage/settings-scope.js";
 import { getActiveWorkspaceId, getStoredWorkspacesMap } from "@/lib/storage/local-storage-adapter";
+import { resolveUsdToMxnRate } from "@/lib/currency/moneda-service";
 
 export function buildSettingsPayload(settings, fullName) {
   return {
@@ -12,7 +13,8 @@ export function buildSettingsPayload(settings, fullName) {
     userInitials: settings.userInitials || (fullName || "Usuario").split(/\s+/).slice(0, 2).map((part) => part[0]).join("").toUpperCase(),
     exchangeRate: settings.currency === "USD" ? 1 : Number(settings.exchangeRate || 1),
     exchangeMode: settings.exchangeMode || "manual",
-    usdToMxnRate: Number(settings.usdToMxnRate || settings.exchangeRate || 18),
+    // Nunca usar exchangeRate=1 (identidad USD) como TC captura; alinear con resolveUsdToMxnRate.
+    usdToMxnRate: resolveUsdToMxnRate(settings),
     exchangeRateUpdatedAt: settings.exchangeRateUpdatedAt || null,
     activeCaptureCurrency: settings.activeCaptureCurrency === "MXN" ? "MXN" : "USD",
   };

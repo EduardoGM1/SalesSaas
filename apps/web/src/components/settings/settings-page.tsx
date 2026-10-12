@@ -430,7 +430,9 @@ export function SettingsPage() {
                       type="number"
                       min={0}
                       step={0.0001}
-                      value={settings.usdToMxnRate ?? settings.exchangeRate ?? 18}
+                      data-testid="settings-usd-to-mxn-rate"
+                      placeholder="18"
+                      value={resolveUsdToMxnRate(settings)}
                       onChange={(e) => setSetting("usdToMxnRate", Number(e.target.value) || 18)}
                       style={{ width: 160, textAlign: "right" }}
                       aria-describedby={isUnusualUsdToMxnRate(resolveUsdToMxnRate(settings)) ? "settings-fx-unusual" : undefined}
