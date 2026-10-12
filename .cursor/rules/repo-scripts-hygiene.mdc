@@ -1,0 +1,11 @@
+---
+description: Evitar acumulación de scripts scratch y artefactos en scripts/
+alwaysApply: true
+---
+
+# Higiene de scripts/
+
+- Scripts de **un solo uso** (`_tmp-*`, probes, diagnósticos puntuales): escribir salidas en `scripts/.tmp/` (gitignored) o en el directorio temporal del SO y **borrar al terminar**.
+- **Smokes:** no añadir un archivo nuevo por feature; extender un smoke parametrizado con `E2E_EMAIL`, `E2E_PASSWORD`, `PLAYWRIGHT_BASE_URL` / `SMOKE_BASE`.
+- **Credenciales:** nunca en el código; solo variables de entorno o archivos `scripts/.env.*` gitignored. En git solo plantillas `scripts/.env.*.example` sin valores.
+- **Artefactos** (capturas, JSON de diag, `.err`): no commitear; patrones ya en `.gitignore`.
