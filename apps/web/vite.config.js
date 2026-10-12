@@ -6,7 +6,8 @@ import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const buildId = process.env.VERCEL_GIT_COMMIT_SHA
+const buildId = process.env.VITE_BUILD_ID
+  || process.env.VERCEL_GIT_COMMIT_SHA
   || process.env.VERCEL_DEPLOYMENT_ID
   || `local-${Date.now()}`;
 

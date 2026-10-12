@@ -26,6 +26,27 @@ VPS_ENV = "/var/www/Saletse/.env"
 PUBLIC_URL = f"http://{SELF_HOSTED_HOST}"
 
 
+def git_build_id() -> str:
+    """SHA corto del commit actual; sufijo -dirty si el árbol de trabajo no está limpio."""
+    try:
+        sha = subprocess.check_output(
+            ["git", "rev-parse", "--short", "HEAD"],
+            cwd=ROOT,
+            text=True,
+            stderr=subprocess.DEVNULL,
+        ).strip()
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        sha = "unknown"
+    status = subprocess.run(
+        ["git", "status", "--porcelain"],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+    )
+    dirty = bool(status.stdout.strip())
+    return f"{sha}{'-dirty' if dirty else ''}"
+
+
 def load_local_env():
     return load_env_file(ROOT)
 
@@ -90,7 +111,10 @@ def main():
         if local.get(key) and key not in env:
             env[key] = local[key]
 
+    build_id = git_build_id()
+    env["VITE_BUILD_ID"] = build_id
     print(f"Build SPA con VITE_SUPABASE_URL={public_url} (anon len={len(anon)})")
+    print(f"VITE_BUILD_ID={build_id}")
     npm = "npm.cmd" if os.name == "nt" else "npm"
     proc = subprocess.run(
         [npm, "run", "build:web"],

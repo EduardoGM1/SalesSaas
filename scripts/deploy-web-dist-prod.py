@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Sube apps/web/dist al VPS (backup + reemplazo). No reinicia Express."""
+import os
 import sys
 import tarfile
 from datetime import datetime
@@ -41,6 +42,24 @@ def load_env():
     return load_env_file(LOCAL_ROOT)
 
 
+def assert_build_id_deployable():
+    path = DIST / "build-id.txt"
+    if not path.is_file():
+        print("WARN: dist sin build-id.txt", file=sys.stderr)
+        return
+    build_id = path.read_text(encoding="utf-8").strip()
+    if not build_id.endswith("-dirty"):
+        return
+    if os.environ.get("ALLOW_DIRTY_WEB_DEPLOY") == "1":
+        print(f"WARN: despliegue autorizado con build dirty ({build_id})")
+        return
+    raise SystemExit(
+        f"Abortando deploy: build-id dirty ({build_id}). "
+        "Haz commit o stash, vuelve a build-web-vps-prod.py, "
+        "o exporta ALLOW_DIRTY_WEB_DEPLOY=1 para forzar."
+    )
+
+
 def run(client, cmd, timeout=600):
     print(f"\n$ {cmd}")
     _, stdout, stderr = client.exec_command(cmd, timeout=timeout)
@@ -62,6 +81,7 @@ def main():
         sys.exit(1)
 
     assert_dist_selfhosted(DIST)
+    assert_build_id_deployable()
 
     env = load_env()
     host = env.get("VPS_HOST", "187.77.14.148")
