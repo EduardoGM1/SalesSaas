@@ -48,14 +48,16 @@ function request(port, { method = "GET", path = "/", headers = {}, body } = {}) 
   });
 }
 
-test("health no envía X-Powered-By y sí CSP de API", async () => {
+test("health directo: sin X-Powered-By y sin CSP/nosniff (edge Nginx en VPS)", async () => {
   const { server, port } = await listen(createApp());
   try {
     const res = await request(port, { path: "/health" });
     assert.equal(res.status, 200);
     assert.equal(res.headers["x-powered-by"], undefined);
-    assert.match(String(res.headers["content-security-policy"] || ""), /default-src 'none'/);
-    assert.equal(res.headers["x-content-type-options"], "nosniff");
+    // Desde 38191d0 Helmet no envía CSP ni nosniff en Express (evita duplicar el snippet
+    // saletse-security-headers.conf en Nginx, P2). El test unitario golpea Express directo.
+    assert.equal(res.headers["content-security-policy"], undefined);
+    assert.equal(res.headers["x-content-type-options"], undefined);
   } finally {
     server.close();
   }
