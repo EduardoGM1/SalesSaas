@@ -4,10 +4,9 @@ function emptyPendingDeletes() {
     sales: [],
     calendar_entries: [],
     activities: [],
-    tool_calculations: [],
+    tool_calculations: []
   };
 }
-
 function emptyDatabase() {
   return {
     clients: {},
@@ -21,7 +20,7 @@ function emptyDatabase() {
       language: "es",
       currency: "USD",
       exchangeRate: 1,
-      exchangeMode: "manual",
+      exchangeMode: "auto",
       userName: "Usuario",
       userInitials: "U"
     }
@@ -29,5 +28,5 @@ function emptyDatabase() {
 }
 export {
   emptyDatabase,
-  emptyPendingDeletes,
+  emptyPendingDeletes
 };

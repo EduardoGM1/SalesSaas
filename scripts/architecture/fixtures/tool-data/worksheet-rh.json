@@ -1,0 +1,14 @@
+{
+  "_meta": {
+    "tool": "worksheet",
+    "variant": "royal-holiday",
+    "storage": "tool_calculations.data",
+    "synthetic": true,
+    "note": "Bucket RH: flags rh/rhTab + rhForm_json. Sin datos de clientes reales."
+  },
+  "data": {
+    "rh": "1",
+    "rhTab": "financiamiento",
+    "rhForm_json": "{\"holiday_credits\":\"10000\",\"noches_privilege\":\"\",\"semanas\":\"\",\"valor\":\"\",\"valores\":[\"\",\"\",\"\",\"\"],\"epvFvi\":[\"\",\"\",\"\",\"\",\"\"],\"posicion\":\"ftb\",\"monto_venta\":\"85000\",\"enganche_pct\":\"25\",\"enganche_hoy\":\"\",\"gasto_adm_hoy\":\"\",\"monto_pendiente\":\"\",\"nacionalidad\":\"mexicano\",\"plazo_meses\":\"60\",\"costo_administrativo_usd\":\"\",\"regalosElegidos\":{},\"regalosCantidad\":{},\"regalosSplit\":{},\"extrasDp\":[],\"extrasCc\":[],\"extrasEngancheItems\":[],\"extrasClosingItems\":[],\"extrasVentaEnganche\":{\"flyback\":false,\"all_inclusive\":\"\",\"cert_vuelos\":\"\",\"tours\":\"\"},\"extrasVentaGastos\":{\"flyback\":false,\"move_in\":\"\",\"cert_vuelos\":\"\",\"tours\":\"\"},\"enganche_num_pagos\":\"3\",\"enganche_pagos\":[],\"gasto_num_pagos\":\"2\",\"gasto_pagos\":[],\"opc\":\"\",\"liner\":\"\",\"closer1\":\"\",\"closer2\":\"\",\"exit\":\"\",\"tarjeta_inmex\":\"\",\"tarjeta_rci\":\"\",\"tarjeta_inmex_on\":false,\"tarjeta_rci_on\":false}"
+  }
+}

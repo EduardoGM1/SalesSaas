@@ -32,214 +32,540 @@ const WS_DEFAULTS = {
 const WS_CONFIG_IDS = ["wo1m", "wo1r", "wo2m", "wo2r", "wo3m", "wo3r"];
 const COUNTRY_CITY = {
   "México": [
-    "Cancún", "Playa del Carmen", "Tulum", "Mérida", "Ciudad de México", "Guadalajara", "Monterrey",
-    "Los Cabos", "Puerto Vallarta", "Querétaro", "Puebla", "León", "Tijuana", "Toluca",
-    "San Miguel de Allende", "Oaxaca", "Mazatlán", "Acapulco", "Veracruz", "Otro",
+    "Cancún",
+    "Playa del Carmen",
+    "Tulum",
+    "Mérida",
+    "Ciudad de México",
+    "Guadalajara",
+    "Monterrey",
+    "Los Cabos",
+    "Puerto Vallarta",
+    "Querétaro",
+    "Puebla",
+    "León",
+    "Tijuana",
+    "Toluca",
+    "San Miguel de Allende",
+    "Oaxaca",
+    "Mazatlán",
+    "Acapulco",
+    "Veracruz",
+    "Otro"
   ],
   "Estados Unidos": [
-    "Miami", "New York", "Los Angeles", "Chicago", "Houston", "Dallas", "Las Vegas", "San Diego",
-    "Phoenix", "Orlando", "Atlanta", "Boston", "San Francisco", "Seattle", "Denver", "Austin",
-    "Tampa", "Fort Lauderdale", "Washington D.C.", "Philadelphia", "Otro",
+    "Miami",
+    "New York",
+    "Los Angeles",
+    "Chicago",
+    "Houston",
+    "Dallas",
+    "Las Vegas",
+    "San Diego",
+    "Phoenix",
+    "Orlando",
+    "Atlanta",
+    "Boston",
+    "San Francisco",
+    "Seattle",
+    "Denver",
+    "Austin",
+    "Tampa",
+    "Fort Lauderdale",
+    "Washington D.C.",
+    "Philadelphia",
+    "Otro"
   ],
   "Canadá": [
-    "Montreal", "Toronto", "Vancouver", "Calgary", "Ottawa", "Quebec City", "Edmonton", "Winnipeg",
-    "Victoria", "Halifax", "Otro",
+    "Montreal",
+    "Toronto",
+    "Vancouver",
+    "Calgary",
+    "Ottawa",
+    "Quebec City",
+    "Edmonton",
+    "Winnipeg",
+    "Victoria",
+    "Halifax",
+    "Otro"
   ],
   "Colombia": [
-    "Bogotá", "Medellín", "Cali", "Cartagena", "Barranquilla", "Bucaramanga", "Pereira", "Santa Marta",
-    "Manizales", "Cúcuta", "Otro",
+    "Bogotá",
+    "Medellín",
+    "Cali",
+    "Cartagena",
+    "Barranquilla",
+    "Bucaramanga",
+    "Pereira",
+    "Santa Marta",
+    "Manizales",
+    "Cúcuta",
+    "Otro"
   ],
   "Brasil": [
-    "São Paulo", "Rio de Janeiro", "Brasília", "Belo Horizonte", "Curitiba", "Salvador", "Fortaleza",
-    "Recife", "Porto Alegre", "Florianópolis", "Otro",
+    "São Paulo",
+    "Rio de Janeiro",
+    "Brasília",
+    "Belo Horizonte",
+    "Curitiba",
+    "Salvador",
+    "Fortaleza",
+    "Recife",
+    "Porto Alegre",
+    "Florianópolis",
+    "Otro"
   ],
   "Argentina": [
-    "Buenos Aires", "Córdoba", "Rosario", "Mendoza", "Bariloche", "Mar del Plata", "Salta", "Ushuaia", "Otro",
+    "Buenos Aires",
+    "Córdoba",
+    "Rosario",
+    "Mendoza",
+    "Bariloche",
+    "Mar del Plata",
+    "Salta",
+    "Ushuaia",
+    "Otro"
   ],
   "Chile": [
-    "Santiago", "Valparaíso", "Concepción", "Viña del Mar", "La Serena", "Antofagasta", "Punta Arenas", "Otro",
+    "Santiago",
+    "Valparaíso",
+    "Concepción",
+    "Viña del Mar",
+    "La Serena",
+    "Antofagasta",
+    "Punta Arenas",
+    "Otro"
   ],
   "Perú": [
-    "Lima", "Cusco", "Arequipa", "Trujillo", "Piura", "Iquitos", "Puno", "Otro",
+    "Lima",
+    "Cusco",
+    "Arequipa",
+    "Trujillo",
+    "Piura",
+    "Iquitos",
+    "Puno",
+    "Otro"
   ],
   "Venezuela": [
-    "Caracas", "Maracaibo", "Valencia", "Barquisimeto", "Maracay", "Puerto La Cruz", "Otro",
+    "Caracas",
+    "Maracaibo",
+    "Valencia",
+    "Barquisimeto",
+    "Maracay",
+    "Puerto La Cruz",
+    "Otro"
   ],
   "Ecuador": [
-    "Quito", "Guayaquil", "Cuenca", "Manta", "Ambato", "Loja", "Otro",
+    "Quito",
+    "Guayaquil",
+    "Cuenca",
+    "Manta",
+    "Ambato",
+    "Loja",
+    "Otro"
   ],
   "Bolivia": [
-    "La Paz", "Santa Cruz", "Cochabamba", "Sucre", "Oruro", "Otro",
+    "La Paz",
+    "Santa Cruz",
+    "Cochabamba",
+    "Sucre",
+    "Oruro",
+    "Otro"
   ],
   "Paraguay": [
-    "Asunción", "Ciudad del Este", "Encarnación", "San Lorenzo", "Otro",
+    "Asunción",
+    "Ciudad del Este",
+    "Encarnación",
+    "San Lorenzo",
+    "Otro"
   ],
   "Uruguay": [
-    "Montevideo", "Punta del Este", "Salto", "Colonia del Sacramento", "Otro",
+    "Montevideo",
+    "Punta del Este",
+    "Salto",
+    "Colonia del Sacramento",
+    "Otro"
   ],
   "Costa Rica": [
-    "San José", "Liberia", "Alajuela", "Heredia", "Cartago", "Puntarenas", "Limón", "Otro",
+    "San José",
+    "Liberia",
+    "Alajuela",
+    "Heredia",
+    "Cartago",
+    "Puntarenas",
+    "Limón",
+    "Otro"
   ],
   "Panamá": [
-    "Ciudad de Panamá", "David", "Colón", "Santiago", "Bocas del Toro", "Otro",
+    "Ciudad de Panamá",
+    "David",
+    "Colón",
+    "Santiago",
+    "Bocas del Toro",
+    "Otro"
   ],
   "Guatemala": [
-    "Ciudad de Guatemala", "Antigua", "Quetzaltenango", "Escuintla", "Cobán", "Otro",
+    "Ciudad de Guatemala",
+    "Antigua",
+    "Quetzaltenango",
+    "Escuintla",
+    "Cobán",
+    "Otro"
   ],
   "Honduras": [
-    "Tegucigalpa", "San Pedro Sula", "La Ceiba", "Roatán", "Choloma", "Otro",
+    "Tegucigalpa",
+    "San Pedro Sula",
+    "La Ceiba",
+    "Roatán",
+    "Choloma",
+    "Otro"
   ],
   "El Salvador": [
-    "San Salvador", "Santa Ana", "San Miguel", "La Libertad", "Otro",
+    "San Salvador",
+    "Santa Ana",
+    "San Miguel",
+    "La Libertad",
+    "Otro"
   ],
   "Nicaragua": [
-    "Managua", "León", "Granada", "Masaya", "Estelí", "Otro",
+    "Managua",
+    "León",
+    "Granada",
+    "Masaya",
+    "Estelí",
+    "Otro"
   ],
   "Belice": [
-    "Belize City", "San Ignacio", "San Pedro", "Belmopan", "Otro",
+    "Belize City",
+    "San Ignacio",
+    "San Pedro",
+    "Belmopan",
+    "Otro"
   ],
   "Cuba": [
-    "La Habana", "Santiago de Cuba", "Varadero", "Camagüey", "Holguín", "Otro",
+    "La Habana",
+    "Santiago de Cuba",
+    "Varadero",
+    "Camagüey",
+    "Holguín",
+    "Otro"
   ],
   "República Dominicana": [
-    "Santo Domingo", "Punta Cana", "Santiago", "Puerto Plata", "La Romana", "Otro",
+    "Santo Domingo",
+    "Punta Cana",
+    "Santiago",
+    "Puerto Plata",
+    "La Romana",
+    "Otro"
   ],
   "Puerto Rico": [
-    "San Juan", "Ponce", "Mayagüez", "Bayamón", "Carolina", "Otro",
+    "San Juan",
+    "Ponce",
+    "Mayagüez",
+    "Bayamón",
+    "Carolina",
+    "Otro"
   ],
   "Jamaica": [
-    "Kingston", "Montego Bay", "Ocho Rios", "Negril", "Otro",
+    "Kingston",
+    "Montego Bay",
+    "Ocho Rios",
+    "Negril",
+    "Otro"
   ],
   "Bahamas": [
-    "Nassau", "Freeport", "Otro",
+    "Nassau",
+    "Freeport",
+    "Otro"
   ],
   "Trinidad y Tobago": [
-    "Port of Spain", "San Fernando", "Otro",
+    "Port of Spain",
+    "San Fernando",
+    "Otro"
   ],
   "Haití": [
-    "Puerto Príncipe", "Cap-Haïtien", "Otro",
+    "Puerto Príncipe",
+    "Cap-Haïtien",
+    "Otro"
   ],
   "España": [
-    "Madrid", "Barcelona", "Valencia", "Sevilla", "Málaga", "Bilbao", "Alicante", "Granada", "Otro",
+    "Madrid",
+    "Barcelona",
+    "Valencia",
+    "Sevilla",
+    "Málaga",
+    "Bilbao",
+    "Alicante",
+    "Granada",
+    "Otro"
   ],
   "Portugal": [
-    "Lisboa", "Porto", "Faro", "Braga", "Coimbra", "Otro",
+    "Lisboa",
+    "Porto",
+    "Faro",
+    "Braga",
+    "Coimbra",
+    "Otro"
   ],
   "Francia": [
-    "París", "Lyon", "Marsella", "Niza", "Toulouse", "Burdeos", "Otro",
+    "París",
+    "Lyon",
+    "Marsella",
+    "Niza",
+    "Toulouse",
+    "Burdeos",
+    "Otro"
   ],
   "Italia": [
-    "Roma", "Milán", "Florencia", "Venecia", "Nápoles", "Turín", "Otro",
+    "Roma",
+    "Milán",
+    "Florencia",
+    "Venecia",
+    "Nápoles",
+    "Turín",
+    "Otro"
   ],
   "Alemania": [
-    "Berlín", "Múnich", "Hamburgo", "Fráncfort", "Colonia", "Stuttgart", "Otro",
+    "Berlín",
+    "Múnich",
+    "Hamburgo",
+    "Fráncfort",
+    "Colonia",
+    "Stuttgart",
+    "Otro"
   ],
   "Reino Unido": [
-    "Londres", "Manchester", "Birmingham", "Edimburgo", "Liverpool", "Glasgow", "Otro",
+    "Londres",
+    "Manchester",
+    "Birmingham",
+    "Edimburgo",
+    "Liverpool",
+    "Glasgow",
+    "Otro"
   ],
   "Irlanda": [
-    "Dublín", "Cork", "Galway", "Limerick", "Otro",
+    "Dublín",
+    "Cork",
+    "Galway",
+    "Limerick",
+    "Otro"
   ],
   "Países Bajos": [
-    "Ámsterdam", "Róterdam", "La Haya", "Utrecht", "Otro",
+    "Ámsterdam",
+    "Róterdam",
+    "La Haya",
+    "Utrecht",
+    "Otro"
   ],
   "Bélgica": [
-    "Bruselas", "Amberes", "Gante", "Brujas", "Otro",
+    "Bruselas",
+    "Amberes",
+    "Gante",
+    "Brujas",
+    "Otro"
   ],
   "Suiza": [
-    "Zúrich", "Ginebra", "Berna", "Basilea", "Lausana", "Otro",
+    "Zúrich",
+    "Ginebra",
+    "Berna",
+    "Basilea",
+    "Lausana",
+    "Otro"
   ],
   "Austria": [
-    "Viena", "Salzburgo", "Innsbruck", "Graz", "Otro",
+    "Viena",
+    "Salzburgo",
+    "Innsbruck",
+    "Graz",
+    "Otro"
   ],
   "Suecia": [
-    "Estocolmo", "Gotemburgo", "Malmö", "Otro",
+    "Estocolmo",
+    "Gotemburgo",
+    "Malmö",
+    "Otro"
   ],
   "Noruega": [
-    "Oslo", "Bergen", "Trondheim", "Otro",
+    "Oslo",
+    "Bergen",
+    "Trondheim",
+    "Otro"
   ],
   "Dinamarca": [
-    "Copenhague", "Aarhus", "Odense", "Otro",
+    "Copenhague",
+    "Aarhus",
+    "Odense",
+    "Otro"
   ],
   "Finlandia": [
-    "Helsinki", "Tampere", "Turku", "Otro",
+    "Helsinki",
+    "Tampere",
+    "Turku",
+    "Otro"
   ],
   "Polonia": [
-    "Varsovia", "Cracovia", "Gdansk", "Wroclaw", "Otro",
+    "Varsovia",
+    "Cracovia",
+    "Gdansk",
+    "Wroclaw",
+    "Otro"
   ],
   "Grecia": [
-    "Atenas", "Salónica", "Heraclión", "Otro",
+    "Atenas",
+    "Salónica",
+    "Heraclión",
+    "Otro"
   ],
   "Turquía": [
-    "Estambul", "Ankara", "Antalya", "Izmir", "Otro",
+    "Estambul",
+    "Ankara",
+    "Antalya",
+    "Izmir",
+    "Otro"
   ],
   "Rusia": [
-    "Moscú", "San Petersburgo", "Otro",
+    "Moscú",
+    "San Petersburgo",
+    "Otro"
   ],
   "Japón": [
-    "Tokio", "Osaka", "Kioto", "Yokohama", "Nagoya", "Otro",
+    "Tokio",
+    "Osaka",
+    "Kioto",
+    "Yokohama",
+    "Nagoya",
+    "Otro"
   ],
   "Corea del Sur": [
-    "Seúl", "Busan", "Incheon", "Daegu", "Otro",
+    "Seúl",
+    "Busan",
+    "Incheon",
+    "Daegu",
+    "Otro"
   ],
   "China": [
-    "Pekín", "Shanghái", "Shenzhen", "Cantón", "Hong Kong", "Otro",
+    "Pekín",
+    "Shanghái",
+    "Shenzhen",
+    "Cantón",
+    "Hong Kong",
+    "Otro"
   ],
   "India": [
-    "Mumbai", "Delhi", "Bangalore", "Hyderabad", "Chennai", "Otro",
+    "Mumbai",
+    "Delhi",
+    "Bangalore",
+    "Hyderabad",
+    "Chennai",
+    "Otro"
   ],
   "Tailandia": [
-    "Bangkok", "Phuket", "Chiang Mai", "Pattaya", "Otro",
+    "Bangkok",
+    "Phuket",
+    "Chiang Mai",
+    "Pattaya",
+    "Otro"
   ],
   "Singapur": [
-    "Singapur", "Otro",
+    "Singapur",
+    "Otro"
   ],
   "Malasia": [
-    "Kuala Lumpur", "Penang", "Johor Bahru", "Otro",
+    "Kuala Lumpur",
+    "Penang",
+    "Johor Bahru",
+    "Otro"
   ],
   "Indonesia": [
-    "Yakarta", "Bali", "Surabaya", "Otro",
+    "Yakarta",
+    "Bali",
+    "Surabaya",
+    "Otro"
   ],
   "Filipinas": [
-    "Manila", "Cebú", "Davao", "Otro",
+    "Manila",
+    "Cebú",
+    "Davao",
+    "Otro"
   ],
   "Vietnam": [
-    "Hanói", "Ciudad Ho Chi Minh", "Da Nang", "Otro",
+    "Hanói",
+    "Ciudad Ho Chi Minh",
+    "Da Nang",
+    "Otro"
   ],
   "Australia": [
-    "Sídney", "Melbourne", "Brisbane", "Perth", "Adelaida", "Gold Coast", "Otro",
+    "Sídney",
+    "Melbourne",
+    "Brisbane",
+    "Perth",
+    "Adelaida",
+    "Gold Coast",
+    "Otro"
   ],
   "Nueva Zelanda": [
-    "Auckland", "Wellington", "Christchurch", "Queenstown", "Otro",
+    "Auckland",
+    "Wellington",
+    "Christchurch",
+    "Queenstown",
+    "Otro"
   ],
   "Emiratos Árabes Unidos": [
-    "Dubái", "Abu Dhabi", "Sharjah", "Otro",
+    "Dubái",
+    "Abu Dhabi",
+    "Sharjah",
+    "Otro"
   ],
   "Arabia Saudita": [
-    "Riad", "Yeda", "Dammam", "Otro",
+    "Riad",
+    "Yeda",
+    "Dammam",
+    "Otro"
   ],
   "Catar": [
-    "Doha", "Otro",
+    "Doha",
+    "Otro"
   ],
   "Israel": [
-    "Tel Aviv", "Jerusalén", "Haifa", "Otro",
+    "Tel Aviv",
+    "Jerusalén",
+    "Haifa",
+    "Otro"
   ],
   "Egipto": [
-    "El Cairo", "Alejandría", "Sharm el-Sheikh", "Luxor", "Otro",
+    "El Cairo",
+    "Alejandría",
+    "Sharm el-Sheikh",
+    "Luxor",
+    "Otro"
   ],
   "Marruecos": [
-    "Casablanca", "Marrakech", "Rabat", "Fez", "Tánger", "Otro",
+    "Casablanca",
+    "Marrakech",
+    "Rabat",
+    "Fez",
+    "Tánger",
+    "Otro"
   ],
   "Sudáfrica": [
-    "Ciudad del Cabo", "Johannesburgo", "Durban", "Pretoria", "Otro",
+    "Ciudad del Cabo",
+    "Johannesburgo",
+    "Durban",
+    "Pretoria",
+    "Otro"
   ],
   "Nigeria": [
-    "Lagos", "Abuja", "Port Harcourt", "Otro",
+    "Lagos",
+    "Abuja",
+    "Port Harcourt",
+    "Otro"
   ],
   "Kenia": [
-    "Nairobi", "Mombasa", "Otro",
+    "Nairobi",
+    "Mombasa",
+    "Otro"
   ],
-  "Otro": ["Otro"],
+  "Otro": ["Otro"]
 };
 const COUNTRY_FLAGS = {
   "México": "🇲🇽",
@@ -309,7 +635,7 @@ const COUNTRY_FLAGS = {
   "Sudáfrica": "🇿🇦",
   "Nigeria": "🇳🇬",
   "Kenia": "🇰🇪",
-  "Otro": "🌐",
+  "Otro": "🌐"
 };
 const CURRENCIES = ["USD", "MXN", "CAD", "EUR"];
 export {

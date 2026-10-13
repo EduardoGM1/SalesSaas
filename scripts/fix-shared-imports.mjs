@@ -3,6 +3,11 @@ import path from "path";
 
 const ROOT = path.join(import.meta.dirname, "..", "packages", "shared", "src");
 
+function withJsExt(p) {
+  const cleaned = p.replace(/\.ts$/, ".js").replace(/\.tsx$/, ".js");
+  return cleaned.endsWith(".js") ? cleaned : `${cleaned}.js`;
+}
+
 function walk(dir) {
   for (const name of fs.readdirSync(dir)) {
     const full = path.join(dir, name);
@@ -15,11 +20,12 @@ function walk(dir) {
     const relDir = path.relative(ROOT, dir).replace(/\\/g, "/");
     const depth = relDir ? relDir.split("/").length : 0;
     const prefix = depth ? "../".repeat(depth) : "./";
-    code = code.replace(/from "@\/lib\/([^"]+)"/g, (_, p) => `from "${prefix}${p}.js"`);
-    code = code.replace(/from '@\/lib\/([^']+)'/g, (_, p) => `from '${prefix}${p}.js'`);
-    code = code.replace(/from "\.\/([^"]+)"/g, (m, p) => (p.endsWith(".js") ? m : `from "./${p}.js"`));
-    code = code.replace(/from '\.\/([^']+)'/g, (m, p) => (p.endsWith(".js") ? m : `from './${p}.js'`));
-    code = code.replace(/from "\.\.\/([^"]+)"/g, (m, p) => (p.endsWith(".js") ? m : `from "../${p}.js"`));
+    code = code.replace(/from "@\/lib\/([^"]+)"/g, (_, p) => `from "${prefix}${withJsExt(p)}"`);
+    code = code.replace(/from '@\/lib\/([^']+)'/g, (_, p) => `from '${prefix}${withJsExt(p)}'`);
+    code = code.replace(/from "\.\/([^"]+)"/g, (m, p) => (p.endsWith(".js") ? m : `from "./${withJsExt(p)}"`));
+    code = code.replace(/from '\.\/([^']+)'/g, (m, p) => (p.endsWith(".js") ? m : `from './${withJsExt(p)}'`));
+    code = code.replace(/from "\.\.\/([^"]+)"/g, (m, p) => (p.endsWith(".js") ? m : `from "../${withJsExt(p)}"`));
+    code = code.replace(/from '\.\.\/([^']+)'/g, (m, p) => (p.endsWith(".js") ? m : `from '../${withJsExt(p)}'`));
     fs.writeFileSync(full, code);
   }
 }

@@ -1,0 +1,42 @@
+{
+  "$comment": "Archivos que sync:shared mantiene en paridad web ↔ packages/shared. permissions.ts del web depende de i18n (no portable aún) — queda fuera hasta extraer catálogo sin UI.",
+  "pairs": [
+    {
+      "web": "apps/web/src/lib/data/mappers.ts",
+      "shared": "packages/shared/src/data/mappers.js"
+    },
+    {
+      "web": "apps/web/src/lib/storage/types.ts",
+      "shared": "packages/shared/src/storage/types.js"
+    },
+    {
+      "web": "apps/web/src/lib/ids.ts",
+      "shared": "packages/shared/src/ids.js"
+    },
+    {
+      "web": "apps/web/src/lib/constants.ts",
+      "shared": "packages/shared/src/constants.js"
+    },
+    {
+      "web": "apps/web/src/lib/format/dates.ts",
+      "shared": "packages/shared/src/format/dates.js"
+    },
+    {
+      "web": "apps/web/src/lib/locale-calendar.js",
+      "shared": "packages/shared/src/locale-calendar.js"
+    }
+  ],
+  "sharedOnlyNoted": [
+    "packages/shared/src/data/sync.js",
+    "packages/shared/src/data/sync-columns.js",
+    "packages/shared/src/api/validators.js",
+    "packages/shared/src/auth/permissions.js"
+  ],
+  "intentionallyDivergent": [
+    {
+      "web": "apps/web/src/lib/auth/permissions.ts",
+      "shared": "packages/shared/src/auth/permissions.js",
+      "reason": "Web usa labelKey + i18n; shared API usa labels string. No sincronizar hasta extraer catálogo de claves sin dependencia UI."
+    }
+  ]
+}

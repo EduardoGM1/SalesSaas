@@ -1,0 +1,23 @@
+{
+  "_meta": {
+    "tool": "money-box",
+    "storage": "settings.moneyBoxConfig (no tool_calculations hoy)",
+    "synthetic": true,
+    "note": "Money Box genérico persiste restricciones en settings, no en tool_calculations. Contrato de forma MoneyBoxPolicyConfig + inputs de escenario."
+  },
+  "data": {
+    "minDownPct": 0.3,
+    "maxDownPct": 0.5,
+    "fcCents": 0,
+    "ffCents": 0,
+    "maxSaleCents": 15000000,
+    "roundStepCents": 1,
+    "pctStep": 0.01,
+    "minDrop": 0.1,
+    "scenario": {
+      "mode": "byDown",
+      "downPayment": 25000,
+      "monthly": null
+    }
+  }
+}

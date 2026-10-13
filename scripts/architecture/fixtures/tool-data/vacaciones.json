@@ -1,0 +1,15 @@
+{
+  "_meta": {
+    "tool": "vacaciones",
+    "storage": "tool_calculations.data",
+    "synthetic": true
+  },
+  "data": {
+    "vv": "50000",
+    "vc": "8000",
+    "va": "1200",
+    "vi": "8",
+    "capture_currency": "MXN",
+    "currency_meta": "{}"
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "_meta": {
+    "tool": "survey",
+    "storage": "tool_calculations.data",
+    "synthetic": true,
+    "note": "Payload de ejemplo sin PII real. Campos string planos + discovery JSON."
+  },
+  "data": {
+    "stype": "hotel",
+    "futureType": "hotel",
+    "total": "12000",
+    "hpct": "70",
+    "nights": "7",
+    "sh1c": "Cancun",
+    "sh1y": "2024",
+    "sh1n": "5",
+    "sh1a": "2000",
+    "sh2c": "",
+    "sh2y": "",
+    "sh2n": "",
+    "sh2a": "",
+    "sh3c": "",
+    "sh3y": "",
+    "sh3n": "",
+    "sh3a": "",
+    "sf1c": "",
+    "sf1y": "",
+    "sf1n": "",
+    "sf1a": "",
+    "disc_json": "{\"answers\":{},\"contexts\":{},\"hasTs\":\"\",\"memberships\":[{\"type\":\"\",\"resort\":\"\",\"cost\":\"\",\"maint\":\"\",\"years\":\"\"}]}",
+    "capture_currency": "USD",
+    "currency_meta": "{}"
+  }
+}
