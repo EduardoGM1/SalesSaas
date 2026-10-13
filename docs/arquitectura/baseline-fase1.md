@@ -2,7 +2,7 @@
 
 **Fecha (UTC):** 2026-10-13T10:17:35Z  
 **SHA funcional (e2e/completo):** `7b3f35baf1d905a46f26d194f509e20baa680b35`  
-**SHA tip `main`:** `dbc39d8af0b17577b0116bdd2136c9521b73ecae`  
+**SHA tip `main`:** `3c9bda6005aafc33631800e49afecc72447c6d3f`  
 **Rama:** `main` (`main` == `origin/main`)  
 **Deploy:** no  
 **Piloto:** no iniciado
