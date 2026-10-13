@@ -23,6 +23,7 @@
     "sync:shared": "node scripts/sync-shared.mjs",
     "verificar:arquitectura": "node scripts/architecture/run-verificar-arquitectura.mjs",
     "verificar:arquitectura:checks": "node scripts/architecture/check-layer-boundaries.mjs && node scripts/architecture/check-lazy-imports.mjs && node scripts/architecture/check-tool-contracts.mjs && node scripts/architecture/check-push-deeplinks.mjs && node scripts/architecture/check-shared-parity.mjs",
+    "verificar:arquitectura:completo": "node scripts/architecture/run-completo.mjs",
     "seed:demo": "node scripts/seed-demo.mjs",
     "seed:eduardo": "node scripts/seed-eduardo-prospects.mjs",
     "db:migrate": "node scripts/apply-migration.mjs",

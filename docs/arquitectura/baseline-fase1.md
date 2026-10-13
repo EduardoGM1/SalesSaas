@@ -1,189 +1,99 @@
-# Baseline Fase 1 — red de seguridad
+# Baseline Fase 1 — red de seguridad (funcional)
 
-**Fecha (UTC):** 2026-10-13T08:24:29.242Z  
-**SHA:** `9f2b5ac33f92da4353dc0a0ad1f0dded93de4bed`  
-**Rama:** `test/arquitectura-red-seguridad`  
-**Comando:** `npm run verificar:arquitectura` / `node scripts/architecture/run-baseline.mjs`
+**Fecha (UTC):** 2026-10-13T10:17:35Z  
+**SHA (pre-commit de este doc; actualizar tras push):** ver tabla — corrida sobre `main` @ `a7fb2aa` + fixes e2e locales pendientes de commit  
+**Rama:** `main`  
+**Deploy:** no  
+**Piloto:** no iniciado
 
-## Suite ejecutada
+---
 
-| Paso | Exit | Duración | Resultado |
-|------|------|----------|-----------|
-| test:web | 0 | 1276ms | PASS |
-| api test:security | 0 | 1598ms | PASS |
-| verify (local) | 1 | 598ms | FAIL |
-| e2e smoke | 1 | 49516ms | FAIL |
+## Reproducibilidad — stack local
 
-## Resumen
+### Comandos
 
-- **Checks arquitectura (1–5):** ver salida de `verificar:arquitectura` (límites, lazy, contratos, push, paridad).
-- **Baseline suite:** 2 fallo(s).
-- Fallos: verify (local), e2e smoke.
+```bash
+# Terminal A — API
+npm run dev:api
 
-## Notas
+# Terminal B — Web (Vite)
+npm run dev:web
 
-- Sin secretos ni datos reales en fixtures.
-- **Checks 1–5 (red de seguridad): PASS** en esta corrida (vía `verificar:arquitectura` / `verificar:arquitectura:checks`).
-- **test:web + api test:security: PASS.**
-- **verify (local): FAIL** — no había API/web en `127.0.0.1:4000` / `:5173` (esperado sin `dev:api`/`dev:web`).
-- **e2e smoke: FAIL parcial** — health/API vía proxy OK (2); UI login/register/redirect a login fallan (selectores / sesión residual en `:5173`). No es regresión introducida por la red de seguridad; documentar y estabilizar en CI limpio.
-- E2E smoke no provisiona cuentas QA.
-- No se hizo deploy ni merge a `main`.
+# Verificar (hostname localhost; no 127.0.0.1 en Windows — Vite puede escuchar solo en ::1)
+API_BASE=http://localhost:4000 WEB_BASE=http://localhost:5173 npm run verify
 
-
-## Colas de salida (últimas líneas)
-
-### test:web (exit 0)
-
-```
-  ...
-# Subtest: mergeSettingsForWorkspace usa workspaces[id] remoto solo si la sala local está vacía
-ok 12 - mergeSettingsForWorkspace usa workspaces[id] remoto solo si la sala local está vacía
-  ---
-  duration_ms: 0.345
-  type: 'test'
-  ...
-# Subtest: buildProfileSettingsBody no pone worksheetConfig en la raíz
-ok 13 - buildProfileSettingsBody no pone worksheetConfig en la raíz
-  ---
-  duration_ms: 0.3139
-  type: 'test'
-  ...
-# Subtest: hasWorkspaceSettings distingue blob vacío de config real
-ok 14 - hasWorkspaceSettings distingue blob vacío de config real
-  ---
-  duration_ms: 0.1577
-  type: 'test'
-  ...
-# Subtest: pickUserGlobalSettings trata usdToMxnRate ≤ 1 / no numérico como ausente
-ok 15 - pickUserGlobalSettings trata usdToMxnRate ≤ 1 / no numérico como ausente
-  ---
-  duration_ms: 0.4332
-  type: 'test'
-  ...
-# Subtest: hydrate local=1 + incoming={} no reinfecta usdToMxnRate
-ok 16 - hydrate local=1 + incoming={} no reinfecta usdToMxnRate
-  ---
-  duration_ms: 0.4845
-  type: 'test'
-  ...
-1..16
-# tests 26
-# suites 6
-# pass 26
-# fail 0
-# cancelled 0
-# skipped 0
-# todo 0
-# duration_ms 168.7845
+# Suite funcional
+npm run test:web
+npx playwright test e2e/smoke.spec.js
+# o todo junto (exige stack arriba):
+npm run verificar:arquitectura:completo
 ```
 
-### api test:security (exit 0)
+### Variables necesarias (solo nombres; valores en `.env.local`, nunca en el repo)
 
-```
-  ...
-# Subtest: POST /auth/login sin cuerpo no es 500 (rate limit intacto)
-ok 56 - POST /auth/login sin cuerpo no es 500 (rate limit intacto)
-  ---
-  duration_ms: 15.0618
-  type: 'test'
-  ...
-# {"ts":"2026-10-13T08:24:31.577Z","level":"info","msg":"rh.catalog.cache","request_id":null,"user_id":null,"tenant_id":null,"hit":false,"empresa_id":"aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"}
-# {"ts":"2026-10-13T08:24:31.581Z","level":"info","msg":"rh.catalog.cache","request_id":null,"user_id":null,"tenant_id":null,"hit":true,"empresa_id":"aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"}
-# {"ts":"2026-10-13T08:24:31.581Z","level":"info","msg":"rh.catalog.cache","request_id":null,"user_id":null,"tenant_id":null,"hit":true,"empresa_id":"aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"}
-# {"ts":"2026-10-13T08:24:31.582Z","level":"info","msg":"rh.catalog.cache","request_id":null,"user_id":null,"tenant_id":null,"hit":true,"empresa_id":"aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"}
-# {"ts":"2026-10-13T08:24:31.584Z","level":"info","msg":"rh.catalog.cache","request_id":null,"user_id":null,"tenant_id":null,"hit":false,"empresa_id":"aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"}
-# {"ts":"2026-10-13T08:24:31.584Z","level":"info","msg":"rh.catalog.cache","request_id":null,"user_id":null,"tenant_id":null,"hit":false,"empresa_id":"aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"}
-# Subtest: catálogo vigente: segundo get y preview reusan cache (sin repetir las 8 queries)
-ok 57 - catálogo vigente: segundo get y preview reusan cache (sin repetir las 8 queries)
-  ---
-  duration_ms: 7.3786
-  type: 'test'
-  ...
-# Subtest: invalidateCatalogoVigenteCache fuerza recarga
-ok 58 - invalidateCatalogoVigenteCache fuerza recarga
-  ---
-  duration_ms: 0.806
-  type: 'test'
-  ...
-# Subtest: resolveActiveWorkspaceId reusa knownList y no vuelve a consultar membresías
-ok 59 - resolveActiveWorkspaceId reusa knownList y no vuelve a consultar membresías
-  ---
-  duration_ms: 1.8639
-  type: 'test'
-  ...
-1..59
-# tests 59
-# suites 0
-# pass 59
-# fail 0
-# cancelled 0
-# skipped 0
-# todo 0
-# duration_ms 997.218
-```
+| Ámbito | Variables |
+|--------|-----------|
+| API | `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` (si el smoke/API lo requiere), `API_PORT` (default 4000), `WEB_ORIGIN` |
+| Web (Vite) | `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` |
+| Verify | `API_BASE`, `WEB_BASE` (default `http://localhost:4000` / `http://localhost:5173`) |
+| Opcionales | `SUPABASE_PUBLIC_URL`, `ONESIGNAL_*`, `VITE_ONESIGNAL_*`, `RESEND_*`, `SENTRY_DSN`, `VITE_SENTRY_DSN`, `CRON_SECRET` |
 
-### verify (local) (exit 1)
+Plantilla: `.env.example` → copiar a `.env.local`.
 
-```
-> sales-saas@0.1.0 verify
-> node scripts/verify-smoke.mjs
+### Notas de entorno
 
+- Usar **`localhost`**, no `127.0.0.1`, para el WEB en Windows: Vite bind a IPv6 (`::1`); `127.0.0.1:5173` da connection refused.
+- El smoke de redirect exige `isSupabaseConfigured() === true` (vars `VITE_SUPABASE_*` en el Vite del stack). Sin ellas, `ProtectedRoute` en DEV entra en modo local y **no** redirige a `/login` (comportamiento de producto documentado, no bug del smoke).
+- Playwright, si levanta Vite propio, usa URL/anon **dummy** (`http://e2e.local` / `e2e-anon-key`) — no son secretos; solo activan el gate de auth.
+- No se usó staging ni cuenta QA efímera: el stack local completo fue suficiente.
 
-=== Smoke test API=http://127.0.0.1:4000 WEB=http://127.0.0.1:5173 ===
+---
 
-✗ API health → fetch failed
-✗ API root → fetch failed
-✗ Geo countries → fetch failed
-✗ Profile sin auth → fetch failed
-✗ Reminders sin auth → fetch failed
-✗ SPA index → fetch failed
+## Diagnóstico e2e (solo lectura, antes del arreglo)
 
-6 fallo(s).
-```
+Con stack arriba, fallaban 2 de 5 smokes. Evidencia (snapshot Playwright / i18n):
 
-### e2e smoke (exit 1)
+| Test | Esperaba (test viejo) | DOM / i18n real | Clasificación |
+|------|------------------------|-----------------|---------------|
+| login page | botón `/Entrar/i` | `button "Iniciar sesión"` (`auth.login.submit`) | **Test desactualizado** |
+| register page | `.auth-title` “Crear cuenta” | “Crea tu cuenta en Saletse” (`auth.register.title`) | **Test desactualizado** |
+| redirect `/settings` → `/login` | `/login` | Con `VITE_SUPABASE_*` del stack: **PASS** | App OK si Supabase configurado |
+| (corridas previas sin stack / Vite sin supabase) | redirect | Modo local DEV: se queda en `/settings` | **Config entorno / contrato ProtectedRoute**, no bug nuevo |
 
-```
-    Usage:
+**Causa raíz:** deuda del test e2e (copy i18n), no bug de producto ni de la red de seguridad.  
+**Arreglo aplicado (solo `e2e/smoke.spec.js` + dummy supabase en `playwright.config.js` para Vite que Playwright arranca):** selectores alineados al catálogo i18n; Playwright ya no fuerza `VITE_SUPABASE_URL=""`.
 
-        npx playwright show-trace test-results\smoke-Smoke-E2E-ruta-protegida-redirige-a-login-sin-sesión-retry1\trace.zip
+---
 
-    ────────────────────────────────────────────────────────────────────────────────────────────────
+## Tabla final de suites
 
-  3 failed
-    e2e\smoke.spec.js:4:7 › Smoke E2E › login page carga ───────────────────────────────────────────
-    e2e\smoke.spec.js:10:7 › Smoke E2E › register page carga ───────────────────────────────────────
-    e2e\smoke.spec.js:15:7 › Smoke E2E › ruta protegida redirige a login sin sesión ────────────────
-  2 passed (47.4s)
-::notice title=🎭 Playwright Run Summary::  3 failed%0A    e2e\smoke.spec.js:4:7 › Smoke E2E › login page carga ───────────────────────────────────────────%0A    e2e\smoke.spec.js:10:7 › Smoke E2E › register page carga ───────────────────────────────────────%0A    e2e\smoke.spec.js:15:7 › Smoke E2E › ruta protegida redirige a login sin sesión ────────────────%0A  2 passed (47.4s)
-(node:12244) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
-(Use `node --trace-warnings ...` to show where the warning was created)
-(node:12244) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
-(Use `node --trace-warnings ...` to show where the warning was created)
-(node:11040) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
-(Use `node --trace-warnings ...` to show where the warning was created)
-(node:11040) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
-(Use `node --trace-warnings ...` to show where the warning was created)
-(node:4008) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
-(Use `node --trace-warnings ...` to show where the warning was created)
-(node:4008) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
-(Use `node --trace-warnings ...` to show where the warning was created)
-(node:14824) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
-(Use `node --trace-warnings ...` to show where the warning was created)
-(node:14824) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
-(Use `node --trace-warnings ...` to show where the warning was created)
-(node:1692) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
-(Use `node --trace-warnings ...` to show where the warning was created)
-(node:1692) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
-(Use `node --trace-warnings ...` to show where the warning was created)
-(node:12000) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
-(Use `node --trace-warnings ...` to show where the warning was created)
-(node:12000) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
-(Use `node --trace-warnings ...` to show where the warning was created)
-(node:17772) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
-(Use `node --trace-warnings ...` to show where the warning was created)
-(node:17772) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
-(Use `node --trace-warnings ...` to show where the warning was created)
-```
+| Suite | Comando | Resultado | Fecha (UTC) | Notas |
+|-------|---------|-----------|-------------|-------|
+| Arquitectura CI (checks 1–5) | workflow `architecture.yml` run [#3](https://github.com/EduardoGM1/SalesSaas/actions/runs/38381724446) | **PASS** | 2026-10-13T10:12:32Z | `main` @ `a7fb2aa`, conclusion `success` |
+| Checks 1–5 local | `npm run verificar:arquitectura:checks` | **PASS** | 2026-10-13T10:17Z | |
+| verify local | `API_BASE=http://localhost:4000 WEB_BASE=http://localhost:5173 npm run verify` | **PASS** | 2026-10-13T10:17Z | Stack `dev:api` + `dev:web` |
+| test:web | `npm run test:web` | **PASS** | 2026-10-13T10:17Z | 26 tests |
+| e2e smoke | `PLAYWRIGHT_SKIP_SERVERS=1 PLAYWRIGHT_BASE_URL=http://localhost:5173 npx playwright test e2e/smoke.spec.js` | **PASS** | 2026-10-13T10:17Z | 5/5 tras fix de selectores |
+| Completo | `npm run verificar:arquitectura:completo` | **PASS** | 2026-10-13T10:17Z | checks + verify + e2e smoke |
+| api test:security | `npm run test:security -w @salesapp/api` | **PASS** | (corrida previa misma rama) | No parte de `:completo`; baseline previo verde |
 
+**SHA de la corrida funcional:** working tree sobre `a7fb2aa` + cambios de e2e/docs/scripts (commit siguiente en `main`).  
+**Confirmación git:** `main` == `origin/main` tras el FF merge `a7fb2aa`.
+
+---
+
+## `npm run verificar:arquitectura:completo`
+
+Ejecuta:
+
+1. `verificar:arquitectura:checks` (límites, lazy, contratos tools, push, paridad shared)  
+2. `npm run verify` (`API_BASE` / `WEB_BASE`)  
+3. `npx playwright test e2e/smoke.spec.js` con `PLAYWRIGHT_SKIP_SERVERS=1` si el stack ya responde
+
+**Requiere:** `npm run dev:api` y `npm run dev:web` levantados; `.env.local` con las vars de la tabla de reproducibilidad; hostname `localhost` para el WEB.
+
+---
+
+## Fallas restantes
+
+Ninguna en la tabla final. No hay fallas “esperadas” sin causa: las del baseline anterior se cerraron (stack + fix de test).

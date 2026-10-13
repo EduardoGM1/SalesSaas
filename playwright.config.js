@@ -40,8 +40,11 @@ export default defineConfig({
           timeout: 120000,
           env: {
             ...process.env,
-            VITE_SUPABASE_URL: e2eRh ? "http://e2e.test" : "",
-            VITE_SUPABASE_ANON_KEY: e2eRh ? "e2e-anon-key" : "",
+            // Dummy (no secretos): fuerza isSupabaseConfigured=true para que
+            // ProtectedRoute redirija a /login sin sesión. Cadena vacía activa
+            // modo local DEV y rompe el smoke de redirect.
+            VITE_SUPABASE_URL: e2eRh ? "http://e2e.test" : "http://e2e.local",
+            VITE_SUPABASE_ANON_KEY: e2eRh ? "e2e-anon-key" : "e2e-anon-key",
           },
         },
       ],

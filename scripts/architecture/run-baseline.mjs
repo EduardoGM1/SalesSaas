@@ -52,11 +52,11 @@ const steps = [];
 steps.push(sh("test:web", "npm run test:web"));
 steps.push(sh("api test:security", "npm run test:security -w @salesapp/api"));
 
-// verify local (fuerza localhost; falla si no hay API/web en :4000/:5173)
+// verify local (hostname localhost: Vite en Windows suele ser ::1, no 127.0.0.1)
 steps.push(
   sh("verify (local)", "npm run verify", {
-    API_BASE: "http://127.0.0.1:4000",
-    WEB_BASE: "http://127.0.0.1:5173",
+    API_BASE: "http://localhost:4000",
+    WEB_BASE: "http://localhost:5173",
   }),
 );
 

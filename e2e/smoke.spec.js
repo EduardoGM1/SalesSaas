@@ -3,17 +3,21 @@ import { test, expect } from "@playwright/test";
 test.describe("Smoke E2E", () => {
   test("login page carga", async ({ page }) => {
     await page.goto("/login");
-    await expect(page.getByText("Iniciar sesión")).toBeVisible();
-    await expect(page.getByRole("button", { name: /Entrar/i })).toBeVisible();
+    // i18n: auth.login.title / auth.login.submit (no "Entrar")
+    await expect(page.locator(".auth-title")).toContainText(/Inicia sesión/i);
+    await expect(page.getByRole("button", { name: /Iniciar sesión/i })).toBeVisible();
   });
 
   test("register page carga", async ({ page }) => {
     await page.goto("/register");
-    await expect(page.locator(".auth-title", { hasText: "Crear cuenta" })).toBeVisible();
+    // i18n: auth.register.title — "Crea tu cuenta en Saletse" (no el literal corto "Crear cuenta")
+    await expect(page.locator(".auth-title")).toContainText(/Crea tu cuenta/i);
   });
 
   test("ruta protegida redirige a login sin sesión", async ({ page }) => {
     await page.goto("/settings");
+    // Requiere isSupabaseConfigured=true (stack local con VITE_SUPABASE_* o dummy en Playwright).
+    // Sin eso, ProtectedRoute en DEV entra en modo local y no redirige.
     await expect(page).toHaveURL(/\/login/);
   });
 
