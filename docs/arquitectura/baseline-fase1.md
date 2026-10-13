@@ -77,7 +77,7 @@ Con stack arriba, fallaban 2 de 5 smokes. Evidencia (snapshot Playwright / i18n)
 | Completo | `npm run verificar:arquitectura:completo` | **PASS** | 2026-10-13T10:17Z | checks + verify + e2e smoke |
 | api test:security | `npm run test:security -w @salesapp/api` | **PASS** | (corrida previa misma rama) | No parte de `:completo`; baseline previo verde |
 
-**SHA de la corrida funcional:** working tree sobre `a7fb2aa` + cambios de e2e/docs/scripts (commit siguiente en `main`).  
+**SHA de la corrida funcional:** `7b3f35baf1d905a46f26d194f509e20baa680b35`.  
 **Confirmación git:** `main` == `origin/main` tras el FF merge `a7fb2aa`.
 
 ---
