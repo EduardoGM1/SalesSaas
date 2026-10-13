@@ -1,7 +1,7 @@
 # Baseline Fase 1 — red de seguridad
 
 **Fecha (UTC):** 2026-10-13T08:24:29.242Z  
-**SHA:** `d145fee9fa59807250624114ff76b4712e89dba7`  
+**SHA:** `9f2b5ac33f92da4353dc0a0ad1f0dded93de4bed`  
 **Rama:** `test/arquitectura-red-seguridad`  
 **Comando:** `npm run verificar:arquitectura` / `node scripts/architecture/run-baseline.mjs`
 
