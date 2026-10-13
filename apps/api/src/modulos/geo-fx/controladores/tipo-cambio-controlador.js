@@ -1,8 +1,8 @@
 /**
  * Tipo de cambio USD → moneda destino (proveedor externo).
  */
-import { getUsdExchangeRate } from "../lib/exchange-rates.js";
+import { obtenerTipoCambioUsd } from "../servicios/tipo-cambio-servicio.js";
 
 export async function obtenerTipoCambio(to) {
-  return getUsdExchangeRate(to);
+  return obtenerTipoCambioUsd(to);
 }

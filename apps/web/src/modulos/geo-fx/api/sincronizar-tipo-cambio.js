@@ -1,6 +1,7 @@
 import { useDbStore } from "@/stores/db-store";
 
-export async function fetchExchangeRate(currency) {
+/** Obtiene 1 USD → `currency` desde el contrato GET /api/v1/exchange-rates. */
+export async function obtenerTipoCambioRemoto(currency) {
   if (!currency || currency === "USD") {
     return { rate: 1, date: null };
   }
@@ -12,14 +13,17 @@ export async function fetchExchangeRate(currency) {
   return { rate, date: body.data?.date ?? null };
 }
 
+/** @deprecated Usar obtenerTipoCambioRemoto — alias de contrato interno previo. */
+export const fetchExchangeRate = obtenerTipoCambioRemoto;
+
 /** Actualiza exchangeRate en el store cuando el modo es automático. */
-export async function refreshAutoExchangeRate(currency = "USD") {
+export async function refrescarTipoCambioAutomatico(currency = "USD") {
   const db = useDbStore.getState().db;
   const mode = db.settings?.exchangeMode ?? "auto";
   if (mode !== "auto") return { ok: true, skipped: true };
 
   try {
-    const { rate } = await fetchExchangeRate(currency);
+    const { rate } = await obtenerTipoCambioRemoto(currency);
     const current = useDbStore.getState().db;
     const prevRate = Number(current.settings?.exchangeRate);
     if (Number.isFinite(prevRate) && prevRate === rate) {
@@ -34,3 +38,6 @@ export async function refreshAutoExchangeRate(currency = "USD") {
     return { ok: false, error: err instanceof Error ? err.message : String(err) };
   }
 }
+
+/** @deprecated Usar refrescarTipoCambioAutomatico */
+export const refreshAutoExchangeRate = refrescarTipoCambioAutomatico;

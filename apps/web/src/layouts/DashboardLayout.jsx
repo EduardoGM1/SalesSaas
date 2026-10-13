@@ -1,7 +1,7 @@
 import { Outlet } from "react-router-dom";
 import { StoreHydration } from "@/components/providers/store-hydration.jsx";
 import { SyncProvider } from "@/components/providers/sync-provider.jsx";
-import { ExchangeRateSync } from "@/components/providers/exchange-rate-sync.jsx";
+import { SincronizacionTipoCambio } from "@/modulos/geo-fx/proveedores/sincronizacion-tipo-cambio.jsx";
 import { PresenceProvider } from "@/components/providers/presence-provider.jsx";
 import { OneSignalProvider } from "@/components/providers/onesignal-provider.jsx";
 import { PushPermissionPrompt } from "@/components/notifications/push-permission-prompt.jsx";
@@ -43,7 +43,7 @@ export function DashboardLayout() {
   return (
     <StoreHydration>
       <SyncProvider>
-        <ExchangeRateSync />
+        <SincronizacionTipoCambio />
         <PresenceProvider>
           <OneSignalProvider>
             <div className="app">

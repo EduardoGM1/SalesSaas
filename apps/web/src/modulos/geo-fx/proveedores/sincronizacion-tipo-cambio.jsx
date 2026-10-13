@@ -2,10 +2,10 @@ import { useEffect, useRef } from "react";
 import { useAppStore } from "@/stores/app-store";
 import { useDbStore } from "@/stores/db-store";
 import { shallow } from "zustand/shallow";
-import { refreshAutoExchangeRate } from "@/lib/exchange-rate-sync.js";
+import { refrescarTipoCambioAutomatico } from "@/modulos/geo-fx/api/sincronizar-tipo-cambio.js";
 
 /** Mantiene el tipo de cambio actualizado en toda la app cuando el modo es automático. */
-export function ExchangeRateSync() {
+export function SincronizacionTipoCambio() {
   const hydrated = useAppStore((s) => s.hydrated);
   const settings = useDbStore((s) => s.db.settings, shallow);
   const currency = settings?.currency ?? "USD";
@@ -16,10 +16,13 @@ export function ExchangeRateSync() {
     if (!hydrated || mode !== "auto") return;
     if (inflight.current) return;
     inflight.current = true;
-    refreshAutoExchangeRate(currency).finally(() => {
+    refrescarTipoCambioAutomatico(currency).finally(() => {
       inflight.current = false;
     });
   }, [hydrated, mode, currency]);
 
   return null;
 }
+
+/** @deprecated Usar SincronizacionTipoCambio */
+export const ExchangeRateSync = SincronizacionTipoCambio;

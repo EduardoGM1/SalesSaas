@@ -15,7 +15,7 @@ import { t } from "@/lib/i18n.js";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { saveProfileRemote } from "@/actions/settings.js";
 import { selectOnFocus } from "@/lib/focus-select.js";
-import { fetchExchangeRate } from "@/lib/exchange-rate-sync.js";
+import { obtenerTipoCambioRemoto as fetchExchangeRate } from "@/modulos/geo-fx/api/sincronizar-tipo-cambio.js";
 import { useAppStore } from "@/stores/app-store";
 import { collectAllSales } from "@/lib/sales/collect";
 import { isSaleCancelled } from "@/lib/sales/agenda-sales";

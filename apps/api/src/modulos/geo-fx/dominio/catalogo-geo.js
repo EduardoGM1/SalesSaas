@@ -1,6 +1,6 @@
 import { COUNTRY_CITY, COUNTRY_FLAGS } from "@salesapp/shared/constants.js";
 
-const COUNTRY_ISO = {
+const PAIS_ISO = {
   México: "MX",
   "Estados Unidos": "US",
   Canadá: "CA",
@@ -42,31 +42,31 @@ const COUNTRY_ISO = {
   Otro: "XX",
 };
 
-export function listCountries() {
+export function listarPaises() {
   return Object.keys(COUNTRY_CITY).map((name) => ({
     name,
-    iso: COUNTRY_ISO[name] ?? null,
+    iso: PAIS_ISO[name] ?? null,
     flag: COUNTRY_FLAGS[name] ?? "🌐",
     cityCount: (COUNTRY_CITY[name] ?? []).length,
   }));
 }
 
-export function findCountry(query) {
+export function buscarPais(query) {
   const q = String(query ?? "").trim();
   if (!q) return null;
-  const byIso = Object.entries(COUNTRY_ISO).find(([, iso]) => iso.toLowerCase() === q.toLowerCase());
+  const byIso = Object.entries(PAIS_ISO).find(([, iso]) => iso.toLowerCase() === q.toLowerCase());
   if (byIso) return byIso[0];
   const exact = Object.keys(COUNTRY_CITY).find((n) => n.toLowerCase() === q.toLowerCase());
   if (exact) return exact;
   return Object.keys(COUNTRY_CITY).find((n) => n.toLowerCase().includes(q.toLowerCase())) ?? null;
 }
 
-export function listCities(countryName) {
-  const name = findCountry(countryName);
+export function listarCiudades(nombrePais) {
+  const name = buscarPais(nombrePais);
   if (!name) return null;
   return {
     country: name,
-    iso: COUNTRY_ISO[name] ?? null,
+    iso: PAIS_ISO[name] ?? null,
     flag: COUNTRY_FLAGS[name] ?? "🌐",
     cities: COUNTRY_CITY[name] ?? [],
   };
