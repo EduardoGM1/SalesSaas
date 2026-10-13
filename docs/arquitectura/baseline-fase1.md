@@ -1,8 +1,9 @@
 # Baseline Fase 1 — red de seguridad (funcional)
 
 **Fecha (UTC):** 2026-10-13T10:17:35Z  
-**SHA (pre-commit de este doc; actualizar tras push):** ver tabla — corrida sobre `main` @ `a7fb2aa` + fixes e2e locales pendientes de commit  
-**Rama:** `main`  
+**SHA funcional (e2e/completo):** `7b3f35baf1d905a46f26d194f509e20baa680b35`  
+**SHA tip `main`:** `dbc39d8af0b17577b0116bdd2136c9521b73ecae`  
+**Rama:** `main` (`main` == `origin/main`)  
 **Deploy:** no  
 **Piloto:** no iniciado
 
