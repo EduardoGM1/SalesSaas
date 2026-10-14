@@ -1,14 +1,19 @@
 #!/usr/bin/env python3
 """Provision / counts / purge de QA efímera (arquitectura) vía VPS (saletse-prod-db).
 
-Compartido por smokes geo-fx, moneda y metas.
+Compartido por smokes geo-fx, moneda, metas y vacaciones.
 
 Uso:
   python scripts/architecture/qa-geo-fx-ephemeral.py provision <email> <password> <full_name>
   python scripts/architecture/qa-geo-fx-ephemeral.py counts <email>
   python scripts/architecture/qa-geo-fx-ephemeral.py purge <email>
+  python scripts/architecture/qa-geo-fx-ephemeral.py seed-prospect <email> <prospect_id> [name] [prospect_code]
 
 Sin secretos en stdout salvo el uid (provision). Password solo entra por argv.
+
+seed-prospect: inserta un expediente mínimo en prod para que tool_calculations
+pueda guardar sin violar tool_calculations_prospect_id_fkey (QA personal crea
+el cliente offline para evitar 403 en API).
 """
 from __future__ import annotations
 
@@ -122,6 +127,8 @@ SELECT 'prospects|' || COUNT(*)::text FROM prospects
  WHERE user_id = (SELECT id FROM profiles WHERE email = '{email_sql}');
 SELECT 'goals|' || COUNT(*)::text FROM goals
  WHERE user_id = (SELECT id FROM profiles WHERE email = '{email_sql}');
+SELECT 'tool_calculations|' || COUNT(*)::text FROM tool_calculations
+ WHERE user_id = (SELECT id FROM profiles WHERE email = '{email_sql}');
 SELECT 'empresa_miembros|' || COUNT(*)::text FROM empresa_miembros
  WHERE usuario_id = (SELECT id FROM profiles WHERE email = '{email_sql}');
 SELECT 'ws_personal|' || COUNT(*)::text FROM workspaces w
@@ -133,7 +140,14 @@ SELECT 'ws_personal|' || COUNT(*)::text FROM workspaces w
    );
 """,
     )
-    result = {"profiles": 0, "prospects": 0, "goals": 0, "empresa_miembros": 0, "ws_personal": 0}
+    result = {
+        "profiles": 0,
+        "prospects": 0,
+        "goals": 0,
+        "tool_calculations": 0,
+        "empresa_miembros": 0,
+        "ws_personal": 0,
+    }
     for ln in out.splitlines():
         ln = ln.strip()
         if "|" not in ln:
@@ -170,7 +184,7 @@ WHERE w.tipo = 'personal'
   );
 UPDATE profiles SET workspace_activo_id = NULL
 WHERE workspace_activo_id IN (SELECT id FROM _qa_personal_ws) OR email = '{email_sql}';
-DELETE FROM tool_calculations WHERE prospect_id IN (SELECT id FROM prospects WHERE user_id = '{uid}');
+DELETE FROM tool_calculations WHERE user_id = '{uid}';
 DELETE FROM sales WHERE prospect_id IN (SELECT id FROM prospects WHERE user_id = '{uid}');
 DELETE FROM prospect_workflow_events WHERE prospect_id IN (SELECT id FROM prospects WHERE user_id = '{uid}');
 DELETE FROM prospect_workflows WHERE prospect_id IN (SELECT id FROM prospects WHERE user_id = '{uid}');
@@ -226,9 +240,59 @@ SELECT 'wsm|' || COUNT(*)::text FROM workspace_miembros WHERE usuario_id = '{uid
     return {"uid": uid, "email": email, "diag": diag}
 
 
+def seed_prospect(
+    client,
+    email: str,
+    prospect_id: str,
+    name: str = "VacQa",
+    prospect_code: str | None = None,
+) -> dict:
+    """Inserta prospects fila mínima alineada al id local (FK tool_calculations)."""
+    email_sql = email.replace("'", "''")
+    pid = prospect_id.replace("'", "''")
+    name_sql = (name or "VacQa").replace("'", "''")
+    code = (prospect_code or f"QA-{prospect_id.replace('-', '')[:10]}").replace("'", "''")
+    out = psql(
+        client,
+        f"""
+WITH u AS (
+  SELECT p.id AS user_id,
+         COALESCE(
+           p.workspace_activo_id,
+           (SELECT w.id FROM workspaces w
+            JOIN workspace_miembros wm ON wm.workspace_id = w.id
+            WHERE wm.usuario_id = p.id AND w.tipo = 'personal'
+            LIMIT 1)
+         ) AS workspace_id
+  FROM profiles p
+  WHERE p.email = '{email_sql}'
+)
+INSERT INTO prospects (
+  id, user_id, workspace_id, prospect_code, name, name1, completed, quick_expedient
+)
+SELECT '{pid}', u.user_id, u.workspace_id, '{code}', '{name_sql}', '{name_sql}', false, false
+FROM u
+WHERE u.workspace_id IS NOT NULL
+ON CONFLICT (id) DO UPDATE SET
+  name = EXCLUDED.name,
+  name1 = EXCLUDED.name1,
+  updated_at = now()
+RETURNING id::text, user_id::text, workspace_id::text;
+""",
+    ).strip()
+    if not out:
+        raise SystemExit("seed-prospect: sin fila (¿perfil/workspace personal?)")
+    parts = out.splitlines()[0].split("|")
+    return {
+        "prospect_id": parts[0] if parts else prospect_id,
+        "user_id": parts[1] if len(parts) > 1 else "",
+        "workspace_id": parts[2] if len(parts) > 2 else "",
+    }
+
+
 def main() -> None:
     if len(sys.argv) < 3:
-        raise SystemExit("uso: provision|counts|purge ...")
+        raise SystemExit("uso: provision|counts|purge|seed-prospect ...")
     cmd = sys.argv[1]
     email = sys.argv[2]
     client = connect_vps(load_env_file(ROOT))
@@ -241,6 +305,12 @@ def main() -> None:
             print(json.dumps(counts(client, email)))
         elif cmd == "purge":
             print(json.dumps(purge(client, email)))
+        elif cmd == "seed-prospect":
+            if len(sys.argv) < 4:
+                raise SystemExit("seed-prospect <email> <prospect_id> [name] [prospect_code]")
+            name = sys.argv[4] if len(sys.argv) > 4 else "VacQa"
+            code = sys.argv[5] if len(sys.argv) > 5 else None
+            print(json.dumps(seed_prospect(client, email, sys.argv[3], name, code)))
         else:
             raise SystemExit(f"comando desconocido: {cmd}")
     finally:

@@ -5,7 +5,7 @@ import { PageBack } from "@/components/layout/page-back.jsx";
 import { SaveToolModal } from "@/components/calculators/save-tool-modal";
 import { SharedToolBanner } from "@/components/calculators/shared-tool-banner.jsx";
 import { VacationCumulativeChart } from "@/components/calculators/vacation-cumulative-chart.jsx";
-import { buildVacacionesCumulativeSeries, computeVacaciones } from "@/lib/calculations/vacaciones";
+import { calcularVacaciones, construirSerieAcumuladaVacaciones } from "@/modulos/vacaciones/dominio/calculo-vacaciones";
 import { buildOperationalFields, VACACIONES_MONEY_FIELDS } from "@/modulos/moneda/servicios/moneda-servicio";
 import { selectOnFocus } from "@/lib/focus-select.js";
 import { useI18n } from "@/hooks/use-i18n.js";
@@ -97,13 +97,13 @@ export function VacacionesPage({ clientId, shared, embedded }: VacacionesPagePro
   );
 
   const r = useMemo(
-    () => computeVacaciones(operationalFields),
+    () => calcularVacaciones(operationalFields),
     [operationalFields],
   );
 
   const currentYear = new Date().getFullYear();
   const chartSeries = useMemo(
-    () => buildVacacionesCumulativeSeries(operationalFields, currentYear),
+    () => construirSerieAcumuladaVacaciones(operationalFields, currentYear),
     [operationalFields, currentYear],
   );
   const hasProjectionYears = String(fields.va).trim() !== "" && r.anios > 0;

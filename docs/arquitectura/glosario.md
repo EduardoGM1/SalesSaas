@@ -10,6 +10,7 @@ Términos aprobados en `decisiones.md`. Los contratos HTTP/BD/settings/`sts4_*` 
 | calendar / agenda | agenda | agenda | `calendar_entries` |
 | settings | configuración | configuración | `settings`, claves JSON existentes |
 | survey | Survey (marca) | encuesta (solo código nuevo) | `survey`, tool slug `survey` |
+| vacaciones / vacation projection | Proyección de vacaciones | vacaciones (`modulos/vacaciones`) | tool slug `vacaciones`, data `vv`/`vc`/`va`/`vi` |
 | worksheet | Worksheet (marca) | hoja | `worksheet` |
 | Money Box | Money Box | caja-dinero / money-box según contexto | flags `worksheet.money_box`, settings `moneyBoxConfig` |
 | Royal Holiday | Royal Holiday | (marca) | paths `/royal-holiday`, flags RH |

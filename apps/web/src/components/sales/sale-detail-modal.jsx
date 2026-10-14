@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { SalesModal } from "@/components/ui/sales-modal";
 import { computeSurvey, surveyHasData } from "@/lib/calculations/survey";
-import { computeVacaciones } from "@/lib/calculations/vacaciones";
+import { calcularVacaciones } from "@/modulos/vacaciones/dominio/calculo-vacaciones";
 import { worksheetDisplayEntries } from "@/lib/calculations/worksheet-labels";
 import { longDate } from "@/lib/format/dates";
 import { statusLabel } from "@/lib/format/status";
@@ -52,7 +52,7 @@ export function SaleDetailModal({ open, onOpenChange, saleId, showTools = true }
     () => computeSurvey(survey, String(survey.stype || "hotel")),
     [survey, db.settings?.currency, db.settings?.exchangeRate, db.settings?.language],
   );
-  const vacResult = useMemo(() => computeVacaciones(vacaciones), [vacaciones]);
+  const vacResult = useMemo(() => calcularVacaciones(vacaciones), [vacaciones]);
   const worksheetRows = useMemo(() => worksheetDisplayEntries(worksheet), [worksheet]);
 
   if (!sale) return null;

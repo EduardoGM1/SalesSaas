@@ -27,14 +27,15 @@ Reutilizables; provisionan cuenta `@saletse-test.com`, credenciales en `%TEMP%` 
 
 | Script | Qué cubre | Cómo |
 |--------|-----------|------|
-| `qa-geo-fx-ephemeral.py` | Helper VPS: provision / purge | `python scripts/architecture/qa-geo-fx-ephemeral.py provision\|purge …` (SSH vía `vps_ssh`; secrets solo env VPS) |
+| `qa-geo-fx-ephemeral.py` | Helper VPS: provision / counts / purge / `seed-prospect` | `python scripts/architecture/qa-geo-fx-ephemeral.py provision\|purge\|seed-prospect …` (SSH vía `vps_ssh`; secrets solo env VPS) |
 | `smoke-geo-fx-ui-qa.mjs` | UI geo + FX settings + expediente offline | `node scripts/architecture/smoke-geo-fx-ui-qa.mjs` (`PLAYWRIGHT_BASE_URL`) |
 | `smoke-moneda-ui-qa.mjs` | Settings FX (sembrar `usdToMxnRate=1` → 18, PATCH sin clave ≤1), captura, Move In 4000 MXN | `node scripts/architecture/smoke-moneda-ui-qa.mjs` |
 | `smoke-metas-ui-qa.mjs` | Crear/editar meta, KPIs, dashboard `/goals`; purga incl. `goals=0` | `node scripts/architecture/smoke-metas-ui-qa.mjs` |
+| `smoke-vacaciones-ui-qa.mjs` | Expediente → Vacaciones: capturar, resultados, guardar; purga `tool_calculations=0` | `node scripts/architecture/smoke-vacaciones-ui-qa.mjs` |
 | `smoke-geo-fx.mjs` | Solo lecturas API geo/FX (sin auth) | `API_BASE=… node scripts/architecture/smoke-geo-fx.mjs` |
 
 Contraseñas: `randomBytes` en runtime. Sin URLs/claves fijas en el código.  
-Helper `qa-geo-fx-ephemeral.py` también cuenta/borra filas `goals` de la cuenta QA.
+Helper `qa-geo-fx-ephemeral.py` cuenta/borra `goals` y `tool_calculations` de la cuenta QA.
 
 ## Scratch (no versionar)
 

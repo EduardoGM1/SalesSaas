@@ -1,5 +1,10 @@
+/**
+ * Cálculos puros de la tool Vacaciones.
+ * Contratos JSON (vv, vc, va, vi, capture_currency, …) y slug `vacaciones` no se renombran.
+ */
 import { parseMoney } from "@/lib/format/money";
 
+/** Entrada: claves persistidas en tool_calculations.data */
 export interface VacCalcInput {
   vv: string | number;
   vc: string | number;
@@ -19,7 +24,7 @@ export interface VacCalcResult {
   tc: number;
 }
 
-export function computeVacaciones(input: VacCalcInput): VacCalcResult {
+export function calcularVacaciones(input: VacCalcInput): VacCalcResult {
   const viajes = parseMoney(input.vv);
   const costo = parseMoney(input.vc);
   const anios = parseMoney(input.va);
@@ -45,13 +50,12 @@ export interface VacCumulativePoint {
 /**
  * Serie acumulada año a año (solo vista acumulada).
  * Sin inflación: ga × i. Con inflación: misma geometría que `tc` en el punto N.
- * Gasto del año i (i≥1): ga × (1+inf)^{i-1}; acumulado = Σ — alinea gráfica y tarjetas.
  */
-export function buildVacacionesCumulativeSeries(
+export function construirSerieAcumuladaVacaciones(
   input: VacCalcInput,
   startYear: number = new Date().getFullYear(),
 ): VacCumulativePoint[] {
-  const { ga, anios, inf } = computeVacaciones(input);
+  const { ga, anios, inf } = calcularVacaciones(input);
   const years = Math.max(0, Math.floor(anios));
   const points: VacCumulativePoint[] = [];
 
