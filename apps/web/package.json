@@ -7,11 +7,12 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "node --test src/lib/storage/settings-scope.test.mjs src/lib/opc-expediente.test.mjs src/lib/rh-opc-home.test.mjs src/lib/admin/paquete-template-kind.test.mjs src/lib/admin/tool-perm-flags.test.mjs src/modulos/moneda/dominio/conversion.test.mjs src/modulos/metas/dominio/metas-calculo.test.mjs src/modulos/metas/dominio/sync-goals-columns.test.mjs src/modulos/vacaciones/dominio/calculo-vacaciones.test.mjs",
+    "test": "node --test src/lib/storage/settings-scope.test.mjs src/lib/opc-expediente.test.mjs src/lib/rh-opc-home.test.mjs src/lib/admin/paquete-template-kind.test.mjs src/lib/admin/tool-perm-flags.test.mjs src/modulos/moneda/dominio/conversion.test.mjs src/modulos/metas/dominio/metas-calculo.test.mjs src/modulos/metas/dominio/sync-goals-columns.test.mjs src/modulos/vacaciones/dominio/calculo-vacaciones.test.mjs src/modulos/survey/dominio/calculo-survey.test.mjs",
     "test:geo-fx": "node -e \"console.log('ok geo-fx web (caracterización moneda → test:moneda)')\"",
     "test:moneda": "node --test src/modulos/moneda/dominio/conversion.test.mjs",
     "test:metas": "node --test src/modulos/metas/dominio/metas-calculo.test.mjs src/modulos/metas/dominio/sync-goals-columns.test.mjs",
     "test:vacaciones": "node --test src/modulos/vacaciones/dominio/calculo-vacaciones.test.mjs",
+    "test:survey": "node --test src/modulos/survey/dominio/calculo-survey.test.mjs",
     "test:storage": "node --test src/lib/storage/settings-scope.test.mjs"
   },
   "dependencies": {

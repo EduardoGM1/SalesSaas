@@ -34,20 +34,32 @@ Carpetas congeladas (lista base en `scripts/architecture/legacy-baseline.json`):
 
 ## Fachadas
 
-Cada módulo migrado expone un `index.js` / `index.ts` en la raíz del módulo.  
+Cada módulo migrado expone un archivo de entrada en la raíz del módulo.  
 **Regla:** un archivo fuera del módulo (u otro módulo) solo importa esa fachada (`@/modulos/<nombre>` o `../modulos/<nombre>`), nunca `dominio/`, `servicios/`, `rutas/`, etc.
 
 Check: `scripts/architecture/check-module-facades.mjs`.
 
+### Convención de nombres
+
+| Contexto | Archivo | Por qué |
+|----------|---------|---------|
+| **Web (Vite)** | `index.ts` (o `index.js` si el módulo es solo JS) | Vite resuelve `@/modulos/<nombre>` → `index.*`. Preferir **`.ts`** cuando hay tipos. |
+| **API (Node ESM)** | `index.js` | Node no resuelve directorios a `index` sin extensión; el montaje (`routes/v1.js`) importa `../modulos/<nombre>/index.js`. |
+| **Node sin bundler (web)** | `fachada-node.js` | Solo si un `.js` del árbol web se carga con `node` (p. ej. tests de `settings-scope`) y necesita un export del módulo. **No** llamar a este archivo `index.js`: Vite prioriza `index.js` sobre `index.ts` y el build de producción falla (caso moneda / consolidación). |
+
 | Módulo | Web | API |
 |--------|-----|-----|
-| geo-fx | `apps/web/src/modulos/geo-fx/index.js` | `apps/api/src/modulos/geo-fx/index.js` |
-| moneda | `index.ts` (Vite/API completa) + `fachada-node.js` (Node: `normalizeUsdToMxnRate`; **no** `index.js`, Vite lo prioriza) | — |
-| metas | `apps/web/src/modulos/metas/index.ts` | `apps/api/src/modulos/metas/index.js` |
-| vacaciones | `apps/web/src/modulos/vacaciones/index.ts` | — |
+| geo-fx | `index.js` | `index.js` |
+| moneda | `index.ts` + `fachada-node.js` | — |
+| metas | `index.ts` | `index.js` |
+| vacaciones | `index.ts` | — |
+| survey (5a) | `index.ts` | — (preguntas API = deuda 5b) |
 
 Dentro del mismo módulo, los paths internos siguen permitidos (p. ej. `captura` → `servicios`).
 
+### Build en CI
+
+`npm run build:web:ci` (Vite con `VITE_*` placeholder) corre en `verificar:arquitectura:completo` y en `architecture.yml` para atrapar roturas de fachada/import antes del deploy.
 ## Cómo crear un módulo nuevo
 
 Plantilla (español en carpetas internas; contratos HTTP/BD sin renombrar):

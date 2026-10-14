@@ -2,8 +2,9 @@
  * npm run verificar:arquitectura:completo
  *
  * Checks arquitectura (límites, lazy, contratos, push, paridad, contención, fachadas)
- * + test:security (API unitario) + verify local + e2e smoke.
- * Requiere stack local (o que Playwright pueda levantarlo).
+ * + test:security (API unitario) + build:web:ci (Vite, detecta roturas de fachada/import)
+ * + verify local + e2e smoke.
+ * Requiere stack local (o que Playwright pueda levantarlo) para verify/e2e.
  *
  * Variables (nombres; valores en .env.local, nunca en el repo):
  *   API: SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY (si aplica),
@@ -52,6 +53,9 @@ results.push(
 );
 results.push(
   run("api test:security", "npm run test:security -w @salesapp/api"),
+);
+results.push(
+  run("build web (ci)", "npm run build:web:ci"),
 );
 
 const apiOk = await isUp(`${API_BASE}/health`);

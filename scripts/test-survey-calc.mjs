@@ -9,7 +9,7 @@ import fs from "node:fs";
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
 const out = path.join(root, "scripts", ".tmp-survey-calc.mjs");
-const entry = path.join(root, "apps/web/src/lib/calculations/survey.ts");
+const entry = path.join(root, "apps/web/src/modulos/survey/dominio/calculo-survey.ts");
 
 function assert(cond, msg) {
   if (!cond) throw new Error(msg);

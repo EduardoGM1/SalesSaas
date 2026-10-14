@@ -1,5 +1,10 @@
-import { fmt, fmtD, fmtN, parseMoney } from "@/lib/format/money";
+/**
+ * Cálculos puros de la tool Survey.
+ * Contratos JSON (total, hpct, nights, shN/sfN, stype, …) y slug `survey` no se renombran.
+ */
+import { parseMoney } from "@/lib/format/money";
 
+/** Entrada: claves persistidas en tool_calculations.data (planas). */
 export type SurveyData = Record<string, string | number | undefined>;
 
 function numFromVal(v: string | number | undefined): number {
@@ -16,7 +21,7 @@ export interface SurveyCalcResult {
   sType: string;
 }
 
-export function computeSurvey(d: SurveyData, sType = "hotel"): SurveyCalcResult {
+export function calcularSurvey(d: SurveyData, sType = "hotel"): SurveyCalcResult {
   const total = numFromVal(d.total);
   const hpct = (numFromVal(d.hpct) || 70) / 100;
   const base = sType === "paquete" ? total * hpct : total;
@@ -75,8 +80,12 @@ export function computeSurvey(d: SurveyData, sType = "hotel"): SurveyCalcResult 
   };
 }
 
-export function surveyHasData(d: SurveyData): boolean {
+/** Alias consumidores previos (UI / ventas / analysis). */
+export const computeSurvey = calcularSurvey;
+
+export function encuestaTieneDatos(d: SurveyData): boolean {
   return Object.keys(d).some((k) => String(d[k] ?? "").trim() !== "");
 }
 
-export { fmt, fmtD, fmtN };
+/** Alias consumidores previos. */
+export const surveyHasData = encuestaTieneDatos;

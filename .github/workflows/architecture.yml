@@ -26,3 +26,7 @@ jobs:
         run: npm run test:security -w @salesapp/api
         env:
           CI: true
+      - name: Web Vite build (CI placeholders)
+        run: npm run build:web:ci
+        env:
+          CI: true

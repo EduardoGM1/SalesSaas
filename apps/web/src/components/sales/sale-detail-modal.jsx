@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { SalesModal } from "@/components/ui/sales-modal";
-import { computeSurvey, surveyHasData } from "@/lib/calculations/survey";
+import { computeSurvey, surveyHasData } from "@/modulos/survey";
 import { calcularVacaciones } from "@/modulos/vacaciones";
 import { worksheetDisplayEntries } from "@/lib/calculations/worksheet-labels";
 import { longDate } from "@/lib/format/dates";

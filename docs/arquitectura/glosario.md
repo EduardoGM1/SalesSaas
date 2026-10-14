@@ -9,7 +9,7 @@ Términos aprobados en `decisiones.md`. Los contratos HTTP/BD/settings/`sts4_*` 
 | sale | venta | venta | `sale` / `sales` |
 | calendar / agenda | agenda | agenda | `calendar_entries` |
 | settings | configuración | configuración | `settings`, claves JSON existentes |
-| survey | Survey (marca) | encuesta (solo código nuevo) | `survey`, tool slug `survey` |
+| survey | Survey (marca) | encuesta / survey (`modulos/survey`, 5a cálculo) | `survey`, tool slug `survey`, data `total`/`hpct`/`sh*`/`sf*`/… |
 | vacaciones / vacation projection | Proyección de vacaciones | vacaciones (`modulos/vacaciones`) | tool slug `vacaciones`, data `vv`/`vc`/`va`/`vi` |
 | worksheet | Worksheet (marca) | hoja | `worksheet` |
 | Money Box | Money Box | caja-dinero / money-box según contexto | flags `worksheet.money_box`, settings `moneyBoxConfig` |

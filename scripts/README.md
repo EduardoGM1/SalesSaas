@@ -42,6 +42,8 @@ Reutilizables; provisionan cuenta `@saletse-test.com`, credenciales en `%TEMP%` 
 | `smoke-moneda-ui-qa.mjs` | Settings FX (sembrar `usdToMxnRate=1` → 18, PATCH sin clave ≤1), captura, Move In 4000 MXN | `node scripts/architecture/smoke-moneda-ui-qa.mjs` |
 | `smoke-metas-ui-qa.mjs` | Crear/editar meta, KPIs, dashboard `/goals`; purga incl. `goals=0` | `node scripts/architecture/smoke-metas-ui-qa.mjs` |
 | `smoke-vacaciones-ui-qa.mjs` | Expediente → Vacaciones: capturar, resultados, guardar; purga `tool_calculations=0` | `node scripts/architecture/smoke-vacaciones-ui-qa.mjs` |
+| `smoke-survey-ui-qa.mjs` | Expediente → Survey: capturar, resultados, guardar; purga `tool_calculations=0` | `node scripts/architecture/smoke-survey-ui-qa.mjs` |
+| `build-web-ci.mjs` | Vite build con `VITE_*` placeholder (CI / completo) | `npm run build:web:ci` |
 | `smoke-geo-fx.mjs` | Solo lecturas API geo/FX (sin auth) | `API_BASE=… node scripts/architecture/smoke-geo-fx.mjs` |
 
 Contraseñas: `randomBytes` en runtime. Sin URLs/claves fijas en el código.  

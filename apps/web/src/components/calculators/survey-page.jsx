@@ -3,7 +3,7 @@ import { Topbar } from "@/components/layout/topbar";
 import { PageBack } from "@/components/layout/page-back.jsx";
 import { SaveToolModal } from "@/components/calculators/save-tool-modal";
 import { ensureProspectIdentity } from "@/lib/clients";
-import { computeSurvey } from "@/lib/calculations/survey";
+import { computeSurvey } from "@/modulos/survey";
 import { buildOperationalFields, SURVEY_MONEY_FIELDS } from "@/modulos/moneda";
 import { SharedToolBanner } from "@/components/calculators/shared-tool-banner.jsx";
 import { COUNTRY_CITY, COUNTRY_FLAGS } from "@/lib/constants";

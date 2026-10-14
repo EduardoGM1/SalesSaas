@@ -4,7 +4,7 @@ import { Topbar } from "@/components/layout/topbar";
 import { PageBack } from "@/components/layout/page-back";
 import { SharedToolBanner } from "@/components/calculators/shared-tool-banner.jsx";
 import { clientDisplayName } from "@/lib/clients";
-import { computeSurvey, surveyHasData } from "@/lib/calculations/survey";
+import { computeSurvey, surveyHasData } from "@/modulos/survey";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { useMoney } from "@/hooks/use-money.js";
 import { useToolSession } from "@/hooks/use-tool-session.js";
