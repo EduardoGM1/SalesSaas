@@ -47,7 +47,7 @@ Orden de la auditoría Fase 0 (`docs/arquitectura/auditoria-fase0.md` §8):
 
 | Etapa | Módulos |
 |-------|---------|
-| **Inicial** | **1–9** (geo/FX → moneda → reminders/notifications → goals → vacaciones → survey → money box → agenda → ventas) |
+| **Inicial** | **1–9** (geo/FX → moneda → goals/metas → vacaciones → reminders/notifications → survey → money box → agenda → ventas) |
 | **Segunda** | **10–14** (expediente/sharing → Royal Holiday → sync/storage → admin/RBAC → auth/session/PWA) |
 
 ## 6. Fase 1 — red de seguridad (esta rama)

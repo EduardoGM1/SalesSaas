@@ -5,7 +5,7 @@ import { useUserFeatures } from "@/hooks/use-user-features.js";
 import { useMoney } from "@/hooks/use-money.js";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { longDate } from "@/lib/format/dates";
-import { DashboardWeek } from "@/lib/calculations/calendar";
+import { DashboardWeek } from "@/modulos/metas/dominio/semanas-tablero";
 
 function saleLabel(item) {
   return item.clientName || item.note?.split(" · ")[0] || item.contract || "—";

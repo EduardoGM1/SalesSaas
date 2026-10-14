@@ -1,7 +1,8 @@
 /**
  * HTTP de metas. Extrae year/month; la autorización vive en el service.
+ * Rutas: GET/PUT/DELETE /api/v1/goals — sin renombrar.
  */
-import * as metasService from "../services/goals-service.js";
+import * as metasService from "../servicios/metas-servicio.js";
 
 export async function listarMetas(auth, req) {
   return metasService.listarMetas(auth.supabase, auth.userId, req.query.year);

@@ -439,9 +439,9 @@ Estimaciones = archivos tocados de forma directa (UI + lib + api del dominio), n
 |---|--------|--------|------------------|---------|
 | 1 | **Geo / exchange-rates** | Bajo | ~8–15 | Poco estado, sin offline blob |
 | 2 | **Moneda / settings FX** | Bajo-medio | ~15–25 | Ya normalizado; tocar storage con cuidado |
-| 3 | **Reminders / notifications UI** | Medio | ~20–30 | Push contracts sensibles |
-| 4 | **Goals / metas** | Medio | ~15–25 | Columnas ES ya en BD |
-| 5 | **Vacaciones** | Medio | ~15–25 | Tool aislada |
+| 3 | **Goals / metas** | Medio | ~15–25 | Columnas ES ya en BD; API + web |
+| 4 | **Vacaciones** | Medio | ~15–25 | Tool aislada |
+| 5 | **Reminders / notifications UI** | Medio | ~20–30 | Push contracts sensibles |
 | 6 | **Survey** | Medio-alto | ~40–60 | Collab + discovery + tool data |
 | 7 | **Money Box** | Medio-alto | ~25–40 | Flags + settings moneyBoxConfig |
 | 8 | **Agenda / calendar** | Alto | ~30–50 | Sync + realtime |

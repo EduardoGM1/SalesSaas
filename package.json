@@ -41,6 +41,7 @@
     "test:web": "npm run test -w @salesapp/web",
     "test:geo-fx": "npm run test:geo-fx -w @salesapp/api && npm run test:geo-fx -w @salesapp/web",
     "test:moneda": "npm run test:moneda -w @salesapp/web && node scripts/test-settings-fx-rate-warning.mjs",
+    "test:metas": "npm run test:metas -w @salesapp/api && npm run test:metas -w @salesapp/web",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:egress": "playwright test e2e/egress-payload.spec.js e2e/egress-realtime-idle.spec.js e2e/egress-sync-empty-local.spec.js",

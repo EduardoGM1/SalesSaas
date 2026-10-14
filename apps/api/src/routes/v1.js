@@ -13,7 +13,7 @@ import prospectsRouter from "./prospects.js";
 import chatRouter from "./chat.js";
 import salesRouter from "./sales.js";
 import calendarRouter from "./calendar.js";
-import goalsRouter from "./goals.js";
+import goalsRouter from "../modulos/metas/rutas/metas.js";
 import activitiesRouter from "./activities.js";
 import toolsRouter from "./tools.js";
 import networkRouter from "./network.js";

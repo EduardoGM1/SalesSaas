@@ -1,8 +1,9 @@
 /**
  * Persistencia de metas mensuales. Sin autorización: el service ya resolvió workspace.
+ * Tabla y columnas `goals` (vol, tours, ventas, dias, descansos) — contrato BD.
  */
-import { ServiceError } from "../lib/service-error.js";
-import { scopeByWorkspace } from "../lib/workspace-scope.js";
+import { ServiceError } from "../../../lib/service-error.js";
+import { scopeByWorkspace } from "../../../lib/workspace-scope.js";
 
 export async function listarMetasDeUsuario(supabase, { userId, workspaceId, year }) {
   let q = supabase.from("goals").select("*").eq("user_id", userId);

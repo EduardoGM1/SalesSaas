@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
-"""Provision / counts / purge de QA efímera geo-fx vía VPS (saletse-prod-db).
+"""Provision / counts / purge de QA efímera (arquitectura) vía VPS (saletse-prod-db).
+
+Compartido por smokes geo-fx, moneda y metas.
 
 Uso:
   python scripts/architecture/qa-geo-fx-ephemeral.py provision <email> <password> <full_name>
@@ -118,6 +120,8 @@ def counts(client, email: str) -> dict:
 SELECT 'profiles|' || COUNT(*)::text FROM profiles WHERE email = '{email_sql}';
 SELECT 'prospects|' || COUNT(*)::text FROM prospects
  WHERE user_id = (SELECT id FROM profiles WHERE email = '{email_sql}');
+SELECT 'goals|' || COUNT(*)::text FROM goals
+ WHERE user_id = (SELECT id FROM profiles WHERE email = '{email_sql}');
 SELECT 'empresa_miembros|' || COUNT(*)::text FROM empresa_miembros
  WHERE usuario_id = (SELECT id FROM profiles WHERE email = '{email_sql}');
 SELECT 'ws_personal|' || COUNT(*)::text FROM workspaces w
@@ -129,7 +133,7 @@ SELECT 'ws_personal|' || COUNT(*)::text FROM workspaces w
    );
 """,
     )
-    result = {"profiles": 0, "prospects": 0, "empresa_miembros": 0, "ws_personal": 0}
+    result = {"profiles": 0, "prospects": 0, "goals": 0, "empresa_miembros": 0, "ws_personal": 0}
     for ln in out.splitlines():
         ln = ln.strip()
         if "|" not in ln:
@@ -171,6 +175,7 @@ DELETE FROM sales WHERE prospect_id IN (SELECT id FROM prospects WHERE user_id =
 DELETE FROM prospect_workflow_events WHERE prospect_id IN (SELECT id FROM prospects WHERE user_id = '{uid}');
 DELETE FROM prospect_workflows WHERE prospect_id IN (SELECT id FROM prospects WHERE user_id = '{uid}');
 DELETE FROM prospects WHERE user_id = '{uid}';
+DELETE FROM goals WHERE user_id = '{uid}';
 DELETE FROM empresa_miembros WHERE usuario_id = '{uid}';
 DELETE FROM workspace_miembros WHERE usuario_id = '{uid}';
 DELETE FROM flag_reglas WHERE alcance = 'usuario' AND alcance_id = '{uid}';

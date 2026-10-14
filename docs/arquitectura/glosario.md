@@ -13,7 +13,7 @@ Términos aprobados en `decisiones.md`. Los contratos HTTP/BD/settings/`sts4_*` 
 | worksheet | Worksheet (marca) | hoja | `worksheet` |
 | Money Box | Money Box | caja-dinero / money-box según contexto | flags `worksheet.money_box`, settings `moneyBoxConfig` |
 | Royal Holiday | Royal Holiday | (marca) | paths `/royal-holiday`, flags RH |
-| goals | metas | metas | `goals` |
+| goals | metas | metas (`modulos/metas`) | `goals`, `/api/v1/goals`, columnas `vol`/`tours`/`ventas`/`dias`/`descansos` |
 | geo / countries | país / ciudad | geo, país, ciudad | `/api/v1/geo/*`, `COUNTRY_CITY` |
 | exchange rate | tipo de cambio | tipo-cambio | `/api/v1/exchange-rates`, `exchangeRate`, `usdToMxnRate`, `exchangeMode` |
 | currency | moneda | moneda (`modulos/moneda`) | `currency` en settings |
