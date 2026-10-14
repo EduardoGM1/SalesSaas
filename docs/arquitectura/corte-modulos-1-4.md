@@ -10,7 +10,7 @@ Sin iniciar módulo 5. Solo documentación.
 | 1 | **geo-fx** | `054f0ab` | API + web | API: catalogo/tipo-cambio + rutas; web: sync FX + provider | ~piloto completo (dominio+servicios+controladores+rutas) |
 | 2 | **moneda** | `4d3c231` (+ smoke fix `d60c8a4`) | web | `conversion-nucleo`, `moneda-servicio`, normalizar tasa, captura RH | Bajo: extracción + imports UI |
 | 3 | **metas** | `19586a0` | API + web | API: metas CRUD; web: KPIs + semanas tablero | Medio: API move + dominio web |
-| 4 | **vacaciones** | *(rellenar tras commit)* | web | `calculo-vacaciones.ts`; UI no movida | ~+29/−6 código app (sin adaptador legacy) |
+| 4 | **vacaciones** | `92e569f` | web | `calculo-vacaciones.ts`; UI no movida | ~+13/−9 código app (sin adaptador legacy; aliases EN eliminados) |
 
 Detalles por módulo: `docs/arquitectura/migraciones/{geo-fx,moneda,metas,vacaciones}.md`.
 
