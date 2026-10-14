@@ -36,8 +36,8 @@ import {
   rhFormToOperational,
   rhMontoVentaOperational,
   switchRhFormCaptureCurrency,
-} from "@/lib/currency/rh-form-currency.js";
-import { resolveOperationalAmount } from "@/lib/currency/moneda-service";
+} from "@/modulos/moneda/captura/rh-formulario-moneda.js";
+import { resolveOperationalAmount } from "@/modulos/moneda/servicios/moneda-servicio";
 import { WorksheetRhSkeleton } from "@/components/ui/content-skeleton.jsx";
 
 const TABS = [

@@ -9,7 +9,7 @@ import { selectOnFocus } from "@/lib/focus-select.js";
 import { formatMoneyValue, parseMoney, toDisplayAmount } from "@/lib/format/money";
 import { formatMoneyInput } from "@/lib/format/numeric-input.js";
 import { saveSettingsPatchRemote } from "@/actions/settings.js";
-import { normalizeCaptureCurrency } from "@/lib/currency/moneda-service";
+import { normalizeCaptureCurrency } from "@/modulos/moneda/servicios/moneda-servicio";
 import {
   defaultPolicyConfig,
   fromCents,

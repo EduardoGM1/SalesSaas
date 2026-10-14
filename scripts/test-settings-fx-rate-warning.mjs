@@ -8,7 +8,7 @@ import { fileURLToPath, pathToFileURL } from "url";
 const __dir = dirname(fileURLToPath(import.meta.url));
 const webSrc = (...parts) => pathToFileURL(resolve(__dir, "../apps/web/src", ...parts)).href;
 
-const { normalizeUsdToMxnRate } = await import(webSrc("lib/currency/usd-to-mxn-normalize.js"));
+const { normalizeUsdToMxnRate } = await import(webSrc("modulos/moneda/dominio/normalizar-tasa-usd-mxn.js"));
 const { pickUserGlobalSettings, composeSettings } = await import(webSrc("lib/storage/settings-scope.js"));
 
 function resolveUsdToMxnRate(settings) {

@@ -6,7 +6,7 @@ import {
   convertir,
   formatCaptureMoneyValue,
   resolveOperationalAmount,
-} from "@/lib/currency/moneda-service";
+} from "@/modulos/moneda/servicios/moneda-servicio";
 
 /** Campos escalares del formulario RH que siguen la moneda de captura activa. */
 export const RH_WORKSHEET_MONEY_FIELDS = [

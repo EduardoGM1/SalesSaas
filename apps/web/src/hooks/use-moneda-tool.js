@@ -7,8 +7,8 @@ import {
   normalizeCaptureCurrency,
   parseCurrencyMeta,
   serializeCurrencyMeta,
-} from "@/lib/currency/moneda-service";
-import { refreshRhCurrencyMeta } from "@/lib/currency/rh-form-currency.js";
+} from "@/modulos/moneda/servicios/moneda-servicio";
+import { refreshRhCurrencyMeta } from "@/modulos/moneda/captura/rh-formulario-moneda.js";
 
 /**
  * Moneda de captura por herramienta, sincronizada con preferencia GLOBAL

@@ -6,7 +6,7 @@ import { SaveToolModal } from "@/components/calculators/save-tool-modal";
 import { SharedToolBanner } from "@/components/calculators/shared-tool-banner.jsx";
 import { VacationCumulativeChart } from "@/components/calculators/vacation-cumulative-chart.jsx";
 import { buildVacacionesCumulativeSeries, computeVacaciones } from "@/lib/calculations/vacaciones";
-import { buildOperationalFields, VACACIONES_MONEY_FIELDS } from "@/lib/currency/moneda-service";
+import { buildOperationalFields, VACACIONES_MONEY_FIELDS } from "@/modulos/moneda/servicios/moneda-servicio";
 import { selectOnFocus } from "@/lib/focus-select.js";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { useMonedaToolBucket } from "@/hooks/use-moneda-tool.js";

@@ -4,7 +4,7 @@ import { useDbStore } from "@/stores/db-store";
 import { toast } from "@/lib/toast";
 import { buildProfileSettingsBody } from "@/lib/storage/settings-scope.js";
 import { getActiveWorkspaceId, getStoredWorkspacesMap } from "@/lib/storage/local-storage-adapter";
-import { normalizeUsdToMxnRate } from "@/lib/currency/usd-to-mxn-normalize.js";
+import { normalizeUsdToMxnRate } from "@/modulos/moneda/dominio/normalizar-tasa-usd-mxn.js";
 
 export function buildSettingsPayload(settings, fullName) {
   const payload = {

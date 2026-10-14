@@ -7,7 +7,7 @@ import {
   CAPTURE_CURRENCIES,
   normalizeCaptureCurrency,
   resolveUsdToMxnRate,
-} from "@/lib/currency/moneda-service";
+} from "@/modulos/moneda/servicios/moneda-servicio";
 import { selectOnFocus } from "@/lib/focus-select.js";
 import { toast } from "@/lib/toast";
 

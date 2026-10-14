@@ -21,6 +21,19 @@ Utilidades de desarrollo, despliegue, seeds y verificación. La API y el web tam
 - **Smokes manuales versionados** (p. ej. `smoke-presentacion-img.mjs`): credenciales solo `E2E_EMAIL` / `E2E_PASSWORD`; si faltan, el script termina con error claro.
 - **No crear** un smoke nuevo por feature: reutilizar un script parametrizado por entorno (`PLAYWRIGHT_BASE_URL`, `E2E_*`).
 
+### Arquitectura — smokes UI QA efímera (`scripts/architecture/`)
+
+Reutilizables; provisionan cuenta `@saletse-test.com`, credenciales en `%TEMP%` (nunca en el repo) y purgan a conteos 0.
+
+| Script | Qué cubre | Cómo |
+|--------|-----------|------|
+| `qa-geo-fx-ephemeral.py` | Helper VPS: provision / purge | `python scripts/architecture/qa-geo-fx-ephemeral.py provision\|purge …` (SSH vía `vps_ssh`; secrets solo env VPS) |
+| `smoke-geo-fx-ui-qa.mjs` | UI geo + FX settings + expediente offline | `node scripts/architecture/smoke-geo-fx-ui-qa.mjs` (`PLAYWRIGHT_BASE_URL`) |
+| `smoke-moneda-ui-qa.mjs` | Settings FX (sembrar `usdToMxnRate=1` → 18, PATCH sin clave ≤1), captura, Move In 4000 MXN | `node scripts/architecture/smoke-moneda-ui-qa.mjs` |
+| `smoke-geo-fx.mjs` | Solo lecturas API geo/FX (sin auth) | `API_BASE=… node scripts/architecture/smoke-geo-fx.mjs` |
+
+Contraseñas: `randomBytes` en runtime. Sin URLs/claves fijas en el código.
+
 ## Scratch (no versionar)
 
 - Salidas: `scripts/.smoke-*-shots/`, `scripts/.diag-*`, `scripts/.audit-*`, `scripts/.db-cleanup-*.json`.

@@ -3,7 +3,7 @@
  * y otras son de la sala/workspace (no deben viajar al switch).
  */
 
-import { normalizeUsdToMxnRate } from "../currency/usd-to-mxn-normalize.js";
+import { normalizeUsdToMxnRate } from "../../modulos/moneda/dominio/normalizar-tasa-usd-mxn.js";
 
 export const USER_GLOBAL_SETTING_KEYS = [
   "language",

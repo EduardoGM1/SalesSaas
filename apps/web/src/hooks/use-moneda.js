@@ -8,7 +8,7 @@ import {
   formatCaptureMoneyValue,
   getMonedaContext,
   resolveOperationalAmount,
-} from "@/lib/currency/moneda-service";
+} from "@/modulos/moneda/servicios/moneda-servicio";
 
 /**
  * Moneda de captura + formato de resultados.

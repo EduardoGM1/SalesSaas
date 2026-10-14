@@ -9,7 +9,7 @@ import { SharedToolBanner } from "@/components/calculators/shared-tool-banner.js
 import { WorksheetRoyalHolidayPage } from "@/components/calculators/worksheet-royal-holiday-page.jsx";
 import { WS_CONFIG_IDS, WS_DEFAULTS } from "@/lib/constants";
 import { computeWorksheet, ensureWSConfig } from "@/lib/calculations/worksheet";
-import { buildOperationalFields, WORKSHEET_MONEY_FIELDS } from "@/lib/currency/moneda-service";
+import { buildOperationalFields, WORKSHEET_MONEY_FIELDS } from "@/modulos/moneda/servicios/moneda-servicio";
 import { selectOnFocus } from "@/lib/focus-select.js";
 import { formatDecimalInput } from "@/lib/format/numeric-input.js";
 import { useI18n } from "@/hooks/use-i18n.js";

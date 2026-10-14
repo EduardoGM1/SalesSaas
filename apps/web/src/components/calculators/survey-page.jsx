@@ -4,7 +4,7 @@ import { PageBack } from "@/components/layout/page-back.jsx";
 import { SaveToolModal } from "@/components/calculators/save-tool-modal";
 import { ensureProspectIdentity } from "@/lib/clients";
 import { computeSurvey } from "@/lib/calculations/survey";
-import { buildOperationalFields, SURVEY_MONEY_FIELDS } from "@/lib/currency/moneda-service";
+import { buildOperationalFields, SURVEY_MONEY_FIELDS } from "@/modulos/moneda/servicios/moneda-servicio";
 import { SharedToolBanner } from "@/components/calculators/shared-tool-banner.jsx";
 import { COUNTRY_CITY, COUNTRY_FLAGS } from "@/lib/constants";
 import { selectOnFocus } from "@/lib/focus-select.js";

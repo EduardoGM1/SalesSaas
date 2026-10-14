@@ -1,0 +1,246 @@
+#!/usr/bin/env python3
+"""Provision / counts / purge de QA efímera geo-fx vía VPS (saletse-prod-db).
+
+Uso:
+  python scripts/architecture/qa-geo-fx-ephemeral.py provision <email> <password> <full_name>
+  python scripts/architecture/qa-geo-fx-ephemeral.py counts <email>
+  python scripts/architecture/qa-geo-fx-ephemeral.py purge <email>
+
+Sin secretos en stdout salvo el uid (provision). Password solo entra por argv.
+"""
+from __future__ import annotations
+
+import base64
+import json
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT / "scripts"))
+from vps_ssh import connect_vps, load_env_file  # noqa: E402
+
+ENV_FILE = "/var/www/Saletse/.env"
+DB = "saletse-prod-db"
+
+
+def run(client, cmd: str, timeout: int = 180) -> str:
+    _, stdout, stderr = client.exec_command(cmd, timeout=timeout)
+    out = stdout.read().decode("utf-8", errors="replace")
+    err = stderr.read().decode("utf-8", errors="replace")
+    code = stdout.channel.recv_exit_status()
+    if code != 0:
+        raise SystemExit(f"cmd failed ({code}): {out}\n{err}")
+    return out
+
+
+def psql(client, sql: str) -> str:
+    b64 = base64.b64encode(sql.encode()).decode()
+    return run(
+        client,
+        f"echo {b64} | base64 -d | docker exec -i {DB} "
+        "psql -U supabase_admin -d postgres -v ON_ERROR_STOP=1 -t -A",
+    )
+
+
+def auth_create_or_update(client, email: str, password: str, full_name: str) -> str:
+    py = f"""
+python3 - <<'PY'
+import json, urllib.request, urllib.error
+env={{}}
+for raw in open({ENV_FILE!r}, encoding="utf-8"):
+    raw=raw.strip()
+    if not raw or raw.startswith("#") or "=" not in raw: continue
+    k,v=raw.split("=",1); env[k.strip()]=v.strip().strip('"').strip("'")
+base=env.get("SUPABASE_URL","").rstrip("/")
+anon=env.get("SUPABASE_ANON_KEY") or env.get("VITE_SUPABASE_ANON_KEY")
+service=env.get("SUPABASE_SERVICE_ROLE_KEY")
+email={email!r}; full_name={full_name!r}; password={password!r}
+def req(method, path, body=None):
+    data=json.dumps(body).encode() if body is not None else None
+    r=urllib.request.Request(base+path, data=data, method=method,
+      headers={{"Authorization":"Bearer "+service,"apikey":anon,"Content-Type":"application/json"}})
+    try:
+        with urllib.request.urlopen(r, timeout=60) as resp:
+            raw=resp.read().decode(); return resp.status, json.loads(raw) if raw else {{}}
+    except urllib.error.HTTPError as ex:
+        raw=ex.read().decode()
+        try: payload=json.loads(raw)
+        except Exception: payload={{"raw":raw[:400]}}
+        return ex.code, payload
+st, listed = req("GET", "/auth/v1/admin/users?page=1&per_page=1000")
+existing=next((u for u in (listed.get("users") or []) if (u.get("email") or "").lower()==email.lower()), None)
+if existing:
+    st,out=req("PUT", f"/auth/v1/admin/users/{{existing['id']}}", {{"email_confirm":True,"password":password,"user_metadata":{{"full_name":full_name}}}})
+    if st not in (200,201): raise SystemExit(f"updateUser {{st}} {{out}}")
+    print(existing["id"])
+else:
+    st,created=req("POST","/auth/v1/admin/users",{{"email":email,"password":password,"email_confirm":True,"user_metadata":{{"full_name":full_name}}}})
+    if st not in (200,201): raise SystemExit(f"createUser {{st}} {{created}}")
+    uid=created.get("id") or (created.get("user") or {{}}).get("id")
+    if not uid: raise SystemExit(f"sin id {{created}}")
+    print(uid)
+PY
+"""
+    out = run(client, py, timeout=90)
+    lines = [ln.strip() for ln in out.splitlines() if ln.strip()]
+    if not lines:
+        raise SystemExit("sin uid de auth")
+    return lines[-1]
+
+
+def auth_delete(client, uid: str) -> None:
+    py = f"""
+python3 - <<'PY'
+import urllib.request
+env={{}}
+for raw in open({ENV_FILE!r}, encoding="utf-8"):
+    raw=raw.strip()
+    if not raw or raw.startswith("#") or "=" not in raw: continue
+    k,v=raw.split("=",1); env[k.strip()]=v.strip().strip('"').strip("'")
+uid={uid!r}
+r=urllib.request.Request(env["SUPABASE_URL"].rstrip("/")+"/auth/v1/admin/users/"+uid, method="DELETE",
+  headers={{"Authorization":"Bearer "+env["SUPABASE_SERVICE_ROLE_KEY"],"apikey":env.get("SUPABASE_ANON_KEY") or env.get("VITE_SUPABASE_ANON_KEY")}})
+try:
+    urllib.request.urlopen(r, timeout=60)
+    print("auth_deleted")
+except Exception as e:
+    print("auth_delete_warn", e)
+PY
+"""
+    run(client, py, timeout=60)
+
+
+def counts(client, email: str) -> dict:
+    email_sql = email.replace("'", "''")
+    out = psql(
+        client,
+        f"""
+SELECT 'profiles|' || COUNT(*)::text FROM profiles WHERE email = '{email_sql}';
+SELECT 'prospects|' || COUNT(*)::text FROM prospects
+ WHERE user_id = (SELECT id FROM profiles WHERE email = '{email_sql}');
+SELECT 'empresa_miembros|' || COUNT(*)::text FROM empresa_miembros
+ WHERE usuario_id = (SELECT id FROM profiles WHERE email = '{email_sql}');
+SELECT 'ws_personal|' || COUNT(*)::text FROM workspaces w
+ WHERE w.tipo = 'personal'
+   AND EXISTS (
+     SELECT 1 FROM workspace_miembros wm
+     JOIN profiles p ON p.id = wm.usuario_id
+     WHERE wm.workspace_id = w.id AND p.email = '{email_sql}'
+   );
+""",
+    )
+    result = {"profiles": 0, "prospects": 0, "empresa_miembros": 0, "ws_personal": 0}
+    for ln in out.splitlines():
+        ln = ln.strip()
+        if "|" not in ln:
+            continue
+        key, val = ln.split("|", 1)
+        if key in result:
+            result[key] = int(val)
+    return result
+
+
+def purge(client, email: str) -> dict:
+    email_sql = email.replace("'", "''")
+    uid_out = psql(client, f"SELECT id::text FROM profiles WHERE email = '{email_sql}';").strip()
+    uid = uid_out.splitlines()[0].strip() if uid_out.strip() else ""
+    if uid:
+        psql(
+            client,
+            f"""
+ALTER TABLE public.prospect_workflow_events DISABLE TRIGGER workflow_events_append_only;
+DROP TABLE IF EXISTS _qa_personal_ws;
+CREATE TEMP TABLE _qa_personal_ws AS
+SELECT DISTINCT w.id
+FROM workspaces w
+WHERE w.tipo = 'personal'
+  AND EXISTS (
+    SELECT 1 FROM workspace_miembros wm
+    JOIN profiles p ON p.id = wm.usuario_id
+    WHERE wm.workspace_id = w.id AND p.email = '{email_sql}'
+  )
+  AND NOT EXISTS (
+    SELECT 1 FROM workspace_miembros wm
+    JOIN profiles p ON p.id = wm.usuario_id
+    WHERE wm.workspace_id = w.id AND p.email <> '{email_sql}'
+  );
+UPDATE profiles SET workspace_activo_id = NULL
+WHERE workspace_activo_id IN (SELECT id FROM _qa_personal_ws) OR email = '{email_sql}';
+DELETE FROM tool_calculations WHERE prospect_id IN (SELECT id FROM prospects WHERE user_id = '{uid}');
+DELETE FROM sales WHERE prospect_id IN (SELECT id FROM prospects WHERE user_id = '{uid}');
+DELETE FROM prospect_workflow_events WHERE prospect_id IN (SELECT id FROM prospects WHERE user_id = '{uid}');
+DELETE FROM prospect_workflows WHERE prospect_id IN (SELECT id FROM prospects WHERE user_id = '{uid}');
+DELETE FROM prospects WHERE user_id = '{uid}';
+DELETE FROM empresa_miembros WHERE usuario_id = '{uid}';
+DELETE FROM workspace_miembros WHERE usuario_id = '{uid}';
+DELETE FROM flag_reglas WHERE alcance = 'usuario' AND alcance_id = '{uid}';
+DELETE FROM workspace_miembros WHERE workspace_id IN (SELECT id FROM _qa_personal_ws);
+DELETE FROM workspaces WHERE tipo = 'personal' AND id IN (SELECT id FROM _qa_personal_ws);
+DELETE FROM profiles WHERE id = '{uid}';
+ALTER TABLE public.prospect_workflow_events ENABLE TRIGGER workflow_events_append_only;
+""",
+        )
+        auth_delete(client, uid)
+    return counts(client, email)
+
+
+def provision(client, email: str, password: str, full_name: str) -> dict:
+    purge(client, email)
+    uid = auth_create_or_update(client, email, password, full_name)
+    full_sql = full_name.replace("'", "''")
+    email_sql = email.replace("'", "''")
+    psql(
+        client,
+        f"""
+INSERT INTO profiles (id, email, full_name, is_active)
+VALUES ('{uid}', '{email_sql}', '{full_sql}', true)
+ON CONFLICT (id) DO UPDATE SET email = EXCLUDED.email, full_name = EXCLUDED.full_name, is_active = true;
+SELECT public.ensure_personal_workspace('{uid}');
+UPDATE profiles p
+SET is_active = true,
+    full_name = '{full_sql}',
+    workspace_activo_id = COALESCE(
+      p.workspace_activo_id,
+      (SELECT w.id FROM workspaces w
+       JOIN workspace_miembros wm ON wm.workspace_id = w.id
+       WHERE wm.usuario_id = '{uid}' AND w.tipo = 'personal'
+       LIMIT 1)
+    )
+WHERE p.id = '{uid}';
+""",
+    )
+    # Diagnóstico mínimo (sin PII sensible)
+    diag = psql(
+        client,
+        f"""
+SELECT 'ws|' || COALESCE(workspace_activo_id::text,'(null)') FROM profiles WHERE id = '{uid}';
+SELECT 'emi|' || COUNT(*)::text FROM empresa_miembros WHERE usuario_id = '{uid}';
+SELECT 'wsm|' || COUNT(*)::text FROM workspace_miembros WHERE usuario_id = '{uid}';
+""",
+    ).strip().replace("\n", " ")
+    return {"uid": uid, "email": email, "diag": diag}
+
+
+def main() -> None:
+    if len(sys.argv) < 3:
+        raise SystemExit("uso: provision|counts|purge ...")
+    cmd = sys.argv[1]
+    email = sys.argv[2]
+    client = connect_vps(load_env_file(ROOT))
+    try:
+        if cmd == "provision":
+            if len(sys.argv) < 5:
+                raise SystemExit("provision <email> <password> <full_name>")
+            print(json.dumps(provision(client, email, sys.argv[3], sys.argv[4])))
+        elif cmd == "counts":
+            print(json.dumps(counts(client, email)))
+        elif cmd == "purge":
+            print(json.dumps(purge(client, email)))
+        else:
+            raise SystemExit(f"comando desconocido: {cmd}")
+    finally:
+        client.close()
+
+
+if __name__ == "__main__":
+    main()

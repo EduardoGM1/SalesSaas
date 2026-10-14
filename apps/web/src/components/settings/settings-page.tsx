@@ -32,8 +32,8 @@ import {
   isUnusualUsdToMxnRate,
   resolveUsdToMxnRate,
   unusualUsdToMxnRateMessage,
-} from "@/lib/currency/moneda-service";
-import { normalizeUsdToMxnRate } from "@/lib/currency/usd-to-mxn-normalize.js";
+} from "@/modulos/moneda/servicios/moneda-servicio";
+import { normalizeUsdToMxnRate } from "@/modulos/moneda/dominio/normalizar-tasa-usd-mxn.js";
 
 function stripInvalidUsdToMxnRate<T extends { usdToMxnRate?: number }>(settings: T): T {
   const next = { ...settings };

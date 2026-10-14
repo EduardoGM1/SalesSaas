@@ -16,7 +16,8 @@ Términos aprobados en `decisiones.md`. Los contratos HTTP/BD/settings/`sts4_*` 
 | goals | metas | metas | `goals` |
 | geo / countries | país / ciudad | geo, país, ciudad | `/api/v1/geo/*`, `COUNTRY_CITY` |
 | exchange rate | tipo de cambio | tipo-cambio | `/api/v1/exchange-rates`, `exchangeRate`, `usdToMxnRate`, `exchangeMode` |
-| currency | moneda | moneda | `currency` en settings |
+| currency | moneda | moneda (`modulos/moneda`) | `currency` en settings |
+| captura FX USD→MXN | tipo de cambio captura | normalizar/resolver tasa | `usdToMxnRate` (nunca ≤ 1 persistido) |
 
 ## Reglas
 
