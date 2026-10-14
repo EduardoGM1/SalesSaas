@@ -3,7 +3,7 @@
  * y otras son de la sala/workspace (no deben viajar al switch).
  */
 
-import { normalizeUsdToMxnRate } from "../../modulos/moneda/index.js";
+import { normalizeUsdToMxnRate } from "../../modulos/moneda/fachada-node.js";
 
 export const USER_GLOBAL_SETTING_KEYS = [
   "language",

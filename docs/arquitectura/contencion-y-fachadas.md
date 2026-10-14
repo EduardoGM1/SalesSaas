@@ -42,7 +42,7 @@ Check: `scripts/architecture/check-module-facades.mjs`.
 | Módulo | Web | API |
 |--------|-----|-----|
 | geo-fx | `apps/web/src/modulos/geo-fx/index.js` | `apps/api/src/modulos/geo-fx/index.js` |
-| moneda | `index.ts` (Vite/API completa) + `index.js` (Node: `normalizeUsdToMxnRate` sin alias `@/`) | — |
+| moneda | `index.ts` (Vite/API completa) + `fachada-node.js` (Node: `normalizeUsdToMxnRate`; **no** `index.js`, Vite lo prioriza) | — |
 | metas | `apps/web/src/modulos/metas/index.ts` | `apps/api/src/modulos/metas/index.js` |
 | vacaciones | `apps/web/src/modulos/vacaciones/index.ts` | — |
 

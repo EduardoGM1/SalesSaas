@@ -71,8 +71,10 @@ function resolveModuleImport(spec, fromRel) {
 }
 
 function isFacadeRest(rest) {
-  if (!rest || rest === "." ) return true;
+  if (!rest || rest === ".") return true;
   if (/^index(?:\.(js|ts|mjs|cjs|jsx|tsx))?$/.test(rest)) return true;
+  // Entrada Node sin bundler (no usar index.js: Vite lo prioriza sobre index.ts)
+  if (rest === "fachada-node.js") return true;
   return false;
 }
 
