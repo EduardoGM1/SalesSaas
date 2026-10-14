@@ -6,11 +6,11 @@
  * Uso: PLAYWRIGHT_BASE_URL=http://localhost:5173 node scripts/architecture/smoke-moneda-ui-qa.mjs
  */
 import { randomBytes } from "node:crypto";
-import { spawnSync } from "node:child_process";
+import { spawnSync, execSync } from "node:child_process";
 import { writeFileSync, unlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { chromium } from "@playwright/test";
 
 const __dir = dirname(fileURLToPath(import.meta.url));
@@ -22,6 +22,29 @@ const EMAIL = `qa-moneda-${stamp}@saletse-test.com`;
 const FULL_NAME = `QA Moneda ${stamp}`;
 const PASSWORD = randomBytes(18).toString("base64url");
 const CREDS_PATH = resolve(tmpdir(), `saletse-qa-moneda-${stamp}.creds.json`);
+const WEB_SRC = resolve(root, "apps/web/src");
+const MONEDA_ENTRY = resolve(WEB_SRC, "modulos/moneda/servicios/moneda-servicio.ts");
+const MONEDA_BUNDLE = resolve(tmpdir(), `saletse-moneda-smoke-${stamp}.mjs`);
+
+/** Bundle esbuild (prod no sirve /src/*.ts); misma entrada que conversion.test.mjs */
+async function loadConvertirMoveIn() {
+  execSync(
+    [
+      "npx --yes esbuild",
+      `"${MONEDA_ENTRY.replace(/\\/g, "/")}"`,
+      "--bundle",
+      "--format=esm",
+      "--platform=neutral",
+      `--outfile="${MONEDA_BUNDLE.replace(/\\/g, "/")}"`,
+      `--alias:@=${WEB_SRC.replace(/\\/g, "/")}`,
+      "--log-level=error",
+    ].join(" "),
+    { cwd: root, stdio: "pipe" },
+  );
+  const mod = await import(pathToFileURL(MONEDA_BUNDLE).href + `?t=${Date.now()}`);
+  const ctx = mod.getMonedaContext({ currency: "USD", usdToMxnRate: 18 });
+  return mod.convertir(4000, "MXN", "USD", ctx);
+}
 
 writeFileSync(
   CREDS_PATH,
@@ -144,42 +167,34 @@ async function main() {
         : `no PATCH; localHasKey=${localHasUsd} localBad=${localBad}`,
     );
 
-    // Cambio moneda de captura (survey o worksheet)
-    await page.goto(`${BASE}/tools/survey`, { waitUntil: "domcontentloaded" });
-    await page.waitForTimeout(1200);
-    const usdTab = page.getByRole("button", { name: /^USD$/i }).or(page.locator("[data-testid='capture-currency-usd']"));
-    const mxnTab = page.getByRole("button", { name: /^MXN$/i }).or(page.locator("[data-testid='capture-currency-mxn']"));
+    // Cambio moneda de captura (select UI — funciona en Vite y en dist de prod)
     let capturaOk = false;
     let capturaDetail = "";
-    if ((await mxnTab.count()) && (await usdTab.count())) {
-      await mxnTab.first().click();
-      await page.waitForTimeout(400);
-      await usdTab.first().click();
-      await page.waitForTimeout(400);
-      capturaOk = true;
-      capturaDetail = "toggled MXN↔USD";
-    } else {
-      // Fallback: evaluate normalizeCaptureCurrency + store
-      const r = await page.evaluate(async () => {
-        const mod = await import("/src/modulos/moneda/servicios/moneda-servicio.ts");
-        return {
-          mxn: mod.normalizeCaptureCurrency("MXN"),
-          usd: mod.normalizeCaptureCurrency("USD"),
-        };
-      }).catch((e) => ({ err: String(e.message || e) }));
-      capturaOk = r.mxn === "MXN" && r.usd === "USD";
-      capturaDetail = JSON.stringify(r);
+    for (const path of ["/tools/survey", "/tools/worksheet"]) {
+      await page.goto(`${BASE}${path}`, { waitUntil: "domcontentloaded" });
+      await page.waitForTimeout(1200);
+      const sel = page.locator("select.selector-moneda-select").first();
+      if (!(await sel.count())) continue;
+      await sel.selectOption("MXN");
+      await page.waitForTimeout(300);
+      const afterMxn = await sel.inputValue();
+      await sel.selectOption("USD");
+      await page.waitForTimeout(300);
+      const afterUsd = await sel.inputValue();
+      capturaOk = afterMxn === "MXN" && afterUsd === "USD";
+      capturaDetail = `${path} MXN→${afterMxn} USD→${afterUsd}`;
+      if (capturaOk) break;
     }
-    step("cambio moneda captura", capturaOk, capturaDetail);
+    step("cambio moneda captura", capturaOk, capturaDetail || "selector-moneda no visible");
 
-    // Move In 4000 MXN → ≈222.22 USD
-    const move = await page.evaluate(async () => {
-      const mod = await import("/src/modulos/moneda/servicios/moneda-servicio.ts");
-      const ctx = mod.getMonedaContext({ currency: "USD", usdToMxnRate: 18 });
-      return mod.convertir(4000, "MXN", "USD", ctx);
-    }).catch((e) => ({ err: String(e.message || e) }));
+    // Move In 4000 MXN → ≈222.22 USD (misma lógica que el módulo; sin import /src de Vite)
+    const move = await loadConvertirMoveIn();
     const moveN = Number(move);
-    step("Move In 4000 MXN → ≈222.22 USD", Number.isFinite(moveN) && Math.abs(moveN - 4000 / 18) < 0.02, `got=${move}`);
+    step(
+      "Move In 4000 MXN → ≈222.22 USD",
+      Number.isFinite(moveN) && Math.abs(moveN - 4000 / 18) < 0.02,
+      `got=${move}`,
+    );
   } catch (err) {
     step("smoke UI", false, err instanceof Error ? err.message : String(err));
   } finally {
@@ -197,6 +212,7 @@ async function main() {
     }
     try {
       unlinkSync(CREDS_PATH);
+      unlinkSync(MONEDA_BUNDLE);
       console.log("Credenciales temporales borradas.");
     } catch {
       /* ignore */
