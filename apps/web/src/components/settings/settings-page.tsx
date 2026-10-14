@@ -15,7 +15,7 @@ import { t } from "@/lib/i18n.js";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { saveProfileRemote } from "@/actions/settings.js";
 import { selectOnFocus } from "@/lib/focus-select.js";
-import { obtenerTipoCambioRemoto as fetchExchangeRate } from "@/modulos/geo-fx/api/sincronizar-tipo-cambio.js";
+import { obtenerTipoCambioRemoto as fetchExchangeRate } from "@/modulos/geo-fx";
 import { useAppStore } from "@/stores/app-store";
 import { collectAllSales } from "@/lib/sales/collect";
 import { isSaleCancelled } from "@/lib/sales/agenda-sales";
@@ -32,8 +32,8 @@ import {
   isUnusualUsdToMxnRate,
   resolveUsdToMxnRate,
   unusualUsdToMxnRateMessage,
-} from "@/modulos/moneda/servicios/moneda-servicio";
-import { normalizeUsdToMxnRate } from "@/modulos/moneda/dominio/normalizar-tasa-usd-mxn.js";
+  normalizeUsdToMxnRate,
+} from "@/modulos/moneda";
 
 function stripInvalidUsdToMxnRate<T extends { usdToMxnRate?: number }>(settings: T): T {
   const next = { ...settings };

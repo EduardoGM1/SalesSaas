@@ -1,0 +1,4 @@
+{
+  "comment": "Excepciones justificadas a la contención legacy. Cada entrada: archivo posix relativo a la raíz del monorepo + reason. Solo añadir en PR con justificación; preferir poner código nuevo en apps/*/src/modulos/.",
+  "files": []
+}

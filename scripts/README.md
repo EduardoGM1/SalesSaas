@@ -21,6 +21,16 @@ Utilidades de desarrollo, despliegue, seeds y verificación. La API y el web tam
 - **Smokes manuales versionados** (p. ej. `smoke-presentacion-img.mjs`): credenciales solo `E2E_EMAIL` / `E2E_PASSWORD`; si faltan, el script termina con error claro.
 - **No crear** un smoke nuevo por feature: reutilizar un script parametrizado por entorno (`PLAYWRIGHT_BASE_URL`, `E2E_*`).
 
+### Arquitectura — checks (`scripts/architecture/`)
+
+| Script | Qué |
+|--------|-----|
+| `check-legacy-containment.mjs` | No crecer carpetas legacy; baseline `legacy-baseline.json` |
+| `check-module-facades.mjs` | Imports cruzados solo por `modulos/<nombre>/index` |
+| `legacy-containment-exceptions.json` | Excepciones justificadas (`file` + `reason`) |
+
+Docs: `docs/arquitectura/contencion-y-fachadas.md`.
+
 ### Arquitectura — smokes UI QA efímera (`scripts/architecture/`)
 
 Reutilizables; provisionan cuenta `@saletse-test.com`, credenciales en `%TEMP%` (nunca en el repo) y purgan a conteos 0.

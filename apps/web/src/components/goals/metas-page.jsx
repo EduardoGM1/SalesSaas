@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Calendar, Info } from "lucide-react";
 import { Topbar } from "@/components/layout/topbar";
 import { PageBack } from "@/components/layout/page-back";
-import { computeMetasKpis } from "@/modulos/metas/dominio/kpis-metas";
+import { computeMetasKpis } from "@/modulos/metas";
 import { fmtN, onlyDigits } from "@/lib/format/money";
 import { formatDigitsWithCommas } from "@/lib/format/numeric-input.js";
 import { useI18n } from "@/hooks/use-i18n.js";

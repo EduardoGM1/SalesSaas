@@ -1,7 +1,8 @@
 /**
  * npm run verificar:arquitectura:completo
  *
- * Checks 1–5 + verify local + e2e smoke.
+ * Checks arquitectura (límites, lazy, contratos, push, paridad, contención, fachadas)
+ * + test:security (API unitario) + verify local + e2e smoke.
  * Requiere stack local (o que Playwright pueda levantarlo).
  *
  * Variables (nombres; valores en .env.local, nunca en el repo):
@@ -47,7 +48,10 @@ function run(label, command, env = {}) {
 const results = [];
 
 results.push(
-  run("checks 1–5", "npm run verificar:arquitectura:checks"),
+  run("checks arquitectura", "npm run verificar:arquitectura:checks"),
+);
+results.push(
+  run("api test:security", "npm run test:security -w @salesapp/api"),
 );
 
 const apiOk = await isUp(`${API_BASE}/health`);

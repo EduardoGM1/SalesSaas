@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { SalesModal } from "@/components/ui/sales-modal";
 import { computeSurvey, surveyHasData } from "@/lib/calculations/survey";
-import { calcularVacaciones } from "@/modulos/vacaciones/dominio/calculo-vacaciones";
+import { calcularVacaciones } from "@/modulos/vacaciones";
 import { worksheetDisplayEntries } from "@/lib/calculations/worksheet-labels";
 import { longDate } from "@/lib/format/dates";
 import { statusLabel } from "@/lib/format/status";

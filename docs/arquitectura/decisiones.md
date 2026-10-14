@@ -70,6 +70,14 @@ Documentada en `scripts/architecture/allowlist-component-fetch.json` y revisada 
 **Regla CI:** fallar si aparece un `fetch(` en `apps/web/src/components/**` fuera de la allowlist.  
 Reducir la allowlist es bienvenido; ampliarla requiere justificación en PR.
 
+## 7b. Contención legacy y fachadas (post módulos 1–4)
+
+Ver `docs/arquitectura/contencion-y-fachadas.md`.
+
+- **Contención:** no crecer `components`/`lib`/`pages`/`hooks`/`actions`/`stores` (web) ni `routes`/`controllers`/`services`/`repositories`/`lib` (API); baseline en `legacy-baseline.json`; excepciones en `legacy-containment-exceptions.json`.
+- **Fachadas:** cada `modulos/<nombre>/index` es el único contrato de import entre módulos / UI legacy.
+- Checks: `check-legacy-containment`, `check-module-facades` (en `verificar:arquitectura:checks` + workflow).
+
 ## 8. sync:shared (paridad)
 
 - Manifiesto: `scripts/architecture/sync-shared-files.json`.
