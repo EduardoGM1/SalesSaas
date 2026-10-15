@@ -37,17 +37,23 @@ Reutilizables; provisionan cuenta `@saletse-test.com`, credenciales en `%TEMP%` 
 
 | Script | Qué cubre | Cómo |
 |--------|-----------|------|
-| `qa-geo-fx-ephemeral.py` | Helper VPS: provision / counts / purge / `seed-prospect` | `python scripts/architecture/qa-geo-fx-ephemeral.py provision\|purge\|seed-prospect …` (SSH vía `vps_ssh`; secrets solo env VPS) |
+| `qa-geo-fx-ephemeral.py` | Helper VPS: provision / counts / purge / `seed-prospect` / `seed-collab-share` / `check-broadcast-policy` | `python scripts/architecture/qa-geo-fx-ephemeral.py …` (SSH vía `vps_ssh`; secrets solo env VPS) |
 | `smoke-geo-fx-ui-qa.mjs` | UI geo + FX settings + expediente offline | `node scripts/architecture/smoke-geo-fx-ui-qa.mjs` (`PLAYWRIGHT_BASE_URL`) |
 | `smoke-moneda-ui-qa.mjs` | Settings FX (sembrar `usdToMxnRate=1` → 18, PATCH sin clave ≤1), captura, Move In 4000 MXN | `node scripts/architecture/smoke-moneda-ui-qa.mjs` |
 | `smoke-metas-ui-qa.mjs` | Crear/editar meta, KPIs, dashboard `/goals`; purga incl. `goals=0` | `node scripts/architecture/smoke-metas-ui-qa.mjs` |
 | `smoke-vacaciones-ui-qa.mjs` | Expediente → Vacaciones: capturar, resultados, guardar; purga `tool_calculations=0` | `node scripts/architecture/smoke-vacaciones-ui-qa.mjs` |
 | `smoke-survey-ui-qa.mjs` | Expediente → Survey: capturar, resultados, guardar; purga `tool_calculations=0` | `node scripts/architecture/smoke-survey-ui-qa.mjs` |
+| `smoke-survey-collab-e2e-qa.mjs` | **Gate collab Survey:** 2 QA personales, `seed-collab-share`, A edita/enfoca → B ve sync + lock; **precondición** `broadcast_expediente` | `PLAYWRIGHT_BASE_URL=… node scripts/architecture/smoke-survey-collab-e2e-qa.mjs` |
+| `smoke-realtime-broadcast-negative-qa.mjs` | Pruebas negativas Realtime: C sin share y B en expediente no compartido deben ser rechazados | `node scripts/architecture/smoke-realtime-broadcast-negative-qa.mjs` (env Supabase overlay) |
 | `build-web-ci.mjs` | Vite build con `VITE_*` placeholder (CI / completo) | `npm run build:web:ci` |
 | `smoke-geo-fx.mjs` | Solo lecturas API geo/FX (sin auth) | `API_BASE=… node scripts/architecture/smoke-geo-fx.mjs` |
 
 Contraseñas: `randomBytes` en runtime. Sin URLs/claves fijas en el código.  
-Helper `qa-geo-fx-ephemeral.py` cuenta/borra `goals` y `tool_calculations` de la cuenta QA.
+Helper `qa-geo-fx-ephemeral.py` cuenta/borra `goals`, `tool_calculations`, `prospect_shares`, invites, `user_connections` y `workspace_miembros` de la cuenta QA.
+
+#### Gate colaboración Survey (manual)
+
+Ver docstring de `smoke-survey-collab-e2e-qa.mjs`: solo workspaces `personal` efímeros via `seed-collab-share` (share edit + guest en WS personal del dueño para RLS `tool_calculations`; no `sala_de_venta` ni empresa). **Esta rama no incluye migraciones de BD.** El gate exige que exista la policy `broadcast_expediente` en el entorno (si falta, falla con mensaje claro). Cambios de BD solo con OK explícito, backup y rollback.
 
 ## Scratch (no versionar)
 

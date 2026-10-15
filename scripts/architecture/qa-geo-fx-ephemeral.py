@@ -1,19 +1,23 @@
 #!/usr/bin/env python3
 """Provision / counts / purge de QA efímera (arquitectura) vía VPS (saletse-prod-db).
 
-Compartido por smokes geo-fx, moneda, metas y vacaciones.
+Compartido por smokes geo-fx, moneda, metas, vacaciones, survey y gate collab.
 
 Uso:
   python scripts/architecture/qa-geo-fx-ephemeral.py provision <email> <password> <full_name>
   python scripts/architecture/qa-geo-fx-ephemeral.py counts <email>
   python scripts/architecture/qa-geo-fx-ephemeral.py purge <email>
   python scripts/architecture/qa-geo-fx-ephemeral.py seed-prospect <email> <prospect_id> [name] [prospect_code]
+  python scripts/architecture/qa-geo-fx-ephemeral.py seed-collab-share <owner_email> <recipient_email> <prospect_id> [permission]
 
 Sin secretos en stdout salvo el uid (provision). Password solo entra por argv.
 
 seed-prospect: inserta un expediente mínimo en prod para que tool_calculations
 pueda guardar sin violar tool_calculations_prospect_id_fkey (QA personal crea
 el cliente offline para evitar 403 en API).
+
+counts/purge también cubren shares (prospect_shares), share_invites y
+user_connections — necesarios para el gate collab de 2 QA.
 """
 from __future__ import annotations
 
@@ -138,6 +142,16 @@ SELECT 'ws_personal|' || COUNT(*)::text FROM workspaces w
      JOIN profiles p ON p.id = wm.usuario_id
      WHERE wm.workspace_id = w.id AND p.email = '{email_sql}'
    );
+SELECT 'shares|' || COUNT(*)::text FROM prospect_shares ps
+ WHERE ps.owner_id = (SELECT id FROM profiles WHERE email = '{email_sql}')
+    OR ps.shared_with_id = (SELECT id FROM profiles WHERE email = '{email_sql}');
+SELECT 'share_invites|' || COUNT(*)::text FROM prospect_share_invites i
+ WHERE i.owner_id = (SELECT id FROM profiles WHERE email = '{email_sql}');
+SELECT 'connections|' || COUNT(*)::text FROM user_connections uc
+ WHERE uc.requester_id = (SELECT id FROM profiles WHERE email = '{email_sql}')
+    OR uc.addressee_id = (SELECT id FROM profiles WHERE email = '{email_sql}');
+SELECT 'workspace_miembros|' || COUNT(*)::text FROM workspace_miembros wm
+ WHERE wm.usuario_id = (SELECT id FROM profiles WHERE email = '{email_sql}');
 """,
     )
     result = {
@@ -147,6 +161,10 @@ SELECT 'ws_personal|' || COUNT(*)::text FROM workspaces w
         "tool_calculations": 0,
         "empresa_miembros": 0,
         "ws_personal": 0,
+        "shares": 0,
+        "share_invites": 0,
+        "connections": 0,
+        "workspace_miembros": 0,
     }
     for ln in out.splitlines():
         ln = ln.strip()
@@ -168,6 +186,7 @@ def purge(client, email: str) -> dict:
             f"""
 ALTER TABLE public.prospect_workflow_events DISABLE TRIGGER workflow_events_append_only;
 DROP TABLE IF EXISTS _qa_personal_ws;
+-- Solo WS personal donde este email es el único miembro (purgar guest B antes que owner A).
 CREATE TEMP TABLE _qa_personal_ws AS
 SELECT DISTINCT w.id
 FROM workspaces w
@@ -184,6 +203,16 @@ WHERE w.tipo = 'personal'
   );
 UPDATE profiles SET workspace_activo_id = NULL
 WHERE workspace_activo_id IN (SELECT id FROM _qa_personal_ws) OR email = '{email_sql}';
+-- Collab / shares (antes de borrar prospects/profiles)
+DELETE FROM share_permission_requests
+ WHERE owner_id = '{uid}' OR requester_id = '{uid}';
+DELETE FROM prospect_share_invites WHERE owner_id = '{uid}';
+DELETE FROM prospect_shares
+ WHERE owner_id = '{uid}' OR shared_with_id = '{uid}';
+DELETE FROM direct_messages
+ WHERE sender_id = '{uid}' OR recipient_id = '{uid}';
+DELETE FROM user_connections
+ WHERE requester_id = '{uid}' OR addressee_id = '{uid}';
 DELETE FROM tool_calculations WHERE user_id = '{uid}';
 DELETE FROM sales WHERE prospect_id IN (SELECT id FROM prospects WHERE user_id = '{uid}');
 DELETE FROM prospect_workflow_events WHERE prospect_id IN (SELECT id FROM prospects WHERE user_id = '{uid}');
@@ -290,13 +319,131 @@ RETURNING id::text, user_id::text, workspace_id::text;
     }
 
 
+def seed_collab_share(
+    client,
+    owner_email: str,
+    recipient_email: str,
+    prospect_id: str,
+    permission: str = "edit",
+) -> dict:
+    """Conexión accepted + prospect_shares + miembro guest en WS personal del dueño.
+
+    Sin sala/empresa real. RLS de tool_calculations exige user_in_workspace(workspace_id)
+    además del share; por eso el recipiente entra como vendedor temporal al WS
+    personal del owner (solo QA efímera). La API de invite exige
+    expedientes:compartir; sembramos por SQL admin para no tocar roles de prod.
+    """
+    owner_sql = owner_email.replace("'", "''")
+    recip_sql = recipient_email.replace("'", "''")
+    pid = prospect_id.replace("'", "''")
+    perm = (permission or "edit").replace("'", "''")
+    if perm not in ("view", "edit", "comment", "workspace"):
+        raise SystemExit(f"permission inválido: {perm}")
+    out = psql(
+        client,
+        f"""
+WITH ids AS (
+  SELECT
+    (SELECT id FROM profiles WHERE email = '{owner_sql}') AS owner_id,
+    (SELECT id FROM profiles WHERE email = '{recip_sql}') AS recipient_id,
+    '{pid}'::uuid AS prospect_id,
+    (
+      SELECT p.workspace_id FROM prospects p
+      WHERE p.id = '{pid}'::uuid
+        AND p.user_id = (SELECT id FROM profiles WHERE email = '{owner_sql}')
+    ) AS owner_ws_id
+),
+conn AS (
+  INSERT INTO user_connections (requester_id, addressee_id, status)
+  SELECT owner_id, recipient_id, 'accepted' FROM ids
+  WHERE owner_id IS NOT NULL AND recipient_id IS NOT NULL
+    AND NOT EXISTS (
+      SELECT 1 FROM user_connections uc
+      WHERE (uc.requester_id = ids.owner_id AND uc.addressee_id = ids.recipient_id)
+         OR (uc.requester_id = ids.recipient_id AND uc.addressee_id = ids.owner_id)
+    )
+  RETURNING id
+),
+upd AS (
+  UPDATE user_connections uc
+  SET status = 'accepted'
+  FROM ids
+  WHERE ((uc.requester_id = ids.owner_id AND uc.addressee_id = ids.recipient_id)
+      OR (uc.requester_id = ids.recipient_id AND uc.addressee_id = ids.owner_id))
+    AND uc.status IS DISTINCT FROM 'accepted'
+  RETURNING uc.id
+),
+guest AS (
+  INSERT INTO workspace_miembros (usuario_id, workspace_id, rol_en_workspace)
+  SELECT recipient_id, owner_ws_id, 'vendedor'
+  FROM ids
+  WHERE recipient_id IS NOT NULL AND owner_ws_id IS NOT NULL
+    AND EXISTS (SELECT 1 FROM workspaces w WHERE w.id = ids.owner_ws_id AND w.tipo = 'personal')
+  ON CONFLICT (usuario_id, workspace_id) DO NOTHING
+  RETURNING id
+),
+share AS (
+  INSERT INTO prospect_shares (prospect_id, owner_id, shared_with_id, permission)
+  SELECT prospect_id, owner_id, recipient_id, '{perm}'::share_permission
+  FROM ids
+  WHERE owner_id IS NOT NULL AND recipient_id IS NOT NULL AND owner_ws_id IS NOT NULL
+    AND EXISTS (SELECT 1 FROM prospects p WHERE p.id = ids.prospect_id AND p.user_id = ids.owner_id)
+  ON CONFLICT (prospect_id, shared_with_id) DO UPDATE
+    SET permission = EXCLUDED.permission
+  RETURNING id::text, prospect_id::text, owner_id::text, shared_with_id::text, permission::text
+)
+SELECT s.id || '|' || s.prospect_id || '|' || s.owner_id || '|' || s.shared_with_id || '|' || s.permission
+  || '|' || COALESCE(ids.owner_ws_id::text, '')
+  || '|guest=' || (SELECT COUNT(*)::text FROM guest)
+  || '|conn=' || ((SELECT COUNT(*) FROM conn) + (SELECT COUNT(*) FROM upd))::text
+FROM share s, ids;
+""",
+    ).strip()
+    if not out:
+        raise SystemExit("seed-collab-share: sin fila (¿emails/prospect/ws personal?)")
+    parts = out.splitlines()[0].split("|")
+    return {
+        "share_id": parts[0] if parts else "",
+        "prospect_id": parts[1] if len(parts) > 1 else prospect_id,
+        "owner_id": parts[2] if len(parts) > 2 else "",
+        "shared_with_id": parts[3] if len(parts) > 3 else "",
+        "permission": parts[4] if len(parts) > 4 else perm,
+        "owner_ws_id": parts[5] if len(parts) > 5 else "",
+    }
+
+
+def check_broadcast_policy(client) -> dict:
+    """¿Existe policy broadcast_expediente en realtime.messages? (precondición gate collab)."""
+    out = psql(
+        client,
+        """
+SELECT COUNT(*)::text
+FROM pg_policy pol
+JOIN pg_class c ON c.oid = pol.polrelid
+JOIN pg_namespace n ON n.oid = c.relnamespace
+WHERE n.nspname = 'realtime'
+  AND c.relname = 'messages'
+  AND pol.polname = 'broadcast_expediente';
+""",
+    ).strip()
+    n = int(out.splitlines()[0].strip() or "0")
+    return {"broadcast_expediente": n > 0, "count": n}
+
+
 def main() -> None:
-    if len(sys.argv) < 3:
-        raise SystemExit("uso: provision|counts|purge|seed-prospect ...")
+    if len(sys.argv) < 2:
+        raise SystemExit(
+            "uso: provision|counts|purge|seed-prospect|seed-collab-share|check-broadcast-policy ..."
+        )
     cmd = sys.argv[1]
-    email = sys.argv[2]
     client = connect_vps(load_env_file(ROOT))
     try:
+        if cmd == "check-broadcast-policy":
+            print(json.dumps(check_broadcast_policy(client)))
+            return
+        if len(sys.argv) < 3:
+            raise SystemExit("uso: provision|counts|purge|seed-prospect|seed-collab-share <email> ...")
+        email = sys.argv[2]
         if cmd == "provision":
             if len(sys.argv) < 5:
                 raise SystemExit("provision <email> <password> <full_name>")
@@ -311,6 +458,13 @@ def main() -> None:
             name = sys.argv[4] if len(sys.argv) > 4 else "VacQa"
             code = sys.argv[5] if len(sys.argv) > 5 else None
             print(json.dumps(seed_prospect(client, email, sys.argv[3], name, code)))
+        elif cmd == "seed-collab-share":
+            if len(sys.argv) < 5:
+                raise SystemExit(
+                    "seed-collab-share <owner_email> <recipient_email> <prospect_id> [permission]"
+                )
+            perm = sys.argv[5] if len(sys.argv) > 5 else "edit"
+            print(json.dumps(seed_collab_share(client, email, sys.argv[3], sys.argv[4], perm)))
         else:
             raise SystemExit(f"comando desconocido: {cmd}")
     finally:
