@@ -115,7 +115,7 @@ function assertFieldIdContract() {
     "utf8",
   );
   const gastosSrc = readFileSync(
-    resolve(root, "apps/web/src/components/calculators/survey/gastos-panel.jsx"),
+    resolve(root, "apps/web/src/modulos/survey/ui/gastos-panel.jsx"),
     "utf8",
   );
   const okFn = /export function collabFieldId\(tool, fieldKey\)/.test(collabSrc)

@@ -3,7 +3,7 @@ import { Topbar } from "@/components/layout/topbar";
 import { PageBack } from "@/components/layout/page-back.jsx";
 import { SaveToolModal } from "@/components/calculators/save-tool-modal";
 import { ensureProspectIdentity } from "@/lib/clients";
-import { computeSurvey } from "@/modulos/survey";
+import { computeSurvey, GastosPanel, ResumenPanel, TimesharePanel } from "@/modulos/survey";
 import { buildOperationalFields, SURVEY_MONEY_FIELDS } from "@/modulos/moneda";
 import { SharedToolBanner } from "@/components/calculators/shared-tool-banner.jsx";
 import { COUNTRY_CITY, COUNTRY_FLAGS } from "@/lib/constants";
@@ -28,9 +28,6 @@ import {
 import { useSurveyQuestions } from "@/hooks/use-survey-questions.js";
 import { SubTabsDrawer } from "@/components/clients/client-folder-nav.jsx";
 import { MotivacionesPanel } from "@/components/calculators/survey/motivaciones-panel.jsx";
-import { TimesharePanel } from "@/components/calculators/survey/timeshare-panel.jsx";
-import { GastosPanel } from "@/components/calculators/survey/gastos-panel.jsx";
-import { ResumenPanel } from "@/components/calculators/survey/resumen-panel.jsx";
 import { ConfigureQuestionsModal } from "@/components/calculators/survey/configure-questions-modal.jsx";
 import { useFlags } from "@/hooks/use-flag.js";
 import { SURVEY_TAB_FLAGS } from "@/lib/auth/tool-flags.js";

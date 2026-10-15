@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useI18n } from "@/hooks/use-i18n.js";
-import { ChipQuestion } from "./chip-question.jsx";
-import { MembershipTable } from "./membership-table.jsx";
+import { ChipQuestion } from "@/components/calculators/survey/chip-question.jsx";
+import { MembershipTable } from "@/components/calculators/survey/membership-table.jsx";
 
 export function TimesharePanel({
   discovery,
