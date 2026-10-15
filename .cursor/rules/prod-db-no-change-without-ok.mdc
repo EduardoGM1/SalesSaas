@@ -1,0 +1,15 @@
+---
+description: Producción DB — ningún cambio sin OK explícito, backup y rollback
+alwaysApply: true
+---
+
+# Base de datos de producción — sin cambios unilaterales
+
+Ningún cambio en la base de datos de producción ni en su configuración (migraciones, políticas, funciones, grants) sin OK explícito del usuario **en el mismo mensaje**, con backup y rollback preparados **antes**.
+
+- Scripts temporales (p. ej. bajo `scripts/.tmp/`) **no** se usan sobre producción sin ese OK.
+- Nada se ejecuta contra producción antes de mostrar el plan cuando el usuario lo pidió.
+- Un test que exija cambiar la BD para pasar es una señal de **parar y preguntar**, no de arreglar la BD.
+- Las ramas de refactor de arquitectura **no** llevan archivos de migración ni aplican DDL.
+
+Ver también: `docs/arquitectura/regla-prod-db-sin-ok.md` y `docs/arquitectura/pendiente-bloqueo-campos-collab.md`.
