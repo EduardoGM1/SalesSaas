@@ -28,10 +28,10 @@ import {
   parseDiscovery,
   serializeDiscovery,
 } from "../dominio/discovery-storage.js";
-import { useSurveyQuestions } from "@/hooks/use-survey-questions.js";
+import { useSurveyQuestions } from "../hooks/use-survey-questions.js";
 import { SubTabsDrawer } from "@/components/clients/client-folder-nav.jsx";
 import { MotivacionesPanel } from "./motivaciones-panel.jsx";
-import { ConfigureQuestionsModal } from "@/components/calculators/survey/configure-questions-modal.jsx";
+import { ConfigureQuestionsModal } from "./configure-questions-modal.jsx";
 import { useFlags } from "@/hooks/use-flag.js";
 import { SURVEY_TAB_FLAGS } from "@/lib/auth/tool-flags.js";
 

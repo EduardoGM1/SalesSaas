@@ -2,12 +2,12 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { watchSession } from "@/lib/session-api.js";
 import { useUserPermissions } from "@/hooks/use-user-permissions.js";
-import { loadMergedSurveyQuestions } from "@/lib/survey/survey-questions-api.js";
+import { loadMergedSurveyQuestions } from "../api/survey-questions-api.js";
 import {
   fallbackGroupedQuestions,
   groupResolvedQuestions,
   mergeSurveyQuestions,
-} from "@/modulos/survey/fachada-preguntas.js";
+} from "../fachada-preguntas.js";
 
 export function useSurveyQuestions() {
   const { can, profile } = useUserPermissions();

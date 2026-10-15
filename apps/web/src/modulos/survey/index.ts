@@ -1,6 +1,6 @@
 /**
- * Fachada pública — survey (fase 5b.5: dominio + banco/resolución + UI + i18n).
- * API de preguntas (survey-questions-api), collab compartido y modal de config quedan fuera.
+ * Fachada pública — survey (fase 5b.6 web: dominio + banco + UI + i18n + config preguntas).
+ * Collab compartido y service API quedan fuera (deuda 5b.6 API / 5b.7).
  */
 export {
   calcularSurvey,
@@ -68,5 +68,13 @@ export { SurveyPage } from "./ui/survey-page.jsx";
 export { MotivacionesPanel } from "./ui/motivaciones-panel.jsx";
 export { MembershipTable } from "./ui/membership-table.jsx";
 export { ChipQuestion, StyleMicroGrid } from "./ui/chip-question.jsx";
+export { ConfigureQuestionsModal } from "./ui/configure-questions-modal.jsx";
+
+export { useSurveyQuestions } from "./hooks/use-survey-questions.js";
+
+export {
+  loadMergedSurveyQuestions,
+  saveSurveyUserOverrides,
+} from "./api/survey-questions-api.js";
 
 export { ES_SURVEY_DISC, EN_SURVEY_DISC } from "./i18n/catalogo-discovery.js";

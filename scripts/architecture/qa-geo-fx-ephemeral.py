@@ -133,6 +133,8 @@ SELECT 'goals|' || COUNT(*)::text FROM goals
  WHERE user_id = (SELECT id FROM profiles WHERE email = '{email_sql}');
 SELECT 'tool_calculations|' || COUNT(*)::text FROM tool_calculations
  WHERE user_id = (SELECT id FROM profiles WHERE email = '{email_sql}');
+SELECT 'survey_preguntas_usuario|' || COUNT(*)::text FROM survey_preguntas_usuario
+ WHERE usuario_id = (SELECT id FROM profiles WHERE email = '{email_sql}');
 SELECT 'empresa_miembros|' || COUNT(*)::text FROM empresa_miembros
  WHERE usuario_id = (SELECT id FROM profiles WHERE email = '{email_sql}');
 SELECT 'ws_personal|' || COUNT(*)::text FROM workspaces w
@@ -159,6 +161,7 @@ SELECT 'workspace_miembros|' || COUNT(*)::text FROM workspace_miembros wm
         "prospects": 0,
         "goals": 0,
         "tool_calculations": 0,
+        "survey_preguntas_usuario": 0,
         "empresa_miembros": 0,
         "ws_personal": 0,
         "shares": 0,
@@ -214,6 +217,9 @@ DELETE FROM direct_messages
 DELETE FROM user_connections
  WHERE requester_id = '{uid}' OR addressee_id = '{uid}';
 DELETE FROM tool_calculations WHERE user_id = '{uid}';
+DELETE FROM survey_preguntas_usuario WHERE usuario_id = '{uid}';
+DELETE FROM usuario_permisos_override WHERE usuario_id = '{uid}';
+DELETE FROM workspace_usuario_permisos_override WHERE usuario_id = '{uid}';
 DELETE FROM sales WHERE prospect_id IN (SELECT id FROM prospects WHERE user_id = '{uid}');
 DELETE FROM prospect_workflow_events WHERE prospect_id IN (SELECT id FROM prospects WHERE user_id = '{uid}');
 DELETE FROM prospect_workflows WHERE prospect_id IN (SELECT id FROM prospects WHERE user_id = '{uid}');
@@ -412,6 +418,26 @@ FROM share s, ids;
     }
 
 
+def grant_survey_config(client, email: str) -> dict:
+    """Otorga herramientas:survey_configurar_preguntas a QA (usuario_permisos_override)."""
+    email_sql = email.replace("'", "''")
+    out = psql(
+        client,
+        f"""
+INSERT INTO public.usuario_permisos_override (usuario_id, permiso_id, otorgado)
+SELECT p.id, perm.id, true
+FROM profiles p
+CROSS JOIN permisos perm
+WHERE p.email = '{email_sql}'
+  AND perm.clave = 'herramientas:survey_configurar_preguntas'
+ON CONFLICT (usuario_id, permiso_id) DO UPDATE SET otorgado = true, updated_at = now()
+RETURNING usuario_id::text;
+""",
+    ).strip()
+    uid = out.splitlines()[0].strip() if out.strip() else ""
+    return {"email": email, "uid": uid, "granted": bool(uid)}
+
+
 def check_broadcast_policy(client) -> dict:
     """¿Existe policy broadcast_expediente en realtime.messages? (precondición gate collab)."""
     out = psql(
@@ -433,7 +459,7 @@ WHERE n.nspname = 'realtime'
 def main() -> None:
     if len(sys.argv) < 2:
         raise SystemExit(
-            "uso: provision|counts|purge|seed-prospect|seed-collab-share|check-broadcast-policy ..."
+            "uso: provision|counts|purge|seed-prospect|seed-collab-share|grant-survey-config|check-broadcast-policy ..."
         )
     cmd = sys.argv[1]
     client = connect_vps(load_env_file(ROOT))
@@ -442,7 +468,9 @@ def main() -> None:
             print(json.dumps(check_broadcast_policy(client)))
             return
         if len(sys.argv) < 3:
-            raise SystemExit("uso: provision|counts|purge|seed-prospect|seed-collab-share <email> ...")
+            raise SystemExit(
+                "uso: provision|counts|purge|seed-prospect|seed-collab-share|grant-survey-config <email> ..."
+            )
         email = sys.argv[2]
         if cmd == "provision":
             if len(sys.argv) < 5:
@@ -452,6 +480,8 @@ def main() -> None:
             print(json.dumps(counts(client, email)))
         elif cmd == "purge":
             print(json.dumps(purge(client, email)))
+        elif cmd == "grant-survey-config":
+            print(json.dumps(grant_survey_config(client, email)))
         elif cmd == "seed-prospect":
             if len(sys.argv) < 4:
                 raise SystemExit("seed-prospect <email> <prospect_id> [name] [prospect_code]")

@@ -25,8 +25,8 @@ import {
   isCustomOptionKey,
   newCustomOptionKey,
   opcionesOverrideOrNull,
-} from "@/modulos/survey/fachada-preguntas.js";
-import { saveSurveyUserOverrides } from "@/lib/survey/survey-questions-api.js";
+} from "../fachada-preguntas.js";
+import { saveSurveyUserOverrides } from "../api/survey-questions-api.js";
 
 const SECTION_IDS = ["motivaciones", "timeshare"];
 const MOVE_FLASH_MS = 900;
