@@ -1,7 +1,7 @@
 import { useI18n } from "@/hooks/use-i18n.js";
-import { joinSelectedTranslated } from "@/lib/survey/discovery-storage.js";
-import { optionTitleKey } from "@/lib/survey/discovery-questions.js";
-import { resolveOptionDisplayLabel } from "@/lib/survey/option-labels.js";
+import { joinSelectedTranslated } from "../dominio/discovery-storage.js";
+import { optionTitleKey } from "../dominio/discovery-questions.js";
+import { resolveOptionDisplayLabel } from "../dominio/option-labels.js";
 
 function line(label, value) {
   if (!value) return null;

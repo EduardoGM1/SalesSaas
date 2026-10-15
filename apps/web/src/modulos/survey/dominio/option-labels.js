@@ -1,4 +1,4 @@
-import { optionTitleKey } from "@/lib/survey/discovery-questions.js";
+import { optionTitleKey } from "./discovery-questions.js";
 
 export function isCustomOptionKey(key) {
   return String(key || "").startsWith("custom_");

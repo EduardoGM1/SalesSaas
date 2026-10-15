@@ -689,7 +689,7 @@ export function questionLabelKey(questionId) {
   return \`survey.disc.q.\${questionId}.label\`;
 }
 `;
-  fs.writeFileSync(path.join(root, "apps/web/src/lib/survey/discovery-questions.js"), out);
+  fs.writeFileSync(path.join(root, "apps/web/src/modulos/survey/dominio/discovery-questions.js"), out);
 }
 
 function writeCatalog(es, en) {
@@ -704,7 +704,7 @@ function writeLegacy(map) {
   const body = `/** Mapa texto ES histórico → clave de opción. Generado por build-survey-discovery-i18n.mjs */
 export const LEGACY_OPTION_TEXT_TO_KEY = ${JSON.stringify(map, null, 2)};
 `;
-  fs.writeFileSync(path.join(root, "apps/web/src/lib/survey/legacy-option-map.js"), body);
+  fs.writeFileSync(path.join(root, "apps/web/src/modulos/survey/dominio/legacy-option-map.js"), body);
 }
 
 function writeSql() {

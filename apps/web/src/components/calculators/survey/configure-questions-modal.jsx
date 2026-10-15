@@ -22,12 +22,10 @@ import {
   optionTitleKey,
   questionLabelKey,
   questionTitleKey,
-} from "@/lib/survey/discovery-questions.js";
-import {
   isCustomOptionKey,
   newCustomOptionKey,
   opcionesOverrideOrNull,
-} from "@/lib/survey/option-labels.js";
+} from "@/modulos/survey/fachada-preguntas.js";
 import { saveSurveyUserOverrides } from "@/lib/survey/survey-questions-api.js";
 
 const SECTION_IDS = ["motivaciones", "timeshare"];

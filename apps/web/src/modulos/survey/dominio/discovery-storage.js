@@ -5,9 +5,9 @@ import {
   MEMBERSHIP_TYPE_KEYS,
   PROGRESS_QUESTION_IDS,
   YES_NO_KEYS,
-} from "@/lib/survey/discovery-questions.js";
-import { LEGACY_OPTION_TEXT_TO_KEY } from "@/lib/survey/legacy-option-map.js";
-import { isCustomOptionKey, resolveOptionDisplayLabel } from "@/lib/survey/option-labels.js";
+} from "./discovery-questions.js";
+import { LEGACY_OPTION_TEXT_TO_KEY } from "./legacy-option-map.js";
+import { isCustomOptionKey, resolveOptionDisplayLabel } from "./option-labels.js";
 
 const QUESTION_BY_ID = new Map(ALL_DISCOVERY_QUESTIONS.map((q) => [q.id, q]));
 

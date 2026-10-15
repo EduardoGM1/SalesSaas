@@ -4,7 +4,7 @@ import {
   MOTIVACIONES_BEFORE_STYLE,
   STYLE_QUESTIONS,
   TIMESHARE_QUESTIONS,
-} from "@/lib/survey/discovery-questions.js";
+} from "./discovery-questions.js";
 
 /** Banco estático de respaldo (offline / sin Supabase). opciones = claves estables. */
 export function buildFallbackBankRows() {

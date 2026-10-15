@@ -7,7 +7,7 @@ import {
   fallbackGroupedQuestions,
   groupResolvedQuestions,
   mergeSurveyQuestions,
-} from "@/lib/survey/resolve-survey-questions.js";
+} from "@/modulos/survey/fachada-preguntas.js";
 
 export function useSurveyQuestions() {
   const { can, profile } = useUserPermissions();

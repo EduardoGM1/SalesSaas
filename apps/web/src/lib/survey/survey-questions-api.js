@@ -1,6 +1,5 @@
 import { isSupabaseConfigured } from "@/lib/supabase/config";
-import { buildFallbackBankRows } from "@/lib/survey/fallback-bank.js";
-import { mergeSurveyQuestions } from "@/lib/survey/resolve-survey-questions.js";
+import { buildFallbackBankRows, mergeSurveyQuestions } from "@/modulos/survey/fachada-preguntas.js";
 
 async function surveyConfigJson(init) {
   const res = await fetch("/api/v1/survey/questions-config", {

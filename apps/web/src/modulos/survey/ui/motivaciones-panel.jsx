@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useI18n } from "@/hooks/use-i18n.js";
-import { toggleChip } from "@/lib/survey/discovery-questions.js";
+import { toggleChip } from "../dominio/discovery-questions.js";
 import { ChipQuestion, StyleMicroGrid } from "./chip-question.jsx";
 
 export function MotivacionesPanel({

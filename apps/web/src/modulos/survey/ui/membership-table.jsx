@@ -1,6 +1,6 @@
 import { useI18n } from "@/hooks/use-i18n.js";
 import { useDbStore } from "@/stores/db-store";
-import { emptyMembership, MEMBERSHIP_TYPE_KEYS, YES_NO_KEYS } from "@/lib/survey/discovery-questions.js";
+import { emptyMembership, MEMBERSHIP_TYPE_KEYS, YES_NO_KEYS } from "../dominio/discovery-questions.js";
 
 /** Tabla dinámica de membresías — labels i18n; valores yes/no/type por clave. */
 export function MembershipTable({ rows = [], disabled = false, onChange }) {

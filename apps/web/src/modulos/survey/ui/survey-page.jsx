@@ -27,7 +27,7 @@ import {
   countAnswered,
   parseDiscovery,
   serializeDiscovery,
-} from "@/lib/survey/discovery-storage.js";
+} from "../dominio/discovery-storage.js";
 import { useSurveyQuestions } from "@/hooks/use-survey-questions.js";
 import { SubTabsDrawer } from "@/components/clients/client-folder-nav.jsx";
 import { MotivacionesPanel } from "./motivaciones-panel.jsx";

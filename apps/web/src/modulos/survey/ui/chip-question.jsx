@@ -1,7 +1,7 @@
 import { ChevronDown } from "lucide-react";
 import { useI18n } from "@/hooks/use-i18n.js";
-import { toggleChip } from "@/lib/survey/discovery-questions.js";
-import { resolveOptionDisplayLabel } from "@/lib/survey/option-labels.js";
+import { toggleChip } from "../dominio/discovery-questions.js";
+import { resolveOptionDisplayLabel } from "../dominio/option-labels.js";
 
 function questionTitle(question, t) {
   if (question.titleOverride) return question.titleOverride;

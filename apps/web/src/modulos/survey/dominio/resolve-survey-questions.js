@@ -1,10 +1,10 @@
-import { buildFallbackBankRows } from "@/lib/survey/fallback-bank.js";
+import { buildFallbackBankRows } from "./fallback-bank.js";
 import {
   questionLabelKey,
   questionTitleKey,
-} from "@/lib/survey/discovery-questions.js";
-import { normalizeOpcionesArray } from "@/lib/survey/discovery-storage.js";
-import { parseOpcionesOverride } from "@/lib/survey/option-labels.js";
+} from "./discovery-questions.js";
+import { normalizeOpcionesArray } from "./discovery-storage.js";
+import { parseOpcionesOverride } from "./option-labels.js";
 
 /**
  * Combina banco global + overrides de usuario (activa/orden/texto/opciones).
