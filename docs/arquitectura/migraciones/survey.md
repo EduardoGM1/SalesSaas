@@ -48,11 +48,24 @@ apps/web/src/modulos/survey/
 
 ## Deuda — fase 5b
 
-- UI paneles + `survey-page` (move / fachada UI)
-- Collab / realtime (field ids, events)
-- Persistencia compartida (`cloud-persist`, `tool-calculations-api`, `db-store`)
-- Configuración de preguntas (`lib/survey/*`, modal, `survey-questions-service`, overrides settings/DB)
-- i18n Discovery catalog
+- UI paneles + `survey-page` (move / fachada UI) — **hecho 5b.1–5b.3**
+- i18n Discovery catalog + script build — **hecho 5b.4**
+- Banco/resolución (`discovery-questions`, fallback, resolve, legacy, option-labels, storage) — **hecho 5b.5**
+- Configuración de preguntas (modal, hook, API client, `survey-questions-service`, rutas) — **5b.6**
+- Collab / realtime (field ids, events) — **5b.7+**
+- Persistencia compartida (`cloud-persist`, `tool-calculations-api`, `db-store`) — fuera de survey o tramo posterior
+
+## 5b.4 — script de build i18n Discovery
+
+- Canónico: `apps/web/src/modulos/survey/i18n/build-catalogo-discovery.mjs`
+- Catálogo: `…/i18n/catalogo-discovery.js` (rename 100% desde `lib/i18n-survey-discovery-catalog.js`)
+- **Wrapper temporal:** `scripts/build-survey-discovery-i18n.mjs` solo reexporta el canónico (mantener compat de invocación; retirar cuando no queden callers).
+- Al mover el script se añadieron **4 claves de interfaz (chrome)** que ya estaban en el catálogo de main pero faltaban en el generador (desfase). Sin ellas el build no regeneraba el fingerprint congelado:
+  - `survey.disc.answered`
+  - `survey.disc.unanswered`
+  - `survey.disc.saveContinue`
+  - `survey.disc.saveFinish`
+- También se actualizaron `root` (`__dirname`) y las rutas `writeFileSync` hacia `modulos/survey/…`. No fue reformateo cosmético.
 
 ## Consumidores 5a (vía fachada)
 
