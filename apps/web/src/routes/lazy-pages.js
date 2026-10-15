@@ -13,7 +13,7 @@ export const ToolsHubPage = namedLazy(() => import("@/pages/ToolsHubPage.jsx"), 
 export const GoalsPage = namedLazy(() => import("@/components/goals/goals-page.jsx"), "GoalsPage");
 export const MetasPage = namedLazy(() => import("@/components/goals/metas-page.jsx"), "MetasPage");
 
-export const SurveyPage = namedLazy(() => import("@/components/calculators/survey-page.jsx"), "SurveyPage");
+export const SurveyPage = namedLazy(() => import("@/modulos/survey"), "SurveyPage");
 export const VacacionesPage = namedLazy(() => import("@/components/calculators/vacaciones-page.jsx"), "VacacionesPage");
 export const WorksheetPage = namedLazy(() => import("@/components/calculators/worksheet-page.jsx"), "WorksheetPage");
 export const MoneyBoxPage = namedLazy(() => import("@/components/calculators/money-box-page.jsx"), "MoneyBoxPage");

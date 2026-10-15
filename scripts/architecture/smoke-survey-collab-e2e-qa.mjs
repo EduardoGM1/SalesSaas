@@ -111,7 +111,7 @@ function assertFieldIdContract() {
     "utf8",
   );
   const surveySrc = readFileSync(
-    resolve(root, "apps/web/src/components/calculators/survey-page.jsx"),
+    resolve(root, "apps/web/src/modulos/survey/ui/survey-page.jsx"),
     "utf8",
   );
   const gastosSrc = readFileSync(

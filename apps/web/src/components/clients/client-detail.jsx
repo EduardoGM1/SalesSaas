@@ -31,7 +31,7 @@ import { useExpedienteFolderNav, EXPEDIENTE_TABS } from "@/hooks/use-expediente-
 import { ClientFolderStrip, SubTabsDrawer } from "@/components/clients/client-folder-nav.jsx";
 import { namedLazy } from "@/lib/lazy-retry.js";
 
-const SurveyPage = namedLazy(() => import("@/components/calculators/survey-page.jsx"), "SurveyPage");
+const SurveyPage = namedLazy(() => import("@/modulos/survey"), "SurveyPage");
 const VacacionesPage = namedLazy(() => import("@/components/calculators/vacaciones-page.jsx"), "VacacionesPage");
 const WorksheetPage = namedLazy(() => import("@/components/calculators/worksheet-page.jsx"), "WorksheetPage");
 const PresentacionViewer = namedLazy(
