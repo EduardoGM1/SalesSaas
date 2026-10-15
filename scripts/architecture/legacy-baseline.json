@@ -328,7 +328,6 @@
     "apps/web/src/lib/i18n-catalog.js",
     "apps/web/src/lib/i18n-phase2-catalog.js",
     "apps/web/src/lib/i18n-phase3-catalog.js",
-    "apps/web/src/lib/i18n-survey-discovery-catalog.js",
     "apps/web/src/lib/i18n.js",
     "apps/web/src/lib/ids.ts",
     "apps/web/src/lib/in-app-notifications-realtime.js",

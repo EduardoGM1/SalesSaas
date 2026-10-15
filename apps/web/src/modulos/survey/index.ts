@@ -1,6 +1,6 @@
 /**
- * Fachada pública — survey (fase 5b.3: dominio + UI paneles/shell/Discovery).
- * Config banco de preguntas, collab compartido y API quedan fuera (deuda 5b.4+).
+ * Fachada pública — survey (fase 5b.4: dominio + UI + catálogo i18n Discovery).
+ * Banco/resolución de preguntas, collab compartido y API quedan fuera (deuda 5b.5+).
  */
 export {
   calcularSurvey,
@@ -18,3 +18,5 @@ export { SurveyPage } from "./ui/survey-page.jsx";
 export { MotivacionesPanel } from "./ui/motivaciones-panel.jsx";
 export { MembershipTable } from "./ui/membership-table.jsx";
 export { ChipQuestion, StyleMicroGrid } from "./ui/chip-question.jsx";
+
+export { ES_SURVEY_DISC, EN_SURVEY_DISC } from "./i18n/catalogo-discovery.js";

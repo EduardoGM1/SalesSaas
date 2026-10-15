@@ -1,7 +1,7 @@
 import { ES_EXT, EN_EXT } from "./i18n-catalog.js";
 import { ES_PHASE2, EN_PHASE2 } from "./i18n-phase2-catalog.js";
 import { ES_PHASE3, EN_PHASE3 } from "./i18n-phase3-catalog.js";
-import { ES_SURVEY_DISC, EN_SURVEY_DISC } from "./i18n-survey-discovery-catalog.js";
+import { ES_SURVEY_DISC, EN_SURVEY_DISC } from "@/modulos/survey/fachada-i18n.js";
 import { useDbStore } from "@/stores/db-store";
 import {
   getMonths,
