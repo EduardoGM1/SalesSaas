@@ -126,7 +126,6 @@
     "apps/api/src/services/sharing-service.js",
     "apps/api/src/services/support-email.js",
     "apps/api/src/services/support-service.js",
-    "apps/api/src/services/survey-questions-service.js",
     "apps/api/src/services/sync-service.js",
     "apps/api/src/services/tenant-admin-service.js",
     "apps/api/src/services/tenant-rbac-service.js",

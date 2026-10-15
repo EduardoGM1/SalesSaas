@@ -92,6 +92,8 @@ const PROTEGIDOS = [
   ["/api/v1/royal-holiday/x/catalogo", "GET"],
   ["/api/v1/admin/me", "GET"],
   ["/api/v1/cron/flush-reminders", "GET"],
+  ["/api/v1/survey/questions-config", "GET"],
+  ["/api/v1/survey/questions-config", "PUT"],
 ];
 
 for (const [path, method] of PROTEGIDOS) {
