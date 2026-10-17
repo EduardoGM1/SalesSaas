@@ -1,7 +1,8 @@
 # Pendiente: bloqueo de campos (collab broadcast)
 
-**Estado:** DISEÑO LISTO (rama `arquitectura/bloqueo-campos-collab-diseno`). **NO aplicar** en producción sin OK explícito en el mismo mensaje, snapshot y rollback.  
-**Regla:** ningún cambio en BD/config de producción sin OK, backup y rollback preparados.
+**Estado:** DISEÑO LISTO (rama `arquitectura/bloqueo-campos-collab-diseno` @ `2b7f108`+). **NO aplicar** en producción sin OK explícito en el mismo mensaje, snapshot y rollback.  
+**Regla:** ningún cambio en BD/config de producción sin OK, backup y rollback preparados.  
+**Decisión de prueba:** no Postgres nativo / no Docker. El **canario en producción** es el mecanismo de prueba real (solo tras OK).
 
 ## Problema
 
@@ -14,119 +15,99 @@ La migración `0031_fix_expediente_presence_rls` autoriza:
 
 No hay política de **INSERT** para `extension = 'broadcast'`. Resultado: el peer no recibe el badge/bloqueo de campo, aunque la presencia y el sync de datos funcionen.
 
-## Catálogo real de producción (SOLO LECTURA, 2026-10-17)
+**Observabilidad:** un `channel.send({ type: "broadcast" })` **sin** policy INSERT se **descarta en silencio** (no hay error HTTP usable en el cliente). Por tanto **“send denegado” no es criterio de prueba**. Criterios observables:
 
-Consulta vía VPS/`psql` (sin mutar) y cruce con snapshots en `%USERPROFILE%\.saletse-ops\`:
+| Tipo | Criterio |
+|------|----------|
+| Positivo | El par **con acceso** (SUBSCRIBED) **RECIBE** el evento `field_lock` |
+| Negativo | El usuario **sin acceso** **NO** logra `SUBSCRIBED` (política SELECT `presence_listen_expediente`) y no recibe nada |
+| Cobertura INSERT | Tras apply: consulta RO a `pg_policies` confirma `broadcast_expediente` con `cmd=INSERT` y el `WITH CHECK` esperado. Las denegaciones de INSERT a quien ya está SUBSCRIBED (p. ej. topic mal formado) **no son separables** del descarte silencioso; se cubren con la policy en catálogo + caso negativo de subscribe |
+
+## Catálogo real de producción (SOLO LECTURA, 2026-10-17)
 
 | Fuente | `broadcast_expediente` | Políticas |
 |--------|------------------------|-----------|
-| Snapshot LATEST (`20261015T010705Z`, post-rollback 0090) | **No** | 4: `presence_listen_contacts`, `presence_listen_expediente`, `presence_track_expediente`, `presence_track_own` |
-| Prod live (`check-broadcast-policy` + dump RO) | **No** (`count=0`) | Las mismas 4; quals/with_check coinciden con el snapshot |
-
-**Confirmado:** producción actual = snapshot post-rollback. Presence intacta. Sin policy de broadcast.
+| Snapshot LATEST (post-rollback) | **No** | 4 presence_* |
+| Prod live | **No** | Las mismas 4 |
 
 ## Política mínima propuesta
 
-Archivo: [`supabase/migrations/0098_realtime_broadcast_expediente.sql`](../../supabase/migrations/0098_realtime_broadcast_expediente.sql)
+Archivo: [`supabase/migrations/0098_realtime_broadcast_expediente.sql`](../../supabase/migrations/0098_realtime_broadcast_expediente.sql)  
+Rollback: [`rollback-0098-broadcast-expediente.sql`](./rollback-0098-broadcast-expediente.sql)
 
-- **INSERT** en `realtime.messages` con `extension = 'broadcast'`
-- Topic parseable como `expediente:{uuid}` (`presence_prospect_from_topic`)
-- `user_can_access_prospect(auth.uid(), prospect_id)` — **misma función** que presence
-- **No** toca SELECT/presence, ni `presence_listen_contacts`, ni grants de tabla
+## Plan canario en producción (REVISIÓN — no ejecutar sin OK)
 
-### Qué cambia vs prod actual
+### Seed (prerrequisito)
 
-| Antes | Después |
-|-------|---------|
-| Broadcast INSERT → denegado (sin policy) | Broadcast INSERT → permitido si `user_can_access_prospect` |
-| Presence SELECT/INSERT | Igual |
-| Contactos presence | Igual |
+Usar helper **share-only nuevo** (comando previsto `seed-collab-share-only` en `qa-geo-fx-ephemeral.py`): B con `user_connections` + `prospect_shares`, **sin** insertar a B en `workspace_miembros` del dueño. **No** usar `seed-collab-share` (añade guest al WS y sesga `user_can_access_prospect`).  
+Hoy el helper share-only **aún no está en el repo**; hay que añadirlo (y un smoke que lo invoque) **antes** del canario, sin apply de 0098.
 
-### Modelo de acceso vigente (`user_can_access_prospect`, post-0052)
+### Orden
 
-Concede acceso si el usuario es **miembro del workspace** del expediente **o** tiene **share** (y también está en el workspace del prospect según la definición actual).  
-Implicación: un *guest* sembrado en el WS personal del dueño verá *todos* los expedientes de ese WS (hallazgo del incidente 0090). La prueba FIEL debe evitar ese sesgo.
+1. **Snapshot previo**  
+   `python scripts/architecture/snapshot-realtime-messages-policies.py`  
+   Confirmar 4 policies, sin `broadcast_expediente`.
 
-### Rollback exacto
+2. **Reproducir el bug (antes)** — QA-A + QA-B con share-only en P1, ambos SUBSCRIBED (presence OK):  
+   A envía `field_lock` → **B NO recibe** el evento.  
+   Anotar evidencia (log/console del smoke). Esto ancla el antes/después.
 
-[`docs/arquitectura/rollback-0098-broadcast-expediente.sql`](./rollback-0098-broadcast-expediente.sql):
+3. **Apply 0098** (una policy INSERT). No tocar presence_* ni grants.
 
-```sql
-DROP POLICY IF EXISTS "broadcast_expediente" ON realtime.messages;
-```
+4. **Post-apply RO**  
+   - `pg_policies` / `check-broadcast-policy`: existe `broadcast_expediente` (INSERT).  
+   - Las **4 políticas previas** siguen intactas (nombres + cmds).  
+   - Presence A↔B sigue: peers visibles / track OK.
 
-### Comando de backup/snapshot previo
+5. **Pruebas (después)** — criterios de la tabla abajo.
 
-```bash
-python scripts/architecture/snapshot-realtime-messages-policies.py
-# → %USERPROFILE%\.saletse-ops\realtime-messages-policies-snapshot-<UTC>.json
-#   y LATEST
-```
+6. **Falla → rollback inmediato**  
+   ```sql
+   DROP POLICY IF EXISTS "broadcast_expediente" ON realtime.messages;
+   ```  
+   Re-snapshot; confirmar 4 policies sin broadcast.
 
-## Entorno de prueba (sin tocar producción)
+7. **Purga a 0** de todas las QA (profiles, prospects, shares, invites, connections, ws_personal, workspace_miembros, tool_calculations, empresa_miembros, survey_preguntas_usuario).
 
-**Hoy no hay stack no productivo usable en esta máquina** (sin `supabase` CLI, sin Docker local, sin `config.toml` de proyecto local; el dev apunta al Auth/Postgres de prod vía VPS — ver [`entornos.md`](./entornos.md)).
+### Tabla de casos (esperado declarado)
 
-**Opción más segura (recomendada antes de cualquier apply):**
+Precondiciones: QA-A crea P1 (y opcional P2) en WS personal. B share-only de P1. C (o B en canal ajeno) sin acceso.
 
-1. **Levantar Supabase local** (`supabase start` + aplicar migraciones del repo hasta 0097, luego 0098) y ejecutar la batería negativa allí.
-2. Solo tras verde en local + OK explícito: snapshot prod → apply 0098 en prod → re-smoke → rollback listo.
+| # | Caso | Actor | Acción | Esperado | Observable |
+|---|------|-------|--------|----------|------------|
+| 0 | Bug pre-apply | A→B en P1 (ambos SUBSCRIBED) | A `field_lock` | B **no** recibe | Antes |
+| 1 | Positivo post-apply | A→B en P1 | A `field_lock` | B **recibe** `field_lock` | Evento en B |
+| 2 | Presence intacta | A↔B en P1 | presence sync | Peers OK | Lista peers |
+| 3 | Sin acceso | C (o B) | subscribe `expediente:{P1}` sin share/membresía | **No SUBSCRIBED** | CHANNEL_ERROR |
+| 4 | Share solo P1 | B | subscribe `expediente:{P2}` sin share | **No SUBSCRIBED** | CHANNEL_ERROR |
+| 5 | Miembro WS sala | Liner/gerente con acceso | subscribe + lock en expediente de su sala | SUBSCRIBED + peer recibe lock | Evento |
+| 6 | Canal no expediente | Cualquiera con sesión | broadcast/subscribe `contactos` / `user:{uid}` / topic mal formado / sin uuid | **Rechazado** (no SUBSCRIBED a canal expediente; INSERT broadcast de 0098 no aplica) | No join / no evento; policy solo `expediente:{uuid}` |
+| 7 | Cross-expediente | Acceso a P1, no a P2 (otra sala / sin share) | emitir en `expediente:{P2}` | **No SUBSCRIBED** (o no recepción) | SELECT falla |
 
-**No improvisar** apply en prod “para ver”. QA efímera contra prod **después** del apply solo con OK.
+## Revisión cliente (SOLO LECTURA — no implementar aquí)
 
-## Resultados esperados de la prueba FIEL (declarados ANTES de ejecutar)
+Código: `expediente-realtime.js`, `use-expediente-realtime.js`, `collab-field.jsx`.
 
-Precondiciones: tres QA efímeras A/B/C. A crea P1 y P2 en su WS **personal**.  
-**B obtiene share de P1 por flujo real de producto** (invite/redeem o share a contacto aceptado) — **sin** insertar a B en `workspace_miembros` del dueño.  
-**C** sin share y sin membresía en el WS de A.
+| Pregunta | Hallazgo |
+|----------|----------|
+| Cierre de pestaña / pérdida de red sin `field_unlock` | `pagehide` → `stopExpedienteRealtime` → teardown **sin** enviar `field_unlock`. Peers limpian por **presence leave** (`clearLocksForUser`) y por **TTL 60s** (`FIELD_LOCK_TTL_MS`) en `locksSnapshot` + tick UI cada 10s. **No** queda bloqueado para siempre. |
+| Dos pestañas del mismo usuario | Singleton por pestaña (heaps separados). Presence usa la misma `key`/user_id. `applyRemoteLock` **ignora** locks del propio `user_id`. Riesgo: las dos pestañas pueden editar el mismo campo sin verse el badge mutuo; no es UI “trabada” permanente. |
+| UI trabada | Campos remotos usan `readOnly`/`disabled` mientras el lock esté vivo; caduca a ≤60s sin heartbeat. Heartbeat cada 20s refresca `ts`. |
 
-| Caso | Actor | Canal | Esperado | Por qué |
-|------|-------|-------|----------|---------|
-| Sin acceso | C | subscribe `expediente:{P1}` | **Rechazado** (CHANNEL_ERROR / no SUBSCRIBED) | `user_can_access_prospect` falso → SELECT `presence_listen_expediente` falla |
-| Sin acceso | C | broadcast lock en P1 | **Rechazado** | INSERT `broadcast_expediente` exige el mismo predicado |
-| Solo share P1 | B | subscribe/broadcast `expediente:{P2}` | **Rechazado** | Sin share de P2 y sin membresía WS → sin acceso |
-| Solo share P1 | B | subscribe `expediente:{P1}` | **Aceptado** | Share de P1 → SELECT OK (ya hoy, sin 0098) |
-| Solo share P1 | B | broadcast lock en P1 | **Aceptado solo si 0098 aplicada** | INSERT broadcast; sin 0098 → denegado (estado actual) |
-| Miembro legítimo WS | Liner/gerente de sala con `user_in_workspace` sobre el WS del expediente | subscribe + broadcast en expediente de la sala | **Aceptado** (con 0098) | Modelo vigente: miembro WS = acceso (no es agujero cross-tenant) |
+### Mínimo de cambios de cliente **antes** de aplicar 0098 (propuesta — no implementar aún)
 
-Script a adaptar (hoy sesgado con guest): `scripts/architecture/smoke-realtime-broadcast-negative-qa.mjs` — reemplazar `seed-collab-share` por helper **share-only** (sin `workspace_miembros`).
+1. **Best-effort `field_unlock` en teardown/pagehide** (antes de `untrack`/removeChannel), fire-and-forget — reduce ventana hasta presence leave/TTL.  
+2. **Throttle** de `console.warn` en send fallido (evitar ruido cuando se ejercite la ruta).  
+3. Opcional (no bloqueante): sincronizar foco entre pestañas (`BroadcastChannel`) o documentar limitación multi-tab.
 
-## Cambio de cliente (revisión — NO implementar en esta etapa)
-
-Archivos: `apps/web/src/lib/expediente-realtime.js`, `hooks/use-expediente-realtime.js`, `components/clients/collab-field.jsx`.
-
-| Hoy | Tras 0098 (coherencia deseable) |
-|-----|----------------------------------|
-| `broadcastLock` / `broadcastUnlock` hacen `channel.send({ type: "broadcast", ... })` y solo `console.warn` si falla | Con policy, peers con acceso reciben el evento; sin acceso el send sigue fallando (correcto) |
-| No hay feedback UI si el lock no se propagó | Opcional: exponer estado `lockBroadcastOk` / toast suave si `send` falla tras SUBSCRIBED |
-| Heartbeat 20s reintenta lock en silencio | Sin cambio obligatorio; evitar spam de warns en consola (throttle) |
-| `collab-field` muestra badge si llega `field_lock` remoto | Sin cambio de contrato de eventos (`field_lock` / `field_unlock` / payload) |
-
-**No hace falta** cambiar nombres de eventos ni el topic. El cliente ya está listo para recibir; el bloqueo es de BD.
+Con TTL + presence leave, el riesgo de UI trabada permanente es bajo; (1) es el único cambio que vale la pena antes del canario.
 
 ## Riesgos
 
-1. **Amplificar acceso de guest WS** si se prueba/siembra con `seed-collab-share` (B ve P2). Mitigar con prueba FIEL.
-2. **Apply en prod sin local** — no hay entorno no-prod hoy; alto riesgo de repetir incidente 0090.
-3. **Realtime privado** depende de JWT/RLS; un drift de `user_can_access_prospect` afecta presence y broadcast a la vez (ya es así).
-4. **No** ampliar a otros topics (`user:…`, contactos).
-
-## Plan de apply (solo tras OK explícito)
-
-1. Snapshot: `python scripts/architecture/snapshot-realtime-messages-policies.py`
-2. Verificar local / staging verde (opción B).
-3. Apply `0098` en prod (método habitual del repo; no desde chat sin OK).
-4. Smoke negativo FIEL + smoke collab Survey (lock deja de ser KNOWN GAP).
-5. Si falla: ejecutar `rollback-0098-broadcast-expediente.sql` y re-snapshot.
-
-## Incidente 2026-10-14 (resumen)
-
-1. Policy `broadcast_expediente` aplicada en prod **sin OK** (script temporal; no era la 0090 de capa admin del repo).
-2. Snapshots fuera del repo (`%USERPROFILE%\.saletse-ops\`).
-3. Prueba sesgada: B guest del WS → acceso a P2 vía `user_in_workspace`.
-4. Rollback: `DROP POLICY broadcast_expediente`. Prod sin broadcast; presence intacta.
-5. Retomar con este diseño + OK + backup + prueba FIEL.
+1. Seed guest (`seed-collab-share`) sesga acceso — usar share-only.  
+2. Canario es el único entorno de prueba acordado — requiere OK, snapshot, rollback.  
+3. INSERT denegado no es observable en cliente — no usarlo como assert.
 
 ## Relación con el gate Survey
 
-`smoke-survey-collab-e2e-qa.mjs` valida presencia + sync. El paso de bloqueo de campo sigue **KNOWN GAP** hasta apply de 0098.
+`smoke-survey-collab-e2e-qa.mjs` valida presencia + sync. Bloqueo de campo = KNOWN GAP hasta apply de 0098.
