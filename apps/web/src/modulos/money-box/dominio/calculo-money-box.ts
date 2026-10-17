@@ -1,3 +1,11 @@
+/**
+ * Cálculos Money Box (puro + adaptadores de plazos).
+ * Contratos: slug UI `money-box`, flag `worksheet.money_box`, settings `moneyBoxConfig`,
+ * claves de política (minDownPct, …) y tipos MoneyBox* no se renombran.
+ *
+ * Acoplamiento (deuda): `ensureWSConfig` / WS_DEFAULTS (worksheet) y catálogo RH
+ * (`lookupFinanciamientoPlazo`) — no se mueven aquí.
+ */
 import { WS_DEFAULTS } from "@/lib/constants";
 import { ensureWSConfig } from "@/lib/calculations/worksheet";
 import {
@@ -618,3 +626,26 @@ export function defaultPolicyConfig(partial: Partial<MoneyBoxPolicyConfig> = {})
     ...partial,
   };
 }
+
+/** Aliases ES (Paso B) — EN se mantiene para UI/tests/verify-rh. */
+export const redondear2 = round2;
+export const factorMensual = factorFor;
+export const factorAnualidad = annuityFactor;
+export const aCentavos = toCents;
+export const desdeCentavos = fromCents;
+export const redondearVentaAbajo = roundSaleDown;
+export const idPlazo = termId;
+export const plazosDesdeWorksheetConfig = termsFromWorksheetConfig;
+export const plazosDesdeRhFinanciamiento = termsFromRhFinanciamiento;
+export const factorParaPlazo = factorForTerm;
+export const textoMotivo = reasonText;
+export const construirMatrizPlanes = buildPlanMatrix;
+export const unicosPorVenta = uniqueBySale;
+export const seleccionarTres = selectThree;
+export const generarPropuestasEnganche = generateDownProposals;
+export const generarPropuestasMensualidad = generateMonthlyProposals;
+export const generarPropuestasCombinadas = generateCombinedProposals;
+export const configPoliticaPorDefecto = defaultPolicyConfig;
+export const generarPorEnganche = generateByDownPayment;
+export const generarPorMensualidad = generateByMonthly;
+export const mensualidadesParaEscenarios = monthlyPaymentsForScenarios;

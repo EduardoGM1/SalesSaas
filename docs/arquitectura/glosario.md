@@ -12,7 +12,7 @@ Términos aprobados en `decisiones.md`. Los contratos HTTP/BD/settings/`sts4_*` 
 | survey | Survey (marca) | encuesta / survey (`modulos/survey`, 5a cálculo) | `survey`, tool slug `survey`, data `total`/`hpct`/`sh*`/`sf*`/… |
 | vacaciones / vacation projection | Proyección de vacaciones | vacaciones (`modulos/vacaciones`) | tool slug `vacaciones`, data `vv`/`vc`/`va`/`vi` |
 | worksheet | Worksheet (marca) | hoja | `worksheet` |
-| Money Box | Money Box | caja-dinero / money-box según contexto | flags `worksheet.money_box`, settings `moneyBoxConfig` |
+| Money Box | Money Box | money-box (`modulos/money-box`) | flag `worksheet.money_box`, RH `worksheet.royal_holiday.money_box`, settings `moneyBoxConfig`, rutas `/tools/money-box` |
 | Royal Holiday | Royal Holiday | (marca) | paths `/royal-holiday`, flags RH |
 | goals | metas | metas (`modulos/metas`) | `goals`, `/api/v1/goals`, columnas `vol`/`tours`/`ventas`/`dias`/`descansos` |
 | geo / countries | país / ciudad | geo, país, ciudad | `/api/v1/geo/*`, `COUNTRY_CITY` |

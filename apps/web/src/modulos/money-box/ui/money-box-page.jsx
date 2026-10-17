@@ -4,7 +4,7 @@ import { PageBack } from "@/components/layout/page-back.jsx";
 import { CalcCardSkeleton } from "@/components/ui/content-skeleton.jsx";
 import { useFeatureAccess } from "@/hooks/use-feature-access.js";
 import { useI18n } from "@/hooks/use-i18n.js";
-import { MoneyBoxCalculator } from "@/components/calculators/money-box-calculator.jsx";
+import { MoneyBoxCalculator } from "./money-box-calculator.jsx";
 import { useDbStore } from "@/stores/db-store";
 import { shallow } from "zustand/shallow";
 import { PermissionsUnavailableNotice } from "@/components/auth/permissions-unavailable-notice.jsx";

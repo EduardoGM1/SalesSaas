@@ -1,7 +1,7 @@
 /**
  * Suite Money Box — Casos 1–3 (unitario) + guía Caso 4 (UI manual).
  *
- * Usa las funciones reales de apps/web/src/lib/calculations/money-box.ts
+ * Usa las funciones reales de apps/web/src/modulos/money-box/dominio/calculo-money-box.ts
  * y las mismas variables/fórmulas del SDD:
  *
  *   A) balanceFinanciado = mensualidadPerfecta / factorFinanciero
@@ -23,7 +23,7 @@ import fs from "node:fs";
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
 const out = path.join(root, "scripts", ".tmp-money-box.mjs");
-const entry = path.join(root, "apps/web/src/lib/calculations/money-box.ts");
+const entry = path.join(root, "apps/web/src/modulos/money-box/dominio/calculo-money-box.ts");
 
 const EPS = 1e-9;
 let passed = 0;

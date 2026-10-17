@@ -19,7 +19,7 @@ import {
   round2,
   termsFromWorksheetConfig,
   toCents,
-} from "@/lib/calculations/money-box";
+} from "../dominio/calculo-money-box";
 import { useDbStore } from "@/stores/db-store";
 import { shallow } from "zustand/shallow";
 import { toast } from "@/lib/toast";

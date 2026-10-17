@@ -60,7 +60,7 @@ import {
   RhPropinasPage,
 } from "@/routes/lazy-pages.js";
 import { RH_TOOL_FLAGS } from "@/lib/auth/tool-flags.js";
-import { ClientMoneyBoxRedirect } from "@/routes/client-money-box-redirect.jsx";
+import { ClientMoneyBoxRedirect } from "@/modulos/money-box";
 
 function Lazy({ children }) {
   return <Suspense fallback={<RouteFallback />}>{children}</Suspense>;

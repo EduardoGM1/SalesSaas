@@ -438,6 +438,32 @@ RETURNING usuario_id::text;
     return {"email": email, "uid": uid, "granted": bool(uid)}
 
 
+def grant_money_box(client, email: str) -> dict:
+    """Override usuario: flag worksheet.money_box (Money Box PRO standalone)."""
+    email_sql = email.replace("'", "''")
+    out = psql(
+        client,
+        f"""
+WITH u AS (
+  SELECT id FROM profiles WHERE email = '{email_sql}'
+),
+ins AS (
+  INSERT INTO flag_reglas (flag_id, alcance, alcance_id, activo)
+  SELECT f.id, 'usuario', u.id, true
+  FROM flags f
+  CROSS JOIN u
+  WHERE f.clave = 'worksheet.money_box'
+    AND (f.empresa_id IS NULL)
+  ON CONFLICT (flag_id, alcance, alcance_id) DO UPDATE SET activo = true
+  RETURNING alcance_id::text AS uid
+)
+SELECT uid FROM ins;
+""",
+    ).strip()
+    uid = out.splitlines()[0].strip() if out.strip() else ""
+    return {"email": email, "uid": uid, "granted": bool(uid), "flag": "worksheet.money_box"}
+
+
 def check_broadcast_policy(client) -> dict:
     """¿Existe policy broadcast_expediente en realtime.messages? (precondición gate collab)."""
     out = psql(
@@ -459,7 +485,7 @@ WHERE n.nspname = 'realtime'
 def main() -> None:
     if len(sys.argv) < 2:
         raise SystemExit(
-            "uso: provision|counts|purge|seed-prospect|seed-collab-share|grant-survey-config|check-broadcast-policy ..."
+            "uso: provision|counts|purge|seed-prospect|seed-collab-share|grant-survey-config|grant-money-box|check-broadcast-policy ..."
         )
     cmd = sys.argv[1]
     client = connect_vps(load_env_file(ROOT))
@@ -469,7 +495,7 @@ def main() -> None:
             return
         if len(sys.argv) < 3:
             raise SystemExit(
-                "uso: provision|counts|purge|seed-prospect|seed-collab-share|grant-survey-config <email> ..."
+                "uso: provision|counts|purge|seed-prospect|seed-collab-share|grant-survey-config|grant-money-box <email> ..."
             )
         email = sys.argv[2]
         if cmd == "provision":
@@ -482,6 +508,8 @@ def main() -> None:
             print(json.dumps(purge(client, email)))
         elif cmd == "grant-survey-config":
             print(json.dumps(grant_survey_config(client, email)))
+        elif cmd == "grant-money-box":
+            print(json.dumps(grant_money_box(client, email)))
         elif cmd == "seed-prospect":
             if len(sys.argv) < 4:
                 raise SystemExit("seed-prospect <email> <prospect_id> [name] [prospect_code]")

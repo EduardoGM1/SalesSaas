@@ -18,9 +18,8 @@ import {
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
 const out = path.join(root, "scripts", ".tmp-rh-money-box-pmt.mjs");
-const entry = path.join(root, "apps/web/src/lib/calculations/money-box.ts");
-const panelPath = path.join(root, "apps/web/src/components/calculators/worksheet-rh-money-box-panel.jsx");
-
+const entry = path.join(root, "apps/web/src/modulos/money-box/dominio/calculo-money-box.ts");
+const panelPath = path.join(root, "apps/web/src/modulos/money-box/ui/worksheet-rh-money-box-panel.jsx");
 let failed = 0;
 function ok(msg) { console.log(`✓ ${msg}`); }
 function fail(msg) { failed += 1; console.error(`✗ ${msg}`); }
