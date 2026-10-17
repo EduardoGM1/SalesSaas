@@ -1,7 +1,7 @@
-# Corte 2 — post survey 5b.6
+# Corte 2 — post money-box
 
-Fecha de corte: post-deploy API+web **`eeb90b9`** (survey config preguntas).  
-Sin iniciar money-box en este documento (solo inventario de deuda). Solo documentación.
+Fecha de corte: post-deploy web **`a81578c`** (money-box módulo 6).  
+Solo documentación. Sin iniciar notificaciones/recordatorios en este documento más allá del puntero al inventario.
 
 ## 1. Módulos migrados
 
@@ -15,22 +15,38 @@ Sin iniciar money-box en este documento (solo inventario de deuda). Solo documen
 | 5b.1–3 | **survey** UI | `ed6b3b0` | web | paneles + `SurveyPage` lazy vía fachada | ~+125/−14 (tramo UI) |
 | 5b.4–5 | **survey** i18n + banco | `17066f1` | web | catálogo Discovery, build script, resolve/fallback/banco | ~+1108/−28 (incl. catálogo generado) |
 | 5b.6 | **survey** config | `eeb90b9` | web + API | modal/hook/api-client; `survey-questions-service` + rutas GET/PUT | API prod neta ~+43/−16; web move + smoke |
+| 6 | **money-box** | `a81578c` | web | `calculo-money-box`, UI calculator/page/panel RH, redirect, fachada | ~+102/−7 prod web (+ docs/smoke); API vacío |
 
-Detalles: `docs/arquitectura/migraciones/{geo-fx,moneda,metas,vacaciones,survey}.md`.
+Detalles: `docs/arquitectura/migraciones/{geo-fx,moneda,metas,vacaciones,survey,money-box}.md`.
 
-## 2. Archivos aún fuera de `modulos/` (conteo al corte `eeb90b9`)
+## 2. Archivos aún fuera de `modulos/` (conteo al SHA `a81578c`)
 
-### Web (`apps/web/src`) — **310** fuera / **43** dentro (total 353)
+### Totales bajo `src/`
+
+| App | Fuera de `modulos/` | Dentro de `modulos/` | Total |
+|-----|--------------------:|---------------------:|------:|
+| Web (`apps/web/src`) | **308** | **49** | 357 |
+| API (`apps/api/src`) | **122** | **23** | 145 |
+
+### Contención legacy (carpetas congeladas = baseline CI)
+
+`scripts/architecture/legacy-baseline.json`: **411** archivos (web congelado **298** + API congelado **113**).  
+`check-legacy-containment`: OK (411 en disco = 411 baseline, 0 excepciones).
+
+#### Web — carpetas congeladas (298)
 
 | Carpeta | Archivos |
 |---------|----------|
-| lib | 135 |
-| components | 104 |
+| lib | 134 |
+| components | 101 |
 | pages | 30 |
 | hooks | 26 |
-| actions / layouts / routes / stores | ~13 |
+| actions | 4 |
+| stores | 3 |
 
-### API (`apps/api/src`) — **122** fuera / **23** dentro (total 145)
+*(Además fuera de `modulos/` pero no en baseline: `routes` 2, `layouts` 3 → explican 308 − 298.)*
+
+#### API — carpetas congeladas (113)
 
 | Carpeta | Archivos |
 |---------|----------|
@@ -38,33 +54,36 @@ Detalles: `docs/arquitectura/migraciones/{geo-fx,moneda,metas,vacaciones,survey}
 | lib | 29 |
 | routes | 24 |
 | controllers | 21 |
-| repositories / middleware | 8 |
+| repositories | 4 |
+
+*(middleware 4 + otros bajo `src/` fuera de `modulos/` explican 122 − 113.)*
 
 ## 3. Deuda consolidada
 
 | Tema | Dónde | Notas |
 |------|-------|-------|
-| Sync / outbox / `cloud-persist` / `tool-calculations-api` / `db-store` / `saveBucket` | compartido | Fuera de módulos tools; no migrar en money-box salvo deuda explícita |
+| Sync / outbox / `cloud-persist` / `tool-calculations-api` / `db-store` / `saveBucket` | compartido | Incl. settings `moneyBoxConfig` (money-box PRO) |
 | Adaptadores legacy | metas: `lib/calculations/calendar.ts` (si sigue) | Vacaciones: eliminado |
 | Survey collab **5b.7** | field ids / realtime en Survey | No iniciado |
 | Wrapper i18n Discovery | `scripts/build-survey-discovery-i18n.mjs` | Temporal; reexporta canónico en `modulos/survey/i18n/` |
 | Permiso PUT preguntas | `docs/arquitectura/pendiente-permiso-configurar-preguntas.md` | GET sin flag; PUT solo flag `survey`, no `herramientas:survey_configurar_preguntas` |
 | Bloqueo campos / 0090 | `docs/arquitectura/pendiente-bloqueo-campos-collab.md` | KNOWN GAP; sin policy broadcast en prod |
-| Money-box / worksheet RH | aún en `components/calculators` + `lib/calculations` | Siguiente módulo (6) |
+| Money-box acoplamiento RH / API config | `rh_money_box_config`, worksheet, flags | Dominio+UI web migrados; API RH y persistencia settings = deuda |
 | Paridad permissions | web↔shared | Divergencia documentada en check-shared-parity |
+| Recordatorios / notificaciones / OneSignal SW | ver inventario | Módulo 7 — solo inventario |
 
-## 4. Estado de suites (al corte / post-deploy 5b.6)
+## 4. Estado de suites (al corte / post-deploy money-box `a81578c`)
 
 | Suite | Estado |
 |-------|--------|
-| Workflow **Arquitectura** en `eeb90b9` | verde |
-| `verificar:arquitectura:checks` + build CI | verde (sesión 5b.6) |
-| `test:security` (incl. mvc + caracterización questions-config) | verde |
-| `test:web` / `test:survey` / vacaciones / metas / moneda / geo-fx / rh-regalos | verde |
-| Smoke UI Survey config QA + purga (`survey_preguntas_usuario=0`) | verde en prod |
+| Workflow **Arquitectura** en `a81578c` | **por verificar manualmente en GitHub Actions** (`gh` sin sesión en el deploy; no dar por verde) |
+| `verificar:arquitectura:completo` (local) | verde (sesión deploy money-box) |
+| `test:security` / `test:web` / money-box / survey / vacaciones / metas / moneda / geo-fx / rh-regalos | verde (local) |
+| Smoke UI money-box matriz a/b/c/d + purga | verde en prod |
+| Smoke UI Survey config QA + purga | verde en prod |
 | Gate collab Survey (prod) | verde (KNOWN GAP bloqueo) |
 | Auditoría FX `usdToMxnRate <= 1` (día 3, 2026-10-17) | **0** filas malas |
 
-## 5. Siguiente tramo (fuera de este doc)
+## 5. Siguiente tramo
 
-**Módulo 6 — money-box** en rama `arquitectura/modulo-money-box`: dominio/cálculo + UI tool; no renombrar contratos; persistencia compartida = deuda; sin BD.
+**Módulo 7 — recordatorios/notificaciones:** inventario en `docs/arquitectura/migraciones/notificaciones-inventario.md` (sin mover código).
