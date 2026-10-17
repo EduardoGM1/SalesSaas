@@ -1,31 +1,51 @@
 /**
- * Caracterización GET/PUT survey questions-config (antes/después de 5b.6).
- * Congela auth y validación actuales — no “mejora” seguridad aquí.
+ * Caracterización + seguridad GET/PUT survey questions-config.
  *
- * Comportamiento actual:
+ * Contrato:
  * - Sin userId → 401 (GET y PUT).
- * - GET: autenticado → banco global + overrides de SU usuario_id (sin flag survey).
- * - PUT: exige flag workspace `survey`; NO exige `herramientas:survey_configurar_preguntas`.
- * - Aislamiento cross-user: overrides filtrados por usuario_id (no workspace_id).
+ * - GET: autenticado → banco global + overrides de SU usuario_id (sin flag ni permiso configurar).
+ * - PUT: flag workspace `survey` + permiso `herramientas:survey_configurar_preguntas`
+ *   (misma clave que la UI `can(...)` / use-survey-questions).
+ * - Aislamiento cross-user: overrides filtrados por usuario_id.
  */
 import assert from "node:assert/strict";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import test, { mock } from "node:test";
+import {
+  LINER_DEFAULT_PERMISSIONS,
+  ADMIN_DEFAULT_PERMISSIONS,
+  ALL_PERMISSION_KEYS,
+  SOPORTE_DEFAULT_PERMISSIONS,
+} from "@salesapp/shared/auth/permission-catalog.js";
+import { resolveUserPermissions } from "@salesapp/shared/auth/resolve-permissions.js";
 import { ServiceError } from "../../../lib/service-error.js";
-import { WORKSPACE_FLAG_DENIED, MSG_FLAG_DENIED } from "../../../lib/workspace-permission-rpc.js";
+import {
+  WORKSPACE_FLAG_DENIED,
+  WORKSPACE_PERMISSION_DENIED,
+  MSG_FLAG_DENIED,
+  MSG_PERMISSION_DENIED,
+} from "../../../lib/workspace-permission-rpc.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const MOD = resolve(HERE, "survey-questions-service.js");
 const LEGACY = resolve(HERE, "../../../services/survey-questions-service.js");
 const WS_SERVICE = resolve(HERE, "../../../services/workspace-service.js");
+const UI_HOOK = resolve(
+  HERE,
+  "../../../../../web/src/modulos/survey/hooks/use-survey-questions.js",
+);
 
 const USER_A = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 const USER_B = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
 const WS = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
 const Q1 = "11111111-1111-4111-8111-111111111111";
 const Q2 = "22222222-2222-4222-8222-222222222222";
+const PERM_CONFIG = "herramientas:survey_configurar_preguntas";
+
+/** Roles que por seed/default ven el botón «Configurar preguntas» (0043/0045 + 0056). */
+const ROLES_UI_VE_CONFIGURAR = ["liner", "cerrador", "gerente", "admin", "superadmin"];
 
 async function loadService() {
   const path = existsSync(MOD) ? MOD : LEGACY;
@@ -109,10 +129,17 @@ test("GET autenticado: banco + solo overrides del usuario (B no ve overrides de 
   assert.equal(b.overrides.length, 0, "B no lee overrides de A");
 });
 
-function sbFlag(granted, { bank = [{ id: Q1, opciones: ["rest_disconnect"] }], onUpsert } = {}) {
+function sbAuth({
+  flag = true,
+  permission = true,
+  bank = [{ id: Q1, opciones: ["rest_disconnect"] }],
+  onUpsert,
+} = {}) {
   return {
     async rpc(name) {
-      if (name === "resolver_workspace_flag") return { data: granted, error: null };
+      if (name === "resolver_workspace_flag") return { data: flag, error: null };
+      if (name === "workspace_has_permission") return { data: permission, error: null };
+      if (name === "user_in_workspace") return { data: true, error: null };
       return { data: null, error: { message: "unexpected " + name } };
     },
     from(table) {
@@ -151,9 +178,14 @@ function sbFlag(granted, { bank = [{ id: Q1, opciones: ["rest_disconnect"] }], o
   };
 }
 
+const BODY_OK = {
+  seccion: "motivaciones",
+  items: [{ pregunta_id: Q1, orden: 1, activa: true }],
+};
+
 test("PUT payload inválido: sección / items / uuid / orden → 400", async () => {
   const svc = await loadService();
-  const sb = sbFlag(true);
+  const sb = sbAuth();
   await assert.rejects(
     () => svc.saveSurveyQuestionsConfig(sb, USER_A, { seccion: "nope", items: [{ pregunta_id: Q1, orden: 1 }] }),
     (err) => err instanceof ServiceError && err.status === 400 && /Sección inválida/i.test(err.message),
@@ -180,14 +212,10 @@ test("PUT payload inválido: sección / items / uuid / orden → 400", async () 
   );
 });
 
-test("PUT sin flag survey → 403 FLAG_DENIED (comportamiento actual)", async () => {
+test("PUT sin flag survey → 403 FLAG_DENIED", async () => {
   const svc = await loadService();
   await assert.rejects(
-    () =>
-      svc.saveSurveyQuestionsConfig(sbFlag(false), USER_A, {
-        seccion: "motivaciones",
-        items: [{ pregunta_id: Q1, orden: 1, activa: true }],
-      }),
+    () => svc.saveSurveyQuestionsConfig(sbAuth({ flag: false, permission: true }), USER_A, BODY_OK),
     (err) =>
       err instanceof ServiceError &&
       err.status === 403 &&
@@ -196,10 +224,22 @@ test("PUT sin flag survey → 403 FLAG_DENIED (comportamiento actual)", async ()
   );
 });
 
-test("PUT válido: upsert con usuario_id del caller; pregunta ajena a sección → 403", async () => {
+test("PUT sin permiso configurar → 403 PERMISSION_DENIED", async () => {
+  const svc = await loadService();
+  await assert.rejects(
+    () => svc.saveSurveyQuestionsConfig(sbAuth({ flag: true, permission: false }), USER_A, BODY_OK),
+    (err) =>
+      err instanceof ServiceError &&
+      err.status === 403 &&
+      err.code === WORKSPACE_PERMISSION_DENIED &&
+      err.message === MSG_PERMISSION_DENIED,
+  );
+});
+
+test("PUT con flag + permiso → 200 (saved); pregunta ajena a sección → 403", async () => {
   const svc = await loadService();
   let upsertSeen = null;
-  const sb = sbFlag(true, {
+  const sb = sbAuth({
     onUpsert(payload, opts) {
       upsertSeen = { payload, opts };
     },
@@ -231,6 +271,101 @@ test("PUT válido: upsert con usuario_id del caller; pregunta ajena a sección �
   );
 });
 
-test("NOTA seguridad (no falla): PUT no exige herramientas:survey_configurar_preguntas", () => {
-  assert.ok(true, "gap actual: permiso configurar solo en UI; API solo flag survey");
+test("PUT super admin (permiso concedido por RPC) → guarda OK", async () => {
+  const svc = await loadService();
+  const keys = resolveUserPermissions({
+    role: "admin",
+    is_super_admin: true,
+  });
+  assert.equal(keys.has(PERM_CONFIG), true, "superadmin resuelve el permiso en UI");
+  const saved = await svc.saveSurveyQuestionsConfig(
+    sbAuth({ flag: true, permission: true }),
+    USER_A,
+    BODY_OK,
+  );
+  assert.equal(saved.saved, 1);
 });
+
+for (const slug of ROLES_UI_VE_CONFIGURAR) {
+  test(`PUT rol ${slug} (ve botón en UI) → guarda OK`, async () => {
+    const svc = await loadService();
+    const uiKeys = permissionKeysForRoleSlug(slug);
+    assert.equal(
+      uiKeys.has(PERM_CONFIG),
+      true,
+      `${slug} debe tener ${PERM_CONFIG} en defaults UI`,
+    );
+    const saved = await svc.saveSurveyQuestionsConfig(
+      sbAuth({ flag: true, permission: true }),
+      USER_A,
+      BODY_OK,
+    );
+    assert.equal(saved.saved, 1);
+  });
+}
+
+test("paridad UI↔servidor: misma clave y mismos roles por defecto", async () => {
+  const svc = await loadService();
+  assert.equal(svc.PERMISO_SURVEY_CONFIGURAR_PREGUNTAS, PERM_CONFIG);
+
+  const uiSrc = readFileSync(UI_HOOK, "utf8");
+  assert.match(
+    uiSrc,
+    /can\(\s*["']herramientas:survey_configurar_preguntas["']\s*\)/,
+    "UI debe gatear con la misma clave",
+  );
+
+  const svcSrc = readFileSync(existsSync(MOD) ? MOD : LEGACY, "utf8");
+  assert.match(
+    svcSrc,
+    /requireWorkspacePermission\([\s\S]*PERMISO_SURVEY_CONFIGURAR_PREGUNTAS/,
+    "servidor debe exigir el permiso vía requireWorkspacePermission",
+  );
+
+  assert.equal(LINER_DEFAULT_PERMISSIONS.includes(PERM_CONFIG), true);
+  assert.equal(ADMIN_DEFAULT_PERMISSIONS.includes(PERM_CONFIG), true);
+  assert.equal(SOPORTE_DEFAULT_PERMISSIONS.includes(PERM_CONFIG), true);
+  assert.equal(ALL_PERMISSION_KEYS.includes(PERM_CONFIG), true);
+
+  for (const slug of ROLES_UI_VE_CONFIGURAR) {
+    assert.equal(
+      permissionKeysForRoleSlug(slug).has(PERM_CONFIG),
+      true,
+      `rol ${slug}: UI concede → servidor acepta (misma clave)`,
+    );
+  }
+
+  // Asistente / rol sin la clave (lista explícita; [] vacía cae al legacy liner).
+  const sinConfigurar = resolveUserPermissions({
+    role: "liner",
+    role_permission_keys: ["expedientes:ver_propios", "herramientas:survey"],
+    overrides: [],
+  });
+  assert.equal(sinConfigurar.has(PERM_CONFIG), false, "sin clave: UI oculta botón");
+  await assert.rejects(
+    () =>
+      svc.saveSurveyQuestionsConfig(
+        sbAuth({ flag: true, permission: false }),
+        USER_A,
+        BODY_OK,
+      ),
+    (err) => err instanceof ServiceError && err.status === 403,
+  );
+});
+
+function permissionKeysForRoleSlug(slug) {
+  if (slug === "superadmin") {
+    return resolveUserPermissions({ role: "admin", is_super_admin: true });
+  }
+  if (slug === "admin") {
+    return resolveUserPermissions({
+      role: "admin",
+      role_permission_keys: ADMIN_DEFAULT_PERMISSIONS,
+    });
+  }
+  // liner / cerrador / gerente: seed copia catálogo liner (APP sin ver_equipo + extras workflow)
+  return resolveUserPermissions({
+    role: "liner",
+    role_permission_keys: LINER_DEFAULT_PERMISSIONS,
+  });
+}

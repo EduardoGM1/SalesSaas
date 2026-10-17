@@ -1,8 +1,8 @@
 /**
- * Smoke UI config de preguntas Survey (5b.6): QA efímera, abrir modal,
- * editar título override, PUT, GET refleja, Survey usa config; purga a 0
- * (incl. survey_preguntas_usuario).
+ * Smoke UI/API config de preguntas Survey: QA efímera con y sin permiso
+ * `herramientas:survey_configurar_preguntas`; purga a 0 (incl. survey_preguntas_usuario).
  *
+ * Requiere API local con el arreglo de permiso (sin deploy a prod).
  * Uso: PLAYWRIGHT_BASE_URL=http://localhost:5173 node scripts/architecture/smoke-survey-config-ui-qa.mjs
  */
 import { randomBytes } from "node:crypto";
@@ -23,6 +23,7 @@ const FULL_NAME = `QA SurveyCfg ${stamp}`;
 const PASSWORD = randomBytes(18).toString("base64url");
 const CREDS_PATH = resolve(tmpdir(), `saletse-qa-survey-cfg-${stamp}.creds.json`);
 const TITLE = `Titulo QA ${stamp}`;
+const Q_PROBE = "11111111-1111-4111-8111-111111111111";
 
 writeFileSync(
   CREDS_PATH,
@@ -31,7 +32,7 @@ writeFileSync(
 );
 console.log(`Credenciales fuera del repo: ${CREDS_PATH}`);
 
-const report = { email: EMAIL, steps: [], consoleErrors: [], leftover: {} };
+const report = { email: EMAIL, base: BASE, steps: [], consoleErrors: [], leftover: {} };
 
 function step(name, ok, detail = "") {
   report.steps.push({ name, ok, detail });
@@ -50,8 +51,6 @@ async function main() {
   try {
     const prov = runHelper(["provision", EMAIL, PASSWORD, FULL_NAME]);
     step("provision QA", Boolean(prov.uid), String(prov.uid || "").slice(0, 8));
-    const grant = runHelper(["grant-survey-config", EMAIL]);
-    step("grant configurar preguntas", Boolean(grant.granted), String(grant.uid || "").slice(0, 8));
 
     browser = await chromium.launch({ headless: true });
     const page = await browser.newPage();
@@ -98,14 +97,65 @@ async function main() {
       await page.waitForTimeout(500);
     }
 
+    // --- SIN permiso (sin override): PUT 403 vía requireWorkspacePermission; GET OK ---
+    // Nota: en workspace personal sin role_id la sesión puede aún listar LINER_DEFAULT
+    // y mostrar el botón; el API falla cerrado con workspace_has_permission (igual que
+    // el resto de mutaciones). Gate de este smoke = PUT 403, no la visibilidad del botón.
     const configBtn = page.locator("button.disc-section-config-btn").first();
+    const btnVisibleSin = await configBtn.isVisible().catch(() => false);
+    step(
+      "sin permiso: nota UI botón",
+      true,
+      btnVisibleSin
+        ? "visible (sesión personal/legacy); API es fuente de verdad"
+        : "oculto",
+    );
+
+    const putDenied = await page.evaluate(async (preguntaId) => {
+      const r = await fetch("/api/v1/survey/questions-config", {
+        method: "PUT",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          seccion: "motivaciones",
+          items: [{ pregunta_id: preguntaId, orden: 1, activa: true }],
+        }),
+      });
+      const body = await r.json().catch(() => ({}));
+      return { status: r.status, code: body?.code || body?.error || "" };
+    }, Q_PROBE);
+    step(
+      "sin permiso: PUT → 403",
+      putDenied.status === 403,
+      `status ${putDenied.status} code=${putDenied.code}`,
+    );
+
+    const getSin = await page.evaluate(async () => {
+      const r = await fetch("/api/v1/survey/questions-config", { credentials: "include" });
+      return { status: r.status };
+    });
+    step("sin permiso: GET → 200", getSin.status === 200, `status ${getSin.status}`);
+
+    // --- CON permiso ---
+    const grant = runHelper(["grant-survey-config", EMAIL]);
+    step("grant configurar preguntas", Boolean(grant.granted), String(grant.uid || "").slice(0, 8));
+
+    await page.goto(`${BASE}/`, { waitUntil: "domcontentloaded" });
+    await page.waitForTimeout(800);
+    await page.goto(`${clientUrl}/survey`, { waitUntil: "domcontentloaded" });
+    await page.waitForTimeout(2000);
+    if (await motivTab.first().isVisible().catch(() => false)) {
+      await motivTab.first().click();
+      await page.waitForTimeout(500);
+    }
+
     await configBtn.waitFor({ state: "visible", timeout: 20000 });
     await configBtn.click();
     await page.locator(".disc-config-list, .sales-modal .disc-config-row").first().waitFor({
       state: "visible",
       timeout: 15000,
     });
-    step("abrir modal config", true);
+    step("con permiso: abrir modal config", true);
 
     const expand = page.locator("button.disc-config-expand").first();
     await expand.click();
@@ -126,7 +176,7 @@ async function main() {
       .first()
       .click();
     const putRes = await putPromise;
-    step("PUT questions-config", putRes.ok(), `status ${putRes.status()}`);
+    step("con permiso: PUT questions-config", putRes.ok(), `status ${putRes.status()}`);
 
     await page.waitForTimeout(800);
     const getJson = await page.evaluate(async () => {

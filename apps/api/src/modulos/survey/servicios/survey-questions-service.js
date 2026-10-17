@@ -1,5 +1,12 @@
 import { ServiceError } from "../../../lib/service-error.js";
-import { requireWorkspaceFlag } from "../../../lib/workspace-scope.js";
+import {
+  requireWorkspaceFlag,
+  requireWorkspacePermission,
+} from "../../../lib/workspace-scope.js";
+
+/** Misma clave que la UI (`can("…")` en use-survey-questions). */
+export const PERMISO_SURVEY_CONFIGURAR_PREGUNTAS =
+  "herramientas:survey_configurar_preguntas";
 
 const SECTIONS = new Set(["motivaciones", "timeshare"]);
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -100,6 +107,11 @@ export async function getSurveyQuestionsConfig(supabase, userId) {
 export async function saveSurveyQuestionsConfig(supabase, userId, body) {
   if (!userId) throw new ServiceError("No autenticado.", 401);
   await requireWorkspaceFlag(supabase, userId, "survey");
+  await requireWorkspacePermission(
+    supabase,
+    userId,
+    PERMISO_SURVEY_CONFIGURAR_PREGUNTAS,
+  );
 
   const seccion = String(body?.seccion || "").trim();
   if (!SECTIONS.has(seccion)) {
