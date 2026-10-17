@@ -2,15 +2,26 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { watchSession } from "@/lib/session-api.js";
 import { useUserPermissions } from "@/hooks/use-user-permissions.js";
+import { useWorkspace } from "@/hooks/use-workspace.js";
 import { loadMergedSurveyQuestions } from "../api/survey-questions-api.js";
 import {
   fallbackGroupedQuestions,
   groupResolvedQuestions,
   mergeSurveyQuestions,
 } from "../fachada-preguntas.js";
+import {
+  canConfigureSurveyQuestions,
+  PERMISO_SURVEY_CONFIGURAR_PREGUNTAS,
+} from "./can-configure-survey-questions.js";
+
+export {
+  canConfigureSurveyQuestions,
+  PERMISO_SURVEY_CONFIGURAR_PREGUNTAS,
+};
 
 export function useSurveyQuestions() {
   const { can, profile } = useUserPermissions();
+  const { active } = useWorkspace();
   const [userId, setUserId] = useState(null);
   const [bank, setBank] = useState([]);
   const [overrides, setOverrides] = useState([]);
@@ -60,11 +71,16 @@ export function useSurveyQuestions() {
     return groupResolvedQuestions(mergedActive);
   }, [mergedActive]);
 
+  const canConfigure = useMemo(
+    () => canConfigureSurveyQuestions({ activeWorkspace: active, can }),
+    [active, can],
+  );
+
   return {
     loading,
     userId,
     profile,
-    canConfigure: can("herramientas:survey_configurar_preguntas"),
+    canConfigure,
     bank,
     overrides,
     mergedAll,

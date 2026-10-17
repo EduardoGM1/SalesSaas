@@ -1,32 +1,31 @@
 # Permiso `herramientas:survey_configurar_preguntas` en API
 
-**Estado:** CERRADO en código (rama `arquitectura/permiso-put-preguntas`). Pendiente de deploy API (sin cambios de BD).  
-**Código:** `apps/api/src/modulos/survey/servicios/survey-questions-service.js`.  
-**UI:** el botón/modal de config solo se muestra si `can("herramientas:survey_configurar_preguntas")` (`use-survey-questions`).
+**Estado:** CERRADO en código (rama `arquitectura/permiso-put-preguntas`). Pendiente deploy **API+web** (sin cambios de BD).  
+**Código API:** `apps/api/src/modulos/survey/servicios/survey-questions-service.js` (`assertCanConfigureSurveyQuestions`).  
+**Código UI:** `apps/web/src/modulos/survey/hooks/use-survey-questions.js` (`canConfigureSurveyQuestions`).
 
-## Comportamiento vigente (post-arreglo)
+## Regla de producto
 
-| Operación | Auth HTTP | Flag workspace `survey` | Permiso `herramientas:survey_configurar_preguntas` |
-|-----------|-----------|-------------------------|-----------------------------------------------------|
-| `GET /api/v1/survey/questions-config` | Sesión requerida (401 sin token) | **No** | **No** |
-| `PUT /api/v1/survey/questions-config` | Sesión requerida (401 sin token) | **Sí** (`requireWorkspaceFlag`) | **Sí** (`requireWorkspacePermission`) → 403 si falta |
+| Contexto | Botón UI | PUT |
+|----------|----------|-----|
+| Workspace **personal propio** del dueño (`ensure_personal_workspace` = activo) | Visible | 200 si flag `survey` (sin exigir la clave; altas sin `role_id`) |
+| Workspace **sala** | Solo si la clave está en el set efectivo del RPC | 403 sin clave; 200 con clave |
+| Personal ajeno (guest) | N/A típico | Misma regla que sala (exige clave) |
+| Sin token | — | 401 |
+| Flag `survey` off | — | 403 FLAG_DENIED |
 
-- GET intacto: Survey de un usuario sin el permiso sigue leyendo banco + sus overrides.
-- PUT: misma regla que la UI (roles por defecto, overrides aditivos, super admin vía RPC de workspace).
-- Contrato: ruta, payload y códigos de éxito iguales; solo se agrega 403 por permiso.
+GET intacto: sin flag ni permiso configurar.
 
-## Alcance de los overrides
+## Por qué se exceptúa el personal
 
-- Por **usuario** (`usuario_id` + `pregunta_id`), no por workspace ni por expediente.
-- Afectan el banco fusionado que usa Survey para ese usuario.
-- No hay filas de “config de sala”.
+Los overrides viven en `survey_preguntas_usuario` por `usuario_id` (datos del dueño). El alta (`handle_new_user`) no asigna `role_id`. Exigir la clave en personal rompería el flujo que hoy usan todos los usuarios personales.
 
 ## Verificación
 
-- `npm run test:security` (suite `survey-questions-service.test.mjs`: 401, 403 sin permiso, 200 con permiso, super admin, roles UI, paridad UI↔servidor).
-- Smoke QA efímera con/sin permiso + purga `survey_preguntas_usuario` a 0.
-- Deploy: solo API; backup + `ROLLBACK.md` + `pm2 reload` + sonda `/health`.
+- `npm run test:security` — matriz personal/sala/guest/flag/401.
+- Smoke QA: `smoke-survey-config-ui-qa.mjs` (personal sin role_id → visible/200 + purga).
+- `npm run test:web`, `npm run verificar:arquitectura:completo`.
 
-## Relación con 5b.6
+## Deploy
 
-El move a `modulos/survey` no alteró auth; este cierre alinea API y UI.
+Ver `docs/arquitectura/deploy-permiso-put-preguntas.md` + `ROLLBACK.md` en el mismo directorio del backup en VPS. **No ejecutar** sin OK explícito.

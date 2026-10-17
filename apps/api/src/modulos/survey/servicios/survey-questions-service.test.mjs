@@ -3,10 +3,9 @@
  *
  * Contrato:
  * - Sin userId → 401 (GET y PUT).
- * - GET: autenticado → banco global + overrides de SU usuario_id (sin flag ni permiso configurar).
- * - PUT: flag workspace `survey` + permiso `herramientas:survey_configurar_preguntas`
- *   (misma clave que la UI `can(...)` / use-survey-questions).
- * - Aislamiento cross-user: overrides filtrados por usuario_id.
+ * - GET: autenticado → banco + overrides (sin flag ni permiso configurar).
+ * - PUT: flag `survey` + (WS personal propio del dueño | permiso configurar en sala).
+ * - Paridad UI↔servidor: personal visible/200; sala según clave RPC.
  */
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
@@ -32,20 +31,21 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const MOD = resolve(HERE, "survey-questions-service.js");
 const LEGACY = resolve(HERE, "../../../services/survey-questions-service.js");
 const WS_SERVICE = resolve(HERE, "../../../services/workspace-service.js");
-const UI_HOOK = resolve(
+const UI_HELPER = resolve(
   HERE,
-  "../../../../../web/src/modulos/survey/hooks/use-survey-questions.js",
+  "../../../../../web/src/modulos/survey/hooks/can-configure-survey-questions.js",
 );
 
 const USER_A = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 const USER_B = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
-const WS = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
+const WS_PERSONAL = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
+const WS_SALA = "dddddddd-dddd-4ddd-8ddd-dddddddddddd";
 const Q1 = "11111111-1111-4111-8111-111111111111";
 const Q2 = "22222222-2222-4222-8222-222222222222";
 const PERM_CONFIG = "herramientas:survey_configurar_preguntas";
 
-/** Roles que por seed/default ven el botón «Configurar preguntas» (0043/0045 + 0056). */
-const ROLES_UI_VE_CONFIGURAR = ["liner", "cerrador", "gerente", "admin", "superadmin"];
+/** @type {{ activeId: string, personalId: string|null }} */
+const wsState = { activeId: WS_PERSONAL, personalId: WS_PERSONAL };
 
 async function loadService() {
   const path = existsSync(MOD) ? MOD : LEGACY;
@@ -75,9 +75,12 @@ function chainable(result) {
 
 mock.module(pathToFileURL(WS_SERVICE).href, {
   namedExports: {
-    resolveActiveWorkspaceId: async () => WS,
-    listUserWorkspaces: async () => [{ id: WS, tipo: "personal" }],
-    ensurePersonalWorkspace: async () => {},
+    resolveActiveWorkspaceId: async () => wsState.activeId,
+    listUserWorkspaces: async () => [
+      { id: WS_PERSONAL, tipo: "personal" },
+      { id: WS_SALA, tipo: "sala_de_venta" },
+    ],
+    ensurePersonalWorkspace: async () => wsState.personalId,
   },
 });
 
@@ -183,7 +186,13 @@ const BODY_OK = {
   items: [{ pregunta_id: Q1, orden: 1, activa: true }],
 };
 
+function setWs({ activeId, personalId }) {
+  wsState.activeId = activeId;
+  wsState.personalId = personalId;
+}
+
 test("PUT payload inválido: sección / items / uuid / orden → 400", async () => {
+  setWs({ activeId: WS_PERSONAL, personalId: WS_PERSONAL });
   const svc = await loadService();
   const sb = sbAuth();
   await assert.rejects(
@@ -212,19 +221,37 @@ test("PUT payload inválido: sección / items / uuid / orden → 400", async () 
   );
 });
 
-test("PUT sin flag survey → 403 FLAG_DENIED", async () => {
+test("PUT sin flag survey → 403 FLAG_DENIED (personal y sala)", async () => {
   const svc = await loadService();
+  setWs({ activeId: WS_PERSONAL, personalId: WS_PERSONAL });
   await assert.rejects(
-    () => svc.saveSurveyQuestionsConfig(sbAuth({ flag: false, permission: true }), USER_A, BODY_OK),
+    () => svc.saveSurveyQuestionsConfig(sbAuth({ flag: false, permission: false }), USER_A, BODY_OK),
     (err) =>
       err instanceof ServiceError &&
       err.status === 403 &&
       err.code === WORKSPACE_FLAG_DENIED &&
       err.message === MSG_FLAG_DENIED,
   );
+  setWs({ activeId: WS_SALA, personalId: WS_PERSONAL });
+  await assert.rejects(
+    () => svc.saveSurveyQuestionsConfig(sbAuth({ flag: false, permission: true }), USER_A, BODY_OK),
+    (err) => err instanceof ServiceError && err.status === 403 && err.code === WORKSPACE_FLAG_DENIED,
+  );
 });
 
-test("PUT sin permiso configurar → 403 PERMISSION_DENIED", async () => {
+test("PUT personal propio sin role_id / sin permiso RPC → 200 (excepción dueño)", async () => {
+  setWs({ activeId: WS_PERSONAL, personalId: WS_PERSONAL });
+  const svc = await loadService();
+  const saved = await svc.saveSurveyQuestionsConfig(
+    sbAuth({ flag: true, permission: false }),
+    USER_A,
+    BODY_OK,
+  );
+  assert.equal(saved.saved, 1);
+});
+
+test("PUT sala sin permiso → 403 PERMISSION_DENIED", async () => {
+  setWs({ activeId: WS_SALA, personalId: WS_PERSONAL });
   const svc = await loadService();
   await assert.rejects(
     () => svc.saveSurveyQuestionsConfig(sbAuth({ flag: true, permission: false }), USER_A, BODY_OK),
@@ -236,7 +263,29 @@ test("PUT sin permiso configurar → 403 PERMISSION_DENIED", async () => {
   );
 });
 
-test("PUT con flag + permiso → 200 (saved); pregunta ajena a sección → 403", async () => {
+test("PUT sala con permiso → 200", async () => {
+  setWs({ activeId: WS_SALA, personalId: WS_PERSONAL });
+  const svc = await loadService();
+  const saved = await svc.saveSurveyQuestionsConfig(
+    sbAuth({ flag: true, permission: true }),
+    USER_A,
+    BODY_OK,
+  );
+  assert.equal(saved.saved, 1);
+});
+
+test("PUT personal ajeno (guest: activo ≠ ensure_personal) sin permiso → 403", async () => {
+  const WS_OTRO_PERSONAL = "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee";
+  setWs({ activeId: WS_OTRO_PERSONAL, personalId: WS_PERSONAL });
+  const svc = await loadService();
+  await assert.rejects(
+    () => svc.saveSurveyQuestionsConfig(sbAuth({ flag: true, permission: false }), USER_A, BODY_OK),
+    (err) => err instanceof ServiceError && err.status === 403 && err.code === WORKSPACE_PERMISSION_DENIED,
+  );
+});
+
+test("PUT con flag + permiso en personal → 200; pregunta ajena a sección → 403", async () => {
+  setWs({ activeId: WS_PERSONAL, personalId: WS_PERSONAL });
   const svc = await loadService();
   let upsertSeen = null;
   const sb = sbAuth({
@@ -271,7 +320,8 @@ test("PUT con flag + permiso → 200 (saved); pregunta ajena a sección → 403"
   );
 });
 
-test("PUT super admin (permiso concedido por RPC) → guarda OK", async () => {
+test("PUT sala: override / super admin (permiso RPC) → 200", async () => {
+  setWs({ activeId: WS_SALA, personalId: WS_PERSONAL });
   const svc = await loadService();
   const keys = resolveUserPermissions({
     role: "admin",
@@ -286,86 +336,71 @@ test("PUT super admin (permiso concedido por RPC) → guarda OK", async () => {
   assert.equal(saved.saved, 1);
 });
 
-for (const slug of ROLES_UI_VE_CONFIGURAR) {
-  test(`PUT rol ${slug} (ve botón en UI) → guarda OK`, async () => {
-    const svc = await loadService();
-    const uiKeys = permissionKeysForRoleSlug(slug);
-    assert.equal(
-      uiKeys.has(PERM_CONFIG),
-      true,
-      `${slug} debe tener ${PERM_CONFIG} en defaults UI`,
-    );
-    const saved = await svc.saveSurveyQuestionsConfig(
-      sbAuth({ flag: true, permission: true }),
-      USER_A,
-      BODY_OK,
-    );
-    assert.equal(saved.saved, 1);
-  });
-}
-
-test("paridad UI↔servidor: misma clave y mismos roles por defecto", async () => {
+test("paridad UI↔servidor: personal vs sala + misma clave", async () => {
   const svc = await loadService();
   assert.equal(svc.PERMISO_SURVEY_CONFIGURAR_PREGUNTAS, PERM_CONFIG);
 
-  const uiSrc = readFileSync(UI_HOOK, "utf8");
+  const uiSrc = readFileSync(UI_HELPER, "utf8");
+  assert.match(uiSrc, /canConfigureSurveyQuestions/, "UI exporta helper de paridad");
+  assert.match(uiSrc, /sala_de_venta/, "UI distingue sala");
   assert.match(
     uiSrc,
-    /can\(\s*["']herramientas:survey_configurar_preguntas["']\s*\)/,
-    "UI debe gatear con la misma clave",
+    /herramientas:survey_configurar_preguntas/,
+    "UI usa la misma clave en sala",
   );
 
   const svcSrc = readFileSync(existsSync(MOD) ? MOD : LEGACY, "utf8");
+  assert.match(svcSrc, /assertCanConfigureSurveyQuestions/, "servidor usa assert compartido");
+  assert.match(svcSrc, /ensurePersonalWorkspace/, "servidor exceptúa personal propio");
   assert.match(
     svcSrc,
-    /requireWorkspacePermission\([\s\S]*PERMISO_SURVEY_CONFIGURAR_PREGUNTAS/,
-    "servidor debe exigir el permiso vía requireWorkspacePermission",
+    /requireWorkspacePermission/,
+    "servidor exige permiso en no-personal",
+  );
+
+  const ui = await import(`${pathToFileURL(UI_HELPER).href}?t=${Date.now()}`);
+  const canFalse = () => false;
+  const canTrue = (k) => k === PERM_CONFIG;
+
+  assert.equal(
+    ui.canConfigureSurveyQuestions({ activeWorkspace: { tipo: "personal" }, can: canFalse }),
+    true,
+    "personal: botón visible sin clave",
+  );
+  assert.equal(
+    ui.canConfigureSurveyQuestions({ activeWorkspace: { tipo: "sala_de_venta" }, can: canFalse }),
+    false,
+    "sala sin clave: botón oculto",
+  );
+  assert.equal(
+    ui.canConfigureSurveyQuestions({ activeWorkspace: { tipo: "sala_de_venta" }, can: canTrue }),
+    true,
+    "sala con clave: botón visible",
+  );
+  assert.equal(
+    ui.canConfigureSurveyQuestions({ activeWorkspace: null, can: canFalse }),
+    true,
+    "sin activo (tratado como no-sala): visible",
+  );
+
+  // Servidor: misma matriz
+  setWs({ activeId: WS_PERSONAL, personalId: WS_PERSONAL });
+  assert.equal(
+    (await svc.saveSurveyQuestionsConfig(sbAuth({ permission: false }), USER_A, BODY_OK)).saved,
+    1,
+  );
+  setWs({ activeId: WS_SALA, personalId: WS_PERSONAL });
+  await assert.rejects(
+    () => svc.saveSurveyQuestionsConfig(sbAuth({ permission: false }), USER_A, BODY_OK),
+    (err) => err.status === 403,
+  );
+  assert.equal(
+    (await svc.saveSurveyQuestionsConfig(sbAuth({ permission: true }), USER_A, BODY_OK)).saved,
+    1,
   );
 
   assert.equal(LINER_DEFAULT_PERMISSIONS.includes(PERM_CONFIG), true);
   assert.equal(ADMIN_DEFAULT_PERMISSIONS.includes(PERM_CONFIG), true);
   assert.equal(SOPORTE_DEFAULT_PERMISSIONS.includes(PERM_CONFIG), true);
   assert.equal(ALL_PERMISSION_KEYS.includes(PERM_CONFIG), true);
-
-  for (const slug of ROLES_UI_VE_CONFIGURAR) {
-    assert.equal(
-      permissionKeysForRoleSlug(slug).has(PERM_CONFIG),
-      true,
-      `rol ${slug}: UI concede → servidor acepta (misma clave)`,
-    );
-  }
-
-  // Asistente / rol sin la clave (lista explícita; [] vacía cae al legacy liner).
-  const sinConfigurar = resolveUserPermissions({
-    role: "liner",
-    role_permission_keys: ["expedientes:ver_propios", "herramientas:survey"],
-    overrides: [],
-  });
-  assert.equal(sinConfigurar.has(PERM_CONFIG), false, "sin clave: UI oculta botón");
-  await assert.rejects(
-    () =>
-      svc.saveSurveyQuestionsConfig(
-        sbAuth({ flag: true, permission: false }),
-        USER_A,
-        BODY_OK,
-      ),
-    (err) => err instanceof ServiceError && err.status === 403,
-  );
 });
-
-function permissionKeysForRoleSlug(slug) {
-  if (slug === "superadmin") {
-    return resolveUserPermissions({ role: "admin", is_super_admin: true });
-  }
-  if (slug === "admin") {
-    return resolveUserPermissions({
-      role: "admin",
-      role_permission_keys: ADMIN_DEFAULT_PERMISSIONS,
-    });
-  }
-  // liner / cerrador / gerente: seed copia catálogo liner (APP sin ver_equipo + extras workflow)
-  return resolveUserPermissions({
-    role: "liner",
-    role_permission_keys: LINER_DEFAULT_PERMISSIONS,
-  });
-}
