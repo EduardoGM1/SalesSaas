@@ -18,6 +18,16 @@ import {
 } from "@salesapp/shared/push/notification-targets.js";
 import { collectReminders } from "../lib/reminders.js";
 import { logger } from "../lib/logger.js";
+import {
+  normalizarPreferenciasNotificacion,
+  digestOmitidoPorPrefs,
+  omitirPorPrefsRecordatorio,
+  clasificarTipoRecordatorio,
+  fechaRecordatorioValida,
+  normalizarHoraRecordatorio,
+  evaluarSendAt,
+  construirCamposTrabajoPush,
+} from "../modulos/notificaciones/index.js";
 
 const ONESIGNAL_API = "https://api.onesignal.com/notifications";
 const MAX_STORED_SUBSCRIPTIONS = 5;
@@ -67,15 +77,7 @@ async function loadProfileSettings(serviceSb, userId) {
 
 async function loadNotificationPrefs(serviceSb, userId) {
   const notifications = (await loadProfileSettings(serviceSb, userId)).notifications ?? {};
-  return {
-    messages: notifications.messages !== false,
-    connection_requests: notifications.connection_requests !== false,
-    connection_accepted: notifications.connection_accepted !== false,
-    shared_prospects: notifications.shared_prospects !== false,
-    follow_up_reminders: notifications.follow_up_reminders !== false,
-    sales_to_process: notifications.sales_to_process === true,
-    scheduled_notes: notifications.scheduled_notes !== false,
-  };
+  return normalizarPreferenciasNotificacion(notifications);
 }
 
 async function loadSubscriptionIds(serviceSb, userId) {
@@ -512,7 +514,7 @@ export async function digestOperationalReminders(userId, { timezoneOffsetMinutes
   if (!userId) return { sent: 0, skipped: "no_user" };
 
   const prefs = await loadNotificationPrefs(serviceSb, userId);
-  if (!prefs.follow_up_reminders && !prefs.sales_to_process && !prefs.scheduled_notes) {
+  if (digestOmitidoPorPrefs(prefs)) {
     return { sent: 0, skipped: "prefs_off" };
   }
 
@@ -639,42 +641,38 @@ export async function scheduleOperationalReminder(userId, body = {}) {
   const sendAtRaw = body.send_at ?? body.sendAt ?? null;
   const entryKey = String(body.entry_key ?? body.entryKey ?? body.ts ?? Date.now());
 
-  const isFollow = kind === "follow-up" || kind === "follow";
-  const isNote = kind === "note" || kind === "nota" || kind === "scheduled_note";
-  if (!isFollow && !isNote) {
-    throw new ServiceError("Tipo de recordatorio no válido.", 400);
-  }
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+  const clasif = clasificarTipoRecordatorio(kind);
+  if (clasif.error) throw new ServiceError(clasif.error, 400);
+  const { esFollow: isFollow, esNota: isNote } = clasif;
+  if (!fechaRecordatorioValida(date)) {
     throw new ServiceError("Fecha inválida.", 400);
   }
 
   const prefs = await loadNotificationPrefs(serviceSb, userId);
-  if (isFollow && !prefs.follow_up_reminders) return { ok: true, skipped: "prefs_off" };
-  if (isNote && !prefs.scheduled_notes) return { ok: true, skipped: "prefs_off" };
+  const prefSkip = omitirPorPrefsRecordatorio(prefs, { esFollow: isFollow, esNota: isNote });
+  if (prefSkip) return { ok: true, skipped: prefSkip };
 
-  const time = /^\d{1,2}:\d{2}$/.test(timeRaw) ? timeRaw.padStart(5, "0") : "09:00";
-  const sendAt = sendAtRaw ? new Date(String(sendAtRaw)) : null;
-  if (!sendAt || Number.isNaN(sendAt.getTime())) {
-    throw new ServiceError("send_at inválido.", 400);
-  }
-
+  const time = normalizarHoraRecordatorio(timeRaw);
   const now = Date.now();
-  const delta = sendAt.getTime() - now;
-  if (delta < -2 * 60 * 60 * 1000) {
-    return { ok: true, skipped: "too_late" };
+  const evalSend = evaluarSendAt(sendAtRaw, now);
+  if (!evalSend.ok) {
+    if (evalSend.skipped) return { ok: true, skipped: evalSend.skipped };
+    throw new ServiceError(evalSend.error || "send_at inválido.", 400);
   }
+  const sendAt = evalSend.sendAt;
+  const delta = sendAt.getTime() - now;
 
   const origin = primaryWebOrigin();
-  const path = calendarPath();
-  const title = isFollow ? "Recordatorio de follow-up" : "Nota programada";
-  const preview = note
-    ? (note.length > 120 ? `${note.slice(0, 120)}…` : note)
-    : (isFollow ? "Tienes un follow-up programado" : "Tienes una nota programada");
-  const bodyText = isFollow
-    ? (note ? `Follow-up: ${preview}` : `Follow-up a las ${time}`)
-    : (note ? `Nota: ${preview}` : `Nota programada a las ${time}`);
-  const pushType = isFollow ? PushType.FOLLOW_UP_REMINDER : PushType.SCHEDULED_NOTE;
   const tag = pushTag(isFollow ? "fu" : "note", date, time.replace(":", ""), entryKey);
+  const campos = construirCamposTrabajoPush({
+    esFollow: isFollow,
+    date,
+    time,
+    note,
+    entryKey,
+    tag,
+  });
+  const { push_type: pushType, title, body: bodyText, path } = campos;
 
   // Cancela jobs pendientes previos del mismo entry (reprogramación).
   await serviceSb
