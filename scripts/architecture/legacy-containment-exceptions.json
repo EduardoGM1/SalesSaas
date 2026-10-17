@@ -1,4 +1,13 @@
 {
   "comment": "Excepciones justificadas a la contención legacy. Cada entrada: archivo posix relativo a la raíz del monorepo + reason. Solo añadir en PR con justificación; preferir poner código nuevo en apps/*/src/modulos/.",
-  "files": []
+  "files": [
+    {
+      "file": "apps/web/src/lib/expediente-field-lock-helpers.js",
+      "reason": "Helper puro colocalizado con expediente-realtime.js (legacy congelado); throttle de warns de field_lock/unlock previo a 0098. No hay módulo collab aún."
+    },
+    {
+      "file": "apps/web/src/lib/expediente-field-lock-helpers.test.mjs",
+      "reason": "Tests del helper anterior; misma colocalización que expediente-realtime.js."
+    }
+  ]
 }

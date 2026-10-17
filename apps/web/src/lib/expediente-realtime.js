@@ -11,12 +11,26 @@ import { createClient } from "@/lib/supabase/client";
 import { ensureBrowserSession } from "@/lib/supabase/ensure-browser-session.js";
 import { ensureRealtimeReady, removeChannelSafe } from "@/lib/presence/realtime.js";
 
+import {
+  WARN_THROTTLE_MS,
+  noteThrottledWarn,
+} from "./expediente-field-lock-helpers.js";
+
 const DEBOUNCE_MS = 50;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export const FIELD_LOCK_TTL_MS = 60_000;
 const LOCK_HEARTBEAT_MS = 20_000;
 const LOCK_EVENT = "field_lock";
 const UNLOCK_EVENT = "field_unlock";
+
+/** @type {Map<string, number>} */
+const warnLastAt = new Map();
+
+function warnThrottled(key, message) {
+  if (noteThrottledWarn(warnLastAt, key, Date.now(), WARN_THROTTLE_MS)) {
+    console.warn(message);
+  }
+}
 
 let presenceChannel = null;
 let dataChannel = null;
@@ -267,7 +281,7 @@ async function broadcastLock(fieldId) {
       payload,
     });
   } catch (err) {
-    console.warn("[expediente-realtime] lock broadcast:", err?.message || err);
+    warnThrottled("lock", `[expediente-realtime] lock broadcast: ${err?.message || err}`);
   }
 }
 
@@ -286,7 +300,7 @@ async function broadcastUnlock(fieldId) {
       payload,
     });
   } catch (err) {
-    console.warn("[expediente-realtime] unlock broadcast:", err?.message || err);
+    warnThrottled("unlock", `[expediente-realtime] unlock broadcast: ${err?.message || err}`);
   }
 }
 
@@ -295,6 +309,15 @@ async function tearDownChannels() {
   debounceTimer = null;
   pendingDataChange = null;
   clearLockHeartbeat();
+  // Best-effort unlock antes de untrack/pagehide (peers también limpian por leave + TTL).
+  const focused = myFocusedField;
+  if (focused) {
+    try {
+      await broadcastUnlock(focused);
+    } catch {
+      /* ignore */
+    }
+  }
   myFocusedField = null;
   fieldLocks.clear();
   const sb = createClient();

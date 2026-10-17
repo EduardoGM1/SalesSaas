@@ -148,7 +148,11 @@ SELECT 'shares|' || COUNT(*)::text FROM prospect_shares ps
  WHERE ps.owner_id = (SELECT id FROM profiles WHERE email = '{email_sql}')
     OR ps.shared_with_id = (SELECT id FROM profiles WHERE email = '{email_sql}');
 SELECT 'share_invites|' || COUNT(*)::text FROM prospect_share_invites i
- WHERE i.owner_id = (SELECT id FROM profiles WHERE email = '{email_sql}');
+ WHERE i.owner_id = (SELECT id FROM profiles WHERE email = '{email_sql}')
+    OR i.prospect_id IN (
+      SELECT p.id FROM prospects p
+      WHERE p.user_id = (SELECT id FROM profiles WHERE email = '{email_sql}')
+    );
 SELECT 'connections|' || COUNT(*)::text FROM user_connections uc
  WHERE uc.requester_id = (SELECT id FROM profiles WHERE email = '{email_sql}')
     OR uc.addressee_id = (SELECT id FROM profiles WHERE email = '{email_sql}');
@@ -325,6 +329,161 @@ RETURNING id::text, user_id::text, workspace_id::text;
     }
 
 
+def seed_collab_share_only(
+    client,
+    owner_email: str,
+    recipient_email: str,
+    prospect_id: str,
+    permission: str = "edit",
+) -> dict:
+    """Conexión accepted + prospect_shares; B fuera del WS del expediente (sin guest).
+
+    Para canario broadcast/presence donde user_can_access_prospect debe basarse en
+    el share, no en membresía. No inserta workspace_miembros.
+    """
+    owner_sql = owner_email.replace("'", "''")
+    recip_sql = recipient_email.replace("'", "''")
+    pid = prospect_id.replace("'", "''")
+    perm = (permission or "edit").replace("'", "''")
+    if perm not in ("view", "edit", "comment", "workspace"):
+        raise SystemExit(f"permission inválido: {perm}")
+    out = psql(
+        client,
+        f"""
+WITH ids AS (
+  SELECT
+    (SELECT id FROM profiles WHERE email = '{owner_sql}') AS owner_id,
+    (SELECT id FROM profiles WHERE email = '{recip_sql}') AS recipient_id,
+    '{pid}'::uuid AS prospect_id,
+    (
+      SELECT p.workspace_id FROM prospects p
+      WHERE p.id = '{pid}'::uuid
+        AND p.user_id = (SELECT id FROM profiles WHERE email = '{owner_sql}')
+    ) AS owner_ws_id
+),
+conn AS (
+  INSERT INTO user_connections (requester_id, addressee_id, status)
+  SELECT owner_id, recipient_id, 'accepted' FROM ids
+  WHERE owner_id IS NOT NULL AND recipient_id IS NOT NULL
+    AND NOT EXISTS (
+      SELECT 1 FROM user_connections uc
+      WHERE (uc.requester_id = ids.owner_id AND uc.addressee_id = ids.recipient_id)
+         OR (uc.requester_id = ids.recipient_id AND uc.addressee_id = ids.owner_id)
+    )
+  RETURNING id
+),
+upd AS (
+  UPDATE user_connections uc
+  SET status = 'accepted'
+  FROM ids
+  WHERE ((uc.requester_id = ids.owner_id AND uc.addressee_id = ids.recipient_id)
+      OR (uc.requester_id = ids.recipient_id AND uc.addressee_id = ids.owner_id))
+    AND uc.status IS DISTINCT FROM 'accepted'
+  RETURNING uc.id
+),
+share AS (
+  INSERT INTO prospect_shares (prospect_id, owner_id, shared_with_id, permission)
+  SELECT prospect_id, owner_id, recipient_id, '{perm}'::share_permission
+  FROM ids
+  WHERE owner_id IS NOT NULL AND recipient_id IS NOT NULL AND owner_ws_id IS NOT NULL
+    AND EXISTS (SELECT 1 FROM prospects p WHERE p.id = ids.prospect_id AND p.user_id = ids.owner_id)
+  ON CONFLICT (prospect_id, shared_with_id) DO UPDATE
+    SET permission = EXCLUDED.permission
+  RETURNING id::text, prospect_id::text, owner_id::text, shared_with_id::text, permission::text
+)
+SELECT s.id || '|' || s.prospect_id || '|' || s.owner_id || '|' || s.shared_with_id || '|' || s.permission
+  || '|' || COALESCE(ids.owner_ws_id::text, '')
+  || '|guest=0'
+  || '|conn=' || ((SELECT COUNT(*) FROM conn) + (SELECT COUNT(*) FROM upd))::text
+FROM share s, ids;
+""",
+    ).strip()
+    if not out:
+        raise SystemExit("seed-collab-share-only: sin fila (¿emails/prospect/ws personal?)")
+    parts = out.splitlines()[0].split("|")
+    return {
+        "share_id": parts[0] if parts else "",
+        "prospect_id": parts[1] if len(parts) > 1 else prospect_id,
+        "owner_id": parts[2] if len(parts) > 2 else "",
+        "shared_with_id": parts[3] if len(parts) > 3 else "",
+        "permission": parts[4] if len(parts) > 4 else perm,
+        "owner_ws_id": parts[5] if len(parts) > 5 else "",
+        "guest": False,
+    }
+
+
+def assert_collab_share_only(
+    client,
+    owner_email: str,
+    recipient_email: str,
+    prospect_id: str,
+) -> dict:
+    """SOLO LECTURA: B tiene share real y NO es miembro del WS del expediente."""
+    owner_sql = owner_email.replace("'", "''")
+    recip_sql = recipient_email.replace("'", "''")
+    pid = prospect_id.replace("'", "''")
+    # Un solo statement: CTE no sobrevive entre SELECT separados en psql -c.
+    out = psql(
+        client,
+        f"""
+WITH ids AS (
+  SELECT
+    (SELECT id FROM profiles WHERE email = '{owner_sql}') AS owner_id,
+    (SELECT id FROM profiles WHERE email = '{recip_sql}') AS recipient_id,
+    '{pid}'::uuid AS prospect_id,
+    (
+      SELECT p.workspace_id FROM prospects p
+      WHERE p.id = '{pid}'::uuid
+        AND p.user_id = (SELECT id FROM profiles WHERE email = '{owner_sql}')
+    ) AS owner_ws_id
+)
+SELECT
+  'share|' || (
+    SELECT COUNT(*)::text FROM prospect_shares ps
+    WHERE ps.prospect_id = ids.prospect_id
+      AND ps.owner_id = ids.owner_id
+      AND ps.shared_with_id = ids.recipient_id
+  )
+  || '|guest_miembro|' || (
+    SELECT COUNT(*)::text FROM workspace_miembros wm
+    WHERE wm.usuario_id = ids.recipient_id
+      AND wm.workspace_id = ids.owner_ws_id
+      AND ids.owner_ws_id IS NOT NULL
+  )
+  || '|conn|' || (
+    SELECT COUNT(*)::text FROM user_connections uc
+    WHERE ((uc.requester_id = ids.owner_id AND uc.addressee_id = ids.recipient_id)
+        OR (uc.requester_id = ids.recipient_id AND uc.addressee_id = ids.owner_id))
+      AND uc.status = 'accepted'
+  )
+  || '|owner_ws|' || COALESCE(ids.owner_ws_id::text, '')
+FROM ids;
+""",
+    )
+    parsed = {"share": 0, "guest_miembro": 0, "conn": 0, "owner_ws": ""}
+    line = next((ln.strip() for ln in out.splitlines() if ln.strip().startswith("share|")), "")
+    # share|N|guest_miembro|N|conn|N|owner_ws|<uuid>
+    parts = line.split("|") if line else []
+    try:
+        parsed["share"] = int(parts[1]) if len(parts) > 1 else 0
+        parsed["guest_miembro"] = int(parts[3]) if len(parts) > 3 else 0
+        parsed["conn"] = int(parts[5]) if len(parts) > 5 else 0
+        parsed["owner_ws"] = parts[7] if len(parts) > 7 else ""
+    except (ValueError, IndexError):
+        pass
+    ok = (
+        parsed["share"] >= 1
+        and parsed["guest_miembro"] == 0
+        and parsed["conn"] >= 1
+        and bool(parsed["owner_ws"])
+    )
+    return {
+        **parsed,
+        "ok": ok,
+        "assert": "share>=1 && guest_miembro=0 && conn>=1 && owner_ws",
+    }
+
+
 def seed_collab_share(
     client,
     owner_email: str,
@@ -485,7 +644,8 @@ WHERE n.nspname = 'realtime'
 def main() -> None:
     if len(sys.argv) < 2:
         raise SystemExit(
-            "uso: provision|counts|purge|seed-prospect|seed-collab-share|grant-survey-config|grant-money-box|check-broadcast-policy ..."
+            "uso: provision|counts|purge|seed-prospect|seed-collab-share|seed-collab-share-only|"
+            "assert-collab-share-only|grant-survey-config|grant-money-box|check-broadcast-policy ..."
         )
     cmd = sys.argv[1]
     client = connect_vps(load_env_file(ROOT))
@@ -495,7 +655,8 @@ def main() -> None:
             return
         if len(sys.argv) < 3:
             raise SystemExit(
-                "uso: provision|counts|purge|seed-prospect|seed-collab-share|grant-survey-config|grant-money-box <email> ..."
+                "uso: provision|counts|purge|seed-prospect|seed-collab-share|seed-collab-share-only|"
+                "assert-collab-share-only|grant-survey-config|grant-money-box <email> ..."
             )
         email = sys.argv[2]
         if cmd == "provision":
@@ -523,6 +684,19 @@ def main() -> None:
                 )
             perm = sys.argv[5] if len(sys.argv) > 5 else "edit"
             print(json.dumps(seed_collab_share(client, email, sys.argv[3], sys.argv[4], perm)))
+        elif cmd == "seed-collab-share-only":
+            if len(sys.argv) < 5:
+                raise SystemExit(
+                    "seed-collab-share-only <owner_email> <recipient_email> <prospect_id> [permission]"
+                )
+            perm = sys.argv[5] if len(sys.argv) > 5 else "edit"
+            print(json.dumps(seed_collab_share_only(client, email, sys.argv[3], sys.argv[4], perm)))
+        elif cmd == "assert-collab-share-only":
+            if len(sys.argv) < 5:
+                raise SystemExit(
+                    "assert-collab-share-only <owner_email> <recipient_email> <prospect_id>"
+                )
+            print(json.dumps(assert_collab_share_only(client, email, sys.argv[3], sys.argv[4])))
         else:
             raise SystemExit(f"comando desconocido: {cmd}")
     finally:
