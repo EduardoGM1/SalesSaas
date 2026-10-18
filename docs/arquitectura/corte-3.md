@@ -43,7 +43,9 @@ Clasificación Etapa 5: sección en `e2e-baseline.md` (propuesta, sin aplicar).
 
 ## Backlog de seguridad
 
-[`backlog-seguridad.md`](./backlog-seguridad.md): (1) miembros del WS acceden a canales de todos los expedientes del WS — exposición actual 1 sala / 1 expediente; (2) `sync.reconcile` RLS preexistente y multiusuario, hipótesis `dbToRows` estampa `user_id` propio en expedientes ajenos; (3) `/health` con `commit: null` en VPS.
+[`backlog-seguridad.md`](./backlog-seguridad.md): (1) miembros del WS acceden a canales de todos los expedientes del WS — exposición actual 1 sala / 1 expediente; (2) `sync.reconcile` RLS preexistente y multiusuario, hipótesis `dbToRows` estampa `user_id` propio en expedientes ajenos; (3) `/health` con `commit: null` en VPS; (4) regex de texto del comparador E2E. §2.1 tiene el diagnóstico solo lectura: `PUT /sync` no puede insertar filas nuevas (`workspace_id` nulo) y el filtro `teamScope` no filtra nada; hay datos de 3 usuarios vigentes fuera de la nube.
+
+Fix `?sub=moneybox` (bug desde `4703d65`): rama `arquitectura/fix-sub-moneybox`, baseline E2E 0, plan web-only en [`deploy-fix-sub-moneybox.md`](./deploy-fix-sub-moneybox.md); sin merge ni deploy.
 
 ## Deuda restante
 
