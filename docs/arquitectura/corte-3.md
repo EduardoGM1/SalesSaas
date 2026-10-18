@@ -1,0 +1,63 @@
+# Corte 3 — post Tramo B / Etapa 2 / locks cliente (sin 0098)
+
+Fecha: 2026-10-18. Solo documentación.
+
+## SHAs en producción
+
+| Superficie | SHA | Notas |
+|------------|-----|-------|
+| `main` / `origin/main` | `fe26b10` | tip local = remoto |
+| API VPS (`/var/www/Saletse` git) | `aab2714` | Paso 2; sin redeploy API en Paso 3 |
+| Web `build-id` | `fe26b10` | Paso 3 web-only |
+| Política `broadcast_expediente` | **ausente** (count=0) | aplicada y revertida en canario ii |
+
+Desalineación API≠web es **intencional** tras Paso 3 web-only. No se forzó redeploy API a `fe26b10` (fuera del alcance autorizado).
+
+## Pasos ejecutados
+
+| Paso | SHA | Ámbito | Resultado |
+|------|-----|--------|-----------|
+| 1 Tramo B | `503928f` | API | OK (previo) |
+| 2 Permiso PUT | `aab2714` | API + web | OK (previo) |
+| 3 Locks cliente | `fe26b10` | web-only | OK: Arquitectura verde + E2E=baseline; presence A↔B; bloqueo = KNOWN GAP; purga 0 |
+| 4a Canario 0098 share-only | — | BD | STOP antes de apply (B CHANNEL_ERROR por predicado share+WS) |
+| 4b Canario 0098 variante ii | — | BD (1 policy) | Aplicada → positivos A↔B OK → falla del instrumento de presence → **rollback automático OK** |
+| 5 Saneamiento E2E | — | tests | ver `e2e-baseline.md` |
+
+## Paso 4 — resumen
+
+Detalle completo y tabla de casos en [`pendiente-bloqueo-campos-collab.md`](./pendiente-bloqueo-campos-collab.md) § Canario ii.
+
+- Bug previo reproducido (B no recibe `field_lock` sin política).
+- Tras aplicar: count=1, 4 `presence_*` idénticas, B recibe de A y A recibe de B.
+- El chequeo de presence del script devolvió 0/0 también **antes** del apply: faltaba un listener `presence` antes de `subscribe` (comprobado sin cambios de BD: 0/0 sin listener, 2/2 con listener).
+- Rollback `DROP POLICY IF EXISTS` ejecutado; re-snapshot con 4 policies. Purga QA a 0.
+- Canario corregido; re-ejecución pendiente de OK nuevo.
+
+## Baseline E2E
+
+Ver `docs/arquitectura/e2e-baseline.md` + `e2e:comparar-baseline`.  
+Matriz bisect (18 idénticos): `eeb90b9` = `a81578c` = `503928f` = `aab2714` = `fe26b10`.  
+Clasificación Etapa 5: sección en `e2e-baseline.md` (propuesta, sin aplicar).
+
+## Backlog de seguridad
+
+[`backlog-seguridad.md`](./backlog-seguridad.md): (1) miembros del WS acceden a canales de todos los expedientes del WS — exposición actual 1 sala / 1 expediente; (2) `sync.reconcile` RLS preexistente y multiusuario, hipótesis `dbToRows` estampa `user_id` propio en expedientes ajenos; (3) `/health` con `commit: null` en VPS.
+
+## Deuda restante
+
+| Tema | Estado |
+|------|--------|
+| Notificaciones Tramo A / API | inventario; Tramo B API en `aab2714` |
+| Bloqueo campos / 0098 | KNOWN GAP; canario ii revertido por instrumento, listo para re-ejecutar con OK |
+| Multi-pestaña en bloqueos | pendiente |
+| Sync / persistencia / outbox | deuda compartida |
+| HTTPS | pendiente ops |
+| Retención backups VPS | pendiente ops |
+| E2E saneamiento (18) | clasificado; fixes no aplicados |
+| Alinear API git a `fe26b10` | opcional; no pedido en Paso 3 |
+
+## Backups relevantes
+
+- API: `/opt/saletse-backups/api/pre-20261017-235332`, `…/pre-20261018-000201`
+- Web: `/opt/saletse-backups/web-dist/pre-20261018-000302`, `…/pre-20261018-011544`, `…/pre-20261018-011559`

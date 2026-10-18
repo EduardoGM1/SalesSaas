@@ -158,6 +158,8 @@ SELECT 'connections|' || COUNT(*)::text FROM user_connections uc
     OR uc.addressee_id = (SELECT id FROM profiles WHERE email = '{email_sql}');
 SELECT 'workspace_miembros|' || COUNT(*)::text FROM workspace_miembros wm
  WHERE wm.usuario_id = (SELECT id FROM profiles WHERE email = '{email_sql}');
+SELECT 'scheduled_push_jobs|' || COUNT(*)::text FROM scheduled_push_jobs j
+ WHERE j.user_id = (SELECT id FROM profiles WHERE email = '{email_sql}');
 """,
     )
     result = {
@@ -172,6 +174,7 @@ SELECT 'workspace_miembros|' || COUNT(*)::text FROM workspace_miembros wm
         "share_invites": 0,
         "connections": 0,
         "workspace_miembros": 0,
+        "scheduled_push_jobs": 0,
     }
     for ln in out.splitlines():
         ln = ln.strip()
@@ -229,6 +232,7 @@ DELETE FROM prospect_workflow_events WHERE prospect_id IN (SELECT id FROM prospe
 DELETE FROM prospect_workflows WHERE prospect_id IN (SELECT id FROM prospects WHERE user_id = '{uid}');
 DELETE FROM prospects WHERE user_id = '{uid}';
 DELETE FROM goals WHERE user_id = '{uid}';
+DELETE FROM scheduled_push_jobs WHERE user_id = '{uid}';
 DELETE FROM empresa_miembros WHERE usuario_id = '{uid}';
 DELETE FROM workspace_miembros WHERE usuario_id = '{uid}';
 DELETE FROM flag_reglas WHERE alcance = 'usuario' AND alcance_id = '{uid}';

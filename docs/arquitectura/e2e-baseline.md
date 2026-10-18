@@ -46,9 +46,10 @@ Lista máquina: `scripts/architecture/e2e-baseline-failures.json`.
 | `a81578c` | money-box deploy | 18 | = baseline (idéntico) |
 | `503928f` | Tramo B notificaciones | 18 | = baseline (idéntico) |
 | `aab2714` | Etapa 2 permiso PUT (+ merge Tramo B) | 18 | = baseline (CI run 39080994089 + compare script) |
+| `fe26b10` | locks cliente + docs baseline | 18 | = baseline (CI Arquitectura verde + compare) |
 
-Primer SHA donde aparece cada fallo del conjunto: **ya en `eeb90b9`** (anterior a Tramo B y Etapa 2). No es regresión de `503928f` / `aab2714`.  
-Comparación automatizada: `npm run e2e:comparar-baseline -- --strict-missing <log|json>` → exit 0 en los cuatro SHAs.
+Primer SHA donde aparece cada fallo del conjunto: **ya en `eeb90b9`** (anterior a Tramo B y Etapa 2). No es regresión de `503928f` / `aab2714` / `fe26b10`.  
+Comparación automatizada: `npm run e2e:comparar-baseline -- --strict-missing <log|json>` → exit 0 en los SHAs de la matriz.
 
 ## Cómo comparar
 
@@ -67,13 +68,18 @@ El script **falla (exit 1)** si:
 
 También acepta un log de texto con líneas `file.spec.js:LINE:COL › título` (reporter github/list).
 
-## Saneamiento (Etapa 5 — propuesta, sin aplicar)
+## Saneamiento (Etapa 5 — propuesta, **sin aplicar**)
 
-Ver sección en el reporte de incidente / corte posterior. Clasificación tentativa:
+Ningún fallo del conjunto se clasifica como **(c) regresión real de app con impacto en usuarios** atribuible a Tramo B / Etapa 2 / locks: el set entero ya falla en `eeb90b9`.
 
-| Grupo | Hipótesis | Clase |
-|-------|-----------|-------|
-| agenda-entry-modal | `readCalDay` espera `db.cal[YYYY-MM].days[d]` en `sts4_v1`; UI muestra texto pero shape/key distinta | (b) semilla/clave almacenamiento |
-| money-box-routing sala RH | tab gated por `useFlag(worksheet.royal_holiday.money_box)` + `hasCatalog`; mock sesión vs workspace | (b) flags/semilla CI |
-| rh-pm / flyback / rh-tables | `rh-pm-page` / worksheet RH no montan (gate flags / ruta / seed) | (a)/(b) UI+entorno |
-| video-corrections | botón «Editar datos» / cards Survey no visibles con seed mínimo | (a)/(b) UI+semilla |
+| # | Spec | Clase | Evidencia / arreglo propuesto |
+|---|------|-------|-------------------------------|
+| 1–2 | `agenda-entry-modal` :108,:142 | **(b)** clave almacenamiento | Spec lee `localStorage.getItem("sts4_v1")`; app usa schema 2 `sts4_v1:{workspaceId}` (`apps/web/src/lib/storage/keys.ts`). **Fix:** `readCalDay` → leer clave namespaced (o helper de e2e). |
+| 3 | `money-box-routing` :48 sala RH | **(b)** flags/semilla CI | Mock de session + catálogo; tab embebido depende de flags RH + montaje worksheet. **Fix:** alinear mock/`seedLocalDatabase`/rutas con gate real del worksheet. |
+| 4 | `rh-flyback-carga` :136 | **(b)** entorno RH | Worksheet RH + flags; casillas flyback. **Fix:** flags + seed `worksheet.rh*` en helper CI. |
+| 5–9 | `rh-pm-form-layout` (5) | **(a)/(b)** UI+entorno | Espera `[data-testid=rh-pm-page]` / layout móvil; falla si página no monta o markup cambió. **Fix:** confirmar selector/testid actual; si UI OK, mock flags ops RH en workflow. |
+| 10–13 | `rh-tables-mobile` :187 ×4 | **(b)** flags/viewport | Membresías/escenarios RH en viewports. **Fix:** mismos flags/semilla que RH ops; no es regresión de producto reciente. |
+| 14–16 | `video-corrections` :20,:57,:69 | **(a)/(b)** UI+semilla | Espera botón `/Editar datos/i` y cards Survey; i18n sigue teniendo la cadena, pero seed/ruta puede no exponer el CTA. **Fix:** actualizar spec a selector estable (`exp.prospect.edit` / testid) + seed cliente completo. |
+| 17–18 | `video-corrections` móvil :97,:123 | **(a)/(b)** layout+semilla | Apilado Country/City; depende de que el modal/Survey monten. **Fix:** tras arreglar 14–16, revalidar geometría; ajustar selectores `.prospect-geo-row` / `#svp-*` si el DOM migró. |
+
+**Orden sugerido de saneamiento (cuando se autorice):** (1) agenda `readCalDay` namespaced — alto ROI, cambio solo e2e; (2) helpers RH flags en workflow/`prepareAuthenticatedPage`; (3) video-corrections selectores. Sin tocar producción.

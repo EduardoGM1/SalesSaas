@@ -1,9 +1,38 @@
 # Pendiente: bloqueo de campos (collab broadcast)
 
-**Estado:** CLIENTE MÍNIMO + SEED LISTOS; canario 0098 **NO aplicar** sin OK explícito en el mismo mensaje.  
-**Rama:** `arquitectura/bloqueo-campos-collab-diseno`.  
+**Estado:** CLIENTE MÍNIMO desplegado (`fe26b10` web). 0098 **no aplicada**: el canario variante (ii) la aplicó y se revirtió automáticamente por una falla del instrumento de medida de presence (ver § Canario ii). Bloqueo de campo sigue como **KNOWN GAP**.  
 **Regla:** ningún cambio en BD/config de producción sin OK, backup y rollback preparados.  
 **Decisión de prueba:** no Postgres nativo / no Docker. El **canario en producción** es el mecanismo de prueba real (solo tras OK).
+
+## Intento 1 (2026-10-18) — variante share-only, abortado antes de apply
+
+Con `seed-collab-share-only`, B obtiene **CHANNEL_ERROR**: `user_can_access_prospect` (0052) exige `user_in_workspace` también en la rama de shares. El usuario eligió la variante (ii) (B invitado del workspace, modelo real de `createShare`) y no modificar la función.
+
+## Canario ii (2026-10-18) — aplicado y revertido automáticamente
+
+Seed: A dueño de P1/P2; B = miembro del WS de A + share de P1 (`seed-collab-share`); C fuera del WS y sin share.
+
+| # | Caso | Esperado | Observado |
+|---|------|----------|-----------|
+| 0 | Snapshot pre | 4 `presence_*`, sin broadcast | OK |
+| 1 | Bug pre-apply: A→B `field_lock` en P1 | B no recibe | **Reproducido** (A y B SUBSCRIBED; `send=ok`; B no recibe) |
+| 2 | Apply una sola `CREATE POLICY` | count=1 | OK |
+| 3 | 4 `presence_*` intactas | idénticas (qual/with_check/roles) | OK |
+| 4 | Positivo A→B | B recibe | **OK** |
+| 5 | Positivo B→A | A recibe | **OK** |
+| 6 | Presence A↔B | cada uno ve 2 keys | **FALLÓ (0/0)** → rollback automático |
+| 7 | Negativo C en P1 | no SUBSCRIBED, nada recibido | no llegó a medirse |
+| 8 | B en P2 no compartido (hallazgo) | SUBSCRIBED por modelo | no llegó a medirse en este run; ver backlog |
+| 9 | Topic mal formado / no-expediente | sin cambio vs pre | pre: CHANNEL_ERROR en ambos; post no medido |
+| R | `DROP POLICY IF EXISTS "broadcast_expediente"` | 4 policies | **OK** (re-snapshot: 4 `presence_*`) |
+
+**Causa de la falla (sin cambios de BD, diagnóstico efímero):** el instrumento, no la política. realtime-js solo habilita presence si el canal registra un listener `presence` **antes** de `subscribe`. El script no lo hacía: el mismo contador ya daba 0 **antes** del apply. Repetición sin política: sin listener → 0/0 keys; con listener → 2/2. El gate UI de Paso 3 (barra `exp-presence-bar`) confirmó presence en prod con el cliente real.
+
+El canario está corregido (listener `presence` agregado). **Re-ejecución pendiente de OK nuevo** (regla de corte: falla → rollback + stop).
+
+Snapshots (fuera del repo, `~/.saletse-ops/`): `realtime-messages-policies-{pre,post,post-rollback}-mvd9baf3.json`, reporte `canary-0098-report-mvd9baf3.json`. Purga QA: 0 en todas las tablas (incl. `goals`, `scheduled_push_jobs`).
+
+**Hallazgo de seguridad (no se cambia):** B, al ser miembro del workspace, accede también al canal de otros expedientes de ese workspace (propiedad de `user_can_access_prospect`). Con 0098 podría además emitir broadcast ahí. Dimensionamiento en [`backlog-seguridad.md`](./backlog-seguridad.md).
 
 ## Problema
 
@@ -81,6 +110,7 @@ Rollback: [`rollback-0098-broadcast-expediente.sql`](./rollback-0098-broadcast-e
 | 5 | Miembro sala con acceso | SUBSCRIBED + peer recibe | Evento |
 | 6 | Canal no expediente / mal formado | Rechazado | No join |
 | 7 | Acceso P1, emitir en P2 sin acceso | Rechazado | SELECT falla |
+| 8 | Miembro del WS (invitado) en P2 del mismo WS sin share | **SUBSCRIBED** (propiedad del modelo, hallazgo de seguridad) | Evento recibido; ver `backlog-seguridad.md` §1 |
 
 ## Riesgos
 

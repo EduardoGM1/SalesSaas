@@ -21,14 +21,14 @@ Producción quedó en `aab2714` (API + `build-id` web). Health OK. **No se revir
 
 ## Matriz bisect (SHA × spec-grupo)
 
-| Spec (grupo) | eeb90b9 | a81578c | 503928f | aab2714 |
-|--------------|---------|---------|---------|---------|
-| agenda-entry-modal :108,:142 | FAIL | FAIL | FAIL | FAIL |
-| money-box-routing :48 | FAIL | FAIL | FAIL | FAIL |
-| rh-flyback-carga :136 | FAIL | FAIL | FAIL | FAIL |
-| rh-pm-form-layout :110,:133,:158,:175,:221 | FAIL | FAIL | FAIL | FAIL |
-| rh-tables-mobile :187 (4 viewports) | FAIL | FAIL | FAIL | FAIL |
-| video-corrections :20,:57,:69,:97,:123 | FAIL | FAIL | FAIL | FAIL |
+| Spec (grupo) | eeb90b9 | a81578c | 503928f | aab2714 | fe26b10 |
+|--------------|---------|---------|---------|---------|---------|
+| agenda-entry-modal :108,:142 | FAIL | FAIL | FAIL | FAIL | FAIL |
+| money-box-routing :48 | FAIL | FAIL | FAIL | FAIL | FAIL |
+| rh-flyback-carga :136 | FAIL | FAIL | FAIL | FAIL | FAIL |
+| rh-pm-form-layout :110,:133,:158,:175,:221 | FAIL | FAIL | FAIL | FAIL | FAIL |
+| rh-tables-mobile :187 (4 viewports) | FAIL | FAIL | FAIL | FAIL | FAIL |
+| video-corrections :20,:57,:69,:97,:123 | FAIL | FAIL | FAIL | FAIL | FAIL |
 
 Lista exacta de 18: `docs/arquitectura/e2e-baseline.md`.
 
