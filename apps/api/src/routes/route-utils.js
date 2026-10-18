@@ -38,7 +38,7 @@ export async function runService(res, handler, { successStatus, wrap } = {}) {
     if (wrap === "sync") return json(res, { data: result, syncedAt: new Date().toISOString() }, successStatus);
     return json(res, result, successStatus);
   } catch (err) {
-    if (err instanceof ServiceError) return apiError(res, err.message, err.status, err.code);
+    if (err instanceof ServiceError) return apiError(res, err.message, err.status, err.code, err.details);
     logger.error(err, { handler: "runService" });
     return apiError(res, internalErrorMessage(err), 500);
   }

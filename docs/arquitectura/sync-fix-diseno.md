@@ -1,14 +1,39 @@
 # Diseño del fix de `PUT /sync` (reconcile)
 
-**Rama:** `arquitectura/sync-fix-diseno`  
-**Estado:** DISEÑO — **no implementado**. Requiere revisión antes de tocar código de producción.  
+**Ramas:** `arquitectura/sync-fix-diseno` (diseño) → `arquitectura/sync-fix-tramo1` (implementación del tramo 1)  
+**Estado:** Tramo 1 (solo API) **implementado en rama, sin desplegar**. Tramos 2 (web) y 3 (BD) pendientes.  
 **Origen:** diagnóstico solo lectura en `backlog-seguridad.md` §2.1 (V1–V3, sin ids ni emails).
 
-## a) Pruebas de caracterización
+## 0) Causa raíz confirmada: regresión `9f2b5ac` (en producción desde el 13-10)
 
-`apps/api/src/services/sync-reconcile.characterization.test.mjs`, incluida en `npm run test:security -w @salesapp/api`. Llama al `reconcile` real de `packages/shared/src/data/sync.js` con un cliente Supabase falso que emula dos reglas RLS de 0052: el INSERT exige `user_in_workspace(auth.uid(), workspace_id)` (falla con `workspace_id` nulo) y el UPDATE de una fila ajena falla en el `USING`.
+El commit `9f2b5ac` (red de seguridad, fase 1) regeneró `packages/shared/src/data/mappers.js` a partir de `apps/web/src/lib/data/mappers.ts` (`sync:shared` y chequeo de paridad). Con eso desaparecieron de la copia de la API dos cosas que el web nunca tuvo:
 
-| Prueba | Defecto | Aserción de HOY (invertir con el fix) |
+- `dbToRows(db, userId, workspaceId)` estampaba `workspace_id` en todas las filas.
+- `ownerUserId` en `rowsToDb`/`dbToRows` conservaba el dueño, y el filtro de `teamScope` (`r.user_id === userId`) excluía las filas ajenas.
+
+La primera API desplegada con ese commit fue `054f0ab` (2026-10-13 16:55 UTC, según el reflog del VPS). Desde el 14-10 hay **0** `sync.reconcile.ok` de usuarios con expedientes (antes, 23–121 al día): todos fallan con `upsert prospects` RLS. Los dos defectos "HOY" de la caracterización son esta regresión.
+
+El arreglo no va en `mappers.js`, porque está emparejado con el web por el chequeo de paridad. Va en `packages/shared/src/data/sync.js`, que solo existe en shared y solo usa la API.
+
+### Corrección sobre la semántica RLS del upsert
+
+En `INSERT … ON CONFLICT DO UPDATE`, Postgres evalúa el `WITH CHECK` de INSERT sobre la fila **propuesta** antes de detectar el conflicto. Si pasa y hay conflicto, evalúa después el `USING` de UPDATE sobre la fila existente. Por tanto, un error RLS **sin** "USING expression" **no** prueba que la fila no exista: también lo provoca una fila ya existente enviada sin `workspace_id`. La lectura anterior de este documento y de `backlog-seguridad.md` §2.1 ("sin USING = la fila no existe") era incorrecta. Además, un `UPDATE` que no pasa el `USING` no da error: afecta 0 filas.
+
+## a) Pruebas
+
+`apps/api/src/services/sync-reconcile.test.mjs`, incluida en `npm run test:security -w @salesapp/api`, con `--experimental-test-module-mocks` para probar también el servicio. Usa un Supabase en memoria que emula:
+
+- el WITH CHECK de INSERT sobre la fila propuesta;
+- el USING de UPDATE si hay conflicto;
+- UPDATE invisible = 0 filas;
+- el unique `(user_id, prospect_code)`;
+- las FK;
+- el trigger de tombstone;
+- el historial de workflow inmutable.
+
+Cada sentencia es atómica. Las 6 caracterizaciones "HOY" de la rama de diseño se invirtieron al comportamiento corregido:
+
+| Prueba | Defecto | Aserción de HOY (ya invertida) |
 |--------|---------|----------------------------------------|
 | (i) expediente solo en el cliente | INSERT sin `workspace_id` | `reconcile` lanza `upsert prospects: new row violates row-level security policy for table "prospects"` y la fila enviada no lleva `workspace_id` |
 | (i) entrada de agenda nueva | igual en `calendar_entries` | lanza el error RLS de INSERT |
@@ -17,7 +42,16 @@
 | (ii) `teamScope` | el filtro no excluye nada | `reconcile(teamScope: true)` reenvía el expediente y la venta ajenos con `user_id = yo` |
 | (ii) con RLS | bloqueo del PUT | la venta ajena falla por `USING` y el PUT aborta |
 
-Las pruebas usan UUID ficticios, no datos reales. Al implementar el fix, cada prueba "HOY" se convierte en su contraria: inserta con el workspace de la sesión, conserva el dueño, omite las filas ajenas y sigue con el resto de las tablas.
+Las pruebas usan UUID ficticios, no datos reales. Además de las 6 invertidas, hay pruebas para:
+
+- **(a) Idempotencia:** el mismo blob legacy, normalizado 3 veces (con 6 ids de expediente distintos), deja exactamente una fila por entidad en las seis tablas. También se prueban los duplicados dentro de un mismo blob.
+- **(b) Compatibilidad:** sin rechazos, `{ data }` y una línea `sync.reconcile.ok`. En protocolo 1 con un rechazo, `ServiceError` 409 `sync_partial` y `runService` responde 409 sin `data`. En protocolo 2, 200 con `partial` y `rejected`.
+- **(c) Workspace y permisos:** `sin_permiso` (expedientes y agenda), filas ajenas fuera de `teamScope`, `otro_workspace`, `sin_workspace` y `sin_permiso_editar`.
+- **(d) Aislamiento:** fila oculta más hijos `padre_rechazado` sin afectar al resto; borrado bloqueado sin afectar a los demás; tombstone con sus hijos omitidos. La respuesta y el log no llevan nombres, emails ni ids en el resumen.
+
+`e2e/sync-partial-409.spec.js` ejecuta el `SyncProvider` real del web: ante el 409 conserva la base local y el outbox (`dirty: true`) y vuelve a hacer `PUT` al recargar. El contraste muestra que un 200 vacío le borraría el expediente local.
+
+Las pruebas se validaron con mutaciones: sin la deduplicación natural falla (a); sin la clasificación por dueño fallan 4.
 
 ## b) Diseño
 
@@ -58,8 +92,19 @@ Las pruebas usan UUID ficticios, no datos reales. Al implementar el fix, cada pr
 - Cada tabla va en su propio `try`. Si el upsert en bloque falla, se reintenta fila a fila, como `upsertToolsBestEffort`, con un tope de 200 filas por tabla y petición. Pasado el tope, el resto se marca `no_intentado`.
 - Los hijos de un expediente rechazado se marcan `padre_rechazado` sin enviarse.
 - Los borrados explícitos son de uno en uno y best-effort. El error de historial de workflow inmutable se marca `borrado_bloqueado`, y ese id no vuelve a enviarse en la misma petición.
-- El resultado interno es `rejected: [{ table, id, code }]` con los códigos `rls_insert`, `rls_update`, `sin_workspace`, `sin_permiso`, `otro_workspace`, `ajeno`, `conflicto_oculto`, `tombstone`, `padre_rechazado`, `borrado_bloqueado`, `fk` y `otro`. Las filas ajenas se omiten y se cuentan, pero no son un error.
-- **Log:** `sync.reconcile.partial` con conteos por tabla y código, **sin ids**. Esto mide por fin las filas distintas, que hoy no se pueden observar.
+- **Rechazos** (implementado): `rejected: [{ table, id, code }]`, con los códigos:
+  - `rls_insert`, `rls_update`, `conflicto_oculto`;
+  - `sin_workspace`, `sin_permiso`, `otro_workspace`;
+  - `padre_rechazado`, `borrado_bloqueado`, `no_intentado`;
+  - `tombstone` (solo si lo dispara el trigger), `fk`, `duplicado` y `otro`.
+
+  `id` es el UUID que envió el cliente, que es suyo, y no hay nombres ni emails.
+- **Omitidas** (`skipped[motivo][tabla]`): no son error ni provocan 409.
+  - `ajeno`, `padre_ajeno`;
+  - `tombstone`, `padre_tombstone`;
+  - `sin_permiso` (tools);
+  - `sin_permiso_editar`: un UPDATE de una fila propia que afecta 0 filas porque falta `expedientes:editar`. REST daría 403, y contarlo como rechazo dejaría un 409 perpetuo.
+- **Log** (una línea por petición, sin ids): `sync.reconcile.ok` (info) o `sync.reconcile.partial` (warn), con `protocol`, `ms`, `inserted`, `updated`, `deduped`, `skipped`, `rejected` (por código) y `rejected_by_table`. Si algo falla en infraestructura: `sync.reconcile.failed`.
 
 ### 4. Forma de la respuesta (compatibilidad)
 
@@ -72,7 +117,7 @@ Por tanto, **un 200 con filas rechazadas haría perder datos en un cliente viejo
 
 | Cliente | Sin rechazos | Con algún rechazo |
 |---------|--------------|-------------------|
-| **v1**: sin cabecera; todo lo desplegado hoy y los PWA en caché | `200 { data }`, igual que hoy | **`409 { error: "sync_partial", rejected_counts }`**. Lo aceptado **ya quedó guardado**. El cliente viejo lo trata igual que hoy: conserva lo local, marca el outbox y reintenta. En cada reintento solo vuelven a fallar las filas rechazadas |
+| **v1**: sin cabecera; todo lo desplegado hoy y los PWA en caché | `200 { data, syncedAt }`, igual que hoy | **`409 { error: <mensaje>, code: "sync_partial", rejected_counts, rejected: [{ table, id, code }] }`**, sin `data`. Lo aceptado **ya quedó guardado**. El cliente viejo lo trata igual que hoy: conserva lo local, marca el outbox y reintenta. En cada reintento solo vuelven a fallar las filas rechazadas |
 | **v2**: `X-Sync-Protocol: 2` | `200 { data }` | `200 { data, partial: true, rejected: [{ table, id, code }] }` |
 
 - Se usa 409 y no 500 para distinguirlo en las métricas. El cliente viejo solo mira `res.ok`, así que cualquier código distinto de 2xx es equivalente para él.
@@ -94,7 +139,18 @@ Hoy cada mutación, flush, refresh o init lanza `doReconcile`: unos 700 intentos
 
 - Las filas se identifican por UUID generado en el cliente. Un upsert por id es idempotente: si se reintenta tras un INSERT exitoso cuya respuesta se perdió, se hace UPDATE de la propia fila y no se duplica.
 - **Riesgo real con el fix:** `normalizeIds` asigna un UUID **nuevo** a ids legacy no-UUID en **cada** llamada a `reconcileViaApi`, y la base local no lo guarda hasta aplicar la respuesta. Si un INSERT funciona y se pierde la respuesta, el reintento usa otro UUID y crea un **duplicado**. Hoy no pasa porque el INSERT siempre falla.
-- **Mitigación API (tramo 1):** un expediente nuevo con un `prospect_code` que ya existe para el mismo usuario y workspace se trata como el existente: no se inserta y se marca `duplicado_codigo`.
+- **Mitigación API (tramo 1, implementada):** antes de insertar, cada fila nueva se busca por su clave natural entre las filas **propias** del usuario. Si aparece, se actualiza esa fila con su id de BD y sus hijos se remapean a ella (se cuenta en `deduped`, no es un rechazo). Si es propia pero de otro workspace, se rechaza `otro_workspace`. Las claves naturales son:
+
+  | Tabla | Clave natural | Por qué es estable entre reintentos |
+  |-------|---------------|--------------------------------------|
+  | `prospects` | `prospect_code`; si no coincide, `(created_at, name)` | El código lo genera el cliente una vez. Si `normalizeIds` lo regenera (blob sin código), `created_at` sale del `createdAt` local. Se conserva el `prospect_code` ya guardado |
+  | `sales` | `(created_at, sale_date, prospect_id)` | `created_at` = `ts` local; `prospect_id` ya remapeado al expediente de BD |
+  | `calendar_entries` | `(created_at, entry_date, type)` | `ts` local, día y tipo |
+  | `activities` | `(created_at, type, prospect_id)` | `ts` local; `prospect_id` remapeado |
+  | `goals` | `(user_id, year, month)` | Clave única de BD (`onConflict`) |
+  | `tool_calculations` | `(user_id, prospect_id, tool)` | Clave única de BD con `NULLS NOT DISTINCT` (0003) |
+
+  También se deduplican las filas repetidas dentro del mismo blob. **Límite:** una fila sin `ts` local llega sin `created_at` y no se puede deduplicar por clave natural (solo pasa en blobs muy antiguos).
 - **Mitigación web (tramo 2):** guardar las ids normalizadas en local **antes** del `PUT`.
 - Las ventas, la agenda y las actividades con id no-UUID solo existen en blobs muy antiguos. El tramo 1 registra cuántas filas llegan normalizadas, sin ids, para medirlo.
 
@@ -111,13 +167,16 @@ Con el tramo 1 desplegado, **sí suben solos** en el siguiente reintento del out
 Por usuario:
 
 - **V1** (agenda nueva, INSERT 10-10/11): cumple el patrón exacto de (i). Sube al abrir la app en ese workspace.
-- **V2 y V3** (expedientes nuevos, INSERT): el `PUT` deja de abortar en el primer paso y se desbloquea todo lo demás (goals, tools en lote y borrados).
-  - **Salvedad:** `recoverLocalProspectsToCloud` ya hace `POST /prospects` por REST de los expedientes que faltan en cada init. Si V2 y V3 siguen con expedientes fuera de la nube, ese `POST` también falla o no se alcanza.
-  - La causa más probable sería permiso (`expedientes:crear`), tombstone o otro workspace. En ese caso el tramo 1 tampoco los subirá: los rechazará con un código que, por fin, quedará medido.
-  - Comprobación previa propuesta, solo lectura y sin datos de usuario: conteo de estados HTTP de `POST /prospects` por usuario en los logs de pm2. **No ejecutada** (requiere OK).
+- **V2 y V3** (verificado en solo lectura, 18-10, conteos agregados):
+  - Ambos tienen sala activa, son miembros con `expedientes:crear` y `editar`, y tienen 1 tombstone (01-10) y 1 expediente propio.
+  - Sus fallos (7 y 53 en 15 días) coinciden al segundo con un `PUT /sync` 500. **No hay ningún `POST /prospects`** en la ventana de −15 s a +30 s: la recuperación del cliente no encuentra expedientes "solo locales".
+  - Es decir, **no** tienen expedientes fuera de la nube: la conclusión anterior de este documento era incorrecta. Lo bloqueado es el resto del `PUT` (goals, tools en lote, borrados) y cualquier fila nueva, por la regresión de §0.
+  - El tramo 1 los destraba al abrir la app en esa sala: fija el workspace de la sesión, clasifica por dueño y aísla fallos. Su tombstone se omite (`tombstone`) sin bloquear.
 - **V2: ventas y agenda ajenas** (USING): dejan de enviarse (`ajeno`) y desaparece ese error.
 
-No se ha accedido a datos de V1–V3 para este documento.
+### ¿Algún flujo legítimo edita filas de equipo por `PUT /sync`?
+
+No. Antes de la regresión, el filtro de `teamScope` excluía las filas ajenas del `PUT` gracias a `ownerUserId`. La edición de equipo (`ver_equipo` con edición, roles de workflow, shares) va por REST (`PATCH` con `canEditProspectRecord`). El tramo 1 conserva eso: las filas ajenas se omiten en cualquier alcance (`skipped.ajeno`), sin actualizarse ni reasignarse. **Limitación** (igual que antes de la regresión): una edición offline de una fila de equipo que solo quede en el blob no sube por `PUT`; el siguiente pull la sustituye por la versión del servidor. La subida de esas ediciones por REST es del tramo 2.
 
 ## d) Plan por tramos
 

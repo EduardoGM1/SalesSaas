@@ -46,7 +46,9 @@ Fuentes: logs pm2 de la API (`sync.reconcile.failed/ok`, `sync.pull.ok`), códig
 **Cómo leer los mensajes de Postgres en un upsert (`INSERT … ON CONFLICT DO UPDATE`):**
 
 - `… (USING expression)`: la fila **ya existe** y no pasa el `USING` de UPDATE. En `calendar_entries` y `sales`, eso es `user_id = uid AND permiso de editar en el workspace de la fila`.
-- Mensaje RLS **sin** "USING": la fila **no existe** y falla el `WITH CHECK` de INSERT.
+- Mensaje RLS **sin** "USING": falla el `WITH CHECK` de INSERT, que Postgres evalúa sobre la fila **propuesta** antes de detectar el conflicto.
+  - **Corrección (18-10):** esto **no** prueba que la fila no exista. Una fila ya guardada enviada sin `workspace_id` da el mismo error.
+  - Por tanto, la "Causa" de prospects de abajo y la conclusión de que V2 y V3 tenían expedientes fuera de la nube eran incorrectas. Ver `sync-fix-diseno.md` §0 (regresión `9f2b5ac`) y §c (verificación de V2/V3).
 
 **Hechos de código:**
 

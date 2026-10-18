@@ -2,8 +2,8 @@ export function json(res, data, status = 200) {
   return res.status(status).json(data);
 }
 
-export function apiError(res, message, status = 400, code) {
-  return res.status(status).json({ error: message, ...(code ? { code } : {}) });
+export function apiError(res, message, status = 400, code, details) {
+  return res.status(status).json({ ...(details || {}), error: message, ...(code ? { code } : {}) });
 }
 
 export function parseBody(body) {

@@ -1,9 +1,11 @@
 export class ServiceError extends Error {
-  constructor(message, status = 400, code) {
+  /** @param {object} [details] campos extra del cuerpo de error (sin datos sensibles) */
+  constructor(message, status = 400, code, details) {
     super(message);
     this.name = "ServiceError";
     this.status = status;
     if (code) this.code = code;
+    if (details) this.details = details;
   }
 }
 

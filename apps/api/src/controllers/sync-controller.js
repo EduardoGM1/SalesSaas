@@ -8,8 +8,8 @@ export async function obtenerSincronizacion(auth) {
   return syncService.obtenerBaseDatosUsuario(auth.supabase, auth.userId);
 }
 
-export async function reconciliarSincronizacion(auth, incoming) {
-  return syncService.reconciliarBaseDatosUsuario(auth.supabase, auth.userId, incoming);
+export async function reconciliarSincronizacion(auth, incoming, opts) {
+  return syncService.reconciliarBaseDatosUsuario(auth.supabase, auth.userId, incoming, opts);
 }
 
 export async function purgarTombstonesExpedientesCron() {
