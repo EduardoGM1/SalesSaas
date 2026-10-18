@@ -107,3 +107,6 @@ e2e/artifacts/
 # Presentación RH — HTML fuente con base64 (usar extract desde Escritorio)
 docs/presentacion/Presentacion-Royal-Holiday.source.html
 docs/presentacion/_structure-preview.html
+
+# SHA desplegado (lo escribe scripts/vps-deploy-api.py; lo lee /health)
+/SHA.txt

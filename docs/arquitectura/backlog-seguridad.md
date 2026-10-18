@@ -112,8 +112,24 @@ No es regresión del rollout actual; el patrón existe desde septiembre.
 
 Cambio de app + deploy: requiere OK.
 
+**Estado:** implementado en la rama `arquitectura/health-commit-comparador`, sin merge ni deploy (viaja con el próximo deploy de la API):
+
+- `resolveBuildCommit` en `apps/api/src/app.js`, con test en `app.security.test.mjs`.
+- `scripts/vps-deploy-api.py` escribe `SHA.txt` y para si `/health` no coincide con él.
+- `/SHA.txt` está en `.gitignore`.
+
+Hasta ese deploy, `/health` del VPS sigue devolviendo `commit: null`.
+
 ## 4. Comparador E2E: lectura de logs de texto multilínea
 
 `scripts/architecture/e2e-comparar-baseline.mjs`, `fromTextLog`: el lookahead del regex termina en `$` **sin** flag `m`, de modo que `$` solo casa al final de todo el texto. Con el resumen del CI ("Playwright Run Summary" como texto de varias líneas, o un log redirigido con saltos de línea reales) no extrae ningún fallo y sale con código 2. Hoy se compara con el reporte JSON (que sí funciona) o a mano.
 
 **Fix propuesto (sin ejecutar):** añadir el flag `m` al regex (o cortar el título en `\r?\n`), y un test con un resumen real de CI de varias líneas y con un log `list` en UTF-8 y UTF-16. Solo tooling de CI.
+
+**Estado:** implementado en `arquitectura/health-commit-comparador`:
+
+- Flag `m` en el regex.
+- `e2e-comparar-baseline.test.mjs` usa el resumen real del CI de `68003a1` (18 fallos) y el de `8b59907` (1 fallo), con LF, CRLF y UTF-16, y prueba el CLI de punta a punta.
+- El test está enganchado a `verificar:arquitectura:checks`, que también corre en el CI de Arquitectura.
+
+**Precisión medida:** sin el flag, el regex pierde solo el **último** fallo de cada bloque: los anteriores sí casan, porque el lookahead `\s+e2e` toma la línea siguiente. Con el resumen de 18 fallos saca 17, y con el de 1 fallo no saca ninguno. Por eso un fallo nuevo en última posición podía pasar como "sin fallos nuevos".

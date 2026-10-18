@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """
-Despliega la API en el VPS desde origin/main: git reset, npm ci, nginx, PM2.
+Despliega la API en el VPS desde origin/main: git reset, SHA.txt, npm ci, nginx, PM2.
+Tras el restart, /health debe devolver el SHA de SHA.txt; si no, para.
 Usa clave SSH (scripts/vps_ssh.py). No toca apps/web/dist (ver deploy-web-dist-prod.py).
 """
+import json
 import sys
 from pathlib import Path
 
@@ -33,6 +35,7 @@ def main():
     client = connect_vps(load_env_file(ROOT))
     try:
         run(client, f"cd {REMOTE} && git fetch -q origin main && git reset -q --hard origin/main && git log -1 --oneline")
+        sha = run(client, f"cd {REMOTE} && git rev-parse HEAD | tee SHA.txt").strip()
         run(client, f"cd {REMOTE} && npm ci --omit=dev --no-audit --no-fund 2>&1 | tail -3", timeout=900)
         run(
             client,
@@ -42,7 +45,11 @@ def main():
             " && nginx -t && systemctl reload nginx",
         )
         run(client, f"pm2 restart saletse-api --update-env >/dev/null && pm2 save >/dev/null && sleep 2 && pm2 jlist | python3 -c \"import json,sys; [print(p['name'], p['pm2_env']['status'], p['pm2_env']['restart_time']) for p in json.load(sys.stdin) if p['name'].startswith('saletse')]\"")
-        run(client, "curl -sf http://127.0.0.1:4000/health && echo && curl -s -o /dev/null -w 'public /health %{http_code}\\n' -H 'Host: 187.77.14.148' http://127.0.0.1/health")
+        health = run(client, "curl -sf http://127.0.0.1:4000/health")
+        commit = json.loads(health).get("commit")
+        if commit != sha:
+            raise SystemExit(f"/health commit={commit!r} no coincide con el SHA desplegado {sha}: parar y revisar")
+        run(client, "curl -s -o /dev/null -w 'public /health %{http_code}\\n' -H 'Host: 187.77.14.148' http://127.0.0.1/health")
         run(client, "pm2 logs saletse-api --lines 15 --nostream 2>/dev/null | tail -20", check=False)
     finally:
         client.close()

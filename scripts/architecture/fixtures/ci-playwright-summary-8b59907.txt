@@ -1,0 +1,4 @@
+  1 failed
+    e2e/money-box-routing.spec.js:48:7 › Money Box — expediente y rutas › sala RH: pestaña Money Box en worksheet embebido 
+  5 skipped
+  153 passed (4.6m)
