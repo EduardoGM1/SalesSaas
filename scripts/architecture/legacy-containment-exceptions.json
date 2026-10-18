@@ -8,6 +8,10 @@
     {
       "file": "apps/web/src/lib/expediente-field-lock-helpers.test.mjs",
       "reason": "Tests del helper anterior; misma colocalización que expediente-realtime.js."
+    },
+    {
+      "file": "apps/api/src/services/sync-reconcile.characterization.test.mjs",
+      "reason": "Caracterización del PUT /sync legacy (sync-service.js + shared/data/sync.js) antes del fix; ver docs/arquitectura/sync-fix-diseno.md. No hay módulo sync aún; se mueve con él."
     }
   ]
 }
