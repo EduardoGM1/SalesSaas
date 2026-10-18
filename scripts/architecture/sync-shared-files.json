@@ -1,5 +1,5 @@
 {
-  "$comment": "Archivos que sync:shared mantiene en paridad web ↔ packages/shared. permissions.ts del web depende de i18n (no portable aún) — queda fuera hasta extraer catálogo sin UI.",
+  "$comment": "Archivos que sync:shared mantiene en paridad web ↔ packages/shared. permissions.ts del web depende de i18n (no portable aún) — queda fuera hasta extraer catálogo sin UI. Un archivo con lógica propia del servidor NUNCA va en pairs: la regeneración la borra (regresión 9f2b5ac, ver docs/arquitectura/sync-fix-diseno.md §0). sync.js está en sharedOnlyNoted y lo vigila test:security.",
   "pairs": [
     {
       "web": "apps/web/src/lib/data/mappers.ts",

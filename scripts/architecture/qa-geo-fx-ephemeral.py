@@ -160,6 +160,14 @@ SELECT 'workspace_miembros|' || COUNT(*)::text FROM workspace_miembros wm
  WHERE wm.usuario_id = (SELECT id FROM profiles WHERE email = '{email_sql}');
 SELECT 'scheduled_push_jobs|' || COUNT(*)::text FROM scheduled_push_jobs j
  WHERE j.user_id = (SELECT id FROM profiles WHERE email = '{email_sql}');
+SELECT 'sales|' || COUNT(*)::text FROM sales
+ WHERE user_id = (SELECT id FROM profiles WHERE email = '{email_sql}');
+SELECT 'calendar_entries|' || COUNT(*)::text FROM calendar_entries
+ WHERE user_id = (SELECT id FROM profiles WHERE email = '{email_sql}');
+SELECT 'activities|' || COUNT(*)::text FROM activities
+ WHERE user_id = (SELECT id FROM profiles WHERE email = '{email_sql}');
+SELECT 'prospects_deleted|' || COUNT(*)::text FROM prospects_deleted
+ WHERE user_id = (SELECT id FROM profiles WHERE email = '{email_sql}');
 """,
     )
     result = {
@@ -175,6 +183,10 @@ SELECT 'scheduled_push_jobs|' || COUNT(*)::text FROM scheduled_push_jobs j
         "connections": 0,
         "workspace_miembros": 0,
         "scheduled_push_jobs": 0,
+        "sales": 0,
+        "calendar_entries": 0,
+        "activities": 0,
+        "prospects_deleted": 0,
     }
     for ln in out.splitlines():
         ln = ln.strip()
@@ -227,10 +239,14 @@ DELETE FROM tool_calculations WHERE user_id = '{uid}';
 DELETE FROM survey_preguntas_usuario WHERE usuario_id = '{uid}';
 DELETE FROM usuario_permisos_override WHERE usuario_id = '{uid}';
 DELETE FROM workspace_usuario_permisos_override WHERE usuario_id = '{uid}';
+DELETE FROM calendar_entries WHERE user_id = '{uid}';
+DELETE FROM activities WHERE user_id = '{uid}';
+DELETE FROM sales WHERE user_id = '{uid}';
 DELETE FROM sales WHERE prospect_id IN (SELECT id FROM prospects WHERE user_id = '{uid}');
 DELETE FROM prospect_workflow_events WHERE prospect_id IN (SELECT id FROM prospects WHERE user_id = '{uid}');
 DELETE FROM prospect_workflows WHERE prospect_id IN (SELECT id FROM prospects WHERE user_id = '{uid}');
 DELETE FROM prospects WHERE user_id = '{uid}';
+DELETE FROM prospects_deleted WHERE user_id = '{uid}';
 DELETE FROM goals WHERE user_id = '{uid}';
 DELETE FROM scheduled_push_jobs WHERE user_id = '{uid}';
 DELETE FROM empresa_miembros WHERE usuario_id = '{uid}';
@@ -627,6 +643,84 @@ SELECT uid FROM ins;
     return {"email": email, "uid": uid, "granted": bool(uid), "flag": "worksheet.money_box"}
 
 
+def grant_liner_role(client, email: str) -> dict:
+    """Rol de plataforma `liner` como un usuario real: el WS personal hereda sus permisos
+    (expedientes:crear/editar, ventas:registrar, metas:ver_editar_propias)."""
+    email_sql = email.replace("'", "''")
+    out = psql(
+        client,
+        f"""
+UPDATE profiles SET role_id = (
+  SELECT id FROM roles WHERE slug = 'liner' AND scope = 'plataforma' AND empresa_id IS NULL LIMIT 1)
+WHERE email = '{email_sql}'
+RETURNING (role_id IS NOT NULL)::text;
+""",
+    ).strip()
+    return {"email": email, "granted": out.splitlines()[0].strip() == "true" if out else False}
+
+
+SYNC_TABLES = ("prospects", "sales", "calendar_entries", "activities", "goals", "tool_calculations")
+
+
+def sync_state(client, email: str) -> dict:
+    """SOLO LECTURA: filas del QA por tabla del sync, en su workspace activo, y duplicados."""
+    email_sql = email.replace("'", "''")
+    parts = []
+    for t in SYNC_TABLES:
+        parts.append(
+            f"""SELECT '{t}|' || COUNT(*)::text || '|' || COUNT(*) FILTER (WHERE x.workspace_id = u.ws)::text
+  || '|' || COUNT(*) FILTER (WHERE x.workspace_id IS NULL)::text
+FROM {t} x, u WHERE x.user_id = u.id;"""
+        )
+    sql = f"""
+CREATE TEMP TABLE u AS SELECT id, workspace_activo_id AS ws FROM profiles WHERE email = '{email_sql}';
+{chr(10).join(parts)}
+SELECT 'dup_prospect_code|' || COUNT(*)::text FROM (
+  SELECT prospect_code FROM prospects p, u WHERE p.user_id = u.id GROUP BY prospect_code HAVING COUNT(*) > 1) d;
+SELECT 'dup_prospect_natural|' || COUNT(*)::text FROM (
+  SELECT created_at, name FROM prospects p, u WHERE p.user_id = u.id GROUP BY created_at, name HAVING COUNT(*) > 1) d;
+SELECT 'dup_calendar_natural|' || COUNT(*)::text FROM (
+  SELECT created_at, entry_date, type FROM calendar_entries c, u WHERE c.user_id = u.id
+  GROUP BY created_at, entry_date, type HAVING COUNT(*) > 1) d;
+"""
+    out = psql(client, sql)
+    result: dict = {}
+    for ln in out.splitlines():
+        cols = ln.strip().split("|")
+        if len(cols) == 4 and cols[0] in SYNC_TABLES:
+            result[cols[0]] = {"total": int(cols[1]), "en_ws_activo": int(cols[2]), "ws_nulo": int(cols[3])}
+        elif len(cols) == 2 and cols[0].startswith("dup_"):
+            result[cols[0]] = int(cols[1])
+    return result
+
+
+def prospect_check(client, email: str, prospect_id: str) -> dict:
+    """SOLO LECTURA: ¿la fila sigue siendo de <email>, en su workspace, y con qué nombre?"""
+    email_sql = email.replace("'", "''")
+    pid = prospect_id.replace("'", "''")
+    out = psql(
+        client,
+        f"""
+SELECT COUNT(*)::text
+  || '|' || COALESCE(bool_and(p.user_id = (SELECT id FROM profiles WHERE email = '{email_sql}'))::text, '')
+  || '|' || COALESCE(bool_and(EXISTS (
+       SELECT 1 FROM workspace_miembros wm WHERE wm.workspace_id = p.workspace_id
+         AND wm.usuario_id = (SELECT id FROM profiles WHERE email = '{email_sql}')))::text, '')
+  || '|' || COALESCE(max(p.name), '')
+FROM prospects p WHERE p.id = '{pid}'::uuid;
+""",
+    ).strip()
+    cols = out.splitlines()[0].split("|") if out else ["0", "", "", ""]
+    return {"exists": int(cols[0]), "owner_is_email": cols[1] == "true", "ws_of_owner": cols[2] == "true", "name": cols[3]}
+
+
+def table_totals(client) -> dict:
+    """SOLO LECTURA: totales de referencia de las tablas del sync."""
+    sql = "\n".join(f"SELECT '{t}|' || COUNT(*)::text FROM {t};" for t in (*SYNC_TABLES, "prospects_deleted"))
+    out = psql(client, sql)
+    return {ln.split("|")[0]: int(ln.split("|")[1]) for ln in out.splitlines() if "|" in ln}
+
+
 def check_broadcast_policy(client) -> dict:
     """¿Existe policy broadcast_expediente en realtime.messages? (precondición gate collab)."""
     out = psql(
@@ -656,6 +750,18 @@ def main() -> None:
     try:
         if cmd == "check-broadcast-policy":
             print(json.dumps(check_broadcast_policy(client)))
+            return
+        if cmd == "table-totals":
+            print(json.dumps(table_totals(client)))
+            return
+        if cmd == "sync-state":
+            print(json.dumps(sync_state(client, sys.argv[2])))
+            return
+        if cmd == "grant-liner-role":
+            print(json.dumps(grant_liner_role(client, sys.argv[2])))
+            return
+        if cmd == "prospect-check":
+            print(json.dumps(prospect_check(client, sys.argv[2], sys.argv[3])))
             return
         if len(sys.argv) < 3:
             raise SystemExit(

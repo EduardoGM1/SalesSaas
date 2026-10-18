@@ -1,14 +1,10 @@
 # Baseline E2E (fallos conocidos en `main`)
 
-**Estado:** baseline reducida de 18 a **1** fallo tras el saneamiento de la Etapa 5 (rama `arquitectura/e2e-saneamiento`). La baseline solo puede encoger.  
-**Regla de deploy:** workflow **Arquitectura** en VERDE + E2E sin fallos fuera de este conjunto (ninguno nuevo, ningún spec adicional en rojo).  
-**Última verificación local (suite completa, `CI=true`, `npm run test:e2e` equivalente):** 2026-10-18 — 153 passed, 5 skipped, 1 failed (el de la baseline).
+**Estado:** baseline **0** fallos en `main` (18 → 1 en la Etapa 5 → 0 con `arquitectura/fix-sub-moneybox`). La baseline solo puede encoger.  
+**Regla de deploy:** workflow **Arquitectura** en VERDE + E2E con **0 fallos** en el SHA exacto.  
+**Cifra vigente:** **156 passed, 5 skipped, 0 failed**, con las 2 pruebas de `e2e/sync-partial-409.spec.js` (tramo 1 de sync). Medida en CI en `arquitectura/sync-fix-tramo1` `1f86f78` y en local con `CI=true` (2026-10-18). La anterior era 154/5/0.
 
-## Baseline 0 en `arquitectura/fix-sub-moneybox`
-
-En esa rama el fallo de abajo está corregido (código de app, ver [`deploy-fix-sub-moneybox.md`](./deploy-fix-sub-moneybox.md)) y `e2e-baseline-failures.json` queda vacío: suite completa local `CI=true` = 154 passed, 5 skipped, 0 failed. Hasta que esa rama se fusione, en `main` rige la baseline de 1.
-
-## Fallo vigente en `main` (1)
+## Fallo histórico de `main` (1, corregido en `fix-sub-moneybox`)
 
 | # | Spec | Título | Clase |
 |---|------|--------|-------|

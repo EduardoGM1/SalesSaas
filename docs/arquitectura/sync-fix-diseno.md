@@ -15,6 +15,11 @@ La primera API desplegada con ese commit fue `054f0ab` (2026-10-13 16:55 UTC, se
 
 El arreglo no va en `mappers.js`, porque está emparejado con el web por el chequeo de paridad. Va en `packages/shared/src/data/sync.js`, que solo existe en shared y solo usa la API.
 
+**Regla (causa raíz de proceso):** `sync:shared` copia el web sobre shared para los archivos de `pairs` en `scripts/architecture/sync-shared-files.json`, así que cualquier lógica propia del servidor que viva en uno de esos archivos se pierde en silencio en la siguiente regeneración. La lógica del servidor va en archivos solo de shared (`sharedOnlyNoted`). Hay dos guards en `test:security` (`sync-reconcile.test.mjs`):
+
+1. La prueba "(i) un expediente que solo existe en el cliente se inserta con el workspace de la sesión" falla si el `reconcile` deja de estampar el `workspace_id` de la sesión o de clasificar por dueño. Comprobado con mutaciones.
+2. "guard: sync:shared no regenera sync.js" falla si `sync.js` entra en `pairs` o sale de `sharedOnlyNoted`.
+
 ### Corrección sobre la semántica RLS del upsert
 
 En `INSERT … ON CONFLICT DO UPDATE`, Postgres evalúa el `WITH CHECK` de INSERT sobre la fila **propuesta** antes de detectar el conflicto. Si pasa y hay conflicto, evalúa después el `USING` de UPDATE sobre la fila existente. Por tanto, un error RLS **sin** "USING expression" **no** prueba que la fila no exista: también lo provoca una fila ya existente enviada sin `workspace_id`. La lectura anterior de este documento y de `backlog-seguridad.md` §2.1 ("sin USING = la fila no existe") era incorrecta. Además, un `UPDATE` que no pasa el `USING` no da error: afecta 0 filas.

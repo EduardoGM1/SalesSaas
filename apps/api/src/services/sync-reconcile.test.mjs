@@ -10,6 +10,7 @@
  */
 import assert from "node:assert/strict";
 import test, { mock } from "node:test";
+import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { reconcile, summarizeReport } from "@salesapp/shared/data/sync.js";
@@ -288,6 +289,13 @@ test("(ii) una venta ajena reenviada se omite y no bloquea el PUT", async () => 
   assert.equal(report.skipped.ajeno.sales, 1);
   assert.equal(sb.tables.sales[0].vol, 9);
   assert.equal(sb.tables.goals.length, 1);
+});
+
+test("guard: sync:shared no regenera sync.js (lógica propia del servidor)", () => {
+  const cfg = JSON.parse(readFileSync(resolve(HERE, "../../../../scripts/architecture/sync-shared-files.json"), "utf8"));
+  const regenerated = cfg.pairs.map((p) => p.shared);
+  assert.ok(!regenerated.includes("packages/shared/src/data/sync.js"), "sync.js no puede estar en pairs");
+  assert.ok(cfg.sharedOnlyNoted.includes("packages/shared/src/data/sync.js"));
 });
 
 // ---------------------------------------------------------------------------

@@ -1,6 +1,6 @@
 # Plan de deploy — API: fix de sync (tramo 1) + health/SHA
 
-**Estado:** PREPARADO, **no ejecutado**. Requiere OK explícito.  
+**Estado:** OK explícito del usuario (2026-10-18) para ejecutar el deploy de API, sin esquema ni RLS.  
 **Alcance:** solo API (`apps/api` y `packages/shared`, que la API carga en tiempo de ejecución). Sin cambios de BD, de RLS, de esquema, de web ni de configuración.  
 **Ramas incluidas:**
 
@@ -35,6 +35,20 @@ pm2 jlist > "$B/pm2-before.json"
 
 No se copian `.env` ni `ecosystem` al backup, porque no cambian. Si hiciera falta, se haría en solo lectura y con permisos 600.
 
+**Backup lógico de datos** (solo lectura: `pg_dump --data-only`, sin tocar la BD) de las 6 tablas cuyo patrón de escritura cambia:
+
+```bash
+D="/opt/saletse-backups/db/pre-sync-${STAMP}"
+install -d -m 700 "$D"
+docker exec saletse-prod-db pg_dump -U supabase_admin -d postgres --data-only \
+  -t public.prospects -t public.sales -t public.calendar_entries -t public.activities \
+  -t public.goals -t public.tool_calculations | gzip > "$D/sync-tables.sql.gz"
+chmod 600 "$D/sync-tables.sql.gz"
+# + conteos de referencia por tabla en $D/counts.txt (600)
+```
+
+Contiene datos personales: queda fuera del repo, en el VPS, con permisos 600. **Retención:** borrar cuando el tramo 1 lleve 14 días estable sin rollback; anotarlo en la política de retención de backups. No se restaura automáticamente: un rollback de código no lo necesita, porque los datos escritos por el fix son legítimos.
+
 ## 2. Deploy
 
 ```bash
@@ -47,11 +61,12 @@ git diff --quiet "$SHA_PREV" HEAD -- package-lock.json || npm ci --omit=dev --no
 pm2 reload saletse-api --update-env
 ```
 
-**Sonda** (hasta 30 s; si falla, se aplica ROLLBACK inmediato):
+**Sonda** (cada 0.5 s, hasta 30 s; si falla o el commit no coincide con SHA.txt, ROLLBACK inmediato):
 
 ```bash
-for i in $(seq 1 15); do
-  H=$(curl -sf http://127.0.0.1:4000/health) && break; sleep 2
+for i in $(seq 1 60); do
+  H=$(curl -sf http://127.0.0.1:4000/health) && [ "$(echo "$H" | python3 -c 'import json,sys; print(json.load(sys.stdin).get("commit"))')" = "$(cat SHA.txt)" ] && break
+  H=""; sleep 0.5
 done
 echo "$H"
 test "$(echo "$H" | python3 -c 'import json,sys; print(json.load(sys.stdin).get("commit"))')" = "$(cat SHA.txt)" \
@@ -96,6 +111,15 @@ El logger escribe el evento en `msg` (`apps/api/src/lib/logger.js`). Los conteos
 - Filas con `workspace_id` nulo en las tablas del CRM: 0.
 
 ### 4.3 QA efímera (cuenta QA con credenciales aleatorias fuera del repo, en su workspace personal)
+
+**Automatizado y en los smokes estándar post-deploy de API:**
+
+```bash
+API_BASE=http://187.77.14.148 node scripts/architecture/smoke-sync-roundtrip-qa.mjs   # (a)–(d) + purga a 0 + latencias
+PLAYWRIGHT_SKIP_SERVERS=1 PLAYWRIGHT_BASE_URL=<web prod> npx playwright test e2e/sync-partial-409.spec.js  # (e)
+```
+
+El smoke da a las 2 QA el rol de plataforma `liner`, como un usuario real. Sin él, el workspace personal no tiene `expedientes:crear` ni `metas:ver_editar_propias`, y REST y la RLS rechazan igual. La agenda usa `type` del enum `entry_type` (`venta|nota|follow|descanso`). No es viable en CI: necesita la BD real y SSH al VPS para el helper.
 
 1. **Fila nueva:** `PUT /sync` con un blob de 1 expediente nuevo (id UUID nuevo) y 1 entrada de agenda. Se espera 200, `data.clients` con el expediente y, en BD, **1** fila de cada.
 2. **Reenvío idempotente:** el mismo blob, con ids legacy no-UUID regenerados por `normalizeIds`, 3 veces. Se espera 200 cada vez y **sigue habiendo 1** fila de cada (log: `deduped`, sin `inserted`).
