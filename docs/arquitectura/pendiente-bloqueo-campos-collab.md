@@ -1,6 +1,6 @@
 # Pendiente: bloqueo de campos (collab broadcast)
 
-**Estado:** CLIENTE MÍNIMO desplegado (`fe26b10` web). 0098 **no aplicada**: el canario variante (ii) la aplicó y se revirtió automáticamente por una falla del instrumento de medida de presence (ver § Canario ii). Bloqueo de campo sigue como **KNOWN GAP**.  
+**Estado:** **RESUELTO.** Cliente mínimo desplegado (`fe26b10` web) y 0098 **aplicada en producción** (canario ii-bis, 2026-10-18, todos los criterios OK). Gate collab: bloqueo de campo pasa de KNOWN GAP a **PASS** (obligatorio).  
 **Regla:** ningún cambio en BD/config de producción sin OK, backup y rollback preparados.  
 **Decisión de prueba:** no Postgres nativo / no Docker. El **canario en producción** es el mecanismo de prueba real (solo tras OK).
 
@@ -28,11 +28,36 @@ Seed: A dueño de P1/P2; B = miembro del WS de A + share de P1 (`seed-collab-sha
 
 **Causa de la falla (sin cambios de BD, diagnóstico efímero):** el instrumento, no la política. realtime-js solo habilita presence si el canal registra un listener `presence` **antes** de `subscribe`. El script no lo hacía: el mismo contador ya daba 0 **antes** del apply. Repetición sin política: sin listener → 0/0 keys; con listener → 2/2. El gate UI de Paso 3 (barra `exp-presence-bar`) confirmó presence en prod con el cliente real.
 
-El canario está corregido (listener `presence` agregado). **Re-ejecución pendiente de OK nuevo** (regla de corte: falla → rollback + stop).
+El canario está corregido (listener `presence` agregado). Re-ejecutado con OK nuevo: ver § Canario ii-bis.
 
 Snapshots (fuera del repo, `~/.saletse-ops/`): `realtime-messages-policies-{pre,post,post-rollback}-mvd9baf3.json`, reporte `canary-0098-report-mvd9baf3.json`. Purga QA: 0 en todas las tablas (incl. `goals`, `scheduled_push_jobs`).
 
 **Hallazgo de seguridad (no se cambia):** B, al ser miembro del workspace, accede también al canal de otros expedientes de ese workspace (propiedad de `user_can_access_prospect`). Con 0098 podría además emitir broadcast ahí. Dimensionamiento en [`backlog-seguridad.md`](./backlog-seguridad.md).
+
+## Canario ii-bis (2026-10-18) — aplicado y mantenido
+
+Mismos términos que el canario ii (una sola `CREATE POLICY`, snapshot previo, rollback automático, purga a 0). Mejora del script: presence A↔B con listener se mide **antes** del apply como línea base del instrumento; si no da 2/2, el script para sin aplicar.
+
+| # | Caso | Esperado | Observado |
+|---|------|----------|-----------|
+| 0 | Snapshot pre | 4 `presence_*`, sin broadcast | OK |
+| 0b | Presence línea base pre-apply | A=2, B=2 | **OK (2/2)** |
+| 1 | Bug pre-apply: A→B `field_lock` en P1 | B no recibe | **Reproducido** (`send=ok`) |
+| 2 | Apply una sola `CREATE POLICY` | count=1 | OK |
+| 3 | 4 `presence_*` intactas | idénticas | OK |
+| 4 | Positivo A→B | B recibe | OK |
+| 5 | Positivo B→A | A recibe | OK |
+| 6 | Presence A↔B post-apply | 2/2 | **OK (2/2)** |
+| 7 | Negativo C (fuera del WS, sin share) en P1 | no SUBSCRIBED, 0 recibidos | OK (`CHANNEL_ERROR`, 0) |
+| 8 | B en P2 no compartido (hallazgo) | SUBSCRIBED por modelo | SUBSCRIBED y recibe lock (hallazgo, no falla) |
+| 9 | Topic mal formado / no-expediente | sin cambio vs pre | OK (`CHANNEL_ERROR` en ambos, pre y post; nada entregado) |
+
+Snapshot independiente posterior: 5 policies (`broadcast_expediente` + 4 `presence_*`). Purga A/B/C: 0 en las 12 tablas (incl. `scheduled_push_jobs`).  
+Artefactos (fuera del repo, `~/.saletse-ops/`): `realtime-messages-policies-{pre,post,final-ok}-mvdcuk4x.json`, `canary-0098-report-mvdcuk4x.json`.
+
+**Gate UI collab** (`smoke-survey-collab-e2e-qa.mjs`, web local con código = `fe26b10` contra backend de producción): policy presente, presencia mutua, **A enfoca → B ve bloqueo de campo (badge)**, A edita → B ve el valor, purga 0. El bloqueo ahora es criterio obligatorio del gate. El negativo C queda cubierto por el canario (caso 7), no por el gate de UI.
+
+**Rollback disponible:** [`rollback-0098-broadcast-expediente.sql`](./rollback-0098-broadcast-expediente.sql) (`DROP POLICY IF EXISTS "broadcast_expediente" ON realtime.messages;`).
 
 ## Problema
 

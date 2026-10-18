@@ -43,7 +43,7 @@ Reutilizables; provisionan cuenta `@saletse-test.com`, credenciales en `%TEMP%` 
 | `smoke-metas-ui-qa.mjs` | Crear/editar meta, KPIs, dashboard `/goals`; purga incl. `goals=0` | `node scripts/architecture/smoke-metas-ui-qa.mjs` |
 | `smoke-vacaciones-ui-qa.mjs` | Expediente → Vacaciones: capturar, resultados, guardar; purga `tool_calculations=0` | `node scripts/architecture/smoke-vacaciones-ui-qa.mjs` |
 | `smoke-survey-ui-qa.mjs` | Expediente → Survey: capturar, resultados, guardar; purga `tool_calculations=0` | `node scripts/architecture/smoke-survey-ui-qa.mjs` |
-| `smoke-survey-collab-e2e-qa.mjs` | **Gate collab Survey:** 2 QA personales, presencia + sync; bloqueo de campo = KNOWN GAP (ver `docs/arquitectura/pendiente-bloqueo-campos-collab.md`) | `PLAYWRIGHT_BASE_URL=… node scripts/architecture/smoke-survey-collab-e2e-qa.mjs` |
+| `smoke-survey-collab-e2e-qa.mjs` | **Gate collab Survey:** 2 QA personales, presencia + sync + bloqueo de campo (obligatorio; requiere 0098, ver `docs/arquitectura/pendiente-bloqueo-campos-collab.md`) | `PLAYWRIGHT_BASE_URL=… node scripts/architecture/smoke-survey-collab-e2e-qa.mjs` |
 | `smoke-realtime-broadcast-negative-qa.mjs` | Pruebas negativas Realtime: C sin share y B en expediente no compartido deben ser rechazados | `node scripts/architecture/smoke-realtime-broadcast-negative-qa.mjs` (env Supabase overlay) |
 | `build-web-ci.mjs` | Vite build con `VITE_*` placeholder (CI / completo) | `npm run build:web:ci` |
 | `smoke-geo-fx.mjs` | Solo lecturas API geo/FX (sin auth) | `API_BASE=… node scripts/architecture/smoke-geo-fx.mjs` |
@@ -53,7 +53,7 @@ Helper `qa-geo-fx-ephemeral.py` cuenta/borra `goals`, `tool_calculations`, `pros
 
 #### Gate colaboración Survey (manual)
 
-Ver docstring de `smoke-survey-collab-e2e-qa.mjs`: solo workspaces `personal` efímeros via `seed-collab-share` (share edit + guest en WS personal del dueño para RLS `tool_calculations`; no `sala_de_venta` ni empresa). **Esta rama no incluye migraciones de BD.** El bloqueo de campo por broadcast es KNOWN GAP hasta tarea aparte post-5b.3 (`pendiente-bloqueo-campos-collab.md`).
+Ver docstring de `smoke-survey-collab-e2e-qa.mjs`: solo workspaces `personal` efímeros via `seed-collab-share` (share edit + guest en WS personal del dueño para RLS `tool_calculations`; no `sala_de_venta` ni empresa). El script no aplica migraciones. El bloqueo de campo por broadcast es criterio obligatorio desde que 0098 está aplicada en producción (`pendiente-bloqueo-campos-collab.md`).
 
 ## Scratch (no versionar)
 

@@ -9,7 +9,7 @@ Fecha: 2026-10-18. Solo documentación.
 | `main` / `origin/main` | `fe26b10` | tip local = remoto |
 | API VPS (`/var/www/Saletse` git) | `aab2714` | Paso 2; sin redeploy API en Paso 3 |
 | Web `build-id` | `fe26b10` | Paso 3 web-only |
-| Política `broadcast_expediente` | **ausente** (count=0) | aplicada y revertida en canario ii |
+| Política `broadcast_expediente` | **aplicada** (count=1) | canario ii revertido; canario ii-bis aplicado y mantenido |
 
 Desalineación API≠web es **intencional** tras Paso 3 web-only. No se forzó redeploy API a `fe26b10` (fuera del alcance autorizado).
 
@@ -22,7 +22,8 @@ Desalineación API≠web es **intencional** tras Paso 3 web-only. No se forzó r
 | 3 Locks cliente | `fe26b10` | web-only | OK: Arquitectura verde + E2E=baseline; presence A↔B; bloqueo = KNOWN GAP; purga 0 |
 | 4a Canario 0098 share-only | — | BD | STOP antes de apply (B CHANNEL_ERROR por predicado share+WS) |
 | 4b Canario 0098 variante ii | — | BD (1 policy) | Aplicada → positivos A↔B OK → falla del instrumento de presence → **rollback automático OK** |
-| 5 Saneamiento E2E | — | tests | ver `e2e-baseline.md` |
+| 4c Canario 0098 ii-bis | — | BD (1 policy) | Línea base presence 2/2 → bug reproducido → apply → todos los criterios OK → **0098 aplicada**; gate collab bloqueo = PASS |
+| 5 Saneamiento E2E | `8b59907` | tests | 18 → 1 (ver `e2e-baseline.md`) |
 
 ## Paso 4 — resumen
 
@@ -32,7 +33,7 @@ Detalle completo y tabla de casos en [`pendiente-bloqueo-campos-collab.md`](./pe
 - Tras aplicar: count=1, 4 `presence_*` idénticas, B recibe de A y A recibe de B.
 - El chequeo de presence del script devolvió 0/0 también **antes** del apply: faltaba un listener `presence` antes de `subscribe` (comprobado sin cambios de BD: 0/0 sin listener, 2/2 con listener).
 - Rollback `DROP POLICY IF EXISTS` ejecutado; re-snapshot con 4 policies. Purga QA a 0.
-- Canario corregido; re-ejecución pendiente de OK nuevo.
+- Canario corregido y re-ejecutado (ii-bis) con línea base de presence pre-apply: todos los criterios OK, 0098 queda aplicada.
 
 ## Baseline E2E
 
@@ -49,12 +50,12 @@ Clasificación Etapa 5: sección en `e2e-baseline.md` (propuesta, sin aplicar).
 | Tema | Estado |
 |------|--------|
 | Notificaciones Tramo A / API | inventario; Tramo B API en `aab2714` |
-| Bloqueo campos / 0098 | KNOWN GAP; canario ii revertido por instrumento, listo para re-ejecutar con OK |
+| Bloqueo campos / 0098 | **Resuelto**: 0098 aplicada (canario ii-bis); gate collab bloqueo = PASS |
 | Multi-pestaña en bloqueos | pendiente |
 | Sync / persistencia / outbox | deuda compartida |
 | HTTPS | pendiente ops |
 | Retención backups VPS | pendiente ops |
-| E2E saneamiento (18) | clasificado; fixes no aplicados |
+| E2E saneamiento | 18 → 1; queda bug de app `?sub=moneybox` |
 | Alinear API git a `fe26b10` | opcional; no pedido en Paso 3 |
 
 ## Backups relevantes

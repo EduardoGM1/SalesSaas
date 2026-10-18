@@ -13,18 +13,21 @@
  * 4. A abre /clients/:id/survey; B abre
  *    /red/contacto/:ownerId/expediente/:id/survey (mismo canal realtime por prospectId).
  * 5. A edita #svp-name1 + Guardar → B ve el valor (API/UI sync).
- * 6. Presencia mutua en ficha (exp-presence-bar). Bloqueo de campo = KNOWN GAP
- *    (no falla el gate; ver docs/arquitectura/pendiente-bloqueo-campos-collab.md).
+ * 6. Presencia mutua en ficha (exp-presence-bar) y bloqueo de campo: A enfoca
+ *    #svp-name1 → B lo ve bloqueado. Requiere la policy broadcast_expediente (0098);
+ *    sin ella el gate falla. El negativo (usuario fuera del workspace y sin share no
+ *    se suscribe ni recibe locks) lo cubre el canario 0098, no este gate de UI.
  * 7. Contrato: collabFieldId("survey", key) ≡ `survey:${key}` (grep + assert).
  * 8. Purga ambas cuentas a 0: profiles, prospects, shares, share_invites,
- *    connections, empresa_miembros, ws_personal, workspace_miembros, tool_calculations.
+ *    connections, empresa_miembros, ws_personal, workspace_miembros, tool_calculations,
+ *    goals, scheduled_push_jobs.
  *
  * Tablas tocadas (solo filas de las 2 QA): auth.users, profiles, workspaces
  * (personal), workspace_miembros, prospects, prospect_shares, user_connections,
  * tool_calculations. NO toca sala_de_venta ni empresa real.
  *
  * Credenciales: randomBytes → %TEMP% (nunca repo).
- * check-broadcast-policy es informativo (no falla). Esta rama no aplica migraciones.
+ * check-broadcast-policy es obligatorio. Este script no aplica migraciones.
  *
  * Uso:
  *   PLAYWRIGHT_BASE_URL=http://localhost:5173 node scripts/architecture/smoke-survey-collab-e2e-qa.mjs
@@ -66,7 +69,6 @@ writeFileSync(
 console.log(`Credenciales fuera del repo: ${CREDS_PATH}`);
 
 const report = {
-  emails: [EMAIL_A, EMAIL_B],
   steps: [],
   consoleErrors: [],
   leftoverA: {},
@@ -102,6 +104,8 @@ function purgeZero(counts) {
     && counts.ws_personal === 0
     && counts.tool_calculations === 0
     && counts.goals === 0
+    && counts.workspace_miembros === 0
+    && counts.scheduled_push_jobs === 0
   );
 }
 
@@ -198,21 +202,14 @@ async function main() {
   let browser;
   try {
     const pol = probeBroadcastPolicy();
-    // Informativo: no falla el gate si falta la policy (KNOWN GAP de bloqueo).
-    step(
-      "info broadcast_expediente (no bloqueante)",
-      true,
-      pol.broadcast_expediente
-        ? `presente ${JSON.stringify(pol)}`
-        : `ausente — bloqueo de campo = KNOWN GAP (docs/arquitectura/pendiente-bloqueo-campos-collab.md) ${JSON.stringify(pol)}`,
-    );
+    step("policy broadcast_expediente presente", Boolean(pol.broadcast_expediente), JSON.stringify(pol));
 
     step("contrato collabFieldId(survey,…)", assertFieldIdContract(), "survey:nights / survey:total");
 
     const provA = runHelper(["provision", EMAIL_A, PASS_A, NAME_A]);
     const provB = runHelper(["provision", EMAIL_B, PASS_B, NAME_B]);
-    step("provision QA-A", Boolean(provA.uid), String(provA.uid || "").slice(0, 8));
-    step("provision QA-B", Boolean(provB.uid), String(provB.uid || "").slice(0, 8));
+    step("provision QA-A", Boolean(provA.uid));
+    step("provision QA-B", Boolean(provB.uid));
     const ownerId = provA.uid;
 
     browser = await chromium.launch({ headless: true });
@@ -227,18 +224,18 @@ async function main() {
     pageB.on("pageerror", onErr);
 
     await login(pageA, EMAIL_A, PASS_A, "A");
-    step("login A", true, pageA.url());
+    step("login A", true);
     await login(pageB, EMAIL_B, PASS_B, "B");
-    step("login B", true, pageB.url());
+    step("login B", true);
 
     const { prospectId } = await createProspectAsA(pageA);
-    step("expediente + seed", Boolean(prospectId), String(prospectId).slice(0, 8));
+    step("expediente + seed", Boolean(prospectId));
 
     const share = runHelper(["seed-collab-share", EMAIL_A, EMAIL_B, prospectId, "edit"]);
     step(
       "seed share edit + conexión",
       Boolean(share.share_id) && share.permission === "edit",
-      `${String(share.share_id || "").slice(0, 8)} perm=${share.permission || ""}`,
+      `perm=${share.permission || ""}`,
     );
 
     const detailA = `${BASE}/clients/${prospectId}`;
@@ -288,20 +285,11 @@ async function main() {
       await pageB.waitForTimeout(400);
     }
     const lockOk = lockVisible || nameLockedOnB;
-    if (lockOk) {
-      step("A enfoca → B ve bloqueo de campo", true, lockVisible ? "badge/wrap" : "input locked");
-    } else {
-      // KNOWN GAP: sin política INSERT broadcast el peer no recibe field_lock.
-      console.log(
-        "KNOWN GAP: bloqueo de campo requiere política broadcast, bug pendiente, "
-          + "ver docs/arquitectura/pendiente-bloqueo-campos-collab.md",
-      );
-      step(
-        "A enfoca → bloqueo de campo (KNOWN GAP, no fallante)",
-        true,
-        "bloqueo de campo requiere política broadcast, bug pendiente, ver docs/arquitectura/pendiente-bloqueo-campos-collab.md",
-      );
-    }
+    step(
+      "A enfoca → B ve bloqueo de campo",
+      lockOk,
+      lockOk ? (lockVisible ? "badge/wrap" : "input locked") : "B no recibió field_lock",
+    );
 
     await pageA.locator("#svp-name1").blur();
     await pageA.waitForTimeout(600);
