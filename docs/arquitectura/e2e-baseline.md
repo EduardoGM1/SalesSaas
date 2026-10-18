@@ -4,7 +4,11 @@
 **Regla de deploy:** workflow **Arquitectura** en VERDE + E2E sin fallos fuera de este conjunto (ninguno nuevo, ningún spec adicional en rojo).  
 **Última verificación local (suite completa, `CI=true`, `npm run test:e2e` equivalente):** 2026-10-18 — 153 passed, 5 skipped, 1 failed (el de la baseline).
 
-## Fallo vigente (1)
+## Baseline 0 en `arquitectura/fix-sub-moneybox`
+
+En esa rama el fallo de abajo está corregido (código de app, ver [`deploy-fix-sub-moneybox.md`](./deploy-fix-sub-moneybox.md)) y `e2e-baseline-failures.json` queda vacío: suite completa local `CI=true` = 154 passed, 5 skipped, 0 failed. Hasta que esa rama se fusione, en `main` rige la baseline de 1.
+
+## Fallo vigente en `main` (1)
 
 | # | Spec | Título | Clase |
 |---|------|--------|-------|

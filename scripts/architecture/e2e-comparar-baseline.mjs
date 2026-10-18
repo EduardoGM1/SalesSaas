@@ -123,9 +123,12 @@ function main() {
         ? buf.swap16().toString("utf16le")
         : buf.toString("utf8");
   let actual = [];
+  let parsedJsonReport = false;
   if (abs.endsWith(".json")) {
     try {
-      actual = fromJsonReport(JSON.parse(raw));
+      const data = JSON.parse(raw);
+      actual = fromJsonReport(data);
+      parsedJsonReport = Array.isArray(data) || Array.isArray(data.suites);
     } catch {
       actual = fromTextLog(raw);
     }
@@ -134,7 +137,8 @@ function main() {
   }
   actual = unique(actual);
 
-  if (!actual.length) {
+  // Un reporte JSON válido sin fallos es un resultado legítimo; un log sin coincidencias no.
+  if (!actual.length && !parsedJsonReport) {
     console.error(
       "No se extrajeron fallos del input. Usa reporter=json o un log con líneas file:line:col › título.",
     );

@@ -255,12 +255,15 @@ export function WorksheetRoyalHolidayPage({
   }), [moneyBoxFlag.hasCatalog, moneyBoxFlag.enabled]);
 
   useEffect(() => {
+    // Cada useFlag arranca sin catálogo hasta que llega la sesión: decidir antes
+    // reescribiría un ?sub=moneybox válido a la primera pestaña.
+    if (!moneyBoxFlag.ready) return;
     if (!visibleTabs.some((tb) => tb.id === activeTab)) {
       const fallback = visibleTabs[0]?.id || "financiamiento";
       if (onTabChange) onTabChange(fallback);
       else setTab(fallback);
     }
-  }, [visibleTabs, activeTab, onTabChange]);
+  }, [moneyBoxFlag.ready, visibleTabs, activeTab, onTabChange]);
 
   const posicionesDisponibles = useMemo(() => {
     const fromCat = new Set((catalogo?.comisiones || []).map((c) => String(c.posicion).toLowerCase()));

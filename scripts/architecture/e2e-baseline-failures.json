@@ -1,12 +1,6 @@
 {
   "version": 1,
   "updated": "2026-10-18",
-  "note": "1 fallo conocido tras el saneamiento E2E (era 18); ver docs/arquitectura/e2e-baseline.md",
-  "failures": [
-    {
-      "file": "e2e/money-box-routing.spec.js",
-      "line": 48,
-      "title": "Money Box — expediente y rutas › sala RH: pestaña Money Box en worksheet embebido"
-    }
-  ]
+  "note": "0 fallos conocidos: el ultimo (money-box sala RH, deep link ?sub=moneybox) se corrigio en arquitectura/fix-sub-moneybox; ver docs/arquitectura/e2e-baseline.md",
+  "failures": []
 }
