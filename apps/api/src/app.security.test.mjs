@@ -63,6 +63,30 @@ test("health directo: sin X-Powered-By y sin CSP/nosniff (edge Nginx en VPS)", a
   }
 });
 
+test("PUT /api/v1/survey/questions-config sin token → 401 (o 503 si Supabase no está configurado)", async () => {
+  const { server, port } = await listen(createApp());
+  try {
+    const res = await request(port, {
+      method: "PUT",
+      path: "/api/v1/survey/questions-config",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        seccion: "motivaciones",
+        items: [{ pregunta_id: "11111111-1111-4111-8111-111111111111", orden: 1 }],
+      }),
+    });
+    assert.ok(
+      res.status === 401 || res.status === 503,
+      `esperado 401/503, got ${res.status}`,
+    );
+    if (res.status === 401) {
+      assert.match(String(res.json?.error || ""), /No autenticado/i);
+    }
+  } finally {
+    server.close();
+  }
+});
+
 test("JSON_BODY_LIMIT es 8mb (cubre captura soporte 5 MB, no 15 MB)", () => {
   assert.equal(JSON_BODY_LIMIT, "8mb");
 });

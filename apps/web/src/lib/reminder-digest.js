@@ -1,11 +1,16 @@
 import { notificationsApi } from "@/lib/notifications-api.js";
+import {
+  debeRespetarCooldown,
+  VENTANA_DIGEST_MS,
+  VENTANA_FLUSH_MS,
+  CLAVE_DIGEST_LOCAL,
+  CLAVE_FLUSH_LOCAL,
+} from "@/modulos/notificaciones/index.js";
 
-const LOCAL_COOLDOWN_KEY = "sts4_reminder_digest_at";
-const LOCAL_FLUSH_KEY = "sts4_reminder_flush_at";
-/** Evita martillar el digest; el servidor tiene su propio cooldown. */
-const LOCAL_COOLDOWN_MS = 15 * 60 * 1000;
-/** Flush de jobs a hora exacta: cada ~45s mientras la app esté abierta. */
-const LOCAL_FLUSH_MS = 45_000;
+const LOCAL_COOLDOWN_KEY = CLAVE_DIGEST_LOCAL;
+const LOCAL_FLUSH_KEY = CLAVE_FLUSH_LOCAL;
+const LOCAL_COOLDOWN_MS = VENTANA_DIGEST_MS;
+const LOCAL_FLUSH_MS = VENTANA_FLUSH_MS;
 
 /**
  * Pide al backend el digest / catch-up de recordatorios operativos.
@@ -17,8 +22,8 @@ export function maybeRequestReminderDigest() {
 
   const now = Date.now();
   try {
-    const last = Number(localStorage.getItem(LOCAL_COOLDOWN_KEY) || 0);
-    if (Number.isFinite(last) && now - last < LOCAL_COOLDOWN_MS) return;
+    const last = localStorage.getItem(LOCAL_COOLDOWN_KEY) || 0;
+    if (debeRespetarCooldown(last, now, LOCAL_COOLDOWN_MS)) return;
   } catch {
     // ignore
   }
@@ -47,8 +52,8 @@ export function maybeFlushScheduledReminders({ force = false } = {}) {
   const now = Date.now();
   if (!force) {
     try {
-      const last = Number(localStorage.getItem(LOCAL_FLUSH_KEY) || 0);
-      if (Number.isFinite(last) && now - last < LOCAL_FLUSH_MS) return;
+      const last = localStorage.getItem(LOCAL_FLUSH_KEY) || 0;
+      if (debeRespetarCooldown(last, now, LOCAL_FLUSH_MS)) return;
     } catch {
       // ignore
     }

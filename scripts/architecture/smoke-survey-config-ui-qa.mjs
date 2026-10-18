@@ -1,7 +1,11 @@
 /**
- * Smoke UI config de preguntas Survey (5b.6): QA efímera, abrir modal,
- * editar título override, PUT, GET refleja, Survey usa config; purga a 0
- * (incl. survey_preguntas_usuario).
+ * Smoke UI/API config preguntas Survey (regla personal dueño / sala con clave).
+ *
+ * QA efímera en workspace PERSONAL (alta sin role_id):
+ *   botón visible + PUT 200 (sin grant de permiso).
+ * Purga a 0 incl. survey_preguntas_usuario.
+ *
+ * Casos sala (oculto/403, visible/200) → suite unitaria survey-questions-service.test.mjs.
  *
  * Uso: PLAYWRIGHT_BASE_URL=http://localhost:5173 node scripts/architecture/smoke-survey-config-ui-qa.mjs
  */
@@ -31,7 +35,7 @@ writeFileSync(
 );
 console.log(`Credenciales fuera del repo: ${CREDS_PATH}`);
 
-const report = { email: EMAIL, steps: [], consoleErrors: [], leftover: {} };
+const report = { email: EMAIL, base: BASE, steps: [], consoleErrors: [], leftover: {} };
 
 function step(name, ok, detail = "") {
   report.steps.push({ name, ok, detail });
@@ -49,9 +53,7 @@ async function main() {
   let browser;
   try {
     const prov = runHelper(["provision", EMAIL, PASSWORD, FULL_NAME]);
-    step("provision QA", Boolean(prov.uid), String(prov.uid || "").slice(0, 8));
-    const grant = runHelper(["grant-survey-config", EMAIL]);
-    step("grant configurar preguntas", Boolean(grant.granted), String(grant.uid || "").slice(0, 8));
+    step("provision QA (alta sin role_id)", Boolean(prov.uid), String(prov.uid || "").slice(0, 8));
 
     browser = await chromium.launch({ headless: true });
     const page = await browser.newPage();
@@ -100,6 +102,8 @@ async function main() {
 
     const configBtn = page.locator("button.disc-section-config-btn").first();
     await configBtn.waitFor({ state: "visible", timeout: 20000 });
+    step("personal sin role_id: botón Configurar visible", true);
+
     await configBtn.click();
     await page.locator(".disc-config-list, .sales-modal .disc-config-row").first().waitFor({
       state: "visible",
@@ -126,7 +130,11 @@ async function main() {
       .first()
       .click();
     const putRes = await putPromise;
-    step("PUT questions-config", putRes.ok(), `status ${putRes.status()}`);
+    step(
+      "personal sin role_id: PUT → 200",
+      putRes.ok(),
+      `status ${putRes.status()}`,
+    );
 
     await page.waitForTimeout(800);
     const getJson = await page.evaluate(async () => {

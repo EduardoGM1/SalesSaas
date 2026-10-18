@@ -1,5 +1,41 @@
 import { ServiceError } from "../../../lib/service-error.js";
-import { requireWorkspaceFlag } from "../../../lib/workspace-scope.js";
+import {
+  getRequestWorkspaceId,
+  requireWorkspaceFlag,
+  requireWorkspacePermission,
+} from "../../../lib/workspace-scope.js";
+import * as workspaceService from "../../../services/workspace-service.js";
+
+/** Misma clave que la UI (`can("…")` / use-survey-questions) en salas. */
+export const PERMISO_SURVEY_CONFIGURAR_PREGUNTAS =
+  "herramientas:survey_configurar_preguntas";
+
+/**
+ * Flag survey + (personal propio del dueño | permiso configurar en sala).
+ *
+ * Excepción personal: `ensure_personal_workspace` identifica el WS personal del
+ * usuario. Ahí el dueño configura sus propias preguntas (`survey_preguntas_usuario`
+ * por usuario_id) aunque el alta no asigne `role_id`. No aplica a un personal
+ * ajeno donde sea guest (activo ≠ personal propio) ni a salas: ahí se exige la clave.
+ */
+export async function assertCanConfigureSurveyQuestions(supabase, userId) {
+  await requireWorkspaceFlag(supabase, userId, "survey");
+  const workspaceId = await getRequestWorkspaceId(supabase, userId);
+  if (!workspaceId) throw new ServiceError("Workspace activo requerido.", 403);
+
+  const personalId = await workspaceService.ensurePersonalWorkspace(supabase, userId);
+  if (personalId && String(personalId) === String(workspaceId)) {
+    return workspaceId;
+  }
+
+  await requireWorkspacePermission(
+    supabase,
+    userId,
+    PERMISO_SURVEY_CONFIGURAR_PREGUNTAS,
+    workspaceId,
+  );
+  return workspaceId;
+}
 
 const SECTIONS = new Set(["motivaciones", "timeshare"]);
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -99,7 +135,7 @@ export async function getSurveyQuestionsConfig(supabase, userId) {
  */
 export async function saveSurveyQuestionsConfig(supabase, userId, body) {
   if (!userId) throw new ServiceError("No autenticado.", 401);
-  await requireWorkspaceFlag(supabase, userId, "survey");
+  await assertCanConfigureSurveyQuestions(supabase, userId);
 
   const seccion = String(body?.seccion || "").trim();
   if (!SECTIONS.has(seccion)) {

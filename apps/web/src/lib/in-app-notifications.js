@@ -1,4 +1,3 @@
-import { PushType } from "@salesapp/shared/push/notification-targets.js";
 import { getInstallPlatform } from "@/lib/pwa-install.js";
 import { showDesktopLocalNotification } from "@/lib/desktop-notifications.js";
 import { playNotificationSound } from "@/lib/notification-sound.js";
@@ -8,38 +7,21 @@ import {
   armarNotificacion,
   truncar,
 } from "@/lib/notificacion-payload";
+import {
+  PushType,
+  PUSH_A_TIPO,
+  TIPO_A_PREF,
+  normalizarPreferenciasNotificacion,
+  preferenciaHabilitadaParaTipo,
+} from "@/modulos/notificaciones/index.js";
 
 const GROUP_WINDOW_MS = 30_000;
 
 /** @type {Map<string, { count: number, timestamp: number, toastId: number, nombre?: string, data: Record<string, unknown> }>} */
 const groupRegistry = new Map();
 
-/** Preferencia Configuración → Notificaciones (misma lógica que el API). */
-const TIPO_TO_PREF = {
-  mensaje_nuevo: "messages",
-  solicitud_contacto: "connection_requests",
-  solicitud_aceptada: "connection_accepted",
-  expediente_compartido: "shared_prospects",
-  cerrador_asignado: "shared_prospects",
-  expediente_transferido: "shared_prospects",
-  followup_pendiente: "follow_up_reminders",
-  venta_pendiente: "sales_to_process",
-  nota_programada: "scheduled_notes",
-};
-
-const PUSH_TO_TIPO = {
-  [PushType.MESSAGE]: "mensaje_nuevo",
-  [PushType.CONNECTION_REQUEST]: "solicitud_contacto",
-  [PushType.CONNECTION_ACCEPTED]: "solicitud_aceptada",
-  [PushType.SHARED_PROSPECT]: "expediente_compartido",
-  [PushType.PROSPECT_SECTION_CHANGED]: "expediente_compartido",
-  [PushType.CLOSER_ASSIGNED]: "cerrador_asignado",
-  [PushType.PROSPECT_TRANSFERRED]: "expediente_transferido",
-  [PushType.FOLLOW_UP_REMINDER]: "followup_pendiente",
-  [PushType.SALES_TO_PROCESS]: "venta_pendiente",
-  [PushType.SCHEDULED_NOTE]: "nota_programada",
-  [PushType.SUPPORT_REPLY]: "respuesta_soporte",
-};
+const TIPO_TO_PREF = TIPO_A_PREF;
+const PUSH_TO_TIPO = PUSH_A_TIPO;
 
 const ICONO_CATEGORIA_TO_TOAST = {
   agenda: "follow_up_reminder",
@@ -67,22 +49,12 @@ function pruneGroups(now) {
 
 export function getNotificationPrefs() {
   const notifications = useDbStore.getState()?.db?.settings?.notifications ?? {};
-  return {
-    messages: notifications.messages !== false,
-    connection_requests: notifications.connection_requests !== false,
-    connection_accepted: notifications.connection_accepted !== false,
-    shared_prospects: notifications.shared_prospects !== false,
-    follow_up_reminders: notifications.follow_up_reminders !== false,
-    sales_to_process: notifications.sales_to_process === true,
-    scheduled_notes: notifications.scheduled_notes !== false,
-  };
+  return normalizarPreferenciasNotificacion(notifications);
 }
 
 /** Filtro de preferencias ANTES de armar payload. */
 export function isNotificacionTipoEnabled(tipo) {
-  const prefKey = TIPO_TO_PREF[tipo];
-  if (!prefKey) return true;
-  return Boolean(getNotificationPrefs()[prefKey]);
+  return preferenciaHabilitadaParaTipo(getNotificationPrefs(), tipo);
 }
 
 /** @deprecated usar isNotificacionTipoEnabled; bridge PushType → tipo */
