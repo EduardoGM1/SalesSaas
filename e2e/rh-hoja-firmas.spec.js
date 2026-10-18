@@ -110,7 +110,7 @@ async function mockRhApis(page, { participants = PARTICIPANTS_FULL } = {}) {
     });
   });
 
-  await page.route(`**/api/v1/royal-holiday/${EMPRESA_ID}/catalogo`, async (route) => {
+  await page.route(`**/api/v1/royal-holiday/${EMPRESA_ID}/catalogo**`, async (route) => {
     await route.fulfill({
       status: 200,
       contentType: "application/json",
@@ -159,7 +159,7 @@ async function prepareRhPage(page, formOverrides) {
         activities: [],
       },
     },
-  });
+  }, { workspaceId: WORKSPACE_ID });
   await mockRhApis(page);
 }
 

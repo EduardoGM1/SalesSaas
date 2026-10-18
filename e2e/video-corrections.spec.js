@@ -8,20 +8,36 @@ import {
 const CLIENT_URL = `/clients/${E2E_CLIENT_ID}`;
 const SURVEY_URL = `/clients/${E2E_CLIENT_ID}/survey`;
 
+const SURVEY_FLAGS = {
+  survey: true,
+  "survey.tab.motivaciones": true,
+  "survey.tab.timeshare_information": true,
+  "survey.tab.gastos_viaje": true,
+  "survey.tab.resumen": true,
+};
+
 function editModal(page) {
   return page.locator("#m-client-record");
 }
 
+/** En móvil la tarjeta "Datos del prospecto" arranca colapsada (solo abre por defecto ≥769px). */
+async function openEditModal(page) {
+  const card = page.locator(".prospect-summary-card").filter({ visible: true }).first();
+  await expect(card).toBeVisible();
+  if (await card.evaluate((el) => el.classList.contains("is-collapsed"))) {
+    await card.locator(".collapsible-section-head").click();
+  }
+  await page.getByRole("button", { name: /Editar datos/i }).click();
+}
+
 test.describe("PDF Correcciones Video — funcionalidad", () => {
   test.beforeEach(async ({ page }) => {
-    await prepareAuthenticatedPage(page);
+    await prepareAuthenticatedPage(page, {}, { flags: SURVEY_FLAGS });
   });
 
   test("Cambio 1: guardar datos del prospecto persiste y sincroniza Survey", async ({ page }) => {
     await page.goto(CLIENT_URL);
-    await expect(page.getByRole("button", { name: /Editar datos/i })).toBeVisible();
-
-    await page.getByRole("button", { name: /Editar datos/i }).click();
+    await openEditModal(page);
     const modal = editModal(page);
     await expect(modal).toBeVisible();
 
@@ -56,19 +72,22 @@ test.describe("PDF Correcciones Video — funcionalidad", () => {
 
   test("Cambio 3: editar datos sin avisos informativos obsoletos", async ({ page }) => {
     await page.goto(CLIENT_URL);
-    await page.getByRole("button", { name: /Editar datos/i }).click();
+    await openEditModal(page);
 
     const modal = page.locator("#m-client-record");
     await expect(modal).toBeVisible();
     await expect(modal.locator(".modal-sub")).toHaveCount(0);
-    await expect(modal.locator(".ethic-box")).toHaveCount(0);
+    // El único aviso vigente es el Código ético (b82f928); los informativos del PDF no vuelven.
+    await expect(modal.locator(".ethic-box")).toHaveCount(1);
+    await expect(modal.locator(".ethic-box")).toContainText(/Código ético/i);
     await expect(page.getByText(/información personal es temporal/i)).toHaveCount(0);
     await expect(page.getByText(/Complete only the information/i)).toHaveCount(0);
   });
 
   test("Cambio 4: totales de vacaciones sin depender del año", async ({ page }) => {
     await page.goto(SURVEY_URL);
-    const histCard = page.locator(".card").filter({
+    await page.locator(".exp-folder-subnav-item", { hasText: /Gastos de viaje/i }).click();
+    const histCard = page.locator(".card:not(.disc-tab-panel)").filter({
       has: page.locator(".card-heading", { hasText: "Últimas 3 vacaciones" }),
     });
     await expect(histCard).toBeVisible();
@@ -91,12 +110,12 @@ test.describe("PDF Correcciones Video — responsive móvil", () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
   test.beforeEach(async ({ page }) => {
-    await prepareAuthenticatedPage(page);
+    await prepareAuthenticatedPage(page, {}, { flags: SURVEY_FLAGS });
   });
 
   test("Cambio 2: Country y City apilados en Editar datos sin overflow", async ({ page }) => {
     await page.goto(CLIENT_URL);
-    await page.getByRole("button", { name: /Editar datos/i }).click();
+    await openEditModal(page);
 
     const countryField = page.locator(".prospect-geo-row .prospect-field").first();
     const cityField = page.locator(".prospect-geo-row .prospect-field").nth(1);

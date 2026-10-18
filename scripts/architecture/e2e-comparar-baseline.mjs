@@ -44,24 +44,26 @@ function loadBaseline() {
 function fromJsonReport(data) {
   const out = [];
   const suites = Array.isArray(data) ? data : data.suites || [];
-  const walk = (suite) => {
-    for (const s of suite.suites || []) walk(s);
+  // spec.file viene relativo a testDir (config.rootDir); la baseline usa rutas desde la raíz del repo.
+  const testDir = data.config?.rootDir;
+  const repoPath = (f) =>
+    normPath(testDir ? path.relative(ROOT, path.resolve(testDir, f)) : f);
+  // La suite raíz es el archivo; las anidadas son los describe del título.
+  const walk = (suite, describes) => {
+    for (const s of suite.suites || []) walk(s, [...describes, s.title]);
     for (const spec of suite.specs || []) {
-      for (const t of spec.tests || []) {
-        const failed = (t.results || []).some(
-          (r) => r.status === "failed" || r.status === "timedOut",
-        );
-        if (!failed) continue;
-        const file = normPath(spec.file || suite.file || "");
-        const line = spec.line || t.location?.line || 0;
-        const title = [...(spec.titlePath || []).slice(1), spec.title]
-          .filter(Boolean)
-          .join(" › ");
-        out.push(keyOf(file, line, title || t.title || spec.title));
-      }
+      // Un test que pasa en el retry es flaky, no fallo.
+      const failed = (spec.tests || []).some(
+        (t) => t.status === "unexpected",
+      );
+      if (!failed) continue;
+      const file = repoPath(spec.file || suite.file || "");
+      const line = spec.line || 0;
+      const title = [...describes, spec.title].filter(Boolean).join(" › ");
+      out.push(keyOf(file, line, title));
     }
   };
-  for (const s of suites) walk(s);
+  for (const s of suites) walk(s, []);
 
   // Alternate: list reporter dump as { failures: [{ file, line, title }] }
   if (!out.length && Array.isArray(data.failures)) {

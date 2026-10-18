@@ -109,7 +109,7 @@ async function mockRh(page) {
       }),
     });
   });
-  await page.route(`**/api/v1/royal-holiday/${EMPRESA_ID}/catalogo`, async (route) => {
+  await page.route(`**/api/v1/royal-holiday/${EMPRESA_ID}/catalogo**`, async (route) => {
     await route.fulfill({
       status: 200,
       contentType: "application/json",
@@ -157,7 +157,7 @@ test.describe("RH Flyback — carga dual", () => {
           activities: [],
         },
       },
-    });
+    }, { workspaceId: WORKSPACE_ID });
     await mockRh(page);
     await page.goto(`/clients/${E2E_CLIENT_ID}/worksheet`, { waitUntil: "domcontentloaded" });
     await page.waitForSelector(".worksheet-rh-tabs", { timeout: 30000 });

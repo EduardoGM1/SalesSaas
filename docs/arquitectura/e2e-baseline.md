@@ -1,8 +1,18 @@
 # Baseline E2E (fallos conocidos en `main`)
 
-**Estado:** baseline congelada para deploys de arquitectura.  
-**Regla de deploy:** workflow **Arquitectura** en VERDE + E2E con exactamente este conjunto de fallos (ninguno nuevo, ningún spec adicional en rojo).  
-**Última verificación local (bisect worktree, `CI=true`, sin `PLAYWRIGHT_BASE_URL`):** 2026-10-18.
+**Estado:** baseline reducida de 18 a **1** fallo tras el saneamiento de la Etapa 5 (rama `arquitectura/e2e-saneamiento`). La baseline solo puede encoger.  
+**Regla de deploy:** workflow **Arquitectura** en VERDE + E2E sin fallos fuera de este conjunto (ninguno nuevo, ningún spec adicional en rojo).  
+**Última verificación local (suite completa, `CI=true`, `npm run test:e2e` equivalente):** 2026-10-18 — 153 passed, 5 skipped, 1 failed (el de la baseline).
+
+## Fallo vigente (1)
+
+| # | Spec | Título | Clase |
+|---|------|--------|-------|
+| 1 | `e2e/money-box-routing.spec.js:48` | Money Box — expediente y rutas › sala RH: pestaña Money Box en worksheet embebido | **(c) app** — deep link |
+
+El spec abre `/clients/:id?tab=worksheet&sub=moneybox`. La pestaña "Money Box" aparece en la bandeja del expediente, pero al montar el worksheet la URL se reescribe a `sub=financiamiento` y el panel Money Box queda oculto. Pulsando la pestaña sí se muestra (verificado). Hipótesis: el efecto de fallback de `worksheet-royal-holiday-page.jsx` (`visibleTabs` sin `moneybox` → `onTabChange(fallback)`) corre antes de que el flag `worksheet.royal_holiday.money_box` esté disponible. Arreglarlo exige código de app: **no aplicado** (fuera del alcance e2e/CI). El spec no se cambió a "click en la pestaña" porque eso ocultaría la regresión del deep link.
+
+## Los 18 tests fallidos originales (histórico)
 
 ## Contexto
 
@@ -13,7 +23,7 @@ Historial público de Actions en `main`: **ningún run E2E en verde** al menos d
 
 ## Los 18 tests fallidos (identidad estable)
 
-Clave de comparación = `archivo:línea › título` (viewport incluido cuando aplica).
+Clave de comparación = `archivo:línea › título` (viewport incluido cuando aplica). Las líneas son las de antes del saneamiento.
 
 | # | Spec | Título |
 |---|------|--------|
@@ -68,7 +78,25 @@ El script **falla (exit 1)** si:
 
 También acepta un log de texto con líneas `file.spec.js:LINE:COL › título` (reporter github/list).
 
-## Saneamiento (Etapa 5 — propuesta, **sin aplicar**)
+## Saneamiento aplicado (Etapa 5)
+
+Solo se tocaron `e2e/` y `scripts/architecture/` (comparador). Cero cambios de código de app.
+
+| Fallos | Causa real | Arreglo |
+|--------|------------|---------|
+| agenda ×2 | Spec leía la clave plana `sts4_v1`; la app usa schema 2 `sts4_v1:{workspace}` | `readCalDay` usa `readStoredDb` (clave namespaced) |
+| video-corrections ×5, rh-tables ×4, flyback (y hoja-firmas, que ya pasaba, por consistencia) | La semilla escribía `sts4_v1` plano; sin `workspace_activo_id` en la sesión mock la app lo deja en `legacy_pending` y el cliente no carga | `seed-local-db.js`: semilla schema 2 (`sts4_schema`, `sts4_active_workspace`, `sts4_v1:{ws}`, `sts4_account`) + sesión con workspace; opción `workspaceId` |
+| rh-tables ×4, flyback, money-box | El worksheet pide `/catalogo?prospectId=…` (0224158) y el glob `**/catalogo` no casa con query | Glob `**/catalogo**` |
+| video-corrections Survey (Cambio 1, 4, móvil) | Sin flag `survey` el gate redirige a `/tools` | Opción `flags` en `mockAuthenticatedSession` (solo si se pasa; sin ella sigue el modo legacy) + flags `survey.*` |
+| video-corrections Cambio 3 | El ethic-box "Código ético" es intencional (b82f928, posterior al spec) | Se exige que exista y contenga "Código ético"; los avisos obsoletos siguen prohibidos |
+| video-corrections Cambio 4 | La tarjeta "Últimas 3 vacaciones" vive en la pestaña "Gastos de viaje" y el tabpanel también es `.card` | Pulsar la pestaña + `.card:not(.disc-tab-panel)` |
+| video-corrections móvil | "Datos del prospecto" está colapsada a menos de 769px | Expandir la tarjeta antes de "Editar datos" |
+| rh-pm ×5 | `RhToolFlagGate` exige `worksheet.royal_holiday`; además selectores ambiguos ("Confirmar invitación", título "Nueva pareja — OLA 2") | Flag en los mocks + selectores acotados a `opc-expediente-tabs` / título del modal |
+| money-box | Pestañas del worksheet embebido migraron a la bandeja del expediente (4703d65) | Selector `navigation "Pestañas worksheet"` → queda el fallo (c) descrito arriba |
+
+Comparador: `fromJsonReport` ahora arma la clave igual que la baseline (ruta desde la raíz del repo, título con los `describe`) y cuenta como fallo solo `status: "unexpected"` (un flaky que pasa en el retry no bloquea, igual que el exit code de Playwright).
+
+## Clasificación previa (propuesta original)
 
 Ningún fallo del conjunto se clasifica como **(c) regresión real de app con impacto en usuarios** atribuible a Tramo B / Etapa 2 / locks: el set entero ya falla en `eeb90b9`.
 

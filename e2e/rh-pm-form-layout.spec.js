@@ -55,6 +55,7 @@ async function mockPremanifiesto(page) {
         ok: true,
         user: { id: "e2e-user", email: "e2e@test.local" },
         flags: {
+          "worksheet.royal_holiday": true,
           "rh.tool.premanifiesto.marketing": true,
           "rh.tool.premanifiesto.opc": true,
           "rh.tool.premanifiesto.rep": true,
@@ -108,7 +109,7 @@ test.describe("Premanifiesto form — responsive layout", () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
   test("labels e inputs apilados sin superposición en móvil", async ({ page }) => {
-    await prepareAuthenticatedPage(page);
+    await prepareAuthenticatedPage(page, {}, { workspaceId: WORKSPACE_ID });
     await mockPremanifiesto(page);
     await page.goto("/ops/rh/premanifiesto", { waitUntil: "domcontentloaded" });
     await page.waitForSelector("[data-testid='rh-pm-page']", { timeout: 30000 });
@@ -131,7 +132,7 @@ test.describe("Premanifiesto day panel — card spacing", () => {
   test.use({ viewport: { width: 1280, height: 800 } });
 
   test("olas y entries con separación vertical clara", async ({ page }) => {
-    await prepareAuthenticatedPage(page);
+    await prepareAuthenticatedPage(page, {}, { workspaceId: WORKSPACE_ID });
     await mockPremanifiesto(page);
     await page.goto("/ops/rh/premanifiesto", { waitUntil: "domcontentloaded" });
     await page.waitForSelector("[data-testid='rh-pm-page']", { timeout: 30000 });
@@ -156,7 +157,7 @@ test.describe("Premanifiesto day panel — card spacing", () => {
   });
 
   test("clic en un día no crea pestaña Día y mantiene el calendario", async ({ page }) => {
-    await prepareAuthenticatedPage(page);
+    await prepareAuthenticatedPage(page, {}, { workspaceId: WORKSPACE_ID });
     await mockPremanifiesto(page);
     await page.goto("/ops/rh/premanifiesto", { waitUntil: "domcontentloaded" });
     await page.waitForSelector("[data-testid='rh-pm-page']", { timeout: 30000 });
@@ -173,7 +174,7 @@ test.describe("Premanifiesto OPC — modal de cupo", () => {
   test.use({ viewport: { width: 1280, height: 800 } });
 
   test("cupo libre abre modal sin salir de Premanifiesto y cerrar no navega", async ({ page }) => {
-    await prepareAuthenticatedPage(page);
+    await prepareAuthenticatedPage(page, {}, { workspaceId: WORKSPACE_ID });
     await page.route("**/api/v1/auth/session", async (route) => {
       await route.fulfill({
         status: 200,
@@ -182,7 +183,7 @@ test.describe("Premanifiesto OPC — modal de cupo", () => {
           ok: true,
           user: { id: "e2e-user", email: "e2e@test.local" },
           profile: { id: "e2e-user", role: "user" },
-          flags: { "rh.tool.premanifiesto.opc": true },
+          flags: { "worksheet.royal_holiday": true, "rh.tool.premanifiesto.opc": true },
           workspace_activo: { id: WORKSPACE_ID, empresa_id: EMPRESA_ID, tipo: "sala_de_venta", role_slug: "opc" },
           workspace_activo_id: WORKSPACE_ID,
         }),
@@ -208,9 +209,10 @@ test.describe("Premanifiesto OPC — modal de cupo", () => {
     await page.locator("[data-testid='rh-pm-cupo-libre']").first().click();
     await expect(page).toHaveURL(/\/ops\/rh\/premanifiesto/);
     await expect(page.locator("[data-testid='opc-expediente-modal']")).toBeVisible();
-    await expect(page.getByRole("button", { name: "Información cliente" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Estancia" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Invitación" })).toBeVisible();
+    const expedienteTabs = page.getByTestId("opc-expediente-tabs");
+    await expect(expedienteTabs.getByRole("button", { name: "Información cliente" })).toBeVisible();
+    await expect(expedienteTabs.getByRole("button", { name: "Estancia" })).toBeVisible();
+    await expect(expedienteTabs.getByRole("button", { name: "Invitación" })).toBeVisible();
     await page.getByTestId("opc-pais").fill("parcial");
     await page.locator(".modal-close").click();
     await expect(page.locator("[data-testid='opc-expediente-modal']")).toHaveCount(0);
@@ -219,7 +221,7 @@ test.describe("Premanifiesto OPC — modal de cupo", () => {
   });
 
   test("todas las olas con cupo muestran botón + y el de OLA 2 abre el mismo modal", async ({ page }) => {
-    await prepareAuthenticatedPage(page);
+    await prepareAuthenticatedPage(page, {}, { workspaceId: WORKSPACE_ID });
     await page.route("**/api/v1/auth/session", async (route) => {
       await route.fulfill({
         status: 200,
@@ -228,7 +230,7 @@ test.describe("Premanifiesto OPC — modal de cupo", () => {
           ok: true,
           user: { id: "e2e-user", email: "e2e@test.local" },
           profile: { id: "e2e-user", role: "user" },
-          flags: { "rh.tool.premanifiesto.opc": true },
+          flags: { "worksheet.royal_holiday": true, "rh.tool.premanifiesto.opc": true },
           workspace_activo: { id: WORKSPACE_ID, empresa_id: EMPRESA_ID, tipo: "sala_de_venta", role_slug: "opc" },
           workspace_activo_id: WORKSPACE_ID,
         }),
@@ -255,6 +257,6 @@ test.describe("Premanifiesto OPC — modal de cupo", () => {
     await expect(addButtons).toHaveCount(2);
     await addButtons.nth(1).click();
     await expect(page.locator("[data-testid='opc-expediente-modal']")).toBeVisible();
-    await expect(page.getByText(/OLA 2/)).toBeVisible();
+    await expect(page.getByText(/Nueva pareja — OLA 2/)).toBeVisible();
   });
 });

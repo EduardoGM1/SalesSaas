@@ -3,7 +3,7 @@
  * Ejecutar: npx playwright test e2e/agenda-entry-modal.spec.js
  */
 import { test, expect } from "@playwright/test";
-import { prepareAuthenticatedPage } from "./helpers/seed-local-db.js";
+import { prepareAuthenticatedPage, readStoredDb } from "./helpers/seed-local-db.js";
 
 const TABS = {
   venta: "Venta",
@@ -71,15 +71,8 @@ async function assertSaveButtonInModal(page) {
 }
 
 async function readCalDay(page, calKey, day) {
-  return page.evaluate(
-    ({ key, d }) => {
-      const raw = localStorage.getItem("sts4_v1");
-      if (!raw) return [];
-      const db = JSON.parse(raw);
-      return db.cal?.[key]?.days?.[d] || [];
-    },
-    { key: calKey, d: day },
-  );
+  const db = await readStoredDb(page);
+  return db?.cal?.[calKey]?.days?.[day] || [];
 }
 
 test.describe("Agenda — modal de alta", () => {

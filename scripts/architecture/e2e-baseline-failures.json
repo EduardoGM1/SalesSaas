@@ -1,97 +1,12 @@
 {
   "version": 1,
   "updated": "2026-10-18",
-  "note": "18 fallos conocidos en main; ver docs/arquitectura/e2e-baseline.md",
+  "note": "1 fallo conocido tras el saneamiento E2E (era 18); ver docs/arquitectura/e2e-baseline.md",
   "failures": [
-    {
-      "file": "e2e/agenda-entry-modal.spec.js",
-      "line": 108,
-      "title": "Agenda — modal de alta › Notas del usuario: Guardar visible con texto, persiste y sobrevive recarga"
-    },
-    {
-      "file": "e2e/agenda-entry-modal.spec.js",
-      "line": 142,
-      "title": "Agenda — modal de alta › Descanso y No tour no guardan al seleccionar; Guardar persiste"
-    },
     {
       "file": "e2e/money-box-routing.spec.js",
       "line": 48,
       "title": "Money Box — expediente y rutas › sala RH: pestaña Money Box en worksheet embebido"
-    },
-    {
-      "file": "e2e/rh-flyback-carga.spec.js",
-      "line": 136,
-      "title": "RH Flyback — carga dual › ambas casillas quedan marcadas y Bono sigue excluyente"
-    },
-    {
-      "file": "e2e/rh-pm-form-layout.spec.js",
-      "line": 110,
-      "title": "Premanifiesto form — responsive layout › labels e inputs apilados sin superposición en móvil"
-    },
-    {
-      "file": "e2e/rh-pm-form-layout.spec.js",
-      "line": 133,
-      "title": "Premanifiesto day panel — card spacing › olas y entries con separación vertical clara"
-    },
-    {
-      "file": "e2e/rh-pm-form-layout.spec.js",
-      "line": 158,
-      "title": "Premanifiesto day panel — card spacing › clic en un día no crea pestaña Día y mantiene el calendario"
-    },
-    {
-      "file": "e2e/rh-pm-form-layout.spec.js",
-      "line": 175,
-      "title": "Premanifiesto OPC — modal de cupo › cupo libre abre modal sin salir de Premanifiesto y cerrar no navega"
-    },
-    {
-      "file": "e2e/rh-pm-form-layout.spec.js",
-      "line": 221,
-      "title": "Premanifiesto OPC — modal de cupo › todas las olas con cupo muestran botón + y el de OLA 2 abre el mismo modal"
-    },
-    {
-      "file": "e2e/rh-tables-mobile.spec.js",
-      "line": 187,
-      "title": "RH tablas móviles › Membresías y escenarios @ mobile-se (320px)"
-    },
-    {
-      "file": "e2e/rh-tables-mobile.spec.js",
-      "line": 187,
-      "title": "RH tablas móviles › Membresías y escenarios @ mobile-14 (390px)"
-    },
-    {
-      "file": "e2e/rh-tables-mobile.spec.js",
-      "line": 187,
-      "title": "RH tablas móviles › Membresías y escenarios @ mobile-lg (430px)"
-    },
-    {
-      "file": "e2e/rh-tables-mobile.spec.js",
-      "line": 187,
-      "title": "RH tablas móviles › Membresías y escenarios @ tablet (768px)"
-    },
-    {
-      "file": "e2e/video-corrections.spec.js",
-      "line": 20,
-      "title": "PDF Correcciones Video — funcionalidad › Cambio 1: guardar datos del prospecto persiste y sincroniza Survey"
-    },
-    {
-      "file": "e2e/video-corrections.spec.js",
-      "line": 57,
-      "title": "PDF Correcciones Video — funcionalidad › Cambio 3: editar datos sin avisos informativos obsoletos"
-    },
-    {
-      "file": "e2e/video-corrections.spec.js",
-      "line": 69,
-      "title": "PDF Correcciones Video — funcionalidad › Cambio 4: totales de vacaciones sin depender del año"
-    },
-    {
-      "file": "e2e/video-corrections.spec.js",
-      "line": 97,
-      "title": "PDF Correcciones Video — responsive móvil › Cambio 2: Country y City apilados en Editar datos sin overflow"
-    },
-    {
-      "file": "e2e/video-corrections.spec.js",
-      "line": 123,
-      "title": "PDF Correcciones Video — responsive móvil › Survey móvil: País y Ciudad apilados sin solapamiento"
     }
   ]
 }

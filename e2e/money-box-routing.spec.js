@@ -64,7 +64,7 @@ test.describe("Money Box — expediente y rutas", () => {
         }),
       });
     });
-    await page.route(`**/api/v1/royal-holiday/${EMPRESA_ID}/catalogo`, async (route) => {
+    await page.route(`**/api/v1/royal-holiday/${EMPRESA_ID}/catalogo**`, async (route) => {
       await route.fulfill({
         status: 200,
         contentType: "application/json",
@@ -92,9 +92,10 @@ test.describe("Money Box — expediente y rutas", () => {
       }
       await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ data: { ok: true } }) });
     });
-    await seedLocalDatabase(page);
+    await seedLocalDatabase(page, {}, { workspaceId: WORKSPACE_RH });
     await page.goto(`/clients/${E2E_CLIENT_ID}?tab=worksheet&sub=moneybox`, { waitUntil: "domcontentloaded" });
-    await expect(page.locator(".worksheet-rh-tabs .admin-subnav-item", { hasText: "Money Box" })).toBeVisible();
+    const rhSubnav = page.getByRole("navigation", { name: "Pestañas worksheet" });
+    await expect(rhSubnav.locator(".exp-folder-subnav-item", { hasText: "Money Box" })).toBeVisible();
     await expect(page.locator(".money-box-tabs, .money-box-matrix").first()).toBeVisible({ timeout: 15000 });
   });
 });
