@@ -2,7 +2,7 @@ name: Arquitectura
 
 on:
   push:
-    branches: [main, test/arquitectura-red-seguridad]
+    branches: [main, test/arquitectura-red-seguridad, 'arquitectura/**']
   pull_request:
     branches: [main]
 
