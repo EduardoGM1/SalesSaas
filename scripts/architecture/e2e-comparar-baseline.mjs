@@ -78,9 +78,10 @@ function fromJsonReport(data) {
 function fromTextLog(text) {
   const out = [];
   const decoded = text.replace(/%0A/g, "\n");
-  // Título hasta fin de línea / anotación github (::) / siguiente file=
+  // Título hasta fin de línea / anotación github (::) / siguiente file=.
+  // Flag m: en resúmenes de varias líneas `$` debe cerrar cada línea, no solo el texto.
   const re =
-    /((?:e2e[/\\])[\w./\\-]+\.spec\.js):(\d+):\d+\s*[›>]\s*([^\n]+?)(?=\s*(?:%0A|::|,line=|\s+e2e[/\\]|$))/g;
+    /((?:e2e[/\\])[\w./\\-]+\.spec\.js):(\d+):\d+\s*[›>]\s*([^\r\n]+?)(?=\s*(?:%0A|::|,line=|\s+e2e[/\\]|$))/gm;
   let m;
   while ((m = re.exec(decoded))) {
     let title = m[3]
@@ -169,4 +170,8 @@ function main() {
   console.log("\nOK: sin fallos nuevos fuera de la baseline.");
 }
 
-main();
+export { fromJsonReport, fromTextLog };
+
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  main();
+}

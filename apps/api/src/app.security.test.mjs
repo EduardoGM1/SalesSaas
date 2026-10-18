@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import http from "node:http";
 import test from "node:test";
-import { createApp } from "./app.js";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { createApp, resolveBuildCommit } from "./app.js";
 import { JSON_BODY_LIMIT } from "./lib/http-limits.js";
 
 function listen(app) {
@@ -60,6 +63,24 @@ test("health directo: sin X-Powered-By y sin CSP/nosniff (edge Nginx en VPS)", a
     assert.equal(res.headers["x-content-type-options"], undefined);
   } finally {
     server.close();
+  }
+});
+
+test("health commit: API_BUILD_ID → SHA.txt → variables actuales → null", () => {
+  const dir = mkdtempSync(join(tmpdir(), "saletse-sha-"));
+  const shaFile = join(dir, "SHA.txt");
+  const missing = join(dir, "no-existe.txt");
+  try {
+    writeFileSync(shaFile, "abc1234def\n");
+    assert.equal(resolveBuildCommit({ API_BUILD_ID: " env1 ", VITE_BUILD_ID: "vite" }, shaFile), "env1");
+    assert.equal(resolveBuildCommit({ VERCEL_GIT_COMMIT_SHA: "vercel" }, shaFile), "abc1234def");
+    assert.equal(resolveBuildCommit({ VERCEL_GIT_COMMIT_SHA: "vercel", VITE_BUILD_ID: "vite" }, missing), "vercel");
+    assert.equal(resolveBuildCommit({ VITE_BUILD_ID: "vite" }, missing), "vite");
+    assert.equal(resolveBuildCommit({}, missing), null);
+    writeFileSync(shaFile, "  \n");
+    assert.equal(resolveBuildCommit({ VITE_BUILD_ID: "vite" }, shaFile), "vite", "SHA.txt vacío no cuenta");
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
   }
 });
 

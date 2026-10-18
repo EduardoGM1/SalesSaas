@@ -8,7 +8,7 @@ Utilidades de desarrollo, despliegue, seeds y verificación. La API y el web tam
 |------|---------|-------------|
 | **npm raíz** | Ver `package.json` → `scripts/*` | `npm run verify`, `npm run test:rh-regalos`, `npm run rh:seed`, etc. |
 | **Deploy VPS web** | `build-web-vps-prod.py`, `deploy-web-dist-prod.py`, `spa_selfhosted_guard.py` | Documentado en `docs/MAPA-GENERAL-SISTEMA.md` |
-| **Deploy API** | `vps-deploy-api.py`, `vps_ssh.py` | Clave SSH `VPS_SSH_KEY` |
+| **Deploy API** | `vps-deploy-api.py`, `vps_ssh.py` | Clave SSH `VPS_SSH_KEY`. Escribe `SHA.txt` en la raíz del repo del VPS y para si `/health` no devuelve ese SHA |
 | **Schema RH** | `sync-rh-schema-staging.py`, `diagnose-rh-schema-staging-prod.py` | Python desde raíz del repo |
 | **Migraciones** | `apply-migration.mjs` | `npm run db:migrate` / CI `migrate.yml` |
 | **Presentación RH** | `test-presentacion-img-budget.mjs`, `remeasure-presentacion-ssim.mjs`, `smoke-presentacion-expediente-prod.mjs` | Node; smoke prod provisiona cuenta `@salesapp-qa.invalid` y purga al final |

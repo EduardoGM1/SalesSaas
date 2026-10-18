@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import express from "express";
 import compression from "compression";
 import cors from "cors";
@@ -13,7 +15,26 @@ import { authorizeCron } from "./lib/cron-auth.js";
 import { requestContextMiddleware } from "./lib/request-context.js";
 import { logger } from "./lib/logger.js";
 
+const DEPLOY_SHA_FILE = fileURLToPath(new URL("../../../SHA.txt", import.meta.url));
+
+/**
+ * SHA desplegado para /health: API_BUILD_ID (pm2) → SHA.txt que escribe el deploy
+ * en la raíz del repo → variables de Vercel/Vite → null.
+ */
+export function resolveBuildCommit(env = process.env, shaFile = DEPLOY_SHA_FILE) {
+  const fromEnv = String(env.API_BUILD_ID || "").trim();
+  if (fromEnv) return fromEnv;
+  try {
+    const fromFile = readFileSync(shaFile, "utf8").trim().split(/\s+/)[0];
+    if (fromFile) return fromFile;
+  } catch {
+    // Sin SHA.txt (dev, Vercel): seguir con las variables.
+  }
+  return env.VERCEL_GIT_COMMIT_SHA || env.VITE_BUILD_ID || null;
+}
+
 export function createApp() {
+  const buildCommit = resolveBuildCommit();
   const app = express();
 
   app.disable("x-powered-by");
@@ -46,7 +67,7 @@ export function createApp() {
     res.json({
       ok: true,
       service: "@salesapp/api",
-      commit: process.env.VERCEL_GIT_COMMIT_SHA || process.env.VITE_BUILD_ID || null,
+      commit: buildCommit,
       deployment: process.env.VERCEL_DEPLOYMENT_ID || null,
     });
   });

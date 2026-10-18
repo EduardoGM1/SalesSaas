@@ -28,7 +28,7 @@ cp /var/www/Saletse/docs/arquitectura/ROLLBACK-permiso-put-preguntas.md \
 
 ## Deploy
 
-1. Actualizar código en VPS al SHA (pull/ff merge de `main`).
+1. Actualizar código en VPS al SHA (pull/ff merge de `main`) y escribir `git rev-parse HEAD > /var/www/Saletse/SHA.txt` (lo hace `scripts/vps-deploy-api.py`; `/health` lo lee al arrancar).
 2. Sync/build web → `apps/web/dist` (proceso habitual del repo).
 3. `pm2 reload saletse-api` (o nombre del proceso).
 4. Sonda: bucle `curl -sf http://127.0.0.1:4000/health` — anotar cortes.

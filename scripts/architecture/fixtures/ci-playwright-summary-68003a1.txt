@@ -1,0 +1,21 @@
+  18 failed
+    e2e/agenda-entry-modal.spec.js:108:7 › Agenda — modal de alta › Notas del usuario: Guardar visible con texto, persiste y sobrevive recarga 
+    e2e/agenda-entry-modal.spec.js:142:7 › Agenda — modal de alta › Descanso y No tour no guardan al seleccionar; Guardar persiste 
+    e2e/money-box-routing.spec.js:48:7 › Money Box — expediente y rutas › sala RH: pestaña Money Box en worksheet embebido 
+    e2e/rh-flyback-carga.spec.js:136:7 › RH Flyback — carga dual › ambas casillas quedan marcadas y Bono sigue excluyente 
+    e2e/rh-pm-form-layout.spec.js:110:7 › Premanifiesto form — responsive layout › labels e inputs apilados sin superposición en móvil 
+    e2e/rh-pm-form-layout.spec.js:133:7 › Premanifiesto day panel — card spacing › olas y entries con separación vertical clara 
+    e2e/rh-pm-form-layout.spec.js:158:7 › Premanifiesto day panel — card spacing › clic en un día no crea pestaña Día y mantiene el calendario 
+    e2e/rh-pm-form-layout.spec.js:175:7 › Premanifiesto OPC — modal de cupo › cupo libre abre modal sin salir de Premanifiesto y cerrar no navega 
+    e2e/rh-pm-form-layout.spec.js:221:7 › Premanifiesto OPC — modal de cupo › todas las olas con cupo muestran botón + y el de OLA 2 abre el mismo modal 
+    e2e/rh-tables-mobile.spec.js:187:9 › RH tablas móviles › Membresías y escenarios @ mobile-se (320px) 
+    e2e/rh-tables-mobile.spec.js:187:9 › RH tablas móviles › Membresías y escenarios @ mobile-14 (390px) 
+    e2e/rh-tables-mobile.spec.js:187:9 › RH tablas móviles › Membresías y escenarios @ mobile-lg (430px) 
+    e2e/rh-tables-mobile.spec.js:187:9 › RH tablas móviles › Membresías y escenarios @ tablet (768px) 
+    e2e/video-corrections.spec.js:20:7 › PDF Correcciones Video — funcionalidad › Cambio 1: guardar datos del prospecto persiste y sincroniza Survey 
+    e2e/video-corrections.spec.js:57:7 › PDF Correcciones Video — funcionalidad › Cambio 3: editar datos sin avisos informativos obsoletos 
+    e2e/video-corrections.spec.js:69:7 › PDF Correcciones Video — funcionalidad › Cambio 4: totales de vacaciones sin depender del año 
+    e2e/video-corrections.spec.js:97:7 › PDF Correcciones Video — responsive móvil › Cambio 2: Country y City apilados en Editar datos sin overflow 
+    e2e/video-corrections.spec.js:123:7 › PDF Correcciones Video — responsive móvil › Survey móvil: País y Ciudad apilados sin solapamiento 
+  5 skipped
+  136 passed (13.7m)
