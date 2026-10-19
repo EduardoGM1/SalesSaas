@@ -6,6 +6,8 @@ Compartido por smokes geo-fx, moneda, metas, vacaciones, survey y gate collab.
 Uso:
   python scripts/architecture/qa-geo-fx-ephemeral.py provision <email> <password> <full_name>
   python scripts/architecture/qa-geo-fx-ephemeral.py counts <email>
+  python scripts/architecture/qa-geo-fx-ephemeral.py push-jobs <email>
+  python scripts/architecture/qa-geo-fx-ephemeral.py notif-prefs <email>
   python scripts/architecture/qa-geo-fx-ephemeral.py purge <email>
   python scripts/architecture/qa-geo-fx-ephemeral.py seed-prospect <email> <prospect_id> [name] [prospect_code]
   python scripts/architecture/qa-geo-fx-ephemeral.py seed-collab-share <owner_email> <recipient_email> <prospect_id> [permission]
@@ -196,6 +198,33 @@ SELECT 'prospects_deleted|' || COUNT(*)::text FROM prospects_deleted
         if key in result:
             result[key] = int(val)
     return result
+
+
+def push_jobs(client, email: str) -> list:
+    """Solo lectura: filas de scheduled_push_jobs de la QA (sin id ni user_id)."""
+    email_sql = email.replace("'", "''")
+    out = psql(
+        client,
+        f"""
+SELECT COALESCE(json_agg(row_to_json(j) ORDER BY j.created_at), '[]'::json)::text
+FROM (
+  SELECT send_at, push_type, title, body, path, tag, entry_key, status, attempts, created_at
+  FROM scheduled_push_jobs
+  WHERE user_id = (SELECT id FROM profiles WHERE email = '{email_sql}')
+) j;
+""",
+    ).strip()
+    return json.loads(out or "[]")
+
+
+def notif_prefs(client, email: str) -> dict:
+    """Solo lectura: profiles.settings->notifications de la QA."""
+    email_sql = email.replace("'", "''")
+    out = psql(
+        client,
+        f"SELECT COALESCE(settings->'notifications', '{{}}'::jsonb)::text FROM profiles WHERE email = '{email_sql}';",
+    ).strip()
+    return json.loads(out or "{}")
 
 
 def purge(client, email: str) -> dict:
@@ -775,6 +804,10 @@ def main() -> None:
             print(json.dumps(provision(client, email, sys.argv[3], sys.argv[4])))
         elif cmd == "counts":
             print(json.dumps(counts(client, email)))
+        elif cmd == "push-jobs":
+            print(json.dumps(push_jobs(client, email)))
+        elif cmd == "notif-prefs":
+            print(json.dumps(notif_prefs(client, email)))
         elif cmd == "purge":
             print(json.dumps(purge(client, email)))
         elif cmd == "grant-survey-config":
