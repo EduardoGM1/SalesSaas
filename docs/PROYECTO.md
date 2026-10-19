@@ -149,20 +149,20 @@ sales-app/
 └── .cursor/rules/            # reglas para agentes (BD de producción, higiene de scripts)
 ```
 
-Conteo de archivos versionados en `72a3ca4` (`git ls-files`):
+Conteo de archivos versionados tras el Tramo A de notificaciones (`git ls-files`; la API no cambia desde `72a3ca4`):
 
 | Carpeta | Archivos | Carpeta | Archivos |
 |---------|---------:|---------|---------:|
-| `apps/web/src/modulos` | 58 | `apps/api/src/modulos` | 29 |
-| `apps/web/src/lib` | 136 | `apps/api/src/services` | 36 |
-| `apps/web/src/components` | 101 | `apps/api/src/lib` | 29 |
+| `apps/web/src/modulos` | 77 | `apps/api/src/modulos` | 29 |
+| `apps/web/src/lib` | 131 | `apps/api/src/services` | 36 |
+| `apps/web/src/components` | 98 | `apps/api/src/lib` | 29 |
 | `apps/web/src/pages` | 30 | `apps/api/src/routes` | 24 |
 | `apps/web/src/hooks` | 26 | `apps/api/src/controllers` | 21 |
 | `apps/web/src/actions` | 4 | `apps/api/src/repositories` | 4 |
 | `apps/web/src/stores` | 3 | `apps/api/src/middleware` | 4 |
 | `apps/web/src/layouts` + `routes` + `styles` | 8 | `packages/shared/src` | 20 |
 | `supabase/migrations` | 97 | `e2e` | 16 |
-| `scripts` | 138 | `docs` | 90 |
+| `scripts` | 140 | `docs` | 92 |
 
 ### Convenciones de nombres
 
@@ -241,9 +241,9 @@ apps/api/src/modulos/<nombre>/
   dominio/ servicios/ repositorio/ controladores/ rutas/
 ```
 
-**Fachadas** ([`arquitectura/contencion-y-fachadas.md`](./arquitectura/contencion-y-fachadas.md)): desde fuera de un módulo, u otro módulo, solo se importa su fachada (`@/modulos/<nombre>` en web, `../modulos/<nombre>/index.js` en API), nunca `dominio/` ni `servicios/`. En web la fachada es `index.ts` (o `index.js` si el módulo es solo JS). `fachada-node.js` existe solo para código web que se carga con `node` sin bundler: no puede llamarse `index.js`, porque Vite prioriza `index.js` sobre `index.ts` y rompe el build.
+**Fachadas** ([`arquitectura/contencion-y-fachadas.md`](./arquitectura/contencion-y-fachadas.md)): desde fuera de un módulo, u otro módulo, solo se importa su fachada (`@/modulos/<nombre>` en web, `../modulos/<nombre>/index.js` en API), nunca `dominio/` ni `servicios/`. En web la fachada es `index.ts` (o `index.js` si el módulo es solo JS). `fachada-node.js` existe solo para código web que se carga con `node` sin bundler: no puede llamarse `index.js`, porque Vite prioriza `index.js` sobre `index.ts` y rompe el build. Las entradas delgadas permitidas (`fachada-i18n.js`, `fachada-preguntas.js`, `fachada-toast.js`) evitan que un import pequeño arrastre la UI completa del módulo.
 
-**Contención legacy**: las carpetas congeladas (web: `components`, `lib`, `pages`, `hooks`, `actions`, `stores`; API: `routes`, `controllers`, `services`, `repositories`, `lib`) no pueden recibir archivos nuevos. La lista base está en [`scripts/architecture/legacy-baseline.json`](../scripts/architecture/legacy-baseline.json) (411 archivos) y **solo puede encoger**. Las excepciones justificadas van en [`scripts/architecture/legacy-containment-exceptions.json`](../scripts/architecture/legacy-containment-exceptions.json) (3 en este corte).
+**Contención legacy**: las carpetas congeladas (web: `components`, `lib`, `pages`, `hooks`, `actions`, `stores`; API: `routes`, `controllers`, `services`, `repositories`, `lib`) no pueden recibir archivos nuevos. La lista base está en [`scripts/architecture/legacy-baseline.json`](../scripts/architecture/legacy-baseline.json) (403 archivos) y **solo puede encoger**. Las excepciones justificadas van en [`scripts/architecture/legacy-containment-exceptions.json`](../scripts/architecture/legacy-containment-exceptions.json) (3 en este corte).
 
 **Reglas de dependencia**: los componentes no hacen `fetch` directo fuera de la allowlist [`scripts/architecture/allowlist-component-fetch.json`](../scripts/architecture/allowlist-component-fetch.json); los imports cruzados entre módulos van por fachada; `packages/shared` no importa de `apps/`.
 
@@ -272,9 +272,9 @@ apps/api/src/modulos/<nombre>/
 | 4 | vacaciones | `index.ts` | — | `92e569f` | [`migraciones/vacaciones.md`](./arquitectura/migraciones/vacaciones.md) |
 | 5 | survey | `index.ts` | `index.js` | 5a `ba34a70`; 5b.1–5b.6 hasta `ba4026d` | [`migraciones/survey.md`](./arquitectura/migraciones/survey.md) |
 | 6 | money-box | `index.ts` | — | `0e475e8`, `a81578c` | [`migraciones/money-box.md`](./arquitectura/migraciones/money-box.md) |
-| 7 | notificaciones (Tramo B: dominio puro) | `index.js` | `index.js` | `503928f` | [`migraciones/notificaciones-inventario.md`](./arquitectura/migraciones/notificaciones-inventario.md) |
+| 7 | notificaciones (Tramo B: dominio puro; Tramo A: UI, servicios y cliente HTTP web) | `index.ts` + `fachada-node.js` + `fachada-toast.js` | `index.js` | B `503928f`; A en rama `arquitectura/modulo-notificaciones-a` (sin deploy) | [`migraciones/notificaciones.md`](./arquitectura/migraciones/notificaciones.md), [`migraciones/notificaciones-inventario.md`](./arquitectura/migraciones/notificaciones-inventario.md) |
 
-**Lo que sigue fuera de `modulos/`** en `72a3ca4`: en web, 310 archivos versionados fuera y 58 dentro; en API, 123 fuera y 29 dentro (conteos por carpeta en la [sección 3](#3-estructura-del-repositorio)). Pendientes, por orden ([`arquitectura/decisiones.md`](./arquitectura/decisiones.md) §5): agenda, ventas, expediente/sharing, Royal Holiday, sync/storage/outbox, admin/RBAC y auth/session/PWA.
+**Lo que sigue fuera de `modulos/`** tras el Tramo A de notificaciones: en web, 302 archivos versionados fuera y 77 dentro; en API, 123 fuera y 29 dentro (conteos por carpeta en la [sección 3](#3-estructura-del-repositorio)). Pendientes, por orden ([`arquitectura/decisiones.md`](./arquitectura/decisiones.md) §5): agenda, ventas, expediente/sharing, Royal Holiday, sync/storage/outbox, admin/RBAC y auth/session/PWA.
 
 ---
 
@@ -458,7 +458,7 @@ sequenceDiagram
 flowchart LR
   AG["Agenda: follow / nota con hora"] --> SCH["scheduleReminderPush"]
   SCH --> Q[("scheduled_push_jobs")]
-  CLI["Cliente: reminder-digest.js (loop y visibilidad)"] -->|"POST /api/v1/notifications/flush-reminders y digest-reminders"| API["API notifications"]
+  CLI["Cliente: servicio reminder-digest (loop y visibilidad)"] -->|"POST /api/v1/notifications/flush-reminders y digest-reminders"| API["API notifications"]
   CRON["Planificador externo"] -->|"GET/POST /api/v1/cron/flush-reminders (CRON_SECRET)"| API
   API --> Q
   API -->|"push por PushType"| OS["OneSignal"] --> SW["SW OneSignal (scope /onesignal/)"] --> DL["Deep link a la ruta"]
@@ -467,7 +467,8 @@ flowchart LR
 
 - OneSignal se usa solo en web móvil; en escritorio hay notificaciones locales más Realtime ([`apps/web/src/components/providers/onesignal-provider.jsx`](../apps/web/src/components/providers/onesignal-provider.jsx), [`apps/web/src/lib/onesignal.js`](../apps/web/src/lib/onesignal.js), [`public/OneSignalSDKWorker.js`](../public/OneSignalSDKWorker.js)).
 - Tramo B (`503928f`): el dominio puro salió a [`apps/api/src/modulos/notificaciones/`](../apps/api/src/modulos/notificaciones/) (construir recordatorios, preferencias, mapeo de PushType, trabajo programado) y a [`apps/web/src/modulos/notificaciones/`](../apps/web/src/modulos/notificaciones/) (armar notificación, *cooldown* del digest, fecha local). No se tocaron rutas, service worker ni contratos.
-- Archivos: [`apps/web/src/lib/reminder-digest.js`](../apps/web/src/lib/reminder-digest.js), [`apps/api/src/routes/notifications.js`](../apps/api/src/routes/notifications.js), [`apps/api/src/routes/cron.js`](../apps/api/src/routes/cron.js), [`apps/api/src/services/push-notifications-service.js`](../apps/api/src/services/push-notifications-service.js), [`packages/shared/src/push/notification-targets.js`](../packages/shared/src/push/notification-targets.js), [`supabase/migrations/0033_scheduled_push_jobs.sql`](../supabase/migrations/0033_scheduled_push_jobs.sql).
+- Tramo A (rama `arquitectura/modulo-notificaciones-a`, sin deploy): Toaster, toasts, in-app y su Realtime, digest/flush, programación de recordatorios, cliente HTTP y Ajustes → Notificaciones pasan a `apps/web/src/modulos/notificaciones/` ([`migraciones/notificaciones.md`](./arquitectura/migraciones/notificaciones.md)). OneSignal (SDK, optIn, service worker) sigue en `lib/` y `public/onesignal/`.
+- Archivos: [`apps/web/src/modulos/notificaciones/servicios/reminder-digest.js`](../apps/web/src/modulos/notificaciones/servicios/reminder-digest.js), [`apps/api/src/routes/notifications.js`](../apps/api/src/routes/notifications.js), [`apps/api/src/routes/cron.js`](../apps/api/src/routes/cron.js), [`apps/api/src/services/push-notifications-service.js`](../apps/api/src/services/push-notifications-service.js), [`packages/shared/src/push/notification-targets.js`](../packages/shared/src/push/notification-targets.js), [`supabase/migrations/0033_scheduled_push_jobs.sql`](../supabase/migrations/0033_scheduled_push_jobs.sql).
 - Quién invoca el cron en producción (planificador concreto): **por confirmar** en el apéndice privado.
 
 ### 7f. Cálculo de herramientas
@@ -669,6 +670,7 @@ Construido con `git log main` y `docs/arquitectura/`. Las fechas son las del com
 | 10-18 | `f873442`, `1c8887f` | Diagnóstico de solo lectura de `sync.reconcile` y diseño del fix con pruebas de caracterización | Los `PUT /sync` fallaban | Causa raíz identificada | Solo docs y tests |
 | 10-18 | `e809e3f` | **`/health` con SHA** (`API_BUILD_ID` o `SHA.txt`) y comparador E2E con flag `m` y test con el resumen real del CI | `/health` devolvía `commit: null`; el comparador perdía el último fallo de cada bloque | Desplegado con `72a3ca4` | `git revert` + redeploy de la API |
 | 10-18 | `c2b838e` | Workflows Arquitectura y E2E también en push a `arquitectura/**` | Tener CI antes del merge | Activo | `git revert` |
+| 10-18 | `44e151e`, `d3d5545`, `c006f66` (rama) | Módulo 7 **notificaciones, Tramo A** (web): lógica pura extraída, `git mv` a `modulos/notificaciones`, fachadas `index.ts` / `fachada-node.js` / `fachada-toast.js`, shims en `lib/` y smoke UI con QA efímera | Sacar del legacy la UI y los servicios de notificaciones sin tocar OneSignal, SW, API ni contratos | Golden master idéntico, E2E = baseline, fila de `scheduled_push_jobs` idéntica a `main`; **sin merge ni deploy** | Descartar la rama o `git revert` + redeploy del web |
 | 10-18 | `1f86f78`, `4fe9465`, `3f75b3a`, `72a3ca4` | **Tramo 1 de `PUT /sync`** + smoke de roundtrip, guard de `sync:shared`, baseline 156, plan de deploy con backup lógico y criterios de rollback | Corregir la regresión de sync | **Desplegado `72a3ca4` (API) el 10-18**: CI verde, (a)–(e) en verde en producción, 0 errores 5xx | [`ROLLBACK-api-sync-tramo1.md`](./arquitectura/ROLLBACK-api-sync-tramo1.md) |
 
 ### Regresión de `PUT /sync`
@@ -700,7 +702,7 @@ Construido con `git log main` y `docs/arquitectura/`. Las fechas son las del com
 |------|--------|
 | **Sync, Tramo 2 (cliente)** | Enviar `X-Sync-Protocol: 2` y tratar `partial`/`rejected`; backoff y tope del outbox ante el mismo rechazo; ids estables para no generar ids distintos en cada normalización; filas "pendientes sin subir" visibles para el usuario |
 | Sync, Tramo 3 (BD) | Endurecer las reglas de actualización de expedientes (requiere OK de BD) |
-| Notificaciones, Tramo A / API | Mover rutas, service worker y adaptadores; hoy solo está migrado el dominio puro |
+| Notificaciones | Tramo A web en rama (sin deploy). Pendiente: API de notificaciones a `modulos/`; OneSignal (SDK, optIn, SW) sigue fuera; unos 40 consumidores de `@/lib/toast` por migrar a la fachada; `presentarNotificacion("expediente_transferido")` lanza (hoy no alcanzable; ver [`migraciones/notificaciones.md`](./arquitectura/migraciones/notificaciones.md) §7) |
 | Módulos pendientes | Agenda, ventas, expediente/sharing, Royal Holiday, sync/storage/outbox, admin/RBAC, auth/session/PWA |
 | Survey 5b.7 | Ids de campos colaborativos y realtime dentro del Survey |
 | Bloqueo de campos en varias pestañas | Pendiente |

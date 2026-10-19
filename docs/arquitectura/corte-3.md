@@ -51,7 +51,7 @@ Fix `?sub=moneybox` (bug desde `4703d65`): rama `arquitectura/fix-sub-moneybox`,
 
 | Tema | Estado |
 |------|--------|
-| Notificaciones Tramo A / API | inventario; Tramo B API en `aab2714` |
+| Notificaciones Tramo A / API | Tramo A web en rama `arquitectura/modulo-notificaciones-a` ([`notificaciones.md`](./migraciones/notificaciones.md)), sin merge ni deploy; Tramo B API en `aab2714`; API de notificaciones sin migrar |
 | Bloqueo campos / 0098 | **Resuelto**: 0098 aplicada (canario ii-bis); gate collab bloqueo = PASS |
 | Multi-pestaña en bloqueos | pendiente |
 | Sync / persistencia / outbox | deuda compartida |

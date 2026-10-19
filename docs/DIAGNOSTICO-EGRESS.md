@@ -124,7 +124,7 @@ Confirmado: el snapshot `data` (jsonb) **viaja entero** en los caminos calientes
 | `prospect-detail:{id}` | `lib/prospect-realtime.js` | `prospects` + hijos | `id` / `prospect_id` | Filtrado. |
 | `expediente:{id}` | `lib/expediente-realtime.js` | Presence + broadcast | Topic por expediente | No es postgres_changes. Heartbeat de lock cada 20 s (broadcast, no Postgres). |
 | `expediente-data:{id}` | `lib/expediente-realtime.js` | `tool_calculations`, `prospects` | `prospect_id` / `id` | Filtrado. Payload incluye `data`. |
-| `in-app-notifications:{user}` | `lib/in-app-notifications-realtime.js` | `direct_messages` | `recipient_id=eq.{user}` | OK. |
+| `in-app-notifications:{user}` | `modulos/notificaciones/servicios/in-app-notifications-realtime.js` | `direct_messages` | `recipient_id=eq.{user}` | OK. |
 | | | **`chat_messages` INSERT** | **Ninguno** | **Toda la tabla.** Filtro en cliente (`sender_id`, `conversation_id`). |
 | | | `user_connections` | `addressee_id` / `requester_id` | OK. |
 | | | `prospect_shares` | `shared_with_id` | OK. |

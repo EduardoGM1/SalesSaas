@@ -7,6 +7,29 @@
 
 ---
 
+## 0. Estado real antes del Tramo A (`main` = `5ed6c09`)
+
+Tramo B en `main` (`503928f`): dominio puro web (`armar-notificacion`, `cooldown-digest`, `fecha-recordatorio-local`, `mapeo-pushtype`, `preferencias-notificacion`) con fachada `index.js`; `notificacion-payload.ts` ya solo tenía tipos y reexportaba el armado. Las rutas de las secciones 1–5 son las previas al Tramo A; dónde quedó cada archivo está en [`notificaciones.md`](./notificaciones.md) §2.
+
+| Grupo | Archivo (`apps/web/src/`) | Líneas | Importado por |
+|-------|---------------------------|-------:|---------------|
+| Toaster / toasts | `components/ui/toaster.jsx` | 190 | `sync-provider.jsx` |
+| | `lib/toast.ts` | 65 | 45 archivos (incluye `push-enable.js` y la UI de money-box) |
+| In-app | `lib/in-app-notifications.js` | 363 | `in-app-notifications-realtime.js` |
+| | `lib/in-app-notifications-realtime.js` | 287 | coordinador; `e2e/egress-realtime-idle.spec.js` lee su ruta |
+| | `components/notifications/in-app-notifications-coordinator.jsx` | 58 | `DashboardLayout.jsx` |
+| Payload | `lib/notificacion-payload.ts` | 28 | `in-app-notifications.js` |
+| Recordatorios | `lib/reminder-digest.js` | 92 | `sync-provider.jsx` |
+| | `lib/schedule-reminder-push.js` | 62 | `actions/calendar.js`, `actions/sales.js` |
+| API | `lib/notifications-api.js` | 35 | `onesignal.js`, `push-notifications.js`, digest, schedule |
+| Ajustes | `components/settings/notifications-settings.jsx` | 351 | `settings-page.tsx` (lazy) |
+| OneSignal / optIn (no se mueve) | `lib/onesignal.js` 1277, `lib/push-enable.js` 237, `lib/push-prompt.js` 78, `lib/push-notifications.js` 40, `onesignal-provider.jsx` 133, `push-permission-prompt.jsx` 143, `auto-push-coordinator.jsx` 78 | | |
+| Compartidos con optIn (no se mueven) | `lib/desktop-notifications.js` 127, `lib/notification-sound.js` 90, `lib/collab-remote-notify.js` 72 | | |
+
+Acoplamientos reales: el in-app lee preferencias de `useDbStore`; Ajustes recibe `settings` y guarda vía `settings-page.tsx` (perfil y `cloud-persist`, fuera); Realtime depende de `lib/supabase/*` y `presence/realtime`; agenda y ventas programan recordatorios con `scheduleReminderPush`; `sync-provider.jsx` dispara digest y flush.
+
+---
+
 ## 1. Lista real de archivos
 
 ### Dominio / lógica de recordatorios
