@@ -4,7 +4,7 @@ import { profileDisplayName } from "../lib/profile-display-name.js";
 import {
   notifyConnectionAccepted,
   notifyConnectionRequest,
-} from "./push-notifications-service.js";
+} from "../modulos/notificaciones/index.js";
 
 async function loadProfiles(supabase, ids) {
   const unique = [...new Set(ids.filter(Boolean))];

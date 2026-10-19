@@ -3,7 +3,7 @@ import { isUuid } from "@salesapp/shared/data/mappers.js";
 import { bodyToProspectPatch } from "@salesapp/shared/api/validators.js";
 import { ServiceError, assertFound } from "../lib/service-error.js";
 import { createServiceSupabaseClient } from "../lib/supabase-server.js";
-import { notifyProspectShared, notifyProspectSectionChanged, notifyProspectTransferred } from "./push-notifications-service.js";
+import { notifyProspectShared, notifyProspectSectionChanged, notifyProspectTransferred } from "../modulos/notificaciones/index.js";
 import { MESSAGE_TYPES, sendStructuredMessage } from "./messages-service.js";
 
 import { profileDisplayName } from "../lib/profile-display-name.js";

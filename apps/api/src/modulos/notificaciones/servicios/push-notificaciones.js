@@ -1,7 +1,6 @@
-import { createHash } from "node:crypto";
-import { createServiceSupabaseClient } from "../lib/supabase-server.js";
-import { primaryWebOrigin } from "../lib/origins.js";
-import { ServiceError } from "../lib/service-error.js";
+import { createServiceSupabaseClient } from "../../../lib/supabase-server.js";
+import { primaryWebOrigin } from "../../../lib/origins.js";
+import { ServiceError } from "../../../lib/service-error.js";
 import { pullAll } from "@salesapp/shared/data/sync.js";
 import {
   PushType,
@@ -16,26 +15,30 @@ import {
   sharedProspectSectionPath,
   clientProspectPath,
 } from "@salesapp/shared/push/notification-targets.js";
-import { collectReminders } from "../lib/reminders.js";
-import { logger } from "../lib/logger.js";
+import { logger } from "../../../lib/logger.js";
+import { construirRecordatorios as collectReminders } from "../dominio/construir-recordatorios.js";
 import {
   normalizarPreferenciasNotificacion,
   digestOmitidoPorPrefs,
   omitirPorPrefsRecordatorio,
+} from "../dominio/preferencias-notificacion.js";
+import {
   clasificarTipoRecordatorio,
   fechaRecordatorioValida,
   normalizarHoraRecordatorio,
   evaluarSendAt,
   construirCamposTrabajoPush,
-} from "../modulos/notificaciones/index.js";
+} from "../dominio/trabajo-push-programado.js";
+import { construirEtiquetaPush as pushTag } from "../dominio/etiqueta-push.js";
+import { construirPayloadMensajeOnesignal as buildMessagePayload } from "../dominio/payload-onesignal.js";
+import * as perfilRepo from "../repositorio/perfil-push-repositorio.js";
+import * as trabajosRepo from "../repositorio/trabajos-push-repositorio.js";
 
 const ONESIGNAL_API = "https://api.onesignal.com/notifications";
 const MAX_STORED_SUBSCRIPTIONS = 5;
 const SECTION_CHANGE_COOLDOWN_MS = 30_000;
 /** Evita spamear digests operativos el mismo día (~20h). */
 const REMINDER_DIGEST_COOLDOWN_MS = 20 * 60 * 60 * 1000;
-/** OneSignal: web_push_topic / collapse_id máx. 64 chars. */
-const MAX_PUSH_TAG_LEN = 64;
 
 const SECTION_LABELS = {
   detail: "Expediente",
@@ -43,16 +46,6 @@ const SECTION_LABELS = {
   vacaciones: "Proyección de Vacaciones",
   worksheet: "Worksheet",
 };
-
-/** Tag corto y estable (mismo límite que mensajes: ≤64). */
-function pushTag(prefix, ...parts) {
-  const safePrefix = String(prefix || "n").replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 20);
-  const raw = parts.map((p) => String(p ?? "")).filter(Boolean).join("-");
-  const full = raw ? `${safePrefix}-${raw}` : safePrefix;
-  if (full.length <= MAX_PUSH_TAG_LEN) return full;
-  const hash = createHash("sha256").update(full).digest("hex").slice(0, 12);
-  return `${safePrefix}-${hash}`.slice(0, MAX_PUSH_TAG_LEN);
-}
 
 export function getOneSignalAppId() {
   return process.env.ONESIGNAL_APP_ID || process.env.VITE_ONESIGNAL_APP_ID || null;
@@ -67,12 +60,7 @@ export function isPushConfigured() {
 }
 
 async function loadProfileSettings(serviceSb, userId) {
-  const { data } = await serviceSb
-    .from("profiles")
-    .select("settings")
-    .eq("id", userId)
-    .maybeSingle();
-  return data?.settings ?? {};
+  return perfilRepo.cargarSettingsPerfil(serviceSb, userId);
 }
 
 async function loadNotificationPrefs(serviceSb, userId) {
@@ -84,23 +72,6 @@ async function loadSubscriptionIds(serviceSb, userId) {
   const settings = await loadProfileSettings(serviceSb, userId);
   const ids = settings.onesignal_subscription_ids;
   return Array.isArray(ids) ? ids.filter(Boolean) : [];
-}
-
-function buildMessagePayload(appId, { title, body, url, path, type, tag, sendAfter }) {
-  const appPath = path || "/";
-  const topic = pushTag(tag || type || "push");
-  const payload = {
-    app_id: appId,
-    headings: { en: title, es: title },
-    contents: { en: body, es: body },
-    url,
-    // Mismos campos que mensajes/contactos (topic ≤64).
-    web_push_topic: topic,
-    collapse_id: topic,
-    data: { url, path: appPath, type: type || null },
-  };
-  if (sendAfter) payload.send_after = sendAfter;
-  return payload;
 }
 
 async function postOneSignal(apiKey, payload) {
@@ -184,24 +155,13 @@ export async function registerPushDevice(supabase, userId, subscriptionId) {
   const id = String(subscriptionId ?? "").trim();
   if (!id) throw new ServiceError("Suscripción inválida.");
 
-  const { data: current, error: readErr } = await supabase
-    .from("profiles")
-    .select("settings")
-    .eq("id", userId)
-    .maybeSingle();
-  if (readErr) throw new ServiceError(readErr.message, 500);
-
-  const settings = current?.settings ?? {};
+  const settings = await perfilRepo.leerSettingsPerfilOError(supabase, userId);
   const existing = Array.isArray(settings.onesignal_subscription_ids)
     ? settings.onesignal_subscription_ids.filter(Boolean)
     : [];
   const nextIds = [id, ...existing.filter((entry) => entry !== id)].slice(0, MAX_STORED_SUBSCRIPTIONS);
 
-  const { error } = await supabase
-    .from("profiles")
-    .update({ settings: { ...settings, onesignal_subscription_ids: nextIds } })
-    .eq("id", userId);
-  if (error) throw new ServiceError(error.message, 400);
+  await perfilRepo.guardarSubscriptionIds(supabase, userId, { settings, nextIds });
 
   return { ok: true, subscription_ids: nextIds };
 }
@@ -303,24 +263,7 @@ export async function notifyProspectShared(recipientId, { ownerId, ownerName, pr
 }
 
 async function claimNotificationCooldown(serviceSb, key, windowMs = SECTION_CHANGE_COOLDOWN_MS) {
-  const { data } = await serviceSb
-    .from("notification_cooldowns")
-    .select("last_sent_at")
-    .eq("key", key)
-    .maybeSingle();
-  if (data?.last_sent_at) {
-    const elapsed = Date.now() - new Date(data.last_sent_at).getTime();
-    if (elapsed < windowMs) return false;
-  }
-  const now = new Date().toISOString();
-  const { error } = await serviceSb
-    .from("notification_cooldowns")
-    .upsert({ key, last_sent_at: now }, { onConflict: "key" });
-  if (error) {
-    logger.warn("[onesignal] cooldown upsert", { message: error.message });
-    return true;
-  }
-  return true;
+  return perfilRepo.reclamarCooldownNotificacion(serviceSb, key, windowMs);
 }
 
 /**
@@ -675,32 +618,19 @@ export async function scheduleOperationalReminder(userId, body = {}) {
   const { push_type: pushType, title, body: bodyText, path } = campos;
 
   // Cancela jobs pendientes previos del mismo entry (reprogramación).
-  await serviceSb
-    .from("scheduled_push_jobs")
-    .update({ status: "cancelled" })
-    .eq("user_id", userId)
-    .eq("entry_key", entryKey)
-    .eq("status", "pending");
+  await trabajosRepo.cancelarTrabajosPendientesPorEntry(serviceSb, userId, entryKey);
 
-  const { data: job, error: insertErr } = await serviceSb
-    .from("scheduled_push_jobs")
-    .insert({
-      user_id: userId,
-      send_at: sendAt.toISOString(),
-      push_type: pushType,
-      title,
-      body: bodyText,
-      path,
-      tag,
-      entry_key: entryKey,
-      status: "pending",
-    })
-    .select("id, send_at")
-    .single();
-
-  if (insertErr) {
-    throw new ServiceError(insertErr.message || "No se pudo encolar el aviso.", 400);
-  }
+  const job = await trabajosRepo.insertarTrabajoPush(serviceSb, {
+    user_id: userId,
+    send_at: sendAt.toISOString(),
+    push_type: pushType,
+    title,
+    body: bodyText,
+    path,
+    tag,
+    entry_key: entryKey,
+    status: "pending",
+  });
 
   // Solo enviar ya si la hora ya pasó; si es futuro, esperar flush/cron (evita push al crear).
   if (delta <= 0) {
@@ -712,15 +642,12 @@ export async function scheduleOperationalReminder(userId, body = {}) {
       type: pushType,
       tag,
     });
-    await serviceSb
-      .from("scheduled_push_jobs")
-      .update({
-        status: result?.ok ? "sent" : "failed",
-        sent_at: result?.ok ? new Date().toISOString() : null,
-        attempts: 1,
-        last_error: result?.ok ? null : (result?.reason || "send_failed"),
-      })
-      .eq("id", job.id);
+    await trabajosRepo.actualizarTrabajoPush(serviceSb, job.id, {
+      status: result?.ok ? "sent" : "failed",
+      sent_at: result?.ok ? new Date().toISOString() : null,
+      attempts: 1,
+      last_error: result?.ok ? null : (result?.reason || "send_failed"),
+    });
 
     if (!result?.ok) {
       throw new ServiceError(
@@ -757,21 +684,10 @@ export async function flushDueScheduledPushes({ limit = 40, userId = null } = {}
   }
 
   const nowIso = new Date().toISOString();
-  let query = serviceSb
-    .from("scheduled_push_jobs")
-    .select("id, user_id, push_type, title, body, path, tag, attempts")
-    .eq("status", "pending")
-    .lte("send_at", nowIso)
-    .order("send_at", { ascending: true })
-    .limit(Math.min(Math.max(Number(limit) || 40, 1), 100));
-
-  if (userId) query = query.eq("user_id", userId);
-
-  const { data: jobs, error } = await query;
+  const { jobs, error } = await trabajosRepo.listarTrabajosVencidos(serviceSb, { limit, userId, nowIso });
 
   if (error) {
-    logger.warn("[scheduled-push] flush select", { message: error.message });
-    return { sent: 0, skipped: "query_error", error: error.message };
+    return { sent: 0, skipped: "query_error", error };
   }
   if (!jobs?.length) return { sent: 0 };
 
@@ -783,11 +699,11 @@ export async function flushDueScheduledPushes({ limit = 40, userId = null } = {}
     const isFollow = job.push_type === PushType.FOLLOW_UP_REMINDER;
     const isNote = job.push_type === PushType.SCHEDULED_NOTE;
     if (isFollow && !prefs.follow_up_reminders) {
-      await serviceSb.from("scheduled_push_jobs").update({ status: "cancelled" }).eq("id", job.id);
+      await trabajosRepo.actualizarTrabajoPush(serviceSb, job.id, { status: "cancelled" });
       continue;
     }
     if (isNote && !prefs.scheduled_notes) {
-      await serviceSb.from("scheduled_push_jobs").update({ status: "cancelled" }).eq("id", job.id);
+      await trabajosRepo.actualizarTrabajoPush(serviceSb, job.id, { status: "cancelled" });
       continue;
     }
 
@@ -803,10 +719,12 @@ export async function flushDueScheduledPushes({ limit = 40, userId = null } = {}
 
     const attempts = (job.attempts || 0) + 1;
     if (result?.ok) {
-      await serviceSb
-        .from("scheduled_push_jobs")
-        .update({ status: "sent", sent_at: new Date().toISOString(), attempts, last_error: null })
-        .eq("id", job.id);
+      await trabajosRepo.actualizarTrabajoPush(serviceSb, job.id, {
+        status: "sent",
+        sent_at: new Date().toISOString(),
+        attempts,
+        last_error: null,
+      });
       sent += 1;
     } else {
       const giveUp = attempts >= 5;
@@ -816,7 +734,7 @@ export async function flushDueScheduledPushes({ limit = 40, userId = null } = {}
         last_error: result?.reason || "send_failed",
       };
       if (!giveUp) patch.send_at = new Date(Date.now() + 60_000).toISOString();
-      await serviceSb.from("scheduled_push_jobs").update(patch).eq("id", job.id);
+      await trabajosRepo.actualizarTrabajoPush(serviceSb, job.id, patch);
     }
   }
 

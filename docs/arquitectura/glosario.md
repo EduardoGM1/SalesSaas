@@ -19,7 +19,7 @@ Términos aprobados en `decisiones.md`. Los contratos HTTP/BD/settings/`sts4_*` 
 | exchange rate | tipo de cambio | tipo-cambio | `/api/v1/exchange-rates`, `exchangeRate`, `usdToMxnRate`, `exchangeMode` |
 | currency | moneda | moneda (`modulos/moneda`) | `currency` en settings |
 | captura FX USD→MXN | tipo de cambio captura | normalizar/resolver tasa | `usdToMxnRate` (nunca ≤ 1 persistido) |
-| notifications / reminders | notificaciones, recordatorios | notificaciones (`modulos/notificaciones`): `armarNotificacion`, `datosRespaldoDesdePush`, `armarProgramacionRecordatorio` | `PushType` (`message`, `follow_up_reminder`, …), `/api/v1/notifications/*`, `/api/v1/reminders`, prefs `notifications.*`, `sts4_reminder_digest_at` / `sts4_reminder_flush_at`, `scheduled_push_jobs` |
+| notifications / reminders | notificaciones, recordatorios | web: `armarNotificacion`, `datosRespaldoDesdePush`, `armarProgramacionRecordatorio`; API: `construirRecordatorios`, `construirEtiquetaPush`, `construirCamposTrabajoPush`, `push-notificaciones` | `PushType` (`message`, `follow_up_reminder`, …), `/api/v1/notifications/*`, `/api/v1/reminders`, `/api/v1/cron/flush-reminders`, prefs `notifications.*`, `sts4_reminder_digest_at` / `sts4_reminder_flush_at`, `scheduled_push_jobs` |
 | toast | aviso | toast (`fachada-toast.js`), item del Toaster (`armarItemToast`) | — (solo cliente) |
 | in-app notification | notificación en la app | tipo in-app (`mensaje_nuevo`, `expediente_compartido`, …) | sin contrato de red; se mapea desde `PushType` |
 

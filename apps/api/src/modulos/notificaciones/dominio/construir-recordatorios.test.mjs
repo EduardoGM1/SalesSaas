@@ -18,7 +18,7 @@ import {
   evaluarSendAt,
   construirCamposTrabajoPush,
 } from "../index.js";
-import { extractReminderTime, collectReminders } from "../../../lib/reminders.js";
+import { extractReminderTime, collectReminders } from "../fachada-node.js";
 
 const TODAY = "2026-10-17";
 

@@ -5,7 +5,11 @@ import sessionRouter from "./session.js";
 import customModulesRouter from "./custom-modules.js";
 import workspaceRouter from "./workspace.js";
 import { geoRouter, exchangeRatesRouter } from "../modulos/geo-fx/index.js";
-import remindersRouter from "./reminders.js";
+import {
+  remindersRouter,
+  notificationsRouter,
+  cronFlushRemindersRouter,
+} from "../modulos/notificaciones/index.js";
 import profileRouter from "./profile.js";
 import syncRouter from "./sync.js";
 import prospectsRouter from "./prospects.js";
@@ -18,7 +22,6 @@ import activitiesRouter from "./activities.js";
 import toolsRouter from "./tools.js";
 import networkRouter from "./network.js";
 import messagesRouter from "./messages.js";
-import notificationsRouter from "./notifications.js";
 import cronRouter from "./cron.js";
 import royalHolidayRouter from "./royal-holiday.js";
 import supportRouter from "./support.js";
@@ -120,6 +123,7 @@ router.use(toolsRouter);
 router.use(networkRouter);
 router.use(messagesRouter);
 router.use(notificationsRouter);
+router.use(cronFlushRemindersRouter);
 router.use(cronRouter);
 router.use(royalHolidayRouter);
 router.use(supportRouter);

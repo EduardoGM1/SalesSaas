@@ -1,9 +1,29 @@
 # Inventario — recordatorios / notificaciones (módulo 7)
 
-**Alcance:** solo inventario. Sin rama de código, sin mover archivos, sin deploy, sin BD.  
-**Fecha:** post money-box `a81578c`.
+**Alcance:** inventario vivo del módulo 7.  
+**Fecha tip `main` al abrir Tramo C:** `c621b92` (Tramo A web desplegado; API prod aún `72a3ca4` hasta deploy del Tramo C).
 
 **Hallazgo clave:** no hay un “notification center” / inbox aparte. El canal in-app es **Toaster + Realtime**; el push es **OneSignal** con SW en `/onesignal/`; los recordatorios operativos salen de **agenda (`cal`) + `processDate`** vía digest/cola `scheduled_push_jobs`.
+
+---
+
+## 0b. Estado real API tras Tramo C (rama `arquitectura/modulo-notificaciones-api`)
+
+| Grupo | Path en módulo | Rol |
+|-------|----------------|-----|
+| Fachada | `apps/api/src/modulos/notificaciones/index.js` (+ `fachada-node.js`) | Routers + dominio + `notify*` / schedule / flush |
+| Dominio | `dominio/construir-recordatorios.js`, `preferencias-notificacion.js`, `mapeo-pushtype.js`, `trabajo-push-programado.js`, `etiqueta-push.js`, `payload-onesignal.js` | Puro (tests golden) |
+| Servicios | `servicios/push-notificaciones.js`, `recordatorios-servicio.js` | OneSignal I/O, digest, schedule, flush |
+| Repositorio | `repositorio/perfil-push-repositorio.js`, `trabajos-push-repositorio.js` | `profiles.settings`, cooldowns, `scheduled_push_jobs` |
+| Controladores | `controladores/notificaciones-controlador.js`, `recordatorios-controlador.js` | HTTP → servicio |
+| Rutas | `rutas/reminders.js`, `notifications.js`, `cron-flush-reminders.js` | Paths HTTP congelados |
+
+**Legacy que permanece:** `routes/cron.js` (otras tareas), `lib/cron-auth.js`.  
+**Eliminado:** `lib/reminders.js` (aliases en fachada).  
+**Acoplamientos:** agenda/sync (`obtenerBaseDatosUsuario` + `db.cal`/`processDate`); chat/messages/network/sharing/participants/tools/support/auth → `notify*` por fachada; cron externo → `CRON_SECRET`.  
+**Baseline contención:** 403 → 396 (−7). `apps/web` sin diff en este tramo.
+
+Detalle de moves y verificación: [`notificaciones.md`](./notificaciones.md) § Tramo C.
 
 ---
 
@@ -36,8 +56,8 @@ Acoplamientos reales: el in-app lee preferencias de `useDbStore`; Ajustes recibe
 
 | Path | ~líneas | Rol |
 |------|--------:|-----|
-| `apps/api/src/lib/reminders.js` | 62 | `collectReminders` / `extractReminderTime` desde `db.cal` + `processDate` |
-| `apps/api/src/services/reminders-service.js` | 6 | Fachada → `collectReminders` |
+| `apps/api/src/modulos/notificaciones/dominio/construir-recordatorios.js` | — | `collectReminders` / `extractReminderTime` (Tramo B/C) |
+| `apps/api/src/modulos/notificaciones/servicios/recordatorios-servicio.js` | — | Sync blob → `construirRecordatorios` |
 | `apps/web/src/lib/schedule-reminder-push.js` | 69 | Fecha/hora local → ISO → `POST schedule-reminder` |
 | `apps/web/src/lib/reminder-digest.js` | 75 | Digest + flush poll (~45s); claves `sts4_reminder_*` |
 | `apps/web/src/lib/notificacion-payload.ts` | 163 | Tipos in-app + `armarNotificacion` |
@@ -70,8 +90,8 @@ Acoplamientos reales: el in-app lee preferencias de `useDbStore`; Ajustes recibe
 | `apps/web/src/lib/push-prompt.js` | 67 | Estado banner / bloqueo permanente |
 | `apps/web/src/lib/push-notifications.js` | 36 | Registro device vía API |
 | `apps/web/src/lib/notifications-api.js` | 34 | Cliente `/api/v1/notifications/*` |
-| `apps/api/src/services/push-notifications-service.js` | ~744 | Envío OS, digest, schedule, flush, prefs, `onesignal_subscription_ids` |
-| `apps/api/src/controllers/notifications-controller.js` | 39 | HTTP → servicio |
+| `apps/api/src/modulos/notificaciones/servicios/push-notificaciones.js` | — | Envío OS, digest, schedule, flush, prefs, `onesignal_subscription_ids` |
+| `apps/api/src/modulos/notificaciones/controladores/notificaciones-controlador.js` | — | HTTP → servicio |
 
 ### Service worker / PWA
 
@@ -91,11 +111,12 @@ Acoplamientos reales: el in-app lee preferencias de `useDbStore`; Ajustes recibe
 
 | Path | ~líneas | Rol |
 |------|--------:|-----|
-| `apps/api/src/routes/reminders.js` | 6 | `GET /reminders` |
-| `apps/api/src/routes/notifications.js` | 20 | config/status/device/digest/schedule/flush |
-| `apps/api/src/routes/cron.js` | 27 | `GET\|POST /cron/flush-reminders` |
-| `apps/api/src/controllers/reminders-controller.js` | 9 | Listado |
-| `apps/api/src/routes/v1.js` | — | Montaje + catálogo de paths |
+| `apps/api/src/modulos/notificaciones/rutas/reminders.js` | — | `GET /reminders` |
+| `apps/api/src/modulos/notificaciones/rutas/notifications.js` | — | config/status/device/digest/schedule/flush |
+| `apps/api/src/modulos/notificaciones/rutas/cron-flush-reminders.js` | — | `GET\|POST /cron/flush-reminders` |
+| `apps/api/src/routes/cron.js` | — | Otras tareas cron (no flush) |
+| `apps/api/src/modulos/notificaciones/controladores/recordatorios-controlador.js` | — | Listado |
+| `apps/api/src/routes/v1.js` | — | Montaje vía fachada + catálogo de paths |
 | `supabase/migrations/0033_scheduled_push_jobs.sql` | 34 | Tabla cola |
 | `supabase/migrations/0020_push_subscriptions.sql` | 24 | **Legacy** (ya no contrato activo) |
 | `supabase/migrations/0040_realtime_social_notifications.sql` | 19 | Realtime DM/connections/shares |

@@ -1,7 +1,7 @@
 import { isUuid } from "@salesapp/shared/data/mappers.js";
 import { ServiceError, assertFound } from "../lib/service-error.js";
 import { profileDisplayName } from "../lib/profile-display-name.js";
-import { notifyNewMessage } from "./push-notifications-service.js";
+import { notifyNewMessage } from "../modulos/notificaciones/index.js";
 
 export const MESSAGE_TYPES = Object.freeze({
   TEXT: "text",

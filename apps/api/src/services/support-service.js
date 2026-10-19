@@ -384,7 +384,7 @@ export async function replyToSupportRequest(supabase, ticketId, { actorId, cuerp
   }
 
   try {
-    const { notifySupportReply } = await import("./push-notifications-service.js");
+    const { notifySupportReply } = await import("../modulos/notificaciones/index.js");
     await notifySupportReply(ticket.user_id, {
       ticketId,
       replyId: reply.id,

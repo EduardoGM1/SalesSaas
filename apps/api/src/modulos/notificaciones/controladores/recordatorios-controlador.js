@@ -1,7 +1,7 @@
 /**
  * Recordatorios derivados del blob de sync del usuario.
  */
-import * as remindersService from "../services/reminders-service.js";
+import * as remindersService from "../servicios/recordatorios-servicio.js";
 
 export async function listarRecordatorios(auth, req) {
   const from = req.query.from ? String(req.query.from) : undefined;

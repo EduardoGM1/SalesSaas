@@ -1,12 +1,12 @@
 /**
  * Rutas /cron: invocadas por un scheduler externo con CRON_SECRET.
  * Aceptan GET y POST (Vercel Cron usa GET; crontab/curl suele usar POST).
+ * flush-reminders vive en modulos/notificaciones (Tramo C).
  */
 import { Router } from "express";
 import { apiError } from "../lib/http.js";
 import { runService } from "./route-utils.js";
 import { authorizeCron } from "../lib/cron-auth.js";
-import * as notificationsController from "../controllers/notifications-controller.js";
 import * as supportController from "../controllers/support-controller.js";
 import * as royalHolidayController from "../controllers/royal-holiday-controller.js";
 import * as syncController from "../controllers/sync-controller.js";
@@ -23,7 +23,6 @@ function cronRoute(path, task) {
   router.post(path, handler);
 }
 
-cronRoute("/cron/flush-reminders", () => notificationsController.vaciarRecordatoriosCron());
 cronRoute("/cron/cleanup-support-attachments", () => supportController.limpiarAdjuntosSoporteCron());
 cronRoute("/cron/rh-extra-dp", () => royalHolidayController.procesarExtraDpCron());
 cronRoute("/cron/purge-prospect-tombstones", () => syncController.purgarTombstonesExpedientesCron());

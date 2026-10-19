@@ -10,7 +10,7 @@ import {
   scopeByWorkspace,
 } from "../lib/workspace-scope.js";
 import { TOOL_FLAG_KEYS } from "./flags-service.js";
-import { notifyProspectSectionChanged } from "./push-notifications-service.js";
+import { notifyProspectSectionChanged } from "../modulos/notificaciones/index.js";
 
 const SECTION_TOOLS = new Set(["survey", "vacaciones", "worksheet"]);
 

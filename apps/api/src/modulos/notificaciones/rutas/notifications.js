@@ -1,8 +1,8 @@
 import { Router } from "express";
-import { apiError, json } from "../lib/http.js";
-import { requireAuth, rutaAutenticada } from "./route-utils.js";
-import * as notificationsController from "../controllers/notifications-controller.js";
-import { getOneSignalAppId } from "../services/push-notifications-service.js";
+import { apiError, json } from "../../../lib/http.js";
+import { requireAuth, rutaAutenticada } from "../../../routes/route-utils.js";
+import * as notificationsController from "../controladores/notificaciones-controlador.js";
+import { getOneSignalAppId } from "../servicios/push-notificaciones.js";
 
 const router = Router();
 

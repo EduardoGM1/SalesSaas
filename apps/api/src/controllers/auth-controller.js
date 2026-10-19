@@ -16,7 +16,7 @@ import {
   createCookieSupabaseClient,
   createRecoveryEmailClient,
 } from "../lib/supabase-server.js";
-import { notifySessionRevoked } from "../services/push-notifications-service.js";
+import { notifySessionRevoked } from "../modulos/notificaciones/index.js";
 
 const MIN_PASSWORD_LENGTH = 8;
 const OTP_TYPES = new Set(["signup", "invite", "magiclink", "recovery", "email_change", "email"]);

@@ -1,7 +1,7 @@
 /**
  * HTTP de push / OneSignal. Config 503 si falta APP ID (se resuelve en la ruta).
  */
-import * as pushService from "../services/push-notifications-service.js";
+import * as pushService from "../servicios/push-notificaciones.js";
 
 export function payloadConfigPush() {
   return {

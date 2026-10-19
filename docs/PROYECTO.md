@@ -149,15 +149,15 @@ sales-app/
 └── .cursor/rules/            # reglas para agentes (BD de producción, higiene de scripts)
 ```
 
-Conteo de archivos versionados tras el Tramo A de notificaciones (`git ls-files`; la API no cambia desde `72a3ca4`):
+Conteo de archivos versionados tras el Tramo C de notificaciones (API en `modulos/`; web sin cambio respecto al Tramo A):
 
 | Carpeta | Archivos | Carpeta | Archivos |
 |---------|---------:|---------|---------:|
-| `apps/web/src/modulos` | 77 | `apps/api/src/modulos` | 29 |
-| `apps/web/src/lib` | 131 | `apps/api/src/services` | 36 |
-| `apps/web/src/components` | 98 | `apps/api/src/lib` | 29 |
-| `apps/web/src/pages` | 30 | `apps/api/src/routes` | 24 |
-| `apps/web/src/hooks` | 26 | `apps/api/src/controllers` | 21 |
+| `apps/web/src/modulos` | 77 | `apps/api/src/modulos` | 42 |
+| `apps/web/src/lib` | 131 | `apps/api/src/services` | 34 |
+| `apps/web/src/components` | 98 | `apps/api/src/lib` | 28 |
+| `apps/web/src/pages` | 30 | `apps/api/src/routes` | 22 |
+| `apps/web/src/hooks` | 26 | `apps/api/src/controllers` | 19 |
 | `apps/web/src/actions` | 4 | `apps/api/src/repositories` | 4 |
 | `apps/web/src/stores` | 3 | `apps/api/src/middleware` | 4 |
 | `apps/web/src/layouts` + `routes` + `styles` | 8 | `packages/shared/src` | 20 |
@@ -272,9 +272,9 @@ apps/api/src/modulos/<nombre>/
 | 4 | vacaciones | `index.ts` | — | `92e569f` | [`migraciones/vacaciones.md`](./arquitectura/migraciones/vacaciones.md) |
 | 5 | survey | `index.ts` | `index.js` | 5a `ba34a70`; 5b.1–5b.6 hasta `ba4026d` | [`migraciones/survey.md`](./arquitectura/migraciones/survey.md) |
 | 6 | money-box | `index.ts` | — | `0e475e8`, `a81578c` | [`migraciones/money-box.md`](./arquitectura/migraciones/money-box.md) |
-| 7 | notificaciones (Tramo B: dominio puro; Tramo A: UI, servicios y cliente HTTP web) | `index.ts` + `fachada-node.js` + `fachada-toast.js` | `index.js` | B `503928f`; A `61b223f` (web desplegado) | [`migraciones/notificaciones.md`](./arquitectura/migraciones/notificaciones.md), [`migraciones/notificaciones-inventario.md`](./arquitectura/migraciones/notificaciones-inventario.md) |
+| 7 | notificaciones (B dominio; A web UI/servicios; C API HTTP) | `index.ts` + `fachada-node.js` + `fachada-toast.js` | `index.js` + `fachada-node.js` | B `503928f`; A `61b223f` (web); C rama `arquitectura/modulo-notificaciones-api` | [`migraciones/notificaciones.md`](./arquitectura/migraciones/notificaciones.md), [`migraciones/notificaciones-inventario.md`](./arquitectura/migraciones/notificaciones-inventario.md) |
 
-**Lo que sigue fuera de `modulos/`** tras el Tramo A de notificaciones: en web, 302 archivos versionados fuera y 77 dentro; en API, 123 fuera y 29 dentro (conteos por carpeta en la [sección 3](#3-estructura-del-repositorio)). Pendientes, por orden ([`arquitectura/decisiones.md`](./arquitectura/decisiones.md) §5): agenda, ventas, expediente/sharing, Royal Holiday, sync/storage/outbox, admin/RBAC y auth/session/PWA.
+**Lo que sigue fuera de `modulos/`** tras el Tramo C de notificaciones: en web, OneSignal/optIn/SW y shims de toast; en API, el resto de crons (`routes/cron.js`) y `lib/cron-auth.js`. Pendientes, por orden ([`arquitectura/decisiones.md`](./arquitectura/decisiones.md) §5): agenda, ventas, expediente/sharing, Royal Holiday, sync/storage/outbox, admin/RBAC y auth/session/PWA.
 
 ---
 
@@ -468,7 +468,8 @@ flowchart LR
 - OneSignal se usa solo en web móvil; en escritorio hay notificaciones locales más Realtime ([`apps/web/src/components/providers/onesignal-provider.jsx`](../apps/web/src/components/providers/onesignal-provider.jsx), [`apps/web/src/lib/onesignal.js`](../apps/web/src/lib/onesignal.js), [`public/OneSignalSDKWorker.js`](../public/OneSignalSDKWorker.js)).
 - Tramo B (`503928f`): el dominio puro salió a [`apps/api/src/modulos/notificaciones/`](../apps/api/src/modulos/notificaciones/) (construir recordatorios, preferencias, mapeo de PushType, trabajo programado) y a [`apps/web/src/modulos/notificaciones/`](../apps/web/src/modulos/notificaciones/) (armar notificación, *cooldown* del digest, fecha local). No se tocaron rutas, service worker ni contratos.
 - Tramo A (`61b223f`, web-only): Toaster, toasts, in-app y su Realtime, digest/flush, programación de recordatorios, cliente HTTP y Ajustes → Notificaciones en `apps/web/src/modulos/notificaciones/` ([`migraciones/notificaciones.md`](./arquitectura/migraciones/notificaciones.md)). OneSignal (SDK, optIn, service worker) sigue en `lib/` y `public/onesignal/`; no se tocó.
-- Archivos: [`apps/web/src/modulos/notificaciones/servicios/reminder-digest.js`](../apps/web/src/modulos/notificaciones/servicios/reminder-digest.js), [`apps/api/src/routes/notifications.js`](../apps/api/src/routes/notifications.js), [`apps/api/src/routes/cron.js`](../apps/api/src/routes/cron.js), [`apps/api/src/services/push-notifications-service.js`](../apps/api/src/services/push-notifications-service.js), [`packages/shared/src/push/notification-targets.js`](../packages/shared/src/push/notification-targets.js), [`supabase/migrations/0033_scheduled_push_jobs.sql`](../supabase/migrations/0033_scheduled_push_jobs.sql).
+- Tramo C (API): rutas/controladores/servicios/repositorio de reminders, notifications y `cron/flush-reminders` en [`apps/api/src/modulos/notificaciones/`](../apps/api/src/modulos/notificaciones/); fachada exporta también `notify*` para chat/red/sharing/support/auth. Sin cambios de BD ni de `apps/web`.
+- Archivos: [`apps/web/src/modulos/notificaciones/servicios/reminder-digest.js`](../apps/web/src/modulos/notificaciones/servicios/reminder-digest.js), [`apps/api/src/modulos/notificaciones/rutas/notifications.js`](../apps/api/src/modulos/notificaciones/rutas/notifications.js), [`apps/api/src/modulos/notificaciones/rutas/cron-flush-reminders.js`](../apps/api/src/modulos/notificaciones/rutas/cron-flush-reminders.js), [`apps/api/src/modulos/notificaciones/servicios/push-notificaciones.js`](../apps/api/src/modulos/notificaciones/servicios/push-notificaciones.js), [`packages/shared/src/push/notification-targets.js`](../packages/shared/src/push/notification-targets.js), [`supabase/migrations/0033_scheduled_push_jobs.sql`](../supabase/migrations/0033_scheduled_push_jobs.sql).
 - Quién invoca el cron en producción (planificador concreto): **por confirmar** en el apéndice privado.
 
 ### 7f. Cálculo de herramientas
@@ -702,7 +703,7 @@ Construido con `git log main` y `docs/arquitectura/`. Las fechas son las del com
 |------|--------|
 | **Sync, Tramo 2 (cliente)** | Enviar `X-Sync-Protocol: 2` y tratar `partial`/`rejected`; backoff y tope del outbox ante el mismo rechazo; ids estables para no generar ids distintos en cada normalización; filas "pendientes sin subir" visibles para el usuario |
 | Sync, Tramo 3 (BD) | Endurecer las reglas de actualización de expedientes (requiere OK de BD) |
-| Notificaciones | Tramo A web desplegado (`61b223f`). Pendiente: API de notificaciones a `modulos/`; OneSignal (SDK, optIn, SW) sigue fuera; unos 40 consumidores de `@/lib/toast` por migrar a la fachada; `presentarNotificacion("expediente_transferido")` lanza (hoy no alcanzable; ver [`migraciones/notificaciones.md`](./arquitectura/migraciones/notificaciones.md) §7) |
+| Notificaciones | Tramos B+A en `main` (web desplegado). Tramo C (API → `modulos/`) en rama `arquitectura/modulo-notificaciones-api` (sin deploy hasta OK). Pendiente: OneSignal (SDK, optIn, SW) fuera; ~40 consumidores de `@/lib/toast`; `presentarNotificacion("expediente_transferido")` lanza (hoy no alcanzable; ver [`migraciones/notificaciones.md`](./arquitectura/migraciones/notificaciones.md) §7) |
 | Auth: refresh token reused | Ruido en pm2: `AuthApiError: Invalid Refresh Token: Already Used` (sesión concurrente / rehydrate; **no** es sync). Investigar si molesta a usuarios; no bloquea deploy |
 | Perfiles sin `role_id` | 2 perfiles reales legacy `vendedor` con `role_id` nulo; el operador los asignará a **liner** desde Admin → Usuarios. (Separado de la decisión de rol por defecto al registrarse) |
 | Módulos pendientes | Agenda, ventas, expediente/sharing, Royal Holiday, sync/storage/outbox, admin/RBAC, auth/session/PWA |

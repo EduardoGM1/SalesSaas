@@ -7,7 +7,7 @@ import { ServiceError, assertFound } from "../lib/service-error.js";
 import { createServiceSupabaseClient } from "../lib/supabase-server.js";
 import { getRequestWorkspaceId } from "../lib/workspace-scope.js";
 import { profileDisplayName } from "../lib/profile-display-name.js";
-import { notifyNewMessage } from "./push-notifications-service.js";
+import { notifyNewMessage } from "../modulos/notificaciones/index.js";
 
 const MSG_TYPES = new Set(["text", "prospect_card", "system"]);
 
