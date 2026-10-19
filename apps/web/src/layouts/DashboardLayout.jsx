@@ -6,7 +6,7 @@ import { PresenceProvider } from "@/components/providers/presence-provider.jsx";
 import { OneSignalProvider } from "@/components/providers/onesignal-provider.jsx";
 import { PushPermissionPrompt } from "@/components/notifications/push-permission-prompt.jsx";
 import { AutoPushCoordinator } from "@/components/notifications/auto-push-coordinator.jsx";
-import { InAppNotificationsCoordinator } from "@/components/notifications/in-app-notifications-coordinator.jsx";
+import { InAppNotificationsCoordinator } from "@/modulos/notificaciones";
 import { SidebarClient } from "@/components/layout/sidebar-client.jsx";
 import { BottomNav } from "@/components/layout/bottom-nav.jsx";
 import { PermissionsUnavailableNotice } from "@/components/auth/permissions-unavailable-notice.jsx";

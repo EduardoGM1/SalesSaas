@@ -1,4 +1,5 @@
-/** Entrada pública solo-dominio para scripts y tests de Node (sin UI, TS ni alias @/). */
+/** Entrada pública sin UI, TS ni alias @/ (dominio + cliente HTTP): scripts, tests de Node y shims de lib/. */
+export { notificationsApi } from "./api/notifications-api.js";
 export { fechaHoraLocalAIso } from "./dominio/fecha-recordatorio-local.js";
 export {
   debeRespetarCooldown,

@@ -2,7 +2,7 @@ import { clientDisplayName } from "@/lib/clients";
 import { translate } from "@/lib/i18n.js";
 import { useDbStore } from "@/stores/db-store";
 import { toast } from "@/lib/toast";
-import { scheduleReminderPush } from "@/lib/schedule-reminder-push.js";
+import { scheduleReminderPush } from "@/modulos/notificaciones";
 
 export function saveClientNote({ clientId, client, noteForm }) {
   if (!noteForm.note.trim()) {

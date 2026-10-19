@@ -27,7 +27,7 @@ test.describe("Egress — Realtime (estático)", () => {
       "utf8",
     );
     const notify = fs.readFileSync(
-      path.join(root, "apps/web/src/lib/in-app-notifications-realtime.js"),
+      path.join(root, "apps/web/src/modulos/notificaciones/servicios/in-app-notifications-realtime.js"),
       "utf8",
     );
     expect(clients).toMatch(/filter:\s*`id=eq\.\$\{id\}`/);

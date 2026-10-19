@@ -10,14 +10,14 @@ import {
   StickyNote,
   Bell,
 } from "lucide-react";
-import { toast } from "@/lib/toast";
+import { toast } from "../servicios/toast";
 import {
   armarItemToast,
   duracionToast,
   toastEsVacio,
   MAX_TOASTS_VISIBLES,
   TONO_POR_ICONO,
-} from "@/modulos/notificaciones/index.js";
+} from "../fachada-node.js";
 
 const ICONS = {
   message: MessageSquare,

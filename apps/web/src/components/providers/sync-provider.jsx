@@ -33,10 +33,10 @@ import { recoverLocalBlobToCloud } from "@/lib/recover-local-prospects.js";
 import { alignWorkspaceWithServer } from "@/lib/workspace-align.js";
 import { suspendCloudPersist } from "@/lib/cloud-persist-bridge.js";
 import { hydrateProspectsFromApi } from "@/lib/prospects-persist.js";
-import { maybeRequestReminderDigest, maybeFlushScheduledReminders, startScheduledReminderFlushLoop } from "@/lib/reminder-digest.js";
+import { maybeRequestReminderDigest, maybeFlushScheduledReminders, startScheduledReminderFlushLoop } from "@/modulos/notificaciones";
 import { useDbStore } from "@/stores/db-store";
 import { useSyncStore } from "@/stores/sync-store";
-import { Toaster } from "@/components/ui/toaster";
+import { Toaster } from "@/modulos/notificaciones";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 const DEBOUNCE_MS = 400;

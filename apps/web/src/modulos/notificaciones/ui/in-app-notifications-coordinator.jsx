@@ -5,7 +5,7 @@ import { getInstallPlatform } from "@/lib/pwa-install.js";
 import {
   startInAppNotificationsRealtime,
   stopInAppNotificationsRealtime,
-} from "@/lib/in-app-notifications-realtime.js";
+} from "../servicios/in-app-notifications-realtime.js";
 
 /** Toasts sociales en desktop vía Realtime (independiente del permiso push). */
 export function InAppNotificationsCoordinator() {

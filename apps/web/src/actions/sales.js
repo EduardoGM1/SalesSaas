@@ -1,7 +1,7 @@
 import { parseMoney } from "@/lib/format/money";
 import { translate } from "@/lib/i18n.js";
 import { resolveSaleProcessDate } from "@/lib/sales/form-valid";
-import { scheduleReminderPush } from "@/lib/schedule-reminder-push.js";
+import { scheduleReminderPush } from "@/modulos/notificaciones";
 import { useDbStore } from "@/stores/db-store";
 import { toast } from "@/lib/toast";
 

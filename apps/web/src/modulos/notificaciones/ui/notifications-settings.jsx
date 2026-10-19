@@ -21,7 +21,7 @@ import { enablePushNotifications, toastPushEnableResult } from "@/lib/push-enabl
 import { usesOneSignalPush } from "@/lib/desktop-notifications.js";
 import { openInstallPrompt, isAndroidDevice } from "@/lib/pwa-install.js";
 import { useI18n } from "@/hooks/use-i18n.js";
-import { toast } from "@/lib/toast";
+import { toast } from "../servicios/toast";
 
 const DEFAULT_PREFS = {
   messages: true,

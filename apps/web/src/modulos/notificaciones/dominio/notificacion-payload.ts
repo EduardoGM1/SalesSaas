@@ -25,4 +25,4 @@ export type NotificacionPayload = {
   cantidadAgrupada?: number;
 };
 
-export { truncar, armarNotificacion } from "@/modulos/notificaciones/index.js";
+export { truncar, armarNotificacion } from "./armar-notificacion.js";

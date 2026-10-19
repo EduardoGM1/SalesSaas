@@ -3,7 +3,7 @@
  */
 import assert from "node:assert/strict";
 import test from "node:test";
-import { notificationsApi } from "../../../lib/notifications-api.js";
+import { notificationsApi } from "./notifications-api.js";
 
 function conFetch(respuesta) {
   const llamadas = [];

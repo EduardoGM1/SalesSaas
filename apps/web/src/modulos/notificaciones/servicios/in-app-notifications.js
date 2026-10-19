@@ -1,12 +1,12 @@
 import { getInstallPlatform } from "@/lib/pwa-install.js";
 import { showDesktopLocalNotification } from "@/lib/desktop-notifications.js";
 import { playNotificationSound } from "@/lib/notification-sound.js";
-import { toast } from "@/lib/toast";
+import { toast } from "./toast";
 import { useDbStore } from "@/stores/db-store";
 import {
   armarNotificacion,
   truncar,
-} from "@/lib/notificacion-payload";
+} from "../dominio/notificacion-payload";
 import {
   PushType,
   PUSH_A_TIPO,
@@ -17,7 +17,7 @@ import {
   VENTANA_AGRUPACION_MS,
   claveAgrupacion,
   opcionesToastDesdePayload,
-} from "@/modulos/notificaciones/index.js";
+} from "../fachada-node.js";
 
 /** @type {Map<string, { count: number, timestamp: number, toastId: number, nombre?: string, data: Record<string, unknown> }>} */
 const groupRegistry = new Map();

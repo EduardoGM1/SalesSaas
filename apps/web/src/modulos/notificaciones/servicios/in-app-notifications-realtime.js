@@ -8,7 +8,7 @@ import { ensureBrowserSession } from "@/lib/supabase/ensure-browser-session.js";
 import { ensureRealtimeReady, removeChannelSafe } from "@/lib/presence/realtime.js";
 import { getInstallPlatform } from "@/lib/pwa-install.js";
 import { sharedProspectPath } from "@salesapp/shared/push/notification-targets.js";
-import { presentarNotificacion } from "@/lib/in-app-notifications.js";
+import { presentarNotificacion } from "./in-app-notifications.js";
 import { notifyUnreadMessagesChanged } from "@/lib/messages-unread.js";
 
 let channel = null;

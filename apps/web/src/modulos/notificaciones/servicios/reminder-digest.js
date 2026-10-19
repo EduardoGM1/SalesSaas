@@ -1,11 +1,11 @@
-import { notificationsApi } from "@/lib/notifications-api.js";
+import { notificationsApi } from "../api/notifications-api.js";
 import {
   debeRespetarCooldown,
   VENTANA_DIGEST_MS,
   VENTANA_FLUSH_MS,
   CLAVE_DIGEST_LOCAL,
   CLAVE_FLUSH_LOCAL,
-} from "@/modulos/notificaciones/index.js";
+} from "../fachada-node.js";
 
 const LOCAL_COOLDOWN_KEY = CLAVE_DIGEST_LOCAL;
 const LOCAL_FLUSH_KEY = CLAVE_FLUSH_LOCAL;

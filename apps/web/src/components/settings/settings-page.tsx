@@ -24,7 +24,7 @@ import { shallow } from "zustand/shallow";
 import { useSyncStore } from "@/stores/sync-store";
 import { toast } from "@/lib/toast";
 import { confirmDialog } from "@/lib/confirm";
-import { NotificationsSettings } from "@/components/settings/notifications-settings.jsx";
+import { NotificationsSettings } from "@/modulos/notificaciones";
 import { HelpSettings } from "@/components/settings/help-settings.jsx";
 import { PwaInstallSettings } from "@/components/settings/pwa-install-settings.jsx";
 import { livePreviewSettingsEqual } from "@/lib/settings-sync.js";

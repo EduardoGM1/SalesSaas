@@ -1,7 +1,7 @@
-import { notificationsApi } from "@/lib/notifications-api.js";
+import { notificationsApi } from "../api/notifications-api.js";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
-import { toast } from "@/lib/toast";
-import { fechaHoraLocalAIso, armarProgramacionRecordatorio } from "@/modulos/notificaciones/index.js";
+import { toast } from "./toast";
+import { fechaHoraLocalAIso, armarProgramacionRecordatorio } from "../fachada-node.js";
 
 /** @deprecated nombre legacy — usa fechaHoraLocalAIso (dominio). */
 export function localReminderToIso(dateStr, timeStr) {

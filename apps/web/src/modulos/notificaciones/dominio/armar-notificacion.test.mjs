@@ -13,7 +13,7 @@ import {
   PushType,
   debeRespetarCooldown,
   VENTANA_DIGEST_MS,
-} from "../index.js";
+} from "../fachada-node.js";
 
 test("truncar + armarNotificacion snapshots", () => {
   assert.equal(truncar("abcdefghij", 5), "abcde...");
