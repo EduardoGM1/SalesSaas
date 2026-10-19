@@ -272,7 +272,7 @@ apps/api/src/modulos/<nombre>/
 | 4 | vacaciones | `index.ts` | — | `92e569f` | [`migraciones/vacaciones.md`](./arquitectura/migraciones/vacaciones.md) |
 | 5 | survey | `index.ts` | `index.js` | 5a `ba34a70`; 5b.1–5b.6 hasta `ba4026d` | [`migraciones/survey.md`](./arquitectura/migraciones/survey.md) |
 | 6 | money-box | `index.ts` | — | `0e475e8`, `a81578c` | [`migraciones/money-box.md`](./arquitectura/migraciones/money-box.md) |
-| 7 | notificaciones (Tramo B: dominio puro; Tramo A: UI, servicios y cliente HTTP web) | `index.ts` + `fachada-node.js` + `fachada-toast.js` | `index.js` | B `503928f`; A en rama `arquitectura/modulo-notificaciones-a` (sin deploy) | [`migraciones/notificaciones.md`](./arquitectura/migraciones/notificaciones.md), [`migraciones/notificaciones-inventario.md`](./arquitectura/migraciones/notificaciones-inventario.md) |
+| 7 | notificaciones (Tramo B: dominio puro; Tramo A: UI, servicios y cliente HTTP web) | `index.ts` + `fachada-node.js` + `fachada-toast.js` | `index.js` | B `503928f`; A `61b223f` (web desplegado) | [`migraciones/notificaciones.md`](./arquitectura/migraciones/notificaciones.md), [`migraciones/notificaciones-inventario.md`](./arquitectura/migraciones/notificaciones-inventario.md) |
 
 **Lo que sigue fuera de `modulos/`** tras el Tramo A de notificaciones: en web, 302 archivos versionados fuera y 77 dentro; en API, 123 fuera y 29 dentro (conteos por carpeta en la [sección 3](#3-estructura-del-repositorio)). Pendientes, por orden ([`arquitectura/decisiones.md`](./arquitectura/decisiones.md) §5): agenda, ventas, expediente/sharing, Royal Holiday, sync/storage/outbox, admin/RBAC y auth/session/PWA.
 
@@ -467,7 +467,7 @@ flowchart LR
 
 - OneSignal se usa solo en web móvil; en escritorio hay notificaciones locales más Realtime ([`apps/web/src/components/providers/onesignal-provider.jsx`](../apps/web/src/components/providers/onesignal-provider.jsx), [`apps/web/src/lib/onesignal.js`](../apps/web/src/lib/onesignal.js), [`public/OneSignalSDKWorker.js`](../public/OneSignalSDKWorker.js)).
 - Tramo B (`503928f`): el dominio puro salió a [`apps/api/src/modulos/notificaciones/`](../apps/api/src/modulos/notificaciones/) (construir recordatorios, preferencias, mapeo de PushType, trabajo programado) y a [`apps/web/src/modulos/notificaciones/`](../apps/web/src/modulos/notificaciones/) (armar notificación, *cooldown* del digest, fecha local). No se tocaron rutas, service worker ni contratos.
-- Tramo A (rama `arquitectura/modulo-notificaciones-a`, sin deploy): Toaster, toasts, in-app y su Realtime, digest/flush, programación de recordatorios, cliente HTTP y Ajustes → Notificaciones pasan a `apps/web/src/modulos/notificaciones/` ([`migraciones/notificaciones.md`](./arquitectura/migraciones/notificaciones.md)). OneSignal (SDK, optIn, service worker) sigue en `lib/` y `public/onesignal/`.
+- Tramo A (`61b223f`, web-only): Toaster, toasts, in-app y su Realtime, digest/flush, programación de recordatorios, cliente HTTP y Ajustes → Notificaciones en `apps/web/src/modulos/notificaciones/` ([`migraciones/notificaciones.md`](./arquitectura/migraciones/notificaciones.md)). OneSignal (SDK, optIn, service worker) sigue en `lib/` y `public/onesignal/`; no se tocó.
 - Archivos: [`apps/web/src/modulos/notificaciones/servicios/reminder-digest.js`](../apps/web/src/modulos/notificaciones/servicios/reminder-digest.js), [`apps/api/src/routes/notifications.js`](../apps/api/src/routes/notifications.js), [`apps/api/src/routes/cron.js`](../apps/api/src/routes/cron.js), [`apps/api/src/services/push-notifications-service.js`](../apps/api/src/services/push-notifications-service.js), [`packages/shared/src/push/notification-targets.js`](../packages/shared/src/push/notification-targets.js), [`supabase/migrations/0033_scheduled_push_jobs.sql`](../supabase/migrations/0033_scheduled_push_jobs.sql).
 - Quién invoca el cron en producción (planificador concreto): **por confirmar** en el apéndice privado.
 
@@ -670,7 +670,7 @@ Construido con `git log main` y `docs/arquitectura/`. Las fechas son las del com
 | 10-18 | `f873442`, `1c8887f` | Diagnóstico de solo lectura de `sync.reconcile` y diseño del fix con pruebas de caracterización | Los `PUT /sync` fallaban | Causa raíz identificada | Solo docs y tests |
 | 10-18 | `e809e3f` | **`/health` con SHA** (`API_BUILD_ID` o `SHA.txt`) y comparador E2E con flag `m` y test con el resumen real del CI | `/health` devolvía `commit: null`; el comparador perdía el último fallo de cada bloque | Desplegado con `72a3ca4` | `git revert` + redeploy de la API |
 | 10-18 | `c2b838e` | Workflows Arquitectura y E2E también en push a `arquitectura/**` | Tener CI antes del merge | Activo | `git revert` |
-| 10-18 | `44e151e`, `d3d5545`, `c006f66` (rama) | Módulo 7 **notificaciones, Tramo A** (web): lógica pura extraída, `git mv` a `modulos/notificaciones`, fachadas `index.ts` / `fachada-node.js` / `fachada-toast.js`, shims en `lib/` y smoke UI con QA efímera | Sacar del legacy la UI y los servicios de notificaciones sin tocar OneSignal, SW, API ni contratos | Golden master idéntico, E2E = baseline, fila de `scheduled_push_jobs` idéntica a `main`; **sin merge ni deploy** | Descartar la rama o `git revert` + redeploy del web |
+| 10-19 | `61b223f` | Módulo 7 **notificaciones, Tramo A** (web): merge FF a `main` + deploy web-only | Sacar del legacy la UI y los servicios de notificaciones sin tocar OneSignal, SW, API ni contratos | CI verde; smokes prod (notificaciones, money-box, survey, collab) OK; API sigue en `72a3ca4` | `git revert` + restaurar `web-dist/pre-20261019-101247` |
 | 10-18 | `1f86f78`, `4fe9465`, `3f75b3a`, `72a3ca4` | **Tramo 1 de `PUT /sync`** + smoke de roundtrip, guard de `sync:shared`, baseline 156, plan de deploy con backup lógico y criterios de rollback | Corregir la regresión de sync | **Desplegado `72a3ca4` (API) el 10-18**: CI verde, (a)–(e) en verde en producción, 0 errores 5xx | [`ROLLBACK-api-sync-tramo1.md`](./arquitectura/ROLLBACK-api-sync-tramo1.md) |
 
 ### Regresión de `PUT /sync`
@@ -702,14 +702,16 @@ Construido con `git log main` y `docs/arquitectura/`. Las fechas son las del com
 |------|--------|
 | **Sync, Tramo 2 (cliente)** | Enviar `X-Sync-Protocol: 2` y tratar `partial`/`rejected`; backoff y tope del outbox ante el mismo rechazo; ids estables para no generar ids distintos en cada normalización; filas "pendientes sin subir" visibles para el usuario |
 | Sync, Tramo 3 (BD) | Endurecer las reglas de actualización de expedientes (requiere OK de BD) |
-| Notificaciones | Tramo A web en rama (sin deploy). Pendiente: API de notificaciones a `modulos/`; OneSignal (SDK, optIn, SW) sigue fuera; unos 40 consumidores de `@/lib/toast` por migrar a la fachada; `presentarNotificacion("expediente_transferido")` lanza (hoy no alcanzable; ver [`migraciones/notificaciones.md`](./arquitectura/migraciones/notificaciones.md) §7) |
+| Notificaciones | Tramo A web desplegado (`61b223f`). Pendiente: API de notificaciones a `modulos/`; OneSignal (SDK, optIn, SW) sigue fuera; unos 40 consumidores de `@/lib/toast` por migrar a la fachada; `presentarNotificacion("expediente_transferido")` lanza (hoy no alcanzable; ver [`migraciones/notificaciones.md`](./arquitectura/migraciones/notificaciones.md) §7) |
+| Auth: refresh token reused | Ruido en pm2: `AuthApiError: Invalid Refresh Token: Already Used` (sesión concurrente / rehydrate; **no** es sync). Investigar si molesta a usuarios; no bloquea deploy |
+| Perfiles sin `role_id` | 2 perfiles reales legacy `vendedor` con `role_id` nulo; el operador los asignará a **liner** desde Admin → Usuarios. (Separado de la decisión de rol por defecto al registrarse) |
 | Módulos pendientes | Agenda, ventas, expediente/sharing, Royal Holiday, sync/storage/outbox, admin/RBAC, auth/session/PWA |
 | Survey 5b.7 | Ids de campos colaborativos y realtime dentro del Survey |
 | Bloqueo de campos en varias pestañas | Pendiente |
 | Alcance de los canales en tiempo real | Revisión de diseño pendiente de decisión (detalle en el apéndice privado) |
 | HTTPS | Pendiente de operaciones |
 | Retención de backups | Inventario parcial en [`retencion-backups-vps.md`](./arquitectura/retencion-backups-vps.md); falta la política general |
-| Perfiles sin rol por defecto | Hay usuarios sin rol de plataforma, que en su workspace personal no tienen permisos de crear. **Decisión de producto pendiente** (rol por defecto al registrarse o no) |
+| Perfiles sin rol por defecto | 2 reales legacy sin `role_id` (asignación manual a liner pendiente). **Decisión de producto pendiente** aparte: rol por defecto al registrarse o no |
 | Entornos | Supabase local o staging separado (propuesta en [`entornos.md`](./arquitectura/entornos.md)) |
 | Paridad de permisos web ↔ shared | Divergencia intencional documentada |
 | Dos flujos de venta (`sales` / `rh_ventas`) | Sin unificar |

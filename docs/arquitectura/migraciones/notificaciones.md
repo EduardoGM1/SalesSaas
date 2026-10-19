@@ -1,7 +1,7 @@
 # Módulo 7 — notificaciones (web)
 
 **Tramo B** (`503928f`, en `main` y desplegado en la API): dominio puro en `apps/web/src/modulos/notificaciones/dominio/` y `apps/api/src/modulos/notificaciones/`.
-**Tramo A** (rama `arquitectura/modulo-notificaciones-a`, sin merge ni deploy): UI, servicios y cliente HTTP del lado web pasan al módulo. Sin cambios en la API, en la BD ni en contratos.
+**Tramo A** (`61b223f` en `main`, deploy web-only 2026-10-19): UI, servicios y cliente HTTP del lado web en el módulo. Sin cambios en la API (`72a3ca4`), en la BD ni en contratos.
 
 Inventario de partida: [`notificaciones-inventario.md`](./notificaciones-inventario.md).
 
