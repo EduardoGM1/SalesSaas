@@ -11,8 +11,13 @@ import {
   Bell,
 } from "lucide-react";
 import { toast } from "@/lib/toast";
-
-const MAX_VISIBLE = 3;
+import {
+  armarItemToast,
+  duracionToast,
+  toastEsVacio,
+  MAX_TOASTS_VISIBLES,
+  TONO_POR_ICONO,
+} from "@/modulos/notificaciones/index.js";
 
 const ICONS = {
   message: MessageSquare,
@@ -26,20 +31,6 @@ const ICONS = {
   ventas: CircleDollarSign,
   notas: StickyNote,
   bell: Bell,
-};
-
-const TONE_BY_ICON = {
-  message: "blue",
-  connection_request: "teal",
-  connection_accepted: "green",
-  shared_prospect: "purple",
-  follow_up_reminder: "blue",
-  sales_to_process: "green",
-  scheduled_note: "teal",
-  agenda: "blue",
-  ventas: "green",
-  notas: "teal",
-  bell: "blue",
 };
 
 /**
@@ -65,32 +56,13 @@ export function Toaster() {
 
   useEffect(() => {
     toast._register((opts) => {
-      const title = String(opts?.title || "").trim();
-      const body = String(opts?.body || "").trim();
-      const message = String(opts?.message || "").trim();
-      if (!title && !body && !message) return 0;
+      if (toastEsVacio(opts)) return 0;
 
-      const type = opts.type || "info";
-      const variant = opts.variant || "default";
       const replaceId = opts._replaceId || null;
       const groupKey = opts.groupKey || null;
       let id = replaceId || toast._allocId();
-      const duration = opts.duration
-        ?? (variant === "notification" ? 5500 : type === "error" ? 4500 : 3000);
-
-      const item = {
-        id,
-        msg: message || [title, body].filter(Boolean).join(" — "),
-        title: title || (variant === "notification" ? message : ""),
-        body: body || "",
-        type,
-        variant,
-        icon: opts.icon || null,
-        avatarUrl: opts.avatarUrl || null,
-        href: opts.href || null,
-        onClick: opts.onClick || null,
-        groupKey,
-      };
+      const duration = duracionToast(opts);
+      const item = armarItemToast(opts, id);
 
       setItems((prev) => {
         let next = [...prev];
@@ -115,7 +87,7 @@ export function Toaster() {
           setItems((p) => p.filter((i) => i.id !== id));
         }, duration);
         next = [...next, { ...item, id, timer }];
-        return next.length > MAX_VISIBLE ? next.slice(-MAX_VISIBLE) : next;
+        return next.length > MAX_TOASTS_VISIBLES ? next.slice(-MAX_TOASTS_VISIBLES) : next;
       });
 
       return id;
@@ -135,7 +107,7 @@ export function Toaster() {
 
         if (item.variant === "notification") {
           const Icon = ICONS[item.icon] || Bell;
-          const tone = TONE_BY_ICON[item.icon] || "blue";
+          const tone = TONO_POR_ICONO[item.icon] || "blue";
           return (
             <div
               key={item.id}

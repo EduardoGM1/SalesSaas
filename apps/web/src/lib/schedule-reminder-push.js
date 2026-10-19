@@ -1,7 +1,7 @@
 import { notificationsApi } from "@/lib/notifications-api.js";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { toast } from "@/lib/toast";
-import { fechaHoraLocalAIso } from "@/modulos/notificaciones/index.js";
+import { fechaHoraLocalAIso, armarProgramacionRecordatorio } from "@/modulos/notificaciones/index.js";
 
 /** @deprecated nombre legacy — usa fechaHoraLocalAIso (dominio). */
 export function localReminderToIso(dateStr, timeStr) {
@@ -24,27 +24,11 @@ export function scheduleReminderPush({
     toast.error("Sin conexión: no se pudo programar el aviso push.");
     return;
   }
-  if (!date) return;
-
-  const sendAt = localReminderToIso(date, time);
-  if (!sendAt) return;
-
-  const cleanNote = String(note || "")
-    .replace(/^\d{1,2}:\d{2}\s*·\s*/, "")
-    .trim();
-  const displayTime = /^\d{1,2}:\d{2}$/.test(String(time || "").trim())
-    ? String(time).trim().padStart(5, "0")
-    : "09:00";
+  const payload = armarProgramacionRecordatorio({ type, date, time, note, entryKey }, Date.now());
+  if (!payload) return;
 
   void notificationsApi
-    .scheduleReminder({
-      type,
-      date,
-      time: displayTime,
-      note: cleanNote,
-      send_at: sendAt,
-      entry_key: entryKey || String(Date.now()),
-    })
+    .scheduleReminder(payload)
     .then((result) => {
       if (result?.skipped === "prefs_off") {
         toast.error("Activa los recordatorios en Configuración → Notificaciones y guarda.");
