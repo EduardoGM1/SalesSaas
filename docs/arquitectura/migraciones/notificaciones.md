@@ -2,7 +2,7 @@
 
 **Tramo B** (`503928f`, en `main` y desplegado en la API): dominio puro en `apps/web/src/modulos/notificaciones/dominio/` y `apps/api/src/modulos/notificaciones/`.
 **Tramo A** (`61b223f` en `main`, deploy web-only 2026-10-19): UI, servicios y cliente HTTP del lado web en el módulo. Sin cambios en la API (`72a3ca4`), en la BD ni en contratos.
-**Tramo C** (rama `arquitectura/modulo-notificaciones-api`): API HTTP (rutas, controladores, servicios, repositorio) en `apps/api/src/modulos/notificaciones/`. Sin cambios de BD, sin diff en `apps/web`, sin deploy hasta OK explícito.
+**Tramo C** (`149e280`, tip docs `c3d03b1`): API HTTP en `apps/api/src/modulos/notificaciones/`. Merge FF a `main` + deploy API 2026-10-19. Sin cambios de BD; web sin cambio (`c621b92`).
 
 Inventario de partida: [`notificaciones-inventario.md`](./notificaciones-inventario.md).
 
