@@ -143,8 +143,34 @@ OneSignal (`postOneSignal` / `sendToUser`), cooldown DB y SQL de `scheduled_push
 ## 7. Caracterización (Tramo C)
 
 - Golden masters Tramo B (`construir-recordatorios.test.mjs`) + etiquetas/payload OneSignal (`etiqueta-push.test.mjs`) — byte a byte.
-- `test:security` (incluye `mvc-contract` con path cron flush) verde antes y después del move.
-- Contratos HTTP locales (QA efímera, backend real): 401 sin sesión en reminders/notifications/cron; 200 con cookie en reminders/config; `schedule-reminder` inserta fila con `push_type`, `title`, `body`, `path`, `tag`, `entry_key`, `status`, `send_at` idénticos a la lógica de `main`; cron flush sobre fila `pending` vencida → `checked:1`, `attempts` 0→1 (sin dispositivo: reintento, no `sent`); purga a 0 de las tablas pedidas.
+- `test:security`: **98 tests / 0 fallos** en `main` y en la rama (misma lista de nombres, multiset idéntico). El script tiene dos runners Node (`63` + `35`). Un reporte intermedio citó solo el segundo runner (`35/35`); no se perdió ninguna prueba. Desglose por archivo (idéntico en ambas puntas):
+
+  | Archivo | Tests |
+  |---------|------:|
+  | `security-lib.test.mjs` | 5 |
+  | `patch-whitelist.test.mjs` | 4 |
+  | `rate-limit.test.mjs` | 2 |
+  | `app.security.test.mjs` | 5 |
+  | `workspace-scope.test.mjs` | 19 |
+  | `prospect-edit-access.test.mjs` | 9 |
+  | `mvc-contract.test.mjs` | 16 |
+  | `royal-holiday-catalog-cache.test.mjs` | 2 |
+  | `workspace-resolve-cache.test.mjs` | 1 |
+  | `survey-questions-service.test.mjs` | 12 |
+  | `sync-reconcile.test.mjs` | 23 |
+  | **Total** | **98** |
+
+- Contratos HTTP locales (QA efímera, backend real): 401 sin sesión en reminders/notifications/cron; 200 con cookie en reminders/config; `schedule-reminder` inserta fila con `push_type`, `title`, `body`, `path`, `tag`, `entry_key`, `status`, `send_at` idénticos a la lógica de `main`; cron flush sobre fila `pending` vencida de la QA → `checked:1`, `attempts` 0→1 (sin dispositivo: reintento, no `sent`); purga a 0 de las tablas pedidas.
+
+### Regla operativa: flush manual con backend real
+
+Antes de **cualquier** invocación manual de `GET|POST /api/v1/cron/flush-reminders` (o del endpoint autenticado de flush) contra un backend real:
+
+1. Consulta de **solo lectura** de `scheduled_push_jobs` con `status = 'pending'` y `send_at <= now()` cuyo `user_id` **no** sea de una QA efímera.
+2. Si hay **alguna** fila real vencida → **no** llamar al flush; esperar al cron.
+3. Solo si el conjunto vencido es vacío o está formado únicamente por filas de la QA en curso → se permite una llamada de flush acotada a esa verificación.
+
+Verificación local 2026-10-19: el `checked:1` correspondió a la fila QA (`entry_key = flush-qa-1`); no se procesaron jobs de usuarios reales.
 
 ---
 
