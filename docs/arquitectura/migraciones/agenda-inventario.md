@@ -37,7 +37,8 @@
 | i18n | Claves `entry.*` / `cal.*` intactas (no se movió catálogo) |
 | Caracterización | [`agenda-tramo-a-caracterizacion.md`](./agenda-tramo-a-caracterizacion.md) + goldens `resolve-entry-client.test.mjs`, `use-calendar-actions.test.mjs` |
 | Contención | Antes A: baseline **394**; tras A: disco **392** / baseline **389** (−5); excepciones 3 |
-| Smoke | `scripts/architecture/smoke-agenda-ui-qa.mjs` + helper `calendar-rows` |
+| Smoke | `scripts/architecture/smoke-agenda-ui-qa.mjs` + helper `calendar-rows`; QA con `grant-liner-role` |
+| Deploy web | `be395b8` → prod; backup `web-dist/pre-20261020-015232` + [`ROLLBACK-web-agenda-tramo-a.md`](../ROLLBACK-web-agenda-tramo-a.md); smoke OK; purga 0 |
 | `procesamiento-venta` | Sigue en ventas/`db-store` (no en acciones agenda) |
 
 **No movido (Tramo C / sync):** API MVC calendar, `db-store` cal methods, cloud-persist, outbox, `sts4_*`, `packages/shared`.
