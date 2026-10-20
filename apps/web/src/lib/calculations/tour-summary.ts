@@ -1,4 +1,4 @@
-import { isSaleCountable } from "@/lib/sales/agenda-sales";
+import { isSaleCountable } from "@/modulos/ventas/fachada-node.js";
 import { ClientRecord } from "@/lib/storage/types";
 
 export type TourTypeCounts = { yes: number; no: number };

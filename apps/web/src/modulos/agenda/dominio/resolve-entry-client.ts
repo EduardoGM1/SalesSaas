@@ -1,4 +1,4 @@
-import { findSaleById } from "@/lib/sales/collect";
+import { findSaleById } from "@/modulos/ventas/fachada-node.js";
 import { AppDatabase } from "@/lib/storage/types";
 
 type EntryLike = {

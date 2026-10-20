@@ -1,6 +1,6 @@
 import { parseMoney } from "@/lib/format/money";
 import { translate } from "@/lib/i18n.js";
-import { resolveSaleProcessDate } from "@/lib/sales/form-valid";
+import { resolveSaleProcessDate } from "@/modulos/ventas";
 import { scheduleReminderPush } from "@/modulos/notificaciones";
 import { useDbStore } from "@/stores/db-store";
 import { toast } from "@/lib/toast";

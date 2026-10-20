@@ -237,6 +237,41 @@ ORDER BY entry_date, type::text, coalesce(kind,''), coalesce(source,''), coalesc
     return rows
 
 
+def sales_rows(client, email: str) -> list:
+    """Filas sales del usuario (sin id) para comparar el contrato con main."""
+    email_sql = email.replace("'", "''")
+    out = psql(
+        client,
+        f"""
+SELECT coalesce(status::text,'') || '|' || coalesce(sale_date::text,'') || '|'
+    || coalesce(vol::text,'') || '|' || coalesce(contract,'') || '|'
+    || coalesce(processing,'') || '|' || coalesce(process_date::text,'')
+FROM sales
+WHERE user_id = (SELECT id FROM profiles WHERE email = '{email_sql}')
+ORDER BY sale_date, coalesce(contract,''), coalesce(status::text,'');
+""",
+    )
+    rows = []
+    for line in out.splitlines():
+        line = line.strip()
+        if not line or line.startswith(("BEGIN", "ROLLBACK")) or "|" not in line:
+            continue
+        parts = line.split("|")
+        if len(parts) < 4:
+            continue
+        rows.append(
+            {
+                "status": parts[0] or None,
+                "sale_date": parts[1] or None,
+                "vol": parts[2] or None,
+                "contract": parts[3] or None,
+                "processing": parts[4] if len(parts) > 4 and parts[4] else None,
+                "process_date": parts[5] if len(parts) > 5 and parts[5] else None,
+            }
+        )
+    return rows
+
+
 def detach_workspaces(client, email: str) -> dict:
     """Quita membresías del QA para forzar 403 de workspace. No toca otros usuarios."""
     email_sql = email.replace("'", "''")
@@ -862,6 +897,8 @@ def main() -> None:
             print(json.dumps(purge(client, email)))
         elif cmd == "calendar-rows":
             print(json.dumps(calendar_rows(client, email)))
+        elif cmd == "sales-rows":
+            print(json.dumps(sales_rows(client, email)))
         elif cmd == "detach-workspaces":
             print(json.dumps(detach_workspaces(client, email)))
         elif cmd == "grant-survey-config":

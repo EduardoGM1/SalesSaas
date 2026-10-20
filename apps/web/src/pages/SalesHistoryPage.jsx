@@ -7,7 +7,7 @@ import { useI18n } from "@/hooks/use-i18n.js";
 import { useMoney } from "@/hooks/use-money.js";
 import { longDate } from "@/lib/format/dates";
 import { statusLabel } from "@/lib/format/status";
-import { collectAllSales, filterSales } from "@/lib/sales/collect";
+import { collectAllSales, filterSales } from "@/modulos/ventas";
 import { useDbStore } from "@/stores/db-store";
 import { shallow } from "zustand/shallow";
 

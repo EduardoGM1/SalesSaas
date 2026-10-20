@@ -1,27 +1,27 @@
 import { clientDisplayName } from "@/lib/clients";
 import { AppDatabase, CalEntry, ClientRecord, SaleRecord } from "@/lib/storage/types";
 
-export function isSaleCancelled(sale: Pick<SaleRecord, "status"> | null | undefined): boolean {
+export function ventaCancelada(sale: Pick<SaleRecord, "status"> | null | undefined): boolean {
   return String(sale?.status || "") === "cancelada";
 }
 
 /** Totales Dashboard/producción: excluye pendiente y cancelada (sin saldos negativos). */
-export function isSaleCountable(sale: Pick<SaleRecord, "status" | "processing"> & { tourCuantificable?: boolean }): boolean {
+export function ventaContable(sale: Pick<SaleRecord, "status" | "processing"> & { tourCuantificable?: boolean }): boolean {
   if (sale.tourCuantificable === false) return false;
-  if (isSaleCancelled(sale)) return false;
+  if (ventaCancelada(sale)) return false;
   return String(sale.status || "venta") !== "pendiente"
     && String(sale.processing || "venta") !== "pendiente";
 }
 
 /**
  * Tours del Dashboard: cuenta todos los tours cuantificables del mes,
- * incluyendo estado "pendiente". El volumen/ventas siguen usando isSaleCountable.
+ * incluyendo estado "pendiente". El volumen sigue usando ventaContable.
  */
-export function isSaleTourCountable(sale: { tourCuantificable?: boolean }): boolean {
+export function tourDeVentaContable(sale: { tourCuantificable?: boolean }): boolean {
   return sale.tourCuantificable !== false;
 }
 
-export function findActiveClientSale(
+export function buscarVentaActivaEnCliente(
   db: AppDatabase,
   saleId: string,
 ): { sale: SaleRecord; client: ClientRecord } | undefined {
@@ -33,24 +33,24 @@ export function findActiveClientSale(
   return undefined;
 }
 
-/** Venta visible en Agenda: countable o cancelada (rojo). Pendiente no aparece como venta. */
-export function isActiveAgendaSale(db: AppDatabase, entry: CalEntry): boolean {
+/** Venta visible en Agenda: contable o cancelada. Pendiente no aparece como venta. */
+export function ventaActivaEnAgenda(db: AppDatabase, entry: CalEntry): boolean {
   if (entry.t !== "venta" || entry.completed) return false;
   if (!entry.saleId) return false;
-  const found = findActiveClientSale(db, entry.saleId);
+  const found = buscarVentaActivaEnCliente(db, entry.saleId);
   if (!found) return false;
-  if (isSaleCancelled(found.sale)) return true;
-  return isSaleCountable(found.sale);
+  if (ventaCancelada(found.sale)) return true;
+  return ventaContable(found.sale);
 }
 
-/** Fuente de verdad del color: estado actual de la venta en el expediente. */
-export function isCancelledAgendaSale(db: AppDatabase, entry: CalEntry): boolean {
+/** Color de la entrada: estado actual de la venta en el expediente. */
+export function ventaCanceladaEnAgenda(db: AppDatabase, entry: CalEntry): boolean {
   if (entry.t !== "venta" || !entry.saleId) return false;
-  const found = findActiveClientSale(db, entry.saleId);
-  return !!found && isSaleCancelled(found.sale);
+  const found = buscarVentaActivaEnCliente(db, entry.saleId);
+  return !!found && ventaCancelada(found.sale);
 }
 
-export interface MonthSaleItem {
+export interface VentaDelMes {
   saleId: string;
   vol: number;
   tours: number;
@@ -64,13 +64,13 @@ export interface MonthSaleItem {
   tourCuantificable?: boolean;
 }
 
-export function collectSalesForMonth(
+export function ventasDelMes(
   clients: Record<string, ClientRecord>,
   year: number,
   month: number,
-): MonthSaleItem[] {
+): VentaDelMes[] {
   const prefix = `${year}-${String(month + 1).padStart(2, "0")}-`;
-  const items: MonthSaleItem[] = [];
+  const items: VentaDelMes[] = [];
 
   for (const client of Object.values(clients)) {
     for (const sale of client.sales ?? []) {
@@ -96,10 +96,20 @@ export function collectSalesForMonth(
   return items;
 }
 
-export function collectCountableSalesForMonth(
+export function ventasContablesDelMes(
   clients: Record<string, ClientRecord>,
   year: number,
   month: number,
-): MonthSaleItem[] {
-  return collectSalesForMonth(clients, year, month).filter(isSaleCountable);
+): VentaDelMes[] {
+  return ventasDelMes(clients, year, month).filter(ventaContable);
 }
+
+export {
+  ventaCancelada as isSaleCancelled,
+  ventaContable as isSaleCountable,
+  tourDeVentaContable as isSaleTourCountable,
+  ventaActivaEnAgenda as isActiveAgendaSale,
+  ventaCanceladaEnAgenda as isCancelledAgendaSale,
+  ventasDelMes as collectSalesForMonth,
+  ventasContablesDelMes as collectCountableSalesForMonth,
+};

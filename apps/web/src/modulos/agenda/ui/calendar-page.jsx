@@ -6,7 +6,7 @@ import { PageBack } from "@/components/layout/page-back.jsx";
 import { toast } from "@/lib/toast";
 import { confirmDialog } from "@/lib/confirm";
 import { translate } from "@/lib/i18n.js";
-import { isActiveAgendaSale, isCancelledAgendaSale } from "@/lib/sales/agenda-sales";
+import { isActiveAgendaSale, isCancelledAgendaSale } from "@/modulos/ventas";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { useMoney } from "@/hooks/use-money.js";
 import { useWorkspace } from "@/hooks/use-workspace.js";

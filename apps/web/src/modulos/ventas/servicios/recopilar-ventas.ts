@@ -1,23 +1,23 @@
 import { clientDisplayName } from "@/lib/clients";
-import { buildSaleSnapshot } from "@/lib/sales/snapshot";
 import { AppDatabase, ClientRecord, SaleRecord } from "@/lib/storage/types";
+import { construirInstantaneaVenta } from "./instantanea-venta";
 
-export interface SaleListItem extends SaleRecord {
+export interface ElementoListaVenta extends SaleRecord {
   clientName?: string;
   prospectCode?: string;
   clientId?: string;
   formerClientId?: string;
 }
 
-export interface SalesFilter {
+export interface FiltroVentas {
   status?: string;
   processing?: string;
   from?: string;
   to?: string;
 }
 
-export function collectAllSales(db: AppDatabase): SaleListItem[] {
-  const items: SaleListItem[] = [];
+export function recopilarVentas(db: AppDatabase): ElementoListaVenta[] {
+  const items: ElementoListaVenta[] = [];
 
   for (const client of Object.values(db.clients)) {
     for (const sale of client.sales ?? []) {
@@ -40,7 +40,7 @@ export function collectAllSales(db: AppDatabase): SaleListItem[] {
   });
 }
 
-export function filterSales(items: SaleListItem[], filters: SalesFilter): SaleListItem[] {
+export function filtrarVentas(items: ElementoListaVenta[], filters: FiltroVentas): ElementoListaVenta[] {
   return items.filter((sale) => {
     if (filters.status && sale.status !== filters.status) return false;
     if (filters.processing && sale.processing !== filters.processing) return false;
@@ -50,7 +50,7 @@ export function filterSales(items: SaleListItem[], filters: SalesFilter): SaleLi
   });
 }
 
-export function countAllSales(db: AppDatabase): number {
+export function contarVentas(db: AppDatabase): number {
   let n = Object.values(db.sales ?? {}).length;
   for (const client of Object.values(db.clients)) {
     n += (client.sales ?? []).length;
@@ -58,26 +58,33 @@ export function countAllSales(db: AppDatabase): number {
   return n;
 }
 
-function enrichSale(sale: SaleRecord, client?: ClientRecord): SaleListItem {
-  const item: SaleListItem = {
+function enriquecerVenta(sale: SaleRecord, client?: ClientRecord): ElementoListaVenta {
+  const item: ElementoListaVenta = {
     ...sale,
     clientName: sale.clientName || (client ? clientDisplayName(client) : undefined),
     prospectCode: sale.prospectCode || client?.prospectCode,
     clientId: client && "id" in client ? client.id : sale.formerClientId,
   };
   if (client && !sale.snapshot?.tools?.survey && !sale.snapshot?.tools?.worksheet) {
-    item.snapshot = sale.snapshot || buildSaleSnapshot(client);
+    item.snapshot = sale.snapshot || construirInstantaneaVenta(client);
   }
   return item;
 }
 
-export function findSaleById(db: AppDatabase, saleId: string): SaleListItem | undefined {
+export function buscarVentaPorId(db: AppDatabase, saleId: string): ElementoListaVenta | undefined {
   if (!saleId) return undefined;
   for (const client of Object.values(db.clients)) {
     const sale = (client.sales ?? []).find((s) => s.saleId === saleId);
-    if (sale) return enrichSale(sale, client);
+    if (sale) return enriquecerVenta(sale, client);
   }
   const archived = db.sales?.[saleId];
-  if (archived) return enrichSale(archived);
+  if (archived) return enriquecerVenta(archived);
   return undefined;
 }
+
+export {
+  recopilarVentas as collectAllSales,
+  filtrarVentas as filterSales,
+  contarVentas as countAllSales,
+  buscarVentaPorId as findSaleById,
+};

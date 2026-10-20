@@ -1,7 +1,7 @@
 import { parseMoney } from "@/lib/format/money";
 
 /** Fecha efectiva de procesamiento para ventas pendientes. */
-export function resolveSaleProcessDate(saleForm: {
+export function fechaProcesoVenta(saleForm: {
   status?: string;
   processDate?: string;
   date?: string;
@@ -10,7 +10,7 @@ export function resolveSaleProcessDate(saleForm: {
   return String(saleForm.processDate ?? "").trim() || String(saleForm.date ?? "").trim();
 }
 
-export function isSaleFormValid(saleForm: {
+export function formularioVentaValido(saleForm: {
   vol?: string;
   contract?: string;
   status?: string;
@@ -19,6 +19,11 @@ export function isSaleFormValid(saleForm: {
 }): boolean {
   const vol = parseMoney(String(saleForm.vol ?? ""));
   if (vol <= 0 || !String(saleForm.contract ?? "").trim()) return false;
-  if (saleForm.status === "pendiente" && !resolveSaleProcessDate(saleForm)) return false;
+  if (saleForm.status === "pendiente" && !fechaProcesoVenta(saleForm)) return false;
   return true;
 }
+
+export {
+  fechaProcesoVenta as resolveSaleProcessDate,
+  formularioVentaValido as isSaleFormValid,
+};

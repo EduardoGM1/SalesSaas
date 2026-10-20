@@ -4,7 +4,7 @@ import { SalesModal } from "@/components/ui/sales-modal";
 import { CountryCitySelects } from "@/components/clients/country-city-selects.jsx";
 import { selectOnFocus } from "@/lib/focus-select.js";
 import { formatSingleNameInput, isValidSingleName, SINGLE_NAME_MAX_LENGTH } from "@/lib/format/single-name-input.js";
-import { isSaleFormValid, resolveSaleProcessDate } from "@/lib/sales/form-valid";
+import { isSaleFormValid, resolveSaleProcessDate } from "@/modulos/ventas";
 import { formatMoneyValue, parseMoney } from "@/lib/format/money";
 import { formatMoneyInput } from "@/lib/format/numeric-input.js";
 import { useI18n } from "@/hooks/use-i18n.js";

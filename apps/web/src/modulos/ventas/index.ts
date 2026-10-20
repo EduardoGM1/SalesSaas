@@ -1,0 +1,37 @@
+/**
+ * Fachada pública — ventas (web).
+ * Tramo B: dominio y servicios puros. UI, API, sync y db-store fuera.
+ */
+export {
+  ventaCancelada,
+  ventaContable,
+  tourDeVentaContable,
+  ventaActivaEnAgenda,
+  ventaCanceladaEnAgenda,
+  ventasDelMes,
+  ventasContablesDelMes,
+  isSaleCancelled,
+  isSaleCountable,
+  isSaleTourCountable,
+  isActiveAgendaSale,
+  isCancelledAgendaSale,
+  collectSalesForMonth,
+  collectCountableSalesForMonth,
+  fechaProcesoVenta,
+  formularioVentaValido,
+  resolveSaleProcessDate,
+  isSaleFormValid,
+  filaAgendaDeVenta,
+  construirInstantaneaVenta,
+  conInstantaneaVenta,
+  buildSaleSnapshot,
+  withSaleSnapshot,
+  recopilarVentas,
+  filtrarVentas,
+  contarVentas,
+  buscarVentaPorId,
+  collectAllSales,
+  filterSales,
+  countAllSales,
+  findSaleById,
+} from "./fachada-node.js";
