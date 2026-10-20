@@ -1,10 +1,25 @@
 # Inventario — agenda / calendario (módulo 8)
 
-**Alcance:** solo inventario y plan. Sin moves, sin ramas de código, sin deploy, sin cambios de BD.  
-**Tip `main` al inventariar:** `acda4f7` (Tramo C notificaciones aceptado; módulo 7 cerrado).  
-**Contratos congelados:** ver §2. No renombrar.
+**Tip inventario:** `d08e982` (docs). **Tramo B (dominio puro):** rama `arquitectura/agenda-tramo-b` → merge a `main` (ver §0b).  
+**Contratos congelados:** ver §2. No renombrar. **shared/sync intocable** en toda Agenda (`check-agenda-shared-guard.mjs`).
 
-**Hallazgo clave:** la UI de agenda es compacta (`calendar-page` + `entry-dialog` + `actions/calendar`), pero la **persistencia offline y el sync** viven repartidos en `db-store`, `cloud-persist`, `sts4_v1:{workspaceId}`, outbox y `packages/shared` (`sync.js`, `validators`, `mappers`). Eso es el máximo riesgo; el dominio puro (`calendar-descansos`, `isCalendarSaleCountable`) es pequeño y extraíble.
+**Hallazgo clave:** la UI de agenda es compacta (`calendar-page` + `entry-dialog` + `actions/calendar`), pero la **persistencia offline y el sync** viven repartidos en `db-store`, `cloud-persist`, `sts4_v1:{workspaceId}`, outbox y `packages/shared`. Máximo riesgo; el dominio puro de descansos ya está en `modulos/agenda`.
+
+---
+
+## 0b. Estado tras Tramo B (dominio puro)
+
+| Pieza | Estado |
+|-------|--------|
+| `modulos/agenda/dominio/calendar-descansos.js` | `contarDiasDescanso` / `esDiaDescanso` (+ aliases EN) |
+| Fachadas | `index.ts`, `fachada-node.js`; `servicios/` reservado (Tramo A) |
+| Metas → agenda | `kpis-metas` / `semanas-tablero` importan `@/modulos/agenda` |
+| Eliminado | `lib/calculations/calendar-descansos.js`, `lib/calculations/calendar.ts` (reexports huérfanos) |
+| `isCalendarSaleCountable` | **Eliminado** (0 callers). Ventas usa `isSaleCountable` / `isActiveAgendaSale` sobre `SaleRecord` (regla distinta; no unificar aquí) |
+| Guard CI | `check-agenda-shared-guard.mjs` (+ test): ramas `arquitectura/agenda-*` no tocan `packages/shared/src/data/*` ni `sync-shared-files.json` |
+| Contención | Antes tip inventario: 399 en disco / baseline 396; tras B: **397 / 394** (−2 legacy eliminados; excepciones 3) |
+
+**No movido (siguientes tramos):** UI, actions, API, sync/outbox, `db-store`.
 
 ---
 
@@ -189,18 +204,11 @@ No hay feature-flag específico de agenda en settings.
 
 Orden: **B puro → A UI/web → persistencia/API** (API MVC ya existe; el “C” es contención en `modulos/agenda` sin tocar sync).
 
-### Tramo B — dominio puro
+### Tramo B — dominio puro — **HECHO**
 
-- Mover/copiar a `apps/web/src/modulos/agenda/dominio/`: `calendar-descansos`, `isCalendarSaleCountable` (+ tests golden).
-- Actualizar imports de metas (`kpis-metas`, `semanas-tablero`) a la nueva ubicación **o** dejar `calendar-descansos.js` como shim temporal.
-- Eliminar reexports huérfanos de metas en `calendar.ts` solo cuando el test `metas-calculo` y metas UI sigan verdes.
-
-**Verify sin dispositivo:**
-- `npm run verificar:arquitectura:checks`
-- Unit nuevos (descansos + `isCalendarSaleCountable`) + `metas-calculo.test.mjs`
-- Golden master: salidas fijas de `countDescansoDays` / `isDescansoDay` / countable
-
-**No mover:** sync, outbox, UI, API.
+- Dominio en `modulos/agenda`; metas consume fachada; sin shim `calendar.ts`.
+- Golden master `calendar-descansos.test.mjs`; guard shared en CI.
+- Ver §0b.
 
 ### Tramo A — UI / web
 
@@ -239,14 +247,14 @@ Orden: **B puro → A UI/web → persistencia/API** (API MVC ya existe; el “C�
 
 ---
 
-## 5. Decisiones que necesita el usuario
+## 5. Decisiones (cerradas)
 
-1. **¿Dónde viven `calendar-descansos` tras B?** ¿`modulos/agenda/dominio` (metas importa agenda) o util compartida / `packages/shared`? (metas.md dejaba la decisión abierta.)
-2. **¿Eliminar ya los reexports huérfanos de metas en `calendar.ts` en el Tramo B**, o mantener shim hasta A?
-3. **¿`isCalendarSaleCountable` se promueve a dominio usado por metas/ventas**, o se borra si sigue sin callers tras B?
-4. **¿Smoke UI agenda efímera es gate de merge del Tramo A** (como notificaciones), o solo E2E CI?
-5. **¿API a `modulos/agenda` en el mismo release que A web, o tramo C aparte** (como notificaciones B→A→C)?
-6. **¿Cuándo se permite tocar shared/sync por agenda?** Recomendación inventario: **nunca en tramos B/A/C de agenda**; solo en módulo sync.
+1. `calendar-descansos` → `modulos/agenda/dominio`; metas → fachada agenda (nunca agenda → metas).
+2. Reexports huérfanos en `calendar.ts` eliminados en B (0 consumidores; sin shim).
+3. `isCalendarSaleCountable` eliminado; ventas mantiene `isSaleCountable` / `isActiveAgendaSale`.
+4. Smoke UI QA efímera = gate **obligatorio del Tramo A** (no de B).
+5. API = **Tramo C** aparte.
+6. shared/sync intocable en toda Agenda (guard CI).
 
 ---
 
@@ -273,10 +281,10 @@ Mientras tanto el mismo reconcile **sí escribió**: `calendar_entries` updated 
 
 ---
 
-## 7. Checklist post-inventario (este doc)
+## 7. Checklist
 
-- [x] Inventario en tip `acda4f7`
-- [ ] Tramo B (no iniciado)
-- [ ] Tramo A (no iniciado)
-- [ ] API `modulos/agenda` (no iniciado)
+- [x] Inventario (`d08e982`)
+- [x] Tramo B dominio puro
+- [ ] Tramo A UI/web (+ smoke QA gate)
+- [ ] Tramo C API `modulos/agenda`
 - [ ] Sync/outbox (módulo futuro)

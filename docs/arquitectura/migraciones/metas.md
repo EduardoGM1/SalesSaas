@@ -57,15 +57,14 @@ Servicio/repositorio ya usaban nombres ES (`listarMetas`, `guardarMeta`, …).
 - Permisos `metas:ver_editar_propias`, rutas UI `/goals`, `/metas`
 - Clave local `GoalMonth.desc` (mapea a `descansos` en BD)
 
-## Deuda — adaptadores `calendar.ts` (módulo agenda)
+## Deuda — adaptadores `calendar.ts` (cerrada en Tramo B agenda)
 
-Los reexports/adaptadores en `apps/web/src/lib/calculations/calendar.ts` hacia
-`modulos/metas/dominio/` (`normalizeGoal`, `computeMetasKpis`, `getDashboardWeeks`,
-`workingDaysRemaining` y aliases ES) **deben eliminarse al migrar el módulo de agenda**,
-no antes. Hasta entonces mantienen imports legacy y evitan romper consumidores de agenda.
-
-También permanece `lib/calculations/calendar-descansos.js` compartido agenda↔metas;
-al migrar agenda se decide si se absorbe en ese módulo o queda como util compartida.
+Resuelto en el Tramo B de agenda: `calendar-descansos` vive en
+`apps/web/src/modulos/agenda/dominio/`; metas importa por la fachada
+`@/modulos/agenda` (dirección **metas → agenda**). Se eliminaron
+`lib/calculations/calendar.ts` y `lib/calculations/calendar-descansos.js`
+(reexports huérfanos e `isCalendarSaleCountable` sin callers). Detalle:
+[`agenda-inventario.md`](./agenda-inventario.md).
 
 ## Deuda — sync / outbox / mappers
 

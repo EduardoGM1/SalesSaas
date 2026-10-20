@@ -22,7 +22,7 @@
     "sync:html-theme": "node scripts/sync-html-theme.mjs",
     "sync:shared": "node scripts/sync-shared.mjs",
     "verificar:arquitectura": "node scripts/architecture/run-verificar-arquitectura.mjs",
-    "verificar:arquitectura:checks": "node scripts/architecture/check-layer-boundaries.mjs && node scripts/architecture/check-lazy-imports.mjs && node scripts/architecture/check-tool-contracts.mjs && node scripts/architecture/check-push-deeplinks.mjs && node scripts/architecture/check-shared-parity.mjs && node scripts/architecture/check-legacy-containment.mjs && node scripts/architecture/check-module-facades.mjs && node --test scripts/architecture/e2e-comparar-baseline.test.mjs",
+    "verificar:arquitectura:checks": "node scripts/architecture/check-layer-boundaries.mjs && node scripts/architecture/check-lazy-imports.mjs && node scripts/architecture/check-tool-contracts.mjs && node scripts/architecture/check-push-deeplinks.mjs && node scripts/architecture/check-shared-parity.mjs && node scripts/architecture/check-legacy-containment.mjs && node scripts/architecture/check-module-facades.mjs && node scripts/architecture/check-agenda-shared-guard.mjs && node --test scripts/architecture/e2e-comparar-baseline.test.mjs scripts/architecture/check-agenda-shared-guard.test.mjs",
     "verificar:arquitectura:completo": "node scripts/architecture/run-completo.mjs",
     "build:web:ci": "node scripts/architecture/build-web-ci.mjs",
     "test:security": "npm run test:security -w @salesapp/api",

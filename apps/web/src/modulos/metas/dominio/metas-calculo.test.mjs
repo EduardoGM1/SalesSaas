@@ -1,29 +1,24 @@
 /**
- * Caracterización cálculos de metas (web). Debe pasar antes y después del move.
- * Importa desde lib/calculations/calendar mientras el move no esté hecho;
- * tras el move, apunta a dominio del módulo (ver reexports en calendar).
+ * Caracterización cálculos de metas (web).
+ * Bundléa kpis-metas (importa descansos vía fachada `@/modulos/agenda`).
  */
 import assert from "node:assert/strict";
 import test from "node:test";
 import { execSync } from "node:child_process";
-import fs from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const WEB_SRC = resolve(HERE, "../../..");
-const CAL_ENTRY = resolve(WEB_SRC, "lib/calculations/calendar.ts");
 const MOD_ENTRY = resolve(HERE, "kpis-metas.ts");
 const OUT = resolve(HERE, ".tmp-metas-calculo.mjs");
 
 async function loadCalcs() {
-  // Prefer dominio del módulo; fallback al calendar monolítico (pre-move).
-  const entry = fs.existsSync(MOD_ENTRY) ? MOD_ENTRY : CAL_ENTRY;
   const aliasRoot = WEB_SRC.replace(/\\/g, "/");
   execSync(
     [
       "npx --yes esbuild",
-      `"${entry.replace(/\\/g, "/")}"`,
+      `"${MOD_ENTRY.replace(/\\/g, "/")}"`,
       "--bundle",
       "--format=esm",
       "--platform=neutral",
@@ -33,9 +28,7 @@ async function loadCalcs() {
     ].join(" "),
     { stdio: "pipe" },
   );
-  const mod = await import(pathToFileURL(OUT).href + `?t=${Date.now()}`);
-  // Si se bundléó solo kpis-metas, ya trae normalizarMeta / calcularKpisMetas.
-  return mod;
+  return import(pathToFileURL(OUT).href + `?t=${Date.now()}`);
 }
 
 function emptyMonth() {

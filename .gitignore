@@ -110,3 +110,6 @@ docs/presentacion/_structure-preview.html
 
 # SHA desplegado (lo escribe scripts/vps-deploy-api.py; lo lee /health)
 /SHA.txt
+
+# esbuild tmp de tests de dominio
+apps/web/src/modulos/**/.tmp-*.mjs
