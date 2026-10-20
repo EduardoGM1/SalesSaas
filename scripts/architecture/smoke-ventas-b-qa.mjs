@@ -150,14 +150,21 @@ async function main() {
     const openSale = page.getByRole("button", { name: /Abrir venta|Open sale/i });
     if (await openSale.count()) {
       await openSale.first().click();
-      const status = page.locator("select").filter({ has: page.locator("option", { hasText: /Cancelada|Cancelled/i }) }).first();
-      await status.selectOption({ label: "Cancelada" }).catch(async () => {
-        await status.selectOption({ label: "Cancelled" });
-      });
-      await page.getByRole("button", { name: /Guardar|Save/i }).last().click();
+      await page.locator("#m-client-record").waitFor({ state: "visible", timeout: 10000 });
+    const dateBefore = await page.locator("#m-client-record input[type='date']").first().inputValue();
+    console.log(`fecha del formulario antes de cancelar: ${dateBefore}`);
+    const status = page.locator("#m-client-record select").filter({ has: page.locator("option", { hasText: /Cancelada|Cancelled/i }) }).first();
+    await status.selectOption({ label: "Cancelada" }).catch(async () => {
+      await status.selectOption({ label: "Cancelled" });
+    });
+    const dateAfter = await page.locator("#m-client-record input[type='date']").first().inputValue();
+    console.log(`fecha del formulario tras elegir cancelada: ${dateAfter}`);
+    await page.getByRole("button", { name: /Guardar|Save/i }).last().click();
       await page.waitForTimeout(1200);
       step("cancelar venta", true);
       const after = await pollRows();
+      console.log(`filas calendar tras cancelar: ${JSON.stringify(after.calendar)}`);
+      console.log(`filas sales tras cancelar: ${JSON.stringify(after.sales)}`);
       report.salesAfter = after.sales;
       report.calendarAfter = after.calendar;
       const cancelled = after.sales.find((r) => r.contract === FOLIO);
@@ -171,6 +178,11 @@ async function main() {
         "agenda conserva t=venta cancelada sin process_date",
         Boolean(calAfter) && calAfter.status === "cancelada" && !calAfter.process_date && !calAfter.kind,
         JSON.stringify(calAfter || null),
+      );
+      step(
+        "agenda conserva la misma fecha que sales.sale_date",
+        Boolean(calAfter) && Boolean(cancelled) && calAfter.entry_date === cancelled.sale_date,
+        `${calAfter?.entry_date || "sin fila"} vs ${cancelled?.sale_date || "sin venta"}`,
       );
       await page.goto(`${BASE}/goals`, { waitUntil: "domcontentloaded" });
       await page.waitForTimeout(800);
