@@ -32,7 +32,7 @@
 | Dominio | `resolve-entry-client.ts` → `resolverIdClienteEntrada` (+ alias EN) |
 | Fachadas | `index.ts` exporta UI/hook/acciones; `fachada-node.js` solo dominio (tests Node sin JSX) |
 | Consumidores | `routes/index.jsx`, `client-detail.jsx` → `@/modulos/agenda`; metas → `fachada-node.js` |
-| Ventas | Agenda importa `isActiveAgendaSale` de `@/lib/sales/agenda-sales` (público); no hay import agenda←ventas módulo |
+| Ventas | Agenda importa `isActiveAgendaSale` de `@/modulos/ventas` (fachada). Ventas no importa agenda |
 | Shims | Ninguno (0 consumidores en paths viejos) |
 | i18n | Claves `entry.*` / `cal.*` intactas (no se movió catálogo) |
 | Caracterización | [`agenda-tramo-a-caracterizacion.md`](./agenda-tramo-a-caracterizacion.md) + goldens `resolve-entry-client.test.mjs`, `use-calendar-actions.test.mjs` |

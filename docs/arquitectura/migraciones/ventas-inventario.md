@@ -1,10 +1,10 @@
 # Inventario — ventas (módulo 9)
 
-**Solo inventario y plan.** Ningún tramo iniciado. Sin moves, sin deploy, sin cambios de BD.
+**Tramo B (dominio) movido.** Tramos A y C sin empezar. Sin deploy en este documento hasta que los gates cierren. Sin cambios de BD.
 
 **Contratos congelados:** ver §2. No renombrar. **shared/sync intocable** en los tramos B/A/C (guard del mismo corte que el de agenda, ver §4).
 
-**Hallazgo clave:** el cálculo de “qué cuenta como venta” ya está aislado en `lib/sales/`. La escritura (fila `sales`, expediente, agenda y `processDate`) vive en `db-store` y sube por `PUT /sync` / outbox. Ese cruce es el máximo riesgo y se queda fuera de los tres tramos.
+**Hallazgo clave:** el cálculo de “qué cuenta como venta” estaba aislado en `lib/sales/` y en el Tramo B pasó a `modulos/ventas`. La escritura (fila `sales`, expediente, agenda y `processDate`) vive en `db-store` y sube por `PUT /sync` / outbox. Ese cruce se queda fuera de los tres tramos.
 
 ---
 
@@ -12,7 +12,7 @@
 
 | Grupo | Archivos | Líneas | Nota |
 |-------|----------|-------:|------|
-| Dominio y cálculo | 4 en `apps/web/src/lib/sales/` | 221 | Puro respecto de red y de `sync.js` |
+| Dominio y cálculo | `modulos/ventas/dominio` y `servicios` (antes 4 archivos en `lib/sales/`) | — | Puro respecto de red y de `sync.js` |
 | UI de venta | 4 propios + 1 shell genérico + 1 modal de expediente | 374 propios; shell 34; expediente 258 | El shell no es de ventas |
 | API MVC | 4 (`routes` / controlador / servicio / repositorio) | 150 | Ya separado; falta `modulos/` |
 | Persistencia y sync | `db-store`, `cloud-persist`, shared sync/mappers/validators/columnas, outbox, `sts4_*` | compartido | **No mover** |
@@ -30,10 +30,10 @@
 
 | Archivo | Líneas | Qué hace |
 |---------|-------:|----------|
-| [`apps/web/src/lib/sales/agenda-sales.ts`](../../../apps/web/src/lib/sales/agenda-sales.ts) | 94 | `isSaleCancelled`, `isSaleCountable`, `isSaleTourCountable`, `isActiveAgendaSale`, `isCancelledAgendaSale`, `collectSalesForMonth`, `collectCountableSalesForMonth` |
-| [`apps/web/src/lib/sales/form-valid.ts`](../../../apps/web/src/lib/sales/form-valid.ts) | 22 | `resolveSaleProcessDate`, `isSaleFormValid` (`parseMoney` del volumen) |
-| [`apps/web/src/lib/sales/collect.ts`](../../../apps/web/src/lib/sales/collect.ts) | 73 | `collectAllSales`, `filterSales`, `countAllSales`, `findSaleById` sobre `clients[].sales` y `db.sales` |
-| [`apps/web/src/lib/sales/snapshot.ts`](../../../apps/web/src/lib/sales/snapshot.ts) | 32 | `buildSaleSnapshot` / `withSaleSnapshot` (prospecto + survey / vacaciones / worksheet) |
+| [`apps/web/src/modulos/ventas/dominio/contabilidad-ventas.ts`](../../../apps/web/src/modulos/ventas/dominio/contabilidad-ventas.ts) | — | `ventaContable` / `isSaleCountable`, `ventaActivaEnAgenda` / `isActiveAgendaSale`, `ventasDelMes` / `collectSalesForMonth` (antes `lib/sales/agenda-sales.ts`) |
+| [`apps/web/src/modulos/ventas/dominio/validez-formulario.ts`](../../../apps/web/src/modulos/ventas/dominio/validez-formulario.ts) | — | `fechaProcesoVenta` / `resolveSaleProcessDate`, `formularioVentaValido` / `isSaleFormValid` (antes `lib/sales/form-valid.ts`) |
+| [`apps/web/src/modulos/ventas/servicios/recopilar-ventas.ts`](../../../apps/web/src/modulos/ventas/servicios/recopilar-ventas.ts) | — | `recopilarVentas` / `collectAllSales`, `filtrarVentas`, `contarVentas`, `buscarVentaPorId` (antes `lib/sales/collect.ts`) |
+| [`apps/web/src/modulos/ventas/servicios/instantanea-venta.ts`](../../../apps/web/src/modulos/ventas/servicios/instantanea-venta.ts) | — | `construirInstantaneaVenta` / `buildSaleSnapshot`. `lib/sales/snapshot.ts` queda como shim porque `db-store` no se puede editar |
 
 Regla de conteo (no unificarla con la copia de `db-store` en estos tramos):
 
@@ -177,7 +177,7 @@ Movible detrás de `modulos/ventas/dominio` + fachadas `index.ts` y `fachada-nod
 - lista: `collectAllSales`, `filterSales`, `countAllSales`, `findSaleById`;
 - snapshot: `buildSaleSnapshot`, `withSaleSnapshot`.
 
-Consumidores que hoy importan `@/lib/sales/*` y pasarían a la fachada: metas (`semanas-tablero`), agenda (`calendar-page`, `resolve-entry-client`), ajustes, `tour-summary`, `actions/sales.js`, `db-store` (solo `withSaleSnapshot`), historial y detalle. Ventas no importa metas ni agenda.
+Consumidores de la fachada: metas (`semanas-tablero`), agenda (`calendar-page`, `resolve-entry-client`), ajustes, `tour-summary`, `actions/sales.js`, historial y detalle. `db-store` sigue importando el shim `lib/sales/snapshot.ts`. Ventas no importa metas ni agenda.
 
 ### Depende de sync / outbox (máximo riesgo; no entra en B/A/C)
 
@@ -255,10 +255,26 @@ Orden: **B puro → A UI → C API**. Cada uno con verificación sin dispositivo
 
 ---
 
+## 0e. Estado tras Tramo B (dominio puro)
+
+| Pieza | Estado |
+|-------|--------|
+| Dominio | `modulos/ventas/dominio/` — contabilidad, validez del formulario, `filaAgendaDeVenta` |
+| Servicios | `modulos/ventas/servicios/` — recopilar e instantánea |
+| Fachadas | `index.ts`, `fachada-node.js` |
+| Consumidores | Agenda, metas, ajustes, historial, detalle, formulario de expediente y `tour-summary` importan la fachada |
+| Ciclo ventas↔agenda | No hay. Agenda importa la fachada de ventas. Ventas no importa agenda |
+| `db-store` | No se editó (el guard lo prohíbe). Sigue `ensureSaleInClientAndAgenda` |
+| Shim | `lib/sales/snapshot.ts` reexporta la fachada porque `db-store` importa `withSaleSnapshot`. Es el único consumidor que no se puede redirigir |
+| Borrados de `lib/sales` | `agenda-sales.ts`, `form-valid.ts`, `collect.ts` |
+| Contención | Baseline 385 → 382 (−3). Disco 388 → 385. Excepciones 3 |
+| `filaAgendaDeVenta` | Golden de la forma. No sustituye al store |
+| `isProcessableSale` | Sigue privada en `db-store`. No se unificó con `ventaContable` |
+
 ## 6. Checklist
 
 - [x] Inventario y plan (este documento)
-- [ ] Tramo B dominio puro
+- [x] Tramo B dominio puro
 - [ ] Tramo A UI
 - [ ] Tramo C API
 - [ ] Sync / `processDate` / `rh_ventas` (fuera de este módulo)
