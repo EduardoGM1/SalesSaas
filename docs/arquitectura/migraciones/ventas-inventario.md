@@ -192,6 +192,7 @@ Propuesta: **fuera** de los tres tramos. El golden del Tramo B fija la forma esp
 - Guardado: `vol` numérico, sin pasar por `modulos/moneda`.
 - Pantalla: `use-money` y `lib/format/money` (tasa y `activeCaptureCurrency`). No se mueven al módulo de ventas.
 - Metas: suman `sale.vol` tal cual. Un cambio de moneda en ventas cambiaría el real del tablero. Estos tramos no lo cambian.
+- **Backlog (sin corregir):** con captura en MXN, `vol` es ambiguo porque el número tecleado no pasa por el módulo de moneda y la pantalla lo trata como USD al aplicar la tasa. Pregunta de producto. Ver [`PROYECTO.md`](../../PROYECTO.md) §12.
 
 ---
 
