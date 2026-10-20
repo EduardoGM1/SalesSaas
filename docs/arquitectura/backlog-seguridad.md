@@ -149,9 +149,11 @@ Un usuario con sesión y workspace puede crear o editar entradas por REST aunque
 
 ## 6. `findCalEntries` adelanta un mes la fecha de agenda de una venta
 
-Hallazgo de solo lectura del 2026-10-20. No es regresión del Tramo B de ventas. El web `b48c729` se desplegó con el bug presente a propósito. La corrección no está desplegada.
+Hallazgo de solo lectura del 2026-10-20. No es regresión del Tramo B de ventas. El web `b48c729` se desplegó con el bug presente a propósito.
 
-`calKey` (`apps/web/src/lib/format/dates.ts`, líneas 32-33) guarda el mes de calendario (`month + 1` sobre el índice 0). `findCalEntries` (`apps/web/src/lib/cloud-persist.js`, línea 255) vuelve a sumar 1: una clave `2026-10` sale como `entry_date` `2026-11-20`. La única llamada es `persistSaleBundle` (líneas 274-275), programada por `scheduleSaleBundle` desde `notifySaleRegistered` y `notifySaleUpdated` (`apps/web/src/lib/cloud-persist-bridge.js`, líneas 43-50), que `db-store.ts` dispara al registrar (línea 518) y al actualizar (línea 554). El mapper de sync (`apps/web/src/lib/data/mappers.ts`, línea 419) arma `entry_date` con la clave tal cual, sin el segundo +1. Gana el camino que llega último.
+**Estado:** corregido en `3acb234` y desplegado solo en el web. `findCalEntries` usa el mes de la clave tal cual. El conteo de filas con el mes desplazado, repetido justo antes del deploy, seguía en 0, así que no hubo reparación de datos. Smoke de QA: una venta del 2026-10-20 y otra del 2026-12-20 quedan en ese mes en `calendar_entries` antes y después de cancelar.
+
+`calKey` (`apps/web/src/lib/format/dates.ts`, líneas 32-33) guarda el mes de calendario (`month + 1` sobre el índice 0). Antes del fix, `findCalEntries` (`apps/web/src/lib/cloud-persist.js`) volvía a sumar 1: una clave `2026-10` salía como `entry_date` `2026-11-20`. La única llamada es `persistSaleBundle`, programada por `scheduleSaleBundle` desde `notifySaleRegistered` y `notifySaleUpdated` (`apps/web/src/lib/cloud-persist-bridge.js`, líneas 43-50), que `db-store.ts` dispara al registrar (línea 518) y al actualizar (línea 554). El mapper de sync (`apps/web/src/lib/data/mappers.ts`, línea 419) arma `entry_date` con la clave tal cual, sin el segundo +1. Gana el camino que llega último.
 
 `git blame` de la línea 255 apunta a `d60c8a4` (2026-10-13). Ese commit es la raíz del repositorio: el `+1` llegó con el árbol inicial y esta historia no tiene un padre que lo haya introducido después.
 
