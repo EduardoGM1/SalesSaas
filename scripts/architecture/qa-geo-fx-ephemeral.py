@@ -237,6 +237,19 @@ ORDER BY entry_date, type::text, coalesce(kind,''), coalesce(source,''), coalesc
     return rows
 
 
+def detach_workspaces(client, email: str) -> dict:
+    """Quita membresías del QA para forzar 403 de workspace. No toca otros usuarios."""
+    email_sql = email.replace("'", "''")
+    psql(
+        client,
+        f"""
+DELETE FROM workspace_miembros
+WHERE usuario_id = (SELECT id FROM profiles WHERE email = '{email_sql}');
+""",
+    )
+    return {"email": email, "detached": True}
+
+
 def push_jobs(client, email: str) -> list:
     """Solo lectura: filas de scheduled_push_jobs de la QA (sin id ni user_id)."""
     email_sql = email.replace("'", "''")
@@ -849,6 +862,8 @@ def main() -> None:
             print(json.dumps(purge(client, email)))
         elif cmd == "calendar-rows":
             print(json.dumps(calendar_rows(client, email)))
+        elif cmd == "detach-workspaces":
+            print(json.dumps(detach_workspaces(client, email)))
         elif cmd == "grant-survey-config":
             print(json.dumps(grant_survey_config(client, email)))
         elif cmd == "grant-money-box":

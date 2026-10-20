@@ -3,8 +3,9 @@
  */
 import { isUuid } from "@salesapp/shared/data/mappers.js";
 import { CALENDAR_LIST_COLUMNS } from "@salesapp/shared/data/sync-columns.js";
-import { ServiceError, assertFound } from "../lib/service-error.js";
-import { scopeByWorkspace } from "../lib/workspace-scope.js";
+import { ServiceError, assertFound } from "../../../lib/service-error.js";
+import { scopeByWorkspace } from "../../../lib/workspace-scope.js";
+import { MSG_NO_ENCONTRADA } from "../dominio/mensajes-agenda.js";
 
 export async function listarEntradasAgenda(supabase, { userId, workspaceId, teamScope, limit, offset, from, to, prospect_id }) {
   let q = supabase
@@ -34,7 +35,7 @@ export async function obtenerEntradaAgenda(supabase, { id, userId, workspaceId, 
   if (!teamScope) q = q.eq("user_id", userId);
   const { data, error } = await q.maybeSingle();
   if (error) throw new ServiceError(error.message, 500);
-  return assertFound(data, "Entrada no encontrada.");
+  return assertFound(data, MSG_NO_ENCONTRADA);
 }
 
 export async function actualizarEntradaAgenda(supabase, { id, userId, workspaceId, patch }) {
@@ -42,7 +43,7 @@ export async function actualizarEntradaAgenda(supabase, { id, userId, workspaceI
   q = scopeByWorkspace(q, workspaceId);
   const { data, error } = await q.select().maybeSingle();
   if (error) throw new ServiceError(error.message, 400);
-  return assertFound(data, "Entrada no encontrada.");
+  return assertFound(data, MSG_NO_ENCONTRADA);
 }
 
 export async function eliminarEntradaAgenda(supabase, { id, userId, workspaceId }) {
@@ -50,5 +51,5 @@ export async function eliminarEntradaAgenda(supabase, { id, userId, workspaceId 
   q = scopeByWorkspace(q, workspaceId);
   const { error, count } = await q;
   if (error) throw new ServiceError(error.message, 400);
-  if (!count) throw new ServiceError("Entrada no encontrada.", 404);
+  if (!count) throw new ServiceError(MSG_NO_ENCONTRADA, 404);
 }

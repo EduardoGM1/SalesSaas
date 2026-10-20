@@ -41,7 +41,24 @@
 | Deploy web | `be395b8` → prod; backup `web-dist/pre-20261020-015232` + [`ROLLBACK-web-agenda-tramo-a.md`](../ROLLBACK-web-agenda-tramo-a.md); smoke OK; purga 0 |
 | `procesamiento-venta` | Sigue en ventas/`db-store` (no en acciones agenda) |
 
-**No movido (Tramo C / sync):** API MVC calendar, `db-store` cal methods, cloud-persist, outbox, `sts4_*`, `packages/shared`.
+**No movido tras A:** API (pasó en Tramo C), `db-store` cal methods, cloud-persist, outbox, `sts4_*`, `packages/shared`.
+
+---
+
+## 0d. Estado tras Tramo C (API MVC)
+
+| Pieza | Estado |
+|-------|--------|
+| Rutas | `apps/api/src/modulos/agenda/rutas/entradas-agenda.js` — mismos paths `/api/v1/calendar-entries` |
+| Capas | controlador valida/responde, servicio orquesta, repositorio accede a `calendar_entries` |
+| Fachadas | `index.js` (`calendarRouter`), `fachada-node.js` |
+| Shims | Ninguno. `routes/v1.js` importa la fachada |
+| `expedientes:editar` | Sigue solo en `packages/shared/src/data/sync.js` (deuda Tramo 2 de sync). REST no lo consulta |
+| `dbToRows` / `normalizeIds` | No se movieron (compartidos con sync) |
+| Contención | Antes C: baseline **389**; tras C: baseline **385** (−4 archivos API) |
+| Caracterización | [`agenda-tramo-c-caracterizacion.md`](./agenda-tramo-c-caracterizacion.md) |
+
+**Queda de agenda:** la parte compartida con sync (`sync.js`, mappers, validators, columnas, outbox, `db-store`).
 
 ---
 
@@ -238,10 +255,10 @@ Orden: **B puro → A UI/web → persistencia/API** (API MVC ya existe; el “C�
 - Recordatorios: siguen vía `@/modulos/notificaciones`.
 - Gates: caracterización → move → arch checks → test:web/security → E2E → smoke QA + filas → deploy web-only.
 
-### Tramo persistencia / API (después de A; o en paralelo solo API)
+### Tramo C — API MVC — **HECHO** (ver §0d)
 
-- API: `routes/controllers/services/repositories` calendar → `apps/api/src/modulos/agenda/` + montaje v1 igual.
-- **Persistencia cliente / sync / outbox: NO en este módulo** — quedan para módulo sync/storage.
+- Rutas/controlador/servicio/repositorio en `apps/api/src/modulos/agenda/`.
+- **Persistencia cliente / sync / outbox: no movidos.**
 
 **Verify sin dispositivo:**
 - `mvc-contract` paths calendar-entries
@@ -300,5 +317,5 @@ Mientras tanto el mismo reconcile **sí escribió**: `calendar_entries` updated 
 - [x] Inventario (`d08e982`)
 - [x] Tramo B dominio puro
 - [x] Tramo A UI/web (+ smoke QA gate)
-- [ ] Tramo C API `modulos/agenda`
+- [x] Tramo C API `modulos/agenda`
 - [ ] Sync/outbox (módulo futuro)

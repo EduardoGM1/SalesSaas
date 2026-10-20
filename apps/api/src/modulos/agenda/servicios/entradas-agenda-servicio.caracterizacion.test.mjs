@@ -7,12 +7,12 @@ import test, { mock } from "node:test";
 import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { ServiceError } from "../lib/service-error.js";
+import { ServiceError } from "../../../lib/service-error.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-const ROOT = resolve(HERE, "../../../..");
-const SERVICE = resolve(HERE, "calendar-service.js");
-const WS_MOD = resolve(HERE, "../lib/workspace-scope.js");
+const ROOT = resolve(HERE, "../../../../../..");
+const SERVICE = resolve(HERE, "entradas-agenda-servicio.js");
+const WS_MOD = resolve(HERE, "../../../lib/workspace-scope.js");
 const USER = "11111111-1111-4111-8111-111111111111";
 const WS = "33333333-3333-4333-8333-333333333333";
 const OTHER = "22222222-2222-4222-8222-222222222222";
