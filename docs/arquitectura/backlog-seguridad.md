@@ -133,3 +133,16 @@ Hasta ese deploy, `/health` del VPS sigue devolviendo `commit: null`.
 - El test está enganchado a `verificar:arquitectura:checks`, que también corre en el CI de Arquitectura.
 
 **Precisión medida:** sin el flag, el regex pierde solo el **último** fallo de cada bloque: los anteriores sí casan, porque el lookahead `\s+e2e` toma la línea siguiente. Con el resumen de 18 fallos saca 17, y con el de 1 fallo no saca ninguno. Por eso un fallo nuevo en última posición podía pasar como "sin fallos nuevos".
+
+## 5. `PUT /sync` exige `expedientes:editar` para `calendar_entries`; el REST de calendario no
+
+Hallazgo previo, caracterizado en el Tramo C de agenda y **sin corregir**. La decisión queda para el Tramo 2 de sync, para cambiar los dos lados juntos. No forma parte del inventario ni de los tramos de ventas.
+
+| Lado | Qué exige |
+|------|-----------|
+| `PUT /sync` | `SYNC_INSERT_PERMISSIONS.calendar_entries` = `expedientes:editar` en [`packages/shared/src/data/sync.js`](../../packages/shared/src/data/sync.js) |
+| REST `/api/v1/calendar-entries` | Sesión y workspace activo. No llama a `requireWorkspacePermission`. 403 si no hay workspace; 404 si la fila no es del actor o del workspace |
+
+Tests que fijan el contrato actual (mismos nombres antes y después del move): «REST de agenda no aplica expedientes:editar» y «deuda sync: alta de calendar_entries exige expedientes:editar en sync.js», en [`apps/api/src/modulos/agenda/servicios/entradas-agenda-servicio.caracterizacion.test.mjs`](../../apps/api/src/modulos/agenda/servicios/entradas-agenda-servicio.caracterizacion.test.mjs).
+
+Un usuario con sesión y workspace puede crear o editar entradas por REST aunque no tenga `expedientes:editar`. El mismo alta por `PUT /sync` se rechaza. Alinearlos (subir el REST o bajar el sync) cambia quién puede escribir agenda. Por eso no se toca aquí.

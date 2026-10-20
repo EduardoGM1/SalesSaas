@@ -318,4 +318,10 @@ Mientras tanto el mismo reconcile **sí escribió**: `calendar_entries` updated 
 - [x] Tramo B dominio puro
 - [x] Tramo A UI/web (+ smoke QA gate)
 - [x] Tramo C API `modulos/agenda`
-- [ ] Sync/outbox (módulo futuro)
+- [x] Módulo 8 cerrado (B+A+C). Sync/outbox queda para el módulo de sync
+
+## 8. Hallazgos al cierre (sin corregir)
+
+1. Borrar una nota de usuario no cancela su job `scheduled_note`. El flush puede enviar la push de una nota que ya no existe. Corrección prevista en el servicio de recordatorios. Ver deuda en [`PROYECTO.md`](../../PROYECTO.md) §12.
+2. `PUT /sync` exige `expedientes:editar` para `calendar_entries` y el REST no. Decisión aplazada al Tramo 2 de sync. Ver [`backlog-seguridad.md`](../backlog-seguridad.md) §5.
+3. `verificar:arquitectura:completo` no corrió en el Tramo C por falta de stack local. Cómo levantarlo: [`PROYECTO.md`](../../PROYECTO.md) §4.4.

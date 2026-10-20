@@ -262,6 +262,15 @@ apps/api/src/modulos/<nombre>/
 | [`check-module-facades.mjs`](../scripts/architecture/check-module-facades.mjs) | Que no haya imports a internos de otro módulo |
 | [`e2e-comparar-baseline.test.mjs`](../scripts/architecture/e2e-comparar-baseline.test.mjs) | Tests del comparador de resultados E2E contra la baseline |
 
+`npm run verificar:arquitectura:completo` ([`scripts/architecture/run-completo.mjs`](../scripts/architecture/run-completo.mjs)) añade a esos checks `test:security`, el build de web, `npm run verify` y el smoke E2E. Exige el stack local. En el Tramo C de agenda no se ejecutó porque ese stack no estaba levantado. Para el próximo corte:
+
+1. Terminal A: `npm run dev:api`. Terminal B: `npm run dev:web`.
+2. Hostname `localhost` (API en el puerto 4000, web en el 5173). En Windows, Vite puede escuchar solo en IPv6 de loopback; la forma numérica de IPv4 no alcanza el web.
+3. Variables en `.env.local` (solo los nombres, en [`arquitectura/baseline-fase1.md`](./arquitectura/baseline-fase1.md) § Reproducibilidad). Plantilla: `.env.example`.
+4. `npm run verificar:arquitectura:completo`.
+
+Si el host de Supabase de `.env.local` no resuelve, los dos procesos se arrancan con el overlay de auth del apéndice privado (el mismo de los smokes). Esas variables no se commitean.
+
 ### 4.5 Estado de la migración a módulos
 
 | # | Módulo | Web | API | Tramo / SHA principal | Detalle |
@@ -273,9 +282,9 @@ apps/api/src/modulos/<nombre>/
 | 5 | survey | `index.ts` | `index.js` | 5a `ba34a70`; 5b.1–5b.6 hasta `ba4026d` | [`migraciones/survey.md`](./arquitectura/migraciones/survey.md) |
 | 6 | money-box | `index.ts` | — | `0e475e8`, `a81578c` | [`migraciones/money-box.md`](./arquitectura/migraciones/money-box.md) |
 | 7 | notificaciones (B dominio; A web UI/servicios; C API HTTP) | `index.ts` + `fachada-node.js` + `fachada-toast.js` | `index.js` + `fachada-node.js` | B `503928f`; A `61b223f` (web); C tip `c3d03b1` (API desplegada) | [`migraciones/notificaciones.md`](./arquitectura/migraciones/notificaciones.md), [`migraciones/notificaciones-inventario.md`](./arquitectura/migraciones/notificaciones-inventario.md) |
-| 8 | agenda (B dominio; A UI; C API MVC) | `index.ts` + `fachada-node.js` | `index.js` + `fachada-node.js` | B+A+C en `main` (ver bitácora) | [`migraciones/agenda-inventario.md`](./arquitectura/migraciones/agenda-inventario.md) |
+| 8 | agenda (migrada completa: B+A+C) | `index.ts` + `fachada-node.js` | `index.js` + `fachada-node.js` | B+A+C en `main` (ver bitácora) | [`migraciones/agenda-inventario.md`](./arquitectura/migraciones/agenda-inventario.md) |
 
-**Lo que sigue fuera de `modulos/`** tras el Tramo C de agenda: sync/outbox/`db-store` de calendario (compartido con sync); en notificaciones, OneSignal/optIn/SW y shims de toast; en API, el resto de crons (`routes/cron.js`) y `lib/cron-auth.js`. Pendientes, por orden ([`arquitectura/decisiones.md`](./arquitectura/decisiones.md) §5): **ventas**, expediente/sharing, Royal Holiday, sync/storage/outbox, admin/RBAC y auth/session/PWA.
+**Agenda, módulo 8, migrada completa** (dominio, UI y API MVC en `modulos/agenda`). Sigue fuera, porque es compartido con sync: `sync.js`, outbox y los métodos de calendario de `db-store`. En notificaciones siguen fuera OneSignal, optIn, el service worker y los shims de toast. En la API siguen fuera el resto de crons ([`apps/api/src/routes/cron.js`](../apps/api/src/routes/cron.js)) y [`apps/api/src/lib/cron-auth.js`](../apps/api/src/lib/cron-auth.js). Pendientes, por orden ([`arquitectura/decisiones.md`](./arquitectura/decisiones.md) §5): **ventas**, expediente/sharing, Royal Holiday, sync/storage/outbox, admin/RBAC y auth/session/PWA.
 
 ---
 
@@ -530,7 +539,7 @@ flowchart LR
 ```
 
 - "No tour" se guarda como `nota` con `kind: no-tour`. La entrada puede enlazar un expediente o una venta.
-- **UI (Tramo A) y API MVC (Tramo C)** viven en `modulos/agenda`. Sync, outbox y `db-store` siguen fuera. Inventario: [`arquitectura/migraciones/agenda-inventario.md`](./arquitectura/migraciones/agenda-inventario.md).
+- **Módulo migrado completo** (Tramo B dominio, Tramo A UI, Tramo C API MVC) en `modulos/agenda`. Sync, outbox y `db-store` siguen fuera, compartidos con sync. Inventario: [`arquitectura/migraciones/agenda-inventario.md`](./arquitectura/migraciones/agenda-inventario.md).
 - Archivos: [`apps/web/src/modulos/agenda/ui/calendar-page.jsx`](../apps/web/src/modulos/agenda/ui/calendar-page.jsx), [`apps/web/src/modulos/agenda/ui/entry-dialog.jsx`](../apps/web/src/modulos/agenda/ui/entry-dialog.jsx), [`apps/web/src/modulos/agenda/servicios/acciones-agenda.js`](../apps/web/src/modulos/agenda/servicios/acciones-agenda.js), [`apps/api/src/modulos/agenda/rutas/entradas-agenda.js`](../apps/api/src/modulos/agenda/rutas/entradas-agenda.js), [`apps/api/src/modulos/notificaciones/dominio/construir-recordatorios.js`](../apps/api/src/modulos/notificaciones/dominio/construir-recordatorios.js).
 
 ### 7i. Royal Holiday
@@ -679,6 +688,7 @@ Construido con `git log main` y `docs/arquitectura/`. Las fechas son las del com
 | 10-19 | `4d6f89d` → tip `593b53b` | Módulo 8 **agenda, Tramo B**: dominio descansos en `modulos/agenda`; metas→fachada; guard shared; sin UI/API/sync | Extraer lógica pura sin tocar contratos ni shared | CI tip verde; **web desplegada** `593b53b`; backup `web-dist/pre-20261020-005151` | [`ROLLBACK-web-agenda-tramo-b.md`](./arquitectura/ROLLBACK-web-agenda-tramo-b.md) |
 | 10-20 | `ce09faf` → deploy `be395b8` (docs tip `7966148`) | Módulo 8 **agenda, Tramo A**: UI/hooks/acciones/`resolve-entry` en `modulos/agenda` | Contener UI de agenda detrás de fachada | CI `be395b8` verde; **web** `be395b8` | [`ROLLBACK-web-agenda-tramo-a.md`](./arquitectura/ROLLBACK-web-agenda-tramo-a.md) |
 | 10-20 | `00fdd08` → deploy `0b63582` | Módulo 8 **agenda, Tramo C**: API MVC en `modulos/agenda`; sin sync/shared/BD | Contener calendar REST sin cambiar paths ni filas | CI `0b63582` verde; **API** `0b63582`; web sin cambio; backup en el apéndice privado | [`ROLLBACK-api-agenda-tramo-c.md`](./arquitectura/ROLLBACK-api-agenda-tramo-c.md) |
+| 10-20 | docs de cierre | Módulo 8 **agenda cerrado**: tres hallazgos registrados, sin corrección | Dejar constancia antes de ventas | Solo docs; sin deploy | `git revert` del commit de docs |
 | 10-18 | `1f86f78`, `4fe9465`, `3f75b3a`, `72a3ca4` | **Tramo 1 de `PUT /sync`** + smoke de roundtrip, guard de `sync:shared`, baseline 156, plan de deploy con backup lógico y criterios de rollback | Corregir la regresión de sync | **Desplegado `72a3ca4` (API) el 10-18**: CI verde, (a)–(e) en verde en producción, 0 errores 5xx | [`ROLLBACK-api-sync-tramo1.md`](./arquitectura/ROLLBACK-api-sync-tramo1.md) |
 
 ### Regresión de `PUT /sync`
@@ -713,7 +723,11 @@ Construido con `git log main` y `docs/arquitectura/`. Las fechas son las del com
 | Notificaciones | Tramos B+A+C en `main`. API desplegada `c3d03b1`; web `c621b92`. Pendiente: OneSignal (SDK, optIn, SW) fuera; ~40 consumidores de `@/lib/toast`; `presentarNotificacion("expediente_transferido")` (hoy no alcanzable; ver [`migraciones/notificaciones.md`](./arquitectura/migraciones/notificaciones.md) §7) |
 | Auth: refresh token reused | Ruido en pm2: `AuthApiError: Invalid Refresh Token: Already Used` (sesión concurrente / rehydrate; **no** es sync). Investigar si molesta a usuarios; no bloquea deploy |
 | Perfiles sin `role_id` | 2 perfiles reales legacy `vendedor` con `role_id` nulo; el operador los asignará a **liner** desde Admin → Usuarios. (Separado de la decisión de rol por defecto al registrarse) |
-| Módulos pendientes | Agenda B+A+C en `modulos/agenda` (queda la parte compartida con sync). Siguiente: ventas. Luego expediente/sharing, Royal Holiday, sync/storage/outbox, admin/RBAC, auth/session/PWA |
+| Agenda | Migrada completa (B+A+C). Queda fuera la parte compartida con sync |
+| Push de nota borrada | Al borrar una nota de usuario, `deleteCalEntry` en [`apps/web/src/stores/db-store.ts`](../apps/web/src/stores/db-store.ts) quita la fila local y encola el borrado de `calendar_entries`. No cancela el job `scheduled_note`. La programación usa `entryKey` = timestamp de la nota ([`apps/web/src/modulos/agenda/servicios/acciones-agenda.js`](../apps/web/src/modulos/agenda/servicios/acciones-agenda.js)); el cancelador `cancelarTrabajosPendientesPorEntry` ya existe en [`apps/api/src/modulos/notificaciones/repositorio/trabajos-push-repositorio.js`](../apps/api/src/modulos/notificaciones/repositorio/trabajos-push-repositorio.js) y solo se usa al reprogramar. El flush enviaría la push de una nota que ya no está. Bug de producto previo. Corrección prevista en el servicio de recordatorios. Sin corregir |
+| Permiso de calendario REST vs sync | `PUT /sync` exige `expedientes:editar` para `calendar_entries`; el REST no. Caracterizado. Decisión aplazada al Tramo 2 de sync. Detalle en [`arquitectura/backlog-seguridad.md`](./arquitectura/backlog-seguridad.md) §5 |
+| `verificar:arquitectura:completo` | No corrió en el Tramo C (sin stack local). Cómo levantarlo: sección 4.4 |
+| Módulos pendientes | Siguiente: ventas. Luego expediente/sharing, Royal Holiday, sync/storage/outbox, admin/RBAC, auth/session/PWA |
 | Survey 5b.7 | Ids de campos colaborativos y realtime dentro del Survey |
 | Bloqueo de campos en varias pestañas | Pendiente |
 | Alcance de los canales en tiempo real | Revisión de diseño pendiente de decisión (detalle en el apéndice privado) |
