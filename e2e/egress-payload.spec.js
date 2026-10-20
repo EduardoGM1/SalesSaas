@@ -35,7 +35,7 @@ test.describe("Egress — columnas de sync (estático)", () => {
       "utf8",
     );
     const calendar = fs.readFileSync(
-      path.join(root, "apps/api/src/repositories/calendar-repository.js"),
+      path.join(root, "apps/api/src/modulos/agenda/repositorio/entradas-agenda-repositorio.js"),
       "utf8",
     );
     expect(sales).toMatch(/SALE_LIST_COLUMNS/);
