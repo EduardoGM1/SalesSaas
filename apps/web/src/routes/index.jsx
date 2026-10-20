@@ -11,7 +11,7 @@ import { ResetPasswordPage } from "@/pages/ResetPasswordPage.jsx";
 import { AuthCallbackPage } from "@/pages/AuthCallbackPage.jsx";
 import { ExpedienteLinkPage } from "@/pages/ExpedienteLinkPage.jsx";
 import { ExpedienteInvitePage } from "@/pages/ExpedienteInvitePage.jsx";
-import { CalendarPage } from "@/components/calendar/calendar-page.jsx";
+import { CalendarPage } from "@/modulos/agenda";
 import { AdminSection } from "@/layouts/AdminSection.jsx";
 import { RhPremanifiestoGate } from "@/components/auth/RhPremanifiestoGate.jsx";
 import { RhToolFlagGate } from "@/components/auth/RhToolFlagGate.jsx";

@@ -16,10 +16,10 @@ import { EMPTY_CAL_MONTH } from "@/lib/store-empty.js";
 import { useAppStore } from "@/stores/app-store";
 import { useDbStore } from "@/stores/db-store";
 import { shallow } from "zustand/shallow";
-import { EntryDialog } from "./entry-dialog";
+import { EntryDialog } from "./entry-dialog.jsx";
 import { SaleDetailModal } from "@/components/sales/sale-detail-modal.jsx";
 import { useUserFeatures } from "@/hooks/use-user-features.js";
-import { resolveEntryClientId } from "@/lib/clients/resolve-entry-client";
+import { resolveEntryClientId } from "../dominio/resolve-entry-client.ts";
 
 export function CalendarPage() {
   const navigate = useNavigate();

@@ -1,11 +1,27 @@
 /**
  * Fachada pública — agenda (web).
- * Tramo B: solo dominio puro (descansos). UI/API/sync en tramos posteriores.
- * Otros módulos (p. ej. metas) importan solo desde aquí.
+ * Tramo A: UI + hooks + acciones. Sync/outbox/API fuera.
  */
 export {
   contarDiasDescanso,
   esDiaDescanso,
   countDescansoDays,
   isDescansoDay,
-} from "./dominio/calendar-descansos.js";
+  resolverIdClienteEntrada,
+  resolveEntryClientId,
+} from "./fachada-node.js";
+
+export {
+  guardarNotaCliente,
+  guardarNotaUsuario,
+  guardarDescanso,
+  guardarSinTour,
+  saveClientNote,
+  saveAgendaUserNote,
+  saveAgendaDayOff,
+  saveAgendaNoTour,
+} from "./servicios/acciones-agenda.js";
+
+export { useCalendarActions, useAccionesAgenda } from "./hooks/use-calendar-actions.js";
+export { CalendarPage } from "./ui/calendar-page.jsx";
+export { EntryDialog } from "./ui/entry-dialog.jsx";

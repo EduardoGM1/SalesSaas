@@ -43,7 +43,7 @@ import { useAppStore } from "@/stores/app-store";
 import { shallow } from "zustand/shallow";
 import { useClientActions } from "@/hooks/use-client-actions.js";
 import { useSaleActions } from "@/hooks/use-sale-actions.js";
-import { useCalendarActions } from "@/hooks/use-calendar-actions.js";
+import { useCalendarActions } from "@/modulos/agenda";
 import { toast } from "@/lib/toast";
 import { selectOnFocus } from "@/lib/focus-select.js";
 import { useCustomModules } from "@/hooks/use-custom-modules.js";

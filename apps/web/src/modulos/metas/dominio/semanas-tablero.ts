@@ -4,7 +4,7 @@
  */
 import { MONTHS } from "@/lib/constants";
 import { getISOWeek } from "@/lib/format/dates";
-import { countDescansoDays, isDescansoDay } from "@/modulos/agenda";
+import { countDescansoDays, isDescansoDay } from "@/modulos/agenda/fachada-node.js";
 import { collectSalesForMonth, isSaleCountable, isSaleTourCountable } from "@/lib/sales/agenda-sales";
 import type { CalMonth, ClientRecord, GoalMonth } from "@/lib/storage/types";
 

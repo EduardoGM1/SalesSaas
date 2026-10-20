@@ -9,39 +9,37 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-const WEB_SRC = resolve(HERE, "../../..");
 const HOOK_MOD = resolve(HERE, "use-calendar-actions.js");
-const HOOK_LEGACY = resolve(WEB_SRC, "hooks/use-calendar-actions.js");
 const ACTIONS_MOD = resolve(HERE, "../servicios/acciones-agenda.js");
-const ACTIONS_LEGACY = resolve(WEB_SRC, "actions/calendar.js");
 
 const HOOK_KEYS = ["saveNoteForClient", "saveUserNote", "saveDayOff", "saveNoTour"];
-const ACTION_EXPORTS = [
-  "saveClientNote",
-  "saveAgendaUserNote",
-  "saveAgendaDayOff",
-  "saveAgendaNoTour",
+const ACTION_EXPORTS_ES = [
+  "guardarNotaCliente",
+  "guardarNotaUsuario",
+  "guardarDescanso",
+  "guardarSinTour",
 ];
 
 test("use-calendar-actions: archivo exporta useCalendarActions y enlaza las 4 actions", () => {
-  const path = fs.existsSync(HOOK_MOD) ? HOOK_MOD : HOOK_LEGACY;
-  const src = fs.readFileSync(path, "utf8");
+  const src = fs.readFileSync(HOOK_MOD, "utf8");
   assert.match(src, /export function useCalendarActions/);
   for (const k of HOOK_KEYS) {
     assert.match(src, new RegExp(k), `falta clave ${k}`);
   }
-  assert.match(src, /saveClientNote/);
-  assert.match(src, /saveAgendaUserNote/);
-  assert.match(src, /saveAgendaDayOff/);
-  assert.match(src, /saveAgendaNoTour/);
+  for (const name of ACTION_EXPORTS_ES) {
+    assert.match(src, new RegExp(name), `hook debe llamar ${name}`);
+  }
 });
 
-test("actions/calendar: exporta las 4 saves (superficie)", () => {
-  const path = fs.existsSync(ACTIONS_MOD) ? ACTIONS_MOD : ACTIONS_LEGACY;
-  const src = fs.readFileSync(path, "utf8");
-  for (const name of ACTION_EXPORTS) {
+test("acciones-agenda: exporta las 4 saves ES (+ aliases EN)", () => {
+  const src = fs.readFileSync(ACTIONS_MOD, "utf8");
+  for (const name of ACTION_EXPORTS_ES) {
     assert.match(src, new RegExp(`export function ${name}`), `falta ${name}`);
   }
+  assert.match(src, /export const saveClientNote/);
+  assert.match(src, /export const saveAgendaUserNote/);
+  assert.match(src, /export const saveAgendaDayOff/);
+  assert.match(src, /export const saveAgendaNoTour/);
 });
 
 test("golden shapes de escritura cal (sin I/O): contratos t/kind", () => {

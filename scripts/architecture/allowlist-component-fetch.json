@@ -2,7 +2,7 @@
   "$comment": "Allowlist temporal: componentes con fetch() directo. Fase 1 — no agregar sin justificación en PR. Objetivo: migrar a lib/*-api.js o actions/.",
   "files": [
     "apps/web/src/components/admin/buscador-usuario.jsx",
-    "apps/web/src/components/calendar/calendar-page.jsx",
+    "apps/web/src/modulos/agenda/ui/calendar-page.jsx",
     "apps/web/src/components/clients/clients-page.jsx",
     "apps/web/src/components/layout/workspace-rail.jsx"
   ]

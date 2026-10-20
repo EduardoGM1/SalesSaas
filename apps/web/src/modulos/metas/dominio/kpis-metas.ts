@@ -1,7 +1,7 @@
 /**
  * Cálculos puros de metas (KPIs del mes). Claves GoalMonth (vol, tours, ventas, dias, desc) no se renombran.
  */
-import { countDescansoDays } from "@/modulos/agenda";
+import { countDescansoDays } from "@/modulos/agenda/fachada-node.js";
 import type { CalMonth, GoalMonth } from "@/lib/storage/types";
 
 export function normalizarMeta(

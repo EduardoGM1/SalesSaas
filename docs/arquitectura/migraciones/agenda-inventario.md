@@ -1,9 +1,9 @@
 # Inventario — agenda / calendario (módulo 8)
 
-**Tip inventario:** `d08e982` (docs). **Tramo B (dominio puro):** rama `arquitectura/agenda-tramo-b` → merge a `main` (ver §0b).  
+**Tip inventario:** `d08e982` (docs). **Tramo B:** en `main` (ver §0b). **Tramo A (UI/web):** rama `arquitectura/agenda-tramo-a` (ver §0c).  
 **Contratos congelados:** ver §2. No renombrar. **shared/sync intocable** en toda Agenda (`check-agenda-shared-guard.mjs`).
 
-**Hallazgo clave:** la UI de agenda es compacta (`calendar-page` + `entry-dialog` + `actions/calendar`), pero la **persistencia offline y el sync** viven repartidos en `db-store`, `cloud-persist`, `sts4_v1:{workspaceId}`, outbox y `packages/shared`. Máximo riesgo; el dominio puro de descansos ya está en `modulos/agenda`.
+**Hallazgo clave:** la UI de agenda ya vive en `modulos/agenda/{ui,hooks,servicios}`; la **persistencia offline y el sync** siguen en `db-store`, `cloud-persist`, `sts4_v1:{workspaceId}`, outbox y `packages/shared`. Máximo riesgo residual = Tramo C (API) + módulo sync futuro.
 
 ---
 
@@ -12,15 +12,35 @@
 | Pieza | Estado |
 |-------|--------|
 | `modulos/agenda/dominio/calendar-descansos.js` | `contarDiasDescanso` / `esDiaDescanso` (+ aliases EN) |
-| Fachadas | `index.ts`, `fachada-node.js`; `servicios/` reservado (Tramo A) |
-| Metas → agenda | `kpis-metas` / `semanas-tablero` importan `@/modulos/agenda` |
+| Fachadas | `index.ts`, `fachada-node.js` |
+| Metas → agenda | `kpis-metas` / `semanas-tablero` importan `@/modulos/agenda/fachada-node.js` |
 | Eliminado | `lib/calculations/calendar-descansos.js`, `lib/calculations/calendar.ts` (reexports huérfanos) |
 | `isCalendarSaleCountable` | **Eliminado** (0 callers). Ventas usa `isSaleCountable` / `isActiveAgendaSale` sobre `SaleRecord` (regla distinta; no unificar aquí) |
 | Guard CI | `check-agenda-shared-guard.mjs` (+ test): ramas `arquitectura/agenda-*` no tocan `packages/shared/src/data/*` ni `sync-shared-files.json` |
-| Contención | Antes tip inventario: 399 en disco / baseline 396; tras B: **397 / 394** (−2 legacy eliminados; excepciones 3) |
-| Deploy web | `593b53b` → prod; backup `web-dist/pre-20261020-005151` + [`ROLLBACK-web-agenda-tramo-b.md`](../ROLLBACK-web-agenda-tramo-b.md); smoke QA nota+descanso+metas OK; purga 0 |
+| Contención | Tras B: disco **397** / baseline **394** (−2 legacy; excepciones 3). Baseline vigente al cierre B = **394** |
+| Deploy web | `593b53b` → prod; backup `web-dist/pre-20261020-005151` + [`ROLLBACK-web-agenda-tramo-b.md`](../ROLLBACK-web-agenda-tramo-b.md) |
 
-**No movido (siguientes tramos):** UI, actions, API, sync/outbox, `db-store`.
+---
+
+## 0c. Estado tras Tramo A (UI / web)
+
+| Pieza | Estado |
+|-------|--------|
+| UI | `modulos/agenda/ui/{calendar-page,entry-dialog}.jsx` |
+| Acciones | `modulos/agenda/servicios/acciones-agenda.js` (`guardarNota*` / `guardarDescanso` / `guardarSinTour` + aliases EN) |
+| Hook | `modulos/agenda/hooks/use-calendar-actions.js` (+ `useAccionesAgenda`) |
+| Dominio | `resolve-entry-client.ts` → `resolverIdClienteEntrada` (+ alias EN) |
+| Fachadas | `index.ts` exporta UI/hook/acciones; `fachada-node.js` solo dominio (tests Node sin JSX) |
+| Consumidores | `routes/index.jsx`, `client-detail.jsx` → `@/modulos/agenda`; metas → `fachada-node.js` |
+| Ventas | Agenda importa `isActiveAgendaSale` de `@/lib/sales/agenda-sales` (público); no hay import agenda←ventas módulo |
+| Shims | Ninguno (0 consumidores en paths viejos) |
+| i18n | Claves `entry.*` / `cal.*` intactas (no se movió catálogo) |
+| Caracterización | [`agenda-tramo-a-caracterizacion.md`](./agenda-tramo-a-caracterizacion.md) + goldens `resolve-entry-client.test.mjs`, `use-calendar-actions.test.mjs` |
+| Contención | Antes A: baseline **394**; tras A: disco **392** / baseline **389** (−5); excepciones 3 |
+| Smoke | `scripts/architecture/smoke-agenda-ui-qa.mjs` + helper `calendar-rows` |
+| `procesamiento-venta` | Sigue en ventas/`db-store` (no en acciones agenda) |
+
+**No movido (Tramo C / sync):** API MVC calendar, `db-store` cal methods, cloud-persist, outbox, `sts4_*`, `packages/shared`.
 
 ---
 
@@ -211,19 +231,11 @@ Orden: **B puro → A UI/web → persistencia/API** (API MVC ya existe; el “C�
 - Golden master `calendar-descansos.test.mjs`; guard shared en CI.
 - Ver §0b.
 
-### Tramo A — UI / web
+### Tramo A — UI / web — **HECHO** (ver §0c)
 
-- `git mv` `components/calendar/*`, `actions/calendar.js` → `modulos/agenda/` + fachada `index.ts`.
-- Ruta index y consumidores (clientes que llaman actions) importan fachada.
-- Recordatorios: seguir importando `@/modulos/notificaciones` (no mover schedule).
-
-**Verify sin dispositivo:**
-- E2E `agenda-entry-modal` + `clients-agenda-intent`
-- `build:web:ci`
-- Smoke UI QA efímera (crear: alta descanso/no-tour/nota → recarga → fila en UI; purga 0) — patrón notificaciones/metas
-- Comparar conteo `calendar_entries` del usuario QA vs tip `main` (antes/después del smoke)
-
-**No mover:** `db-store` cal methods, cloud-persist, shared.
+- UI/actions/hook/`resolve-entry-client` en `modulos/agenda/`; fachadas actualizadas; sin shims.
+- Recordatorios: siguen vía `@/modulos/notificaciones`.
+- Gates: caracterización → move → arch checks → test:web/security → E2E → smoke QA + filas → deploy web-only.
 
 ### Tramo persistencia / API (después de A; o en paralelo solo API)
 
@@ -286,6 +298,6 @@ Mientras tanto el mismo reconcile **sí escribió**: `calendar_entries` updated 
 
 - [x] Inventario (`d08e982`)
 - [x] Tramo B dominio puro
-- [ ] Tramo A UI/web (+ smoke QA gate)
+- [x] Tramo A UI/web (+ smoke QA gate)
 - [ ] Tramo C API `modulos/agenda`
 - [ ] Sync/outbox (módulo futuro)

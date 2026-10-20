@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useState } from "react";
 import {  useNavigate  } from "react-router-dom";
 import { SalesModal } from "@/components/ui/sales-modal";
-import { useCalendarActions } from "@/hooks/use-calendar-actions.js";
+import { useCalendarActions } from "../hooks/use-calendar-actions.js";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { selectOnFocus } from "@/lib/focus-select.js";
 

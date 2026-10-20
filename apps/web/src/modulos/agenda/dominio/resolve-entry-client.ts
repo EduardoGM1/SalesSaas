@@ -8,7 +8,7 @@ type EntryLike = {
 };
 
 /** Resuelve el id de expediente vinculado a una entrada de agenda. */
-export function resolveEntryClientId(db: AppDatabase, entry: EntryLike): string | null {
+export function resolverIdClienteEntrada(db: AppDatabase, entry: EntryLike): string | null {
   const tryId = (id?: string) => (id && db.clients[id] ? id : null);
 
   const direct = tryId(entry.clientId) || tryId(entry.prospectId);
@@ -21,3 +21,5 @@ export function resolveEntryClientId(db: AppDatabase, entry: EntryLike): string 
 
   return null;
 }
+
+export const resolveEntryClientId = resolverIdClienteEntrada;

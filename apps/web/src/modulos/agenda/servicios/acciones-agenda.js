@@ -1,10 +1,14 @@
+/**
+ * Acciones de alta en agenda (escriben db.cal + recordatorios).
+ * Contratos de entrada: t / kind no-tour intactos.
+ */
 import { clientDisplayName } from "@/lib/clients";
 import { translate } from "@/lib/i18n.js";
 import { useDbStore } from "@/stores/db-store";
 import { toast } from "@/lib/toast";
 import { scheduleReminderPush } from "@/modulos/notificaciones";
 
-export function saveClientNote({ clientId, client, noteForm }) {
+export function guardarNotaCliente({ clientId, client, noteForm }) {
   if (!noteForm.note.trim()) {
     toast.error(translate("toast.note.empty"));
     return { ok: false };
@@ -22,7 +26,6 @@ export function saveClientNote({ clientId, client, noteForm }) {
     note: fullNote,
     source: "Clientes",
   });
-  // Fecha explícita, o hoy si hay hora (mismo criterio que el recordatorio UI).
   const reminderDate = noteForm.date || (time ? noteForm.fallbackDate : null);
   if (reminderDate) {
     const entryType = noteForm.type === "follow" ? "follow" : "nota";
@@ -49,7 +52,7 @@ export function saveClientNote({ clientId, client, noteForm }) {
   return { ok: true };
 }
 
-export function saveAgendaUserNote({ dateStr, year, month, day, nota, remDate, remTime }) {
+export function guardarNotaUsuario({ dateStr, year, month, day, nota, remDate, remTime }) {
   const trimmed = nota.trim();
   if (!trimmed) {
     toast.error(translate("toast.agenda.empty"));
@@ -82,13 +85,13 @@ export function saveAgendaUserNote({ dateStr, year, month, day, nota, remDate, r
   return { ok: true };
 }
 
-export function saveAgendaDayOff({ year, month, day }) {
+export function guardarDescanso({ year, month, day }) {
   const store = useDbStore.getState();
   store.addCalEntry(year, month, day, { t: "descanso", ts: Date.now(), note: "Día de descanso" });
   return { ok: true };
 }
 
-export function saveAgendaNoTour({ year, month, day, note }) {
+export function guardarSinTour({ year, month, day, note }) {
   const store = useDbStore.getState();
   store.addCalEntry(year, month, day, {
     t: "nota",
@@ -99,3 +102,9 @@ export function saveAgendaNoTour({ year, month, day, note }) {
   });
   return { ok: true };
 }
+
+/** Aliases EN (consumidores / tests previos). */
+export const saveClientNote = guardarNotaCliente;
+export const saveAgendaUserNote = guardarNotaUsuario;
+export const saveAgendaDayOff = guardarDescanso;
+export const saveAgendaNoTour = guardarSinTour;

@@ -200,6 +200,41 @@ SELECT 'prospects_deleted|' || COUNT(*)::text FROM prospects_deleted
     return result
 
 
+def calendar_rows(client, email: str) -> list:
+    """Filas calendar_entries del usuario (sin id/timestamps) para comparar contratos."""
+    email_sql = email.replace("'", "''")
+    out = psql(
+        client,
+        f"""
+SELECT coalesce(type,'') || '|' || coalesce(entry_date::text,'') || '|'
+    || coalesce(kind,'') || '|' || coalesce(source,'') || '|'
+    || coalesce(replace(left(note, 120), E'\\n', ' '),'') || '|' || coalesce(status,'')
+FROM calendar_entries
+WHERE user_id = (SELECT id FROM profiles WHERE email = '{email_sql}')
+ORDER BY entry_date, type, coalesce(kind,''), coalesce(source,''), coalesce(note,'');
+""",
+    )
+    rows = []
+    for line in out.splitlines():
+        line = line.strip()
+        if not line or line.startswith(("BEGIN", "ROLLBACK")) or "|" not in line:
+            continue
+        parts = line.split("|")
+        if len(parts) < 5:
+            continue
+        rows.append(
+            {
+                "type": parts[0],
+                "entry_date": parts[1],
+                "kind": parts[2] or None,
+                "source": parts[3] or None,
+                "note": parts[4] or None,
+                "status": parts[5] if len(parts) > 5 and parts[5] else None,
+            }
+        )
+    return rows
+
+
 def push_jobs(client, email: str) -> list:
     """Solo lectura: filas de scheduled_push_jobs de la QA (sin id ni user_id)."""
     email_sql = email.replace("'", "''")
@@ -810,6 +845,8 @@ def main() -> None:
             print(json.dumps(notif_prefs(client, email)))
         elif cmd == "purge":
             print(json.dumps(purge(client, email)))
+        elif cmd == "calendar-rows":
+            print(json.dumps(calendar_rows(client, email)))
         elif cmd == "grant-survey-config":
             print(json.dumps(grant_survey_config(client, email)))
         elif cmd == "grant-money-box":

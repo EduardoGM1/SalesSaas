@@ -1,6 +1,5 @@
 /**
- * Entrada Node (sin bundler / sin UI): tests y scripts.
- * Vite usa index.ts vía `@/modulos/agenda`.
+ * Entrada Node (sin UI React ni store): dominio puro para tests/scripts.
  */
 export {
   contarDiasDescanso,
@@ -8,3 +7,7 @@ export {
   countDescansoDays,
   isDescansoDay,
 } from "./dominio/calendar-descansos.js";
+export {
+  resolverIdClienteEntrada,
+  resolveEntryClientId,
+} from "./dominio/resolve-entry-client.ts";
