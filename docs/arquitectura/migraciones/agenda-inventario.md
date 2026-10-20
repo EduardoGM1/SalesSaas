@@ -18,6 +18,7 @@
 | `isCalendarSaleCountable` | **Eliminado** (0 callers). Ventas usa `isSaleCountable` / `isActiveAgendaSale` sobre `SaleRecord` (regla distinta; no unificar aquí) |
 | Guard CI | `check-agenda-shared-guard.mjs` (+ test): ramas `arquitectura/agenda-*` no tocan `packages/shared/src/data/*` ni `sync-shared-files.json` |
 | Contención | Antes tip inventario: 399 en disco / baseline 396; tras B: **397 / 394** (−2 legacy eliminados; excepciones 3) |
+| Deploy web | `593b53b` → prod; backup `web-dist/pre-20261020-005151` + [`ROLLBACK-web-agenda-tramo-b.md`](../ROLLBACK-web-agenda-tramo-b.md); smoke QA nota+descanso+metas OK; purga 0 |
 
 **No movido (siguientes tramos):** UI, actions, API, sync/outbox, `db-store`.
 
