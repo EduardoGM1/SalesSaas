@@ -252,7 +252,8 @@ export function findCalEntries(db, { saleId, entryId } = {}) {
     if (!y || Number.isNaN(m)) continue;
     for (const [dayStr, entries] of Object.entries(month.days || {})) {
       const day = Number(dayStr);
-      const entryDate = `${y}-${String(m + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+      // La clave ya trae el mes de calendario: calKey sumó 1 al índice.
+      const entryDate = `${y}-${String(m).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
       for (const entry of entries || []) {
         if (entryId && entry.id === entryId) hits.push({ entry, entryDate });
         else if (saleId && entry.saleId === saleId) hits.push({ entry, entryDate });

@@ -88,6 +88,10 @@ async function main() {
     await page.getByRole("button", { name: /Registrar venta|Register sale/i }).first().click();
     await page.locator(".mfield input").first().fill("1500");
     await page.getByPlaceholder(/Folio|folio|contract/i).fill(FOLIO);
+    const forcedDate = process.env.SMOKE_SALE_DATE || "";
+    if (/^\d{4}-\d{2}-\d{2}$/.test(forcedDate)) {
+      await page.locator("#m-client-record input[type='date'], .mfield input[type='date']").first().fill(forcedDate);
+    }
     await page.getByRole("button", { name: /Guardar|Save/i }).last().click();
     await page.waitForTimeout(1200);
     step("registrar venta desde expediente", true, FOLIO);
