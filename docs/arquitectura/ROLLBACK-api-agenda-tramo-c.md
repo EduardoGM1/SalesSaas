@@ -17,4 +17,4 @@ Volver la API al SHA previo: **`acda4f7ab843e79eff62846edc5bab42a608b5d8`**.
 
 ## Backup de directorio
 
-`/opt/saletse-backups/api/pre-<stamp>` (se completa al desplegar). Restaurar esa copia y recargar el proceso si el checkout no basta.
+`/opt/saletse-backups/api/pre-20261020-105812` (código previo `acda4f7`, incluye `ROLLBACK.md` y `SHA.txt`). Restaurar esa copia, escribir `SHA.txt` en la raíz del checkout y recargar el proceso si el checkout no basta.
