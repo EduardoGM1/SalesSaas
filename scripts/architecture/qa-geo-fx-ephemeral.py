@@ -209,6 +209,7 @@ def calendar_rows(client, email: str) -> list:
 SELECT type::text || '|' || coalesce(entry_date::text,'') || '|'
     || coalesce(kind,'') || '|' || coalesce(source,'') || '|'
     || coalesce(replace(left(note, 120), E'\\n', ' '),'') || '|' || coalesce(status::text,'')
+    || '|' || coalesce(process_date::text,'')
 FROM calendar_entries
 WHERE user_id = (SELECT id FROM profiles WHERE email = '{email_sql}')
 ORDER BY entry_date, type::text, coalesce(kind,''), coalesce(source,''), coalesce(note,'');
@@ -230,6 +231,7 @@ ORDER BY entry_date, type::text, coalesce(kind,''), coalesce(source,''), coalesc
                 "source": parts[3] or None,
                 "note": parts[4] or None,
                 "status": parts[5] if len(parts) > 5 and parts[5] else None,
+                "process_date": parts[6] if len(parts) > 6 and parts[6] else None,
             }
         )
     return rows
