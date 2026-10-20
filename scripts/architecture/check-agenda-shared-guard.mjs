@@ -58,15 +58,25 @@ function currentBranch() {
 }
 
 function resolveBaseRef() {
-  for (const ref of ["origin/main", "main"]) {
-    try {
-      git(`git rev-parse --verify ${ref}`);
-      return ref;
-    } catch {
-      /* next */
-    }
+  try {
+    git("git rev-parse --verify origin/main");
+    return "origin/main";
+  } catch {
+    /* CI shallow: a menudo no trae origin/main */
   }
-  return null;
+  try {
+    git("git fetch --no-tags --depth=50 origin main:refs/remotes/origin/main");
+    git("git rev-parse --verify origin/main");
+    return "origin/main";
+  } catch {
+    /* fall through */
+  }
+  try {
+    git("git rev-parse --verify main");
+    return "main";
+  } catch {
+    return null;
+  }
 }
 
 function changedFilesVsBase(baseRef) {
