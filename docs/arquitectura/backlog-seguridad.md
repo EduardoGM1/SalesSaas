@@ -146,3 +146,82 @@ Hallazgo previo, caracterizado en el Tramo C de agenda y **sin corregir**. La de
 Tests que fijan el contrato actual (mismos nombres antes y después del move): «REST de agenda no aplica expedientes:editar» y «deuda sync: alta de calendar_entries exige expedientes:editar en sync.js», en [`apps/api/src/modulos/agenda/servicios/entradas-agenda-servicio.caracterizacion.test.mjs`](../../apps/api/src/modulos/agenda/servicios/entradas-agenda-servicio.caracterizacion.test.mjs).
 
 Un usuario con sesión y workspace puede crear o editar entradas por REST aunque no tenga `expedientes:editar`. El mismo alta por `PUT /sync` se rechaza. Alinearlos (subir el REST o bajar el sync) cambia quién puede escribir agenda. Por eso no se toca aquí.
+
+## 6. `findCalEntries` adelanta un mes la fecha de agenda de una venta
+
+Hallazgo de solo lectura del 2026-10-20. No es regresión del Tramo B de ventas. El web `b48c729` se desplegó con el bug presente a propósito. La corrección no está desplegada.
+
+`calKey` (`apps/web/src/lib/format/dates.ts`, líneas 32-33) guarda el mes de calendario (`month + 1` sobre el índice 0). `findCalEntries` (`apps/web/src/lib/cloud-persist.js`, línea 255) vuelve a sumar 1: una clave `2026-10` sale como `entry_date` `2026-11-20`. La única llamada es `persistSaleBundle` (líneas 274-275), programada por `scheduleSaleBundle` desde `notifySaleRegistered` y `notifySaleUpdated` (`apps/web/src/lib/cloud-persist-bridge.js`, líneas 43-50), que `db-store.ts` dispara al registrar (línea 518) y al actualizar (línea 554). El mapper de sync (`apps/web/src/lib/data/mappers.ts`, línea 419) arma `entry_date` con la clave tal cual, sin el segundo +1. Gana el camino que llega último.
+
+`git blame` de la línea 255 apunta a `d60c8a4` (2026-10-13). Ese commit es la raíz del repositorio: el `+1` llegó con el árbol inicial y esta historia no tiene un padre que lo haya introducido después.
+
+Una clave de diciembre (`2026-12`) produce `2026-13-DD`. `calendar_entries.entry_date` es `date`: ese valor no se puede guardar. El alta REST devolvería 400. El camino de sync seguiría pudiendo escribir diciembre.
+
+Consulta en transacción de solo lectura, sin ids ni emails. Cohortes: QA = correo `@saletse-test.com`; ghost = sin fila en `profiles`; real = el resto.
+
+| Métrica | Valor |
+|---------|------:|
+| Filas `calendar_entries` con `type=venta` | 0 |
+| De esas, con mes distinto al de `sales.sale_date` | 0 (QA 0, real 0, ghost 0) |
+| Igual, cualquier `type` enlazado a una venta | 0 |
+| Filas `type=venta` sin `sale_id` | 0 |
+| Usuarios reales con una fila de venta desplazada | 0 |
+| Primera fila real afectada | ninguna |
+| Ventas en la tabla | 1 (real, mes 2026-09) |
+| Ventas de diciembre | 0 |
+| Esa venta de septiembre, filas de agenda enlazadas | 0 |
+| Agenda por tipo | `follow` 5, `nota` 1, `venta` 0, `descanso` 0 |
+| `follow` / `nota` / `descanso` con `sale_id` | 0 / 0 / 0 |
+| `entry_date` de mes inválido en la tabla | 0 (el tipo `date` no lo admite) |
+
+Logs de los últimos 30 días (desde 2026-09-20), sin cuerpos ni identificadores:
+
+| Fuente | Resultado |
+|--------|-----------|
+| nginx `POST /api/v1/calendar-entries` 400 | 16 |
+| nginx `PUT /api/v1/sync` 400 | 1 |
+| nginx 422 en esas rutas | 0 |
+| Log de la API con `invalid input syntax for type date`, `entry_date` o `month must` | 0 líneas |
+
+Los 16 de calendario y el 1 de sync no se pueden atribuir a una fecha de diciembre: el log de la API no guarda el motivo. No hay ventas de diciembre en la tabla que se hayan podido perder por el mes 13.
+
+`findCalEntries` solo mira entradas cuyo `saleId` coincide. Notas, descansos y seguimientos que entran por `notifyCalEntryAdded` (`cloud-persist-bridge.js`, líneas 75-81) calculan la fecha con el índice de mes en base 0 y no pasan por esta función. En la tabla actual ninguna nota, follow ni descanso tiene `sale_id`, así que el paquete de la venta tampoco las alcanzó.
+
+**Reparación de datos:** hoy el conteo previo es 0. No hay `UPDATE` que aplicar. El SQL de abajo queda propuesto y sin ejecutar hasta un OK explícito.
+
+Verificación previa (esperado hoy: 0 filas):
+
+```sql
+BEGIN;
+SET TRANSACTION READ ONLY;
+SELECT
+  (
+    (EXTRACT(YEAR FROM c.entry_date)::int * 12 + EXTRACT(MONTH FROM c.entry_date)::int)
+    - (EXTRACT(YEAR FROM s.sale_date)::int * 12 + EXTRACT(MONTH FROM s.sale_date)::int)
+  ) AS month_delta,
+  count(*)
+FROM public.calendar_entries c
+JOIN public.sales s ON s.id = c.sale_id
+WHERE date_trunc('month', c.entry_date) <> date_trunc('month', s.sale_date)
+GROUP BY 1;
+ROLLBACK;
+```
+
+Reparación, solo si ese conteo es el que se aprobó. Conserva el día y no toca un día que no existe en el mes de la venta. Backup lógico de `calendar_entries` y `sales` antes del `COMMIT`. Si no se ha hecho `COMMIT`, el rollback es `ROLLBACK`. Si ya se aplicó, restaurar esas tablas desde el backup.
+
+```sql
+BEGIN;
+UPDATE public.calendar_entries c
+SET entry_date = make_date(
+  EXTRACT(YEAR FROM s.sale_date)::int,
+  EXTRACT(MONTH FROM s.sale_date)::int,
+  EXTRACT(DAY FROM c.entry_date)::int
+)
+FROM public.sales s
+WHERE s.id = c.sale_id
+  AND date_trunc('month', c.entry_date) <> date_trunc('month', s.sale_date)
+  AND EXTRACT(DAY FROM c.entry_date)::int
+      <= EXTRACT(DAY FROM (date_trunc('month', s.sale_date) + interval '1 month - 1 day'))::int;
+-- Esperado hoy: UPDATE 0. COMMIT solo con OK.
+ROLLBACK;
+```

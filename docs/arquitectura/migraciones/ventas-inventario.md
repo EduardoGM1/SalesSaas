@@ -269,7 +269,7 @@ Orden: **B puro → A UI → C API**. Cada uno con verificación sin dispositivo
 | Borrados de `lib/sales` | `agenda-sales.ts`, `form-valid.ts`, `collect.ts` |
 | Contención | Baseline 385 → 382 (−3). Disco 388 → 385. Excepciones 3 |
 | `filaAgendaDeVenta` | Golden de la forma. No sustituye al store |
-| Fecha al cancelar | El formulario sigue en el día de la venta y `sales.sale_date` no se mueve. La fila `calendar_entries` de esa venta pasa al mismo día del mes siguiente. La escritura está en `db-store` / sync; este tramo no la toca y por eso no hay deploy |
+| Fecha de la fila de agenda | El formulario y `sales.sale_date` no se mueven. `findCalEntries` puede dejar `calendar_entries.entry_date` un mes adelante. No lo introduce este tramo. El web del Tramo B está desplegado con ese comportamiento. Detalle en el backlog de seguridad §6 |
 | `isProcessableSale` | Sigue privada en `db-store`. No se unificó con `ventaContable` |
 
 ## 6. Checklist
