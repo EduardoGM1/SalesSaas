@@ -12,8 +12,8 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-const WEB_SRC = resolve(HERE, "..");
-const SRC = resolve(HERE, "cloud-persist.js");
+const WEB_SRC = resolve(HERE, "../../..");
+const SRC = resolve(WEB_SRC, "lib/cloud-persist.js");
 const OUT = resolve(tmpdir(), `saletse-findcal-${process.pid}.mjs`);
 
 function load() {
