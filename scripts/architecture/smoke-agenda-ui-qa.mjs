@@ -68,6 +68,8 @@ async function main() {
   try {
     const prov = runHelper(["provision", EMAIL, PASSWORD, FULL_NAME]);
     step("provision QA", Boolean(prov.uid), String(prov.uid || "").slice(0, 8));
+    const liner = runHelper(["grant-liner-role", EMAIL]);
+    step("rol liner (permisos agenda/REST)", Boolean(liner.granted));
 
     browser = await chromium.launch({ headless: true });
     const page = await browser.newPage();
@@ -137,13 +139,21 @@ async function main() {
       has: page.locator(".cal-dn").filter({ hasText: new RegExp(`^${day}$`) }),
     }).first().click();
     step("panel del día", await page.locator(".day-panel, .dp-title").first().isVisible().catch(() => false));
-    await page.locator(".agenda-month-nav .tb-nav-btn").first().click();
+    const monthNav = page.locator(".agenda-month-nav .tb-nav-btn");
+    await monthNav.first().click();
     await page.waitForTimeout(400);
-    await page.locator(".agenda-month-nav .tb-nav-btn").last().click();
+    await monthNav.nth(1).click();
+    await page.waitForTimeout(400);
+    // Re-seleccionar hoy tras la nav (el panel se vacía al cambiar de mes).
+    await page.locator(".cal-grid button.cal-day").filter({
+      has: page.locator(".cal-dn").filter({ hasText: new RegExp(`^${day}$`) }),
+    }).first().click();
     step("cambiar mes (nav)", true);
 
-    // Borrar nota + recrear (= editar sin UI in-place)
-    await page.locator(".day-group .dg-head", { hasText: /Notas|Notes/i }).click();
+    // Borrar nota + recrear (= editar sin UI in-place; no hay editor in-situ)
+    const notesHead = page.locator(".day-group .dg-head").filter({ hasText: /Notas|Notes/i }).first();
+    await notesHead.waitFor({ state: "visible", timeout: 15000 });
+    await notesHead.click();
     page.once("dialog", async (d) => d.accept());
     const del = page.locator(".dg-entry .dg-del").first();
     const hasDel = await del.isVisible().catch(() => false);
@@ -152,6 +162,7 @@ async function main() {
       await page.waitForTimeout(600);
     }
     await page.locator("button.add-fab").click();
+    await page.locator("#m-entry").waitFor({ state: "visible", timeout: 10000 });
     await selectTab(page, /Notas del usuario|User notes/i);
     await page.locator("#e-nota-t").fill(NOTE2);
     await page.locator("#entry-save-btn").click();
@@ -164,11 +175,14 @@ async function main() {
     await page.locator(".cal-grid button.cal-day").filter({
       has: page.locator(".cal-dn").filter({ hasText: new RegExp(`^${day}$`) }),
     }).first().click();
+    await page.locator(".day-group .dg-head").filter({ hasText: /Notas|Notes/i }).first().click();
+    await page.locator(".day-group .dg-head").filter({ hasText: /Sin tour|No tour/i }).first().click();
+    await page.locator(".day-group .dg-head").filter({ hasText: /Descanso|Rest|Day off/i }).first().click();
     const panel = await page.locator(".day-panel").innerText().catch(() => "");
     step(
       "persisten tras recarga",
-      panel.includes(NOTE2) && /descanso|day off/i.test(panel) && panel.includes(NOTOUR),
-      panel.slice(0, 120),
+      panel.includes(NOTE2) && /descanso|day off|rest/i.test(panel) && panel.includes(NOTOUR),
+      panel.slice(0, 160),
     );
 
     // Metas

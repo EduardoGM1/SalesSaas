@@ -206,12 +206,12 @@ def calendar_rows(client, email: str) -> list:
     out = psql(
         client,
         f"""
-SELECT coalesce(type,'') || '|' || coalesce(entry_date::text,'') || '|'
+SELECT type::text || '|' || coalesce(entry_date::text,'') || '|'
     || coalesce(kind,'') || '|' || coalesce(source,'') || '|'
-    || coalesce(replace(left(note, 120), E'\\n', ' '),'') || '|' || coalesce(status,'')
+    || coalesce(replace(left(note, 120), E'\\n', ' '),'') || '|' || coalesce(status::text,'')
 FROM calendar_entries
 WHERE user_id = (SELECT id FROM profiles WHERE email = '{email_sql}')
-ORDER BY entry_date, type, coalesce(kind,''), coalesce(source,''), coalesce(note,'');
+ORDER BY entry_date, type::text, coalesce(kind,''), coalesce(source,''), coalesce(note,'');
 """,
     )
     rows = []
