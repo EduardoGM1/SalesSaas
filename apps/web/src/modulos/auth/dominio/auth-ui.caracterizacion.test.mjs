@@ -36,6 +36,26 @@ test("sts4_auth_sync se conserva en sesión y keep-on-logout", () => {
   assert.match(storage, /sts4_auth_sync/);
 });
 
+test("supabase browser vive en modulos/auth con shims legacy", () => {
+  const client = resolve(root, "src/modulos/auth/servicios/supabase/client.ts");
+  const config = resolve(root, "src/modulos/auth/servicios/supabase/config.ts");
+  const ensure = resolve(root, "src/modulos/auth/servicios/supabase/ensure-browser-session.js");
+  assert.ok(existsSync(client), "falta supabase/client.ts");
+  assert.ok(existsSync(config), "falta supabase/config.ts");
+  assert.ok(existsSync(ensure), "falta supabase/ensure-browser-session.js");
+
+  const shimClient = readFileSync(resolve(root, "src/lib/supabase/client.ts"), "utf8");
+  const shimConfig = readFileSync(resolve(root, "src/lib/supabase/config.ts"), "utf8");
+  const shimEnsure = readFileSync(resolve(root, "src/lib/supabase/ensure-browser-session.js"), "utf8");
+  assert.match(shimClient, /modulos\/auth\/servicios\/supabase\/client/);
+  assert.match(shimConfig, /modulos\/auth\/servicios\/supabase\/config/);
+  assert.match(shimEnsure, /modulos\/auth\/servicios\/supabase\/ensure-browser-session/);
+
+  const clientSrc = readFileSync(client, "utf8");
+  assert.match(clientSrc, /createBrowserClient/);
+  assert.match(clientSrc, /export function createClient/);
+});
+
 test("OneSignal/push viven en modulos/auth con shims legacy", () => {
   const onesignal = resolve(root, "src/modulos/auth/servicios/onesignal.js");
   const pushEnable = resolve(root, "src/modulos/auth/servicios/push-enable.js");

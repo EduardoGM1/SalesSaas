@@ -1,28 +1,6 @@
-const metaEnv =
-  typeof import.meta !== "undefined"
-    ? (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env
-    : undefined;
-
-const nodeEnv =
-  typeof process !== "undefined" ? process.env : undefined;
-
-export const SUPABASE_URL =
-  metaEnv?.VITE_SUPABASE_URL ??
-  metaEnv?.NEXT_PUBLIC_SUPABASE_URL ??
-  nodeEnv?.NEXT_PUBLIC_SUPABASE_URL ??
-  "";
-
-export const SUPABASE_ANON_KEY =
-  metaEnv?.VITE_SUPABASE_ANON_KEY ??
-  metaEnv?.NEXT_PUBLIC_SUPABASE_ANON_KEY ??
-  nodeEnv?.NEXT_PUBLIC_SUPABASE_ANON_KEY ??
-  "";
-
-/**
- * Indica si Supabase está configurado vía variables de entorno.
- * Mientras sea false, la app sigue funcionando con almacenamiento local
- * (sin autenticación ni sincronización en la nube).
- */
-export function isSupabaseConfigured(): boolean {
-  return Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
-}
+/** Shim legacy → módulo auth */
+export {
+  SUPABASE_ANON_KEY,
+  SUPABASE_URL,
+  isSupabaseConfigured,
+} from "@/modulos/auth/servicios/supabase/config";
