@@ -1,6 +1,6 @@
 # Auth / sesión / PWA — Tramo A (web, parcial)
 
-**Estado:** parcial desplegado `b8c7050`. Rollback: [`ROLLBACK-web-auth-tramo-a.md`](../ROLLBACK-web-auth-tramo-a.md). Pendiente: ProtectedRoute, supabase browser, PWA, OneSignal.
+**Estado:** web núcleo desplegado `f211cc5` (páginas, session-api, ProtectedRoute, PWA register/install). Rollback: [`ROLLBACK-web-auth-tramo-a.md`](../ROLLBACK-web-auth-tramo-a.md). Pendiente en A: OneSignal/push y supabase browser.
 
 ## Alcance de este corte
 
