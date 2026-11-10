@@ -5,7 +5,7 @@
 import { ServiceError } from "../lib/service-error.js";
 import { createServiceSupabaseClient } from "../lib/supabase-server.js";
 import { getRequestWorkspaceContext, requireWorkspacePermission } from "../lib/workspace-scope.js";
-import { canEditProspectRecord, canRegisterProspectSale } from "../lib/prospect-edit-access.js";
+import { canEditProspectRecord, canRegisterProspectSale } from "../modulos/expediente/fachada-node.js";
 import { notifyCloserAssigned } from "../modulos/notificaciones/index.js";
 import { rpcEffectiveWorkspacePermissions } from "../lib/workspace-permission-rpc.js";
 import { readCollaborationId } from "../lib/collaboration-id.js";

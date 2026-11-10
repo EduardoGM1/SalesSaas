@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { canEditProspectRecord, canRegisterProspectSale } from "./prospect-edit-access.js";
+import { canEditProspectRecord, canRegisterProspectSale } from "./acceso-edicion.js";
 
 const ACTOR = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
 const OTHER = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb";

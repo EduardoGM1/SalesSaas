@@ -3,8 +3,8 @@
  * Responsabilidad: validar input HTTP y delegar al service.
  * Sin lógica de negocio.
  */
-import * as prospectsService from "../services/prospects-service.js";
-import { parseLimitOffset } from "../lib/http.js";
+import * as prospectsService from "../servicios/prospectos-servicio.js";
+import { parseLimitOffset } from "../../../lib/http.js";
 
 export async function listarExpedientes(auth, query) {
   const paging = parseLimitOffset(query);

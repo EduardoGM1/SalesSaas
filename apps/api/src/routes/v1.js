@@ -12,7 +12,7 @@ import {
 } from "../modulos/notificaciones/index.js";
 import profileRouter from "./profile.js";
 import syncRouter from "./sync.js";
-import prospectsRouter from "./prospects.js";
+import { prospectsRouter, sharesRouter } from "../modulos/expediente/index.js";
 import chatRouter from "./chat.js";
 import { salesRouter } from "../modulos/ventas/index.js";
 import { calendarRouter } from "../modulos/agenda/index.js";
@@ -25,8 +25,6 @@ import messagesRouter from "./messages.js";
 import cronRouter from "./cron.js";
 import royalHolidayRouter from "./royal-holiday.js";
 import supportRouter from "./support.js";
-import sharesRouter from "./shares.js";
-
 const router = Router();
 
 router.get("/", (_req, res) => {

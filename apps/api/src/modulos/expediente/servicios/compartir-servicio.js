@@ -1,26 +1,26 @@
 import { randomBytes } from "node:crypto";
 import { isUuid } from "@salesapp/shared/data/mappers.js";
 import { bodyToProspectPatch } from "@salesapp/shared/api/validators.js";
-import { ServiceError, assertFound } from "../lib/service-error.js";
-import { createServiceSupabaseClient } from "../lib/supabase-server.js";
-import { notifyProspectShared, notifyProspectSectionChanged, notifyProspectTransferred } from "../modulos/notificaciones/index.js";
-import { MESSAGE_TYPES, sendStructuredMessage } from "./messages-service.js";
+import { ServiceError, assertFound } from "../../../lib/service-error.js";
+import { createServiceSupabaseClient } from "../../../lib/supabase-server.js";
+import { notifyProspectShared, notifyProspectSectionChanged, notifyProspectTransferred } from "../../notificaciones/index.js";
+import { MESSAGE_TYPES, sendStructuredMessage } from "../../../services/messages-service.js";
 
-import { profileDisplayName } from "../lib/profile-display-name.js";
+import { profileDisplayName } from "../../../lib/profile-display-name.js";
 import {
   CROSS_BOUNDARY_MSG,
   assertWorkspaceBoundary,
   userInWorkspace,
   resolveActiveWorkspaceId,
-} from "./workspace-service.js";
+} from "../../../services/workspace-service.js";
 import { generateClientId, generateProspectCode } from "@salesapp/shared/ids.js";
 import {
   ACTIVITY_LIST_COLUMNS,
   PROSPECT_DETAIL_COLUMNS,
   SALE_LIST_COLUMNS,
 } from "@salesapp/shared/data/sync-columns.js";
-import { getRequestWorkspaceId, requireWorkspacePermission } from "../lib/workspace-scope.js";
-import { logger } from "../lib/logger.js";
+import { getRequestWorkspaceId, requireWorkspacePermission } from "../../../lib/workspace-scope.js";
+import { logger } from "../../../lib/logger.js";
 
 async function loadProfiles(supabase, ids) {
   const unique = [...new Set(ids.filter(Boolean))];

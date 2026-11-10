@@ -2,7 +2,7 @@
  * HTTP de red de contactos. El rate limit de search está en la ruta.
  */
 import * as networkService from "../services/network-service.js";
-import * as sharingService from "../services/sharing-service.js";
+import * as sharingService from "../modulos/expediente/fachada-node.js";
 
 const SEARCH_LIMIT_MAX = 50;
 

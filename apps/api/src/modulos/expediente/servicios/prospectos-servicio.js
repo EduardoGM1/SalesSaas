@@ -1,15 +1,15 @@
 import { isUuid } from "@salesapp/shared/data/mappers.js";
 import { PROSPECT_LIST_COLUMNS } from "@salesapp/shared/data/sync-columns.js";
 import { bodyToProspectInsert, bodyToProspectPatch } from "@salesapp/shared/api/validators.js";
-import { ServiceError, assertFound } from "../lib/service-error.js";
+import { ServiceError, assertFound } from "../../../lib/service-error.js";
 import {
   getRequestWorkspaceContext,
   requireWorkspacePermission,
   scopeByWorkspace,
-} from "../lib/workspace-scope.js";
-import { permissionDeniedError, rpcEffectiveWorkspacePermissions } from "../lib/workspace-permission-rpc.js";
-import { canEditProspectRecord } from "../lib/prospect-edit-access.js";
-import { logger } from "../lib/logger.js";
+} from "../../../lib/workspace-scope.js";
+import { permissionDeniedError, rpcEffectiveWorkspacePermissions } from "../../../lib/workspace-permission-rpc.js";
+import { canEditProspectRecord } from "../dominio/acceso-edicion.js";
+import { logger } from "../../../lib/logger.js";
 
 function requiredProspectViewPermission(teamScope) {
   return teamScope ? "expedientes:ver_equipo" : "expedientes:ver_propios";
@@ -71,7 +71,7 @@ async function ensureProspectSalaSideEffects(supabase, userId, workspaceId, pros
     .maybeSingle();
   if (ws?.tipo !== "sala_de_venta") return;
 
-  const { createServiceSupabaseClient } = await import("../lib/supabase-server.js");
+  const { createServiceSupabaseClient } = await import("../../../lib/supabase-server.js");
   const admin = createServiceSupabaseClient();
   if (!admin) return;
 

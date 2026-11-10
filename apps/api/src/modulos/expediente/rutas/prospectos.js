@@ -1,8 +1,8 @@
 import { Router } from "express";
-import { rutaAutenticada } from "./route-utils.js";
-import * as prospectsController from "../controllers/prospects-controller.js";
-import * as workflowController from "../controllers/workflow-controller.js";
-import * as chatController from "../controllers/chat-controller.js";
+import { rutaAutenticada } from "../../../routes/route-utils.js";
+import * as prospectsController from "../controladores/prospectos-controlador.js";
+import * as workflowController from "../../../controllers/workflow-controller.js";
+import * as chatController from "../../../controllers/chat-controller.js";
 
 const router = Router();
 

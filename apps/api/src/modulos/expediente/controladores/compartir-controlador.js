@@ -1,8 +1,8 @@
 /**
  * HTTP de shares / invitaciones / transferencias de expedientes.
  */
-import * as sharingService from "../services/sharing-service.js";
-import * as workspaceOps from "../services/workspace-ops-service.js";
+import * as sharingService from "../servicios/compartir-servicio.js";
+import * as workspaceOps from "../../../services/workspace-ops-service.js";
 
 export async function listarRecibidos(auth) {
   return sharingService.listSharedWithMe(auth.supabase, auth.userId);

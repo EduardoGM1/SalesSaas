@@ -1,6 +1,6 @@
 import { Router } from "express";
-import { requireAuth, rutaAutenticada, parseJsonBody, runService } from "./route-utils.js";
-import * as sharesController from "../controllers/shares-controller.js";
+import { requireAuth, rutaAutenticada, parseJsonBody, runService } from "../../../routes/route-utils.js";
+import * as sharesController from "../controladores/compartir-controlador.js";
 
 const router = Router();
 
