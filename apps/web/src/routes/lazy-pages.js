@@ -21,19 +21,19 @@ export const WorksheetPage = namedLazy(() => import("@/components/calculators/wo
 export const MoneyBoxPage = namedLazy(() => import("@/modulos/money-box"), "MoneyBoxPage");
 export const AnalysisPage = namedLazy(() => import("@/components/calculators/analysis-page.jsx"), "AnalysisPage");
 
-export const RhBottomLinesPage = namedLazy(() => import("@/pages/rh/RhBottomLinesPage.jsx"), "RhBottomLinesPage");
-export const RhComisionesPage = namedLazy(() => import("@/pages/rh/RhComisionesPage.jsx"), "RhComisionesPage");
-export const RhCreditosPage = namedLazy(() => import("@/pages/rh/RhCreditosPage.jsx"), "RhCreditosPage");
-export const RhCalendarioComisionesPage = namedLazy(() => import("@/pages/rh/RhCalendarioComisionesPage.jsx"), "RhCalendarioComisionesPage");
-export const RhDiasDescansoPage = namedLazy(() => import("@/pages/rh/RhDiasDescansoPage.jsx"), "RhDiasDescansoPage");
-export const RhOpsHubPage = namedLazy(() => import("@/pages/rh/RhOpsHubPage.jsx"), "RhOpsHubPage");
-export const RhPremanifiestoPage = namedLazy(() => import("@/pages/rh/RhPremanifiestoPage.jsx"), "RhPremanifiestoPage");
-export const RhLineaPage = namedLazy(() => import("@/pages/rh/RhOpsModulesPage.jsx"), "RhLineaPage");
-export const RhResumenOpsPage = namedLazy(() => import("@/pages/rh/RhOpsModulesPage.jsx"), "RhResumenOpsPage");
-export const RhEstadisticosPage = namedLazy(() => import("@/pages/rh/RhOpsModulesPage.jsx"), "RhEstadisticosPage");
-export const RhOkrPage = namedLazy(() => import("@/pages/rh/RhOpsModulesPage.jsx"), "RhOkrPage");
-export const RhCalendarioDescansosPage = namedLazy(() => import("@/pages/rh/RhOpsModulesPage.jsx"), "RhCalendarioDescansosPage");
-export const RhPropinasPage = namedLazy(() => import("@/pages/rh/RhOpsModulesPage.jsx"), "RhPropinasPage");
+export const RhBottomLinesPage = namedLazy(() => import("@/modulos/royal-holiday/paginas.js"), "RhBottomLinesPage");
+export const RhComisionesPage = namedLazy(() => import("@/modulos/royal-holiday/paginas.js"), "RhComisionesPage");
+export const RhCreditosPage = namedLazy(() => import("@/modulos/royal-holiday/paginas.js"), "RhCreditosPage");
+export const RhCalendarioComisionesPage = namedLazy(() => import("@/modulos/royal-holiday/paginas.js"), "RhCalendarioComisionesPage");
+export const RhDiasDescansoPage = namedLazy(() => import("@/modulos/royal-holiday/paginas.js"), "RhDiasDescansoPage");
+export const RhOpsHubPage = namedLazy(() => import("@/modulos/royal-holiday/paginas.js"), "RhOpsHubPage");
+export const RhPremanifiestoPage = namedLazy(() => import("@/modulos/royal-holiday/paginas.js"), "RhPremanifiestoPage");
+export const RhLineaPage = namedLazy(() => import("@/modulos/royal-holiday/paginas.js"), "RhLineaPage");
+export const RhResumenOpsPage = namedLazy(() => import("@/modulos/royal-holiday/paginas.js"), "RhResumenOpsPage");
+export const RhEstadisticosPage = namedLazy(() => import("@/modulos/royal-holiday/paginas.js"), "RhEstadisticosPage");
+export const RhOkrPage = namedLazy(() => import("@/modulos/royal-holiday/paginas.js"), "RhOkrPage");
+export const RhCalendarioDescansosPage = namedLazy(() => import("@/modulos/royal-holiday/paginas.js"), "RhCalendarioDescansosPage");
+export const RhPropinasPage = namedLazy(() => import("@/modulos/royal-holiday/paginas.js"), "RhPropinasPage");
 
 export const AdminOverviewPage = namedLazy(() => import("@/pages/admin/AdminOverviewPage.jsx"), "AdminOverviewPage");
 export const AdminUsersPage = namedLazy(() => import("@/pages/admin/AdminUsersPage.jsx"), "AdminUsersPage");
