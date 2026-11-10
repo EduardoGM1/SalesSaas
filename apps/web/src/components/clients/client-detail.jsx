@@ -42,7 +42,7 @@ import { useDbStore } from "@/stores/db-store";
 import { useAppStore } from "@/stores/app-store";
 import { shallow } from "zustand/shallow";
 import { useClientActions } from "@/hooks/use-client-actions.js";
-import { useSaleActions } from "@/hooks/use-sale-actions.js";
+import { useSaleActions } from "@/modulos/ventas";
 import { useCalendarActions } from "@/modulos/agenda";
 import { toast } from "@/lib/toast";
 import { selectOnFocus } from "@/lib/focus-select.js";

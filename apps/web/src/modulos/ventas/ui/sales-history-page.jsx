@@ -1,13 +1,13 @@
 import { useMemo, useState } from "react";
 import { Link, Navigate, useSearchParams } from "react-router-dom";
-import { SaleDetailModal } from "@/components/sales/sale-detail-modal.jsx";
+import { SaleDetailModal } from "./sale-detail-modal.jsx";
 import { useUserFeatures } from "@/hooks/use-user-features.js";
 import { Topbar } from "@/components/layout/topbar";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { useMoney } from "@/hooks/use-money.js";
 import { longDate } from "@/lib/format/dates";
 import { statusLabel } from "@/lib/format/status";
-import { collectAllSales, filterSales } from "@/modulos/ventas";
+import { collectAllSales, filterSales } from "../servicios/recopilar-ventas.ts";
 import { useDbStore } from "@/stores/db-store";
 import { shallow } from "zustand/shallow";
 

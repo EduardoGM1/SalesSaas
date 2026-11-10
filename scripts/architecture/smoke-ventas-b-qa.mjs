@@ -1,6 +1,6 @@
 /**
  * Smoke QA del Tramo B de ventas (lógica pura, sin cambiar la escritura).
- * Alta desde el expediente, historial, detalle, metas, cancelación.
+ * Alta desde el expediente, historial, detalle, filtro, edición, metas, cancelación.
  * Compara filas de sales y calendar_entries con el contrato de main.
  *
  * PLAYWRIGHT_BASE_URL=http://localhost:5173 node scripts/architecture/smoke-ventas-b-qa.mjs
@@ -117,11 +117,30 @@ async function main() {
       step("detalle de venta", false, "historial no mostró la venta");
     }
 
+    if (onHistory && historyText.includes(FOLIO)) {
+      await page.locator("select[name='status']").selectOption("venta");
+      await page.locator("form.admin-filters-form button[type='submit']").click();
+      await page.waitForTimeout(600);
+      const filtered = await page.locator("body").innerText();
+      step("filtro de historial por estado venta", page.url().includes("status=venta") && filtered.includes(FOLIO));
+    } else {
+      step("filtro de historial por estado venta", false, "historial no mostró la venta");
+    }
+
+    const forcedMonth = /^\d{4}-\d{2}-\d{2}$/.test(forcedDate) ? forcedDate.slice(0, 7) : "";
+    const now = new Date();
+    const thisMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+    const countsThisMonth = !forcedMonth || forcedMonth === thisMonth;
+
     await page.goto(`${BASE}/goals`, { waitUntil: "domcontentloaded" });
     await page.waitForTimeout(800);
     const goalsBefore = await page.locator("body").innerText();
     const counted = /1[,.]?500|1500/.test(goalsBefore);
-    step("metas cuenta la venta igual que el contrato (volumen 1500)", counted);
+    step(
+      "metas cuenta la venta igual que el contrato (volumen 1500)",
+      countsThisMonth ? counted : true,
+      countsThisMonth ? "" : "venta de otro mes: el tablero del mes actual no la muestra",
+    );
 
     await page.goto(`${BASE}/`, { waitUntil: "domcontentloaded" });
     await page.locator(".cal-grid").waitFor({ state: "visible", timeout: 20000 });
@@ -129,7 +148,11 @@ async function main() {
       has: page.locator(".cal-dn").filter({ hasText: new RegExp(`^${day}$`) }),
     }).first().click();
     const agendaText = await page.locator(".day-panel").innerText();
-    step("agenda muestra la venta del día", agendaText.includes(FOLIO) || /venta/i.test(agendaText));
+    step(
+      "agenda muestra la venta del día",
+      countsThisMonth ? (agendaText.includes(FOLIO) || /venta/i.test(agendaText)) : true,
+      countsThisMonth ? "" : "venta de otro mes: el día de hoy no la muestra",
+    );
 
     const before = await pollRows();
     report.sales = before.sales;
@@ -153,6 +176,25 @@ async function main() {
     await page.locator(".exp-folder-tab-title", { hasText: /^Venta$|^Sale$/ }).click();
     const openSale = page.getByRole("button", { name: /Abrir venta|Open sale/i });
     if (await openSale.count()) {
+      await openSale.first().click();
+      await page.locator("#m-client-record").waitFor({ state: "visible", timeout: 10000 });
+      const dateWhileEditing = await page.locator("#m-client-record input[type='date']").first().inputValue();
+      await page.locator("#m-client-record textarea").last().fill(`editada ${FOLIO}`);
+      await page.getByRole("button", { name: /Guardar|Save/i }).last().click();
+      await page.waitForTimeout(1200);
+      const edited = await pollRows();
+      const editedSale = edited.sales.find((r) => r.contract === FOLIO);
+      const editedCal = edited.calendar.find((r) => r.type === "venta");
+      step(
+        "editar venta en el modal conserva volumen y fecha",
+        Boolean(editedSale) && Number(editedSale.vol) === 1500 && editedSale.sale_date === dateWhileEditing && editedSale.status === "venta",
+        JSON.stringify(editedSale || null),
+      );
+      step(
+        "agenda sigue en el mes de la venta tras editar",
+        Boolean(editedCal) && editedCal.entry_date === editedSale?.sale_date,
+        `${editedCal?.entry_date || "sin fila"} vs ${editedSale?.sale_date || "sin venta"}`,
+      );
       await openSale.first().click();
       await page.locator("#m-client-record").waitFor({ state: "visible", timeout: 10000 });
     const dateBefore = await page.locator("#m-client-record input[type='date']").first().inputValue();

@@ -17,7 +17,7 @@ import { useAppStore } from "@/stores/app-store";
 import { useDbStore } from "@/stores/db-store";
 import { shallow } from "zustand/shallow";
 import { EntryDialog } from "./entry-dialog.jsx";
-import { SaleDetailModal } from "@/components/sales/sale-detail-modal.jsx";
+import { SaleDetailModal } from "@/modulos/ventas";
 import { useUserFeatures } from "@/hooks/use-user-features.js";
 import { resolveEntryClientId } from "../dominio/resolve-entry-client.ts";
 

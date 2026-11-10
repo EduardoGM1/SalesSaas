@@ -8,7 +8,7 @@ import { statusLabel } from "@/lib/format/status";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { useMoney } from "@/hooks/use-money.js";
 import { useDbStore } from "@/stores/db-store";
-import { findSaleById } from "@/modulos/ventas";
+import { findSaleById } from "../servicios/recopilar-ventas.ts";
 import { shallow } from "zustand/shallow";
 
 const SURVEY_ROW_KEYS = [

@@ -283,9 +283,9 @@ Si el host de Supabase de `.env.local` no resuelve, los dos procesos se arrancan
 | 6 | money-box | `index.ts` | — | `0e475e8`, `a81578c` | [`migraciones/money-box.md`](./arquitectura/migraciones/money-box.md) |
 | 7 | notificaciones (B dominio; A web UI/servicios; C API HTTP) | `index.ts` + `fachada-node.js` + `fachada-toast.js` | `index.js` + `fachada-node.js` | B `503928f`; A `61b223f` (web); C tip `c3d03b1` (API desplegada) | [`migraciones/notificaciones.md`](./arquitectura/migraciones/notificaciones.md), [`migraciones/notificaciones-inventario.md`](./arquitectura/migraciones/notificaciones-inventario.md) |
 | 8 | agenda (migrada completa: B+A+C) | `index.ts` + `fachada-node.js` | `index.js` + `fachada-node.js` | B+A+C en `main` (ver bitácora) | [`migraciones/agenda-inventario.md`](./arquitectura/migraciones/agenda-inventario.md) |
-| 9 | ventas (B dominio; A y C sin empezar) | `index.ts` + `fachada-node.js` | — | Tramo B en este corte | [`migraciones/ventas-inventario.md`](./arquitectura/migraciones/ventas-inventario.md) |
+| 9 | ventas (B dominio y A UI; C sin empezar) | `index.ts` + `fachada-node.js` | — | Tramo A en este corte | [`migraciones/ventas-inventario.md`](./arquitectura/migraciones/ventas-inventario.md) |
 
-**Agenda, módulo 8, migrada completa** (dominio, UI y API MVC en `modulos/agenda`). Sigue fuera, porque es compartido con sync: `sync.js`, outbox y los métodos de calendario de `db-store`. En notificaciones siguen fuera OneSignal, optIn, el service worker y los shims de toast. En la API siguen fuera el resto de crons ([`apps/api/src/routes/cron.js`](../apps/api/src/routes/cron.js)) y [`apps/api/src/lib/cron-auth.js`](../apps/api/src/lib/cron-auth.js). Pendientes, por orden ([`arquitectura/decisiones.md`](./arquitectura/decisiones.md) §5): **ventas** (Tramo B de dominio en [`migraciones/ventas-inventario.md`](./arquitectura/migraciones/ventas-inventario.md); A y C sin empezar), expediente/sharing, Royal Holiday, sync/storage/outbox, admin/RBAC y auth/session/PWA.
+**Agenda, módulo 8, migrada completa** (dominio, UI y API MVC en `modulos/agenda`). Sigue fuera, porque es compartido con sync: `sync.js`, outbox y los métodos de calendario de `db-store`. En notificaciones siguen fuera OneSignal, optIn, el service worker y los shims de toast. En la API siguen fuera el resto de crons ([`apps/api/src/routes/cron.js`](../apps/api/src/routes/cron.js)) y [`apps/api/src/lib/cron-auth.js`](../apps/api/src/lib/cron-auth.js). Pendientes, por orden ([`arquitectura/decisiones.md`](./arquitectura/decisiones.md) §5): **ventas** (Tramos B y A en [`migraciones/ventas-inventario.md`](./arquitectura/migraciones/ventas-inventario.md); C sin empezar), expediente/sharing, Royal Holiday, sync/storage/outbox, admin/RBAC y auth/session/PWA.
 
 ---
 
@@ -588,7 +588,7 @@ flowchart TD
 
 | Comando | Qué cubre |
 |---------|-----------|
-| `npm run test:web` | Unitarios de web (`node --test`): settings-scope, expediente, bloqueo de campos, dominio de moneda, metas, vacaciones, survey, notificaciones, agenda (descansos, resolve-entry, acciones) y ventas (golden de contabilidad, formulario y fila de agenda) |
+| `npm run test:web` | Unitarios de web (`node --test`): settings-scope, expediente, bloqueo de campos, dominio de moneda, metas, vacaciones, survey, notificaciones, agenda (descansos, resolve-entry, acciones) y ventas (golden de contabilidad, formulario, fila de agenda y acción de guardar) |
 | `npm run test:security` | Unitarios de la API (alias de `npm run test:security -w @salesapp/api`): seguridad de la app, rate limit, workspace-scope, permisos de edición, contrato MVC, cachés, servicio de preguntas del Survey y **reconcile de sync** (incluye los guards de la regresión de sync) |
 | `npm run test:geo-fx`, `npm run test:moneda`, `npm run test:metas`, `npm run test:vacaciones`, `npm run test:survey`, `npm run test:money-box`, `npm run test:rh-regalos` | Suites por módulo |
 | `npm run test:e2e` | Playwright completo (levanta `dev:api` y `dev:web` salvo con `PLAYWRIGHT_SKIP_SERVERS`) |
@@ -693,6 +693,7 @@ Construido con `git log main` y `docs/arquitectura/`. Las fechas son las del com
 | 10-20 | docs inventario | Módulo 9 **ventas**: inventario y plan B → A → C; sin moves ni deploy | Separar cálculo de sync/`processDate` sin tocar contratos | Solo docs; sin deploy | `git revert` del commit de docs |
 | 10-20 | `b48c729` | Módulo 9 **ventas, Tramo B**: dominio y servicios en `modulos/ventas`; sin API, sync ni `db-store` | Contener el cálculo sin tocar el blob | CI verde; **web** `b48c729`. El salto de mes de la agenda sigue (bug previo, no corregido en este deploy). Ver deuda «Fecha de agenda de una venta» | [`ROLLBACK-web-ventas-tramo-b.md`](./arquitectura/ROLLBACK-web-ventas-tramo-b.md) |
 | 10-20 | `3acb234` | Fix de `findCalEntries`: la clave de mes ya es calendario y no se le suma otro mes | El paquete de la venta escribía `entry_date` un mes adelante | CI verde; **web** `3acb234`. Conteo de filas desplazadas 0, sin reparación. Venta de octubre y de diciembre quedan en su mes | [`ROLLBACK-web-findcalentries.md`](./arquitectura/ROLLBACK-web-findcalentries.md) |
+| 11-09 | rama `arquitectura/ventas-tramo-a` | Módulo 9 **ventas, Tramo A**: historial, detalle, campos, hook y acción en `modulos/ventas` | Contener la UI sin tocar sync, `db-store` ni el mes de la agenda | En rama; el deploy web se anota al cerrar CI | `git revert` del tramo |
 | 10-18 | `1f86f78`, `4fe9465`, `3f75b3a`, `72a3ca4` | **Tramo 1 de `PUT /sync`** + smoke de roundtrip, guard de `sync:shared`, baseline 156, plan de deploy con backup lógico y criterios de rollback | Corregir la regresión de sync | **Desplegado `72a3ca4` (API) el 10-18**: CI verde, (a)–(e) en verde en producción, 0 errores 5xx | [`ROLLBACK-api-sync-tramo1.md`](./arquitectura/ROLLBACK-api-sync-tramo1.md) |
 
 ### Regresión de `PUT /sync`
@@ -733,7 +734,7 @@ Construido con `git log main` y `docs/arquitectura/`. Las fechas son las del com
 | `verificar:arquitectura:completo` | No corrió en el Tramo C (sin stack local). Cómo levantarlo: sección 4.4 |
 | Volumen de venta y moneda | `vol` se guarda como el número tecleado, sin pasar por el módulo de moneda. La pantalla lo trata como USD al aplicar la tasa (`use-money` y `lib/format/money`). Con usuarios que capturan en MXN el dato es ambiguo: no se sabe si el número ya está en pesos o en dólares. Pregunta de producto. Sin corregir en el Tramo B de ventas |
 | Fecha de agenda de una venta | Corregido en `3acb234` y desplegado en el web. `findCalEntries` ya no suma un mes de más. El conteo previo al deploy seguía en 0, así que no se repararon filas. Historia del bug en [`arquitectura/backlog-seguridad.md`](./arquitectura/backlog-seguridad.md) §6 |
-| Módulos pendientes | Ventas: Tramo B de dominio hecho. Siguen A (UI) y C (API). Luego expediente/sharing, Royal Holiday, sync/storage/outbox, admin/RBAC, auth/session/PWA. Detalle en [`migraciones/ventas-inventario.md`](./arquitectura/migraciones/ventas-inventario.md) |
+| Módulos pendientes | Ventas: Tramos B y A hechos. Sigue C (API). Luego expediente/sharing, Royal Holiday, sync/storage/outbox, admin/RBAC, auth/session/PWA. Detalle en [`migraciones/ventas-inventario.md`](./arquitectura/migraciones/ventas-inventario.md) |
 | Survey 5b.7 | Ids de campos colaborativos y realtime dentro del Survey |
 | Bloqueo de campos en varias pestañas | Pendiente |
 | Alcance de los canales en tiempo real | Revisión de diseño pendiente de decisión (detalle en el apéndice privado) |

@@ -1,6 +1,6 @@
 
 import { useRef, useState } from "react";
-import { SaleDetailModal } from "@/components/sales/sale-detail-modal.jsx";
+import { SaleDetailModal } from "@/modulos/ventas";
 import { useUserFeatures } from "@/hooks/use-user-features.js";
 import { useMoney } from "@/hooks/use-money.js";
 import { useI18n } from "@/hooks/use-i18n.js";

@@ -1,6 +1,6 @@
 # Inventario — ventas (módulo 9)
 
-**Tramo B (dominio) movido.** Tramos A y C sin empezar. Sin deploy en este documento hasta que los gates cierren. Sin cambios de BD.
+**Estado A.** Tramo B (dominio) y Tramo A (UI, hook y acciones) están en `modulos/ventas`. Tramo C (API) sin empezar. `SalesModal` sigue en `components/ui`. El expediente solo cambia el import de `SaleFields`. Sin cambios de BD.
 
 **Contratos congelados:** ver §2. No renombrar. **shared/sync intocable** en los tramos B/A/C (guard del mismo corte que el de agenda, ver §4).
 
@@ -52,12 +52,13 @@ Montos: `vol` se guarda como el número tecleado (`parseMoney`), sin conversión
 
 | Archivo | Líneas | Papel |
 |---------|-------:|-------|
-| [`apps/web/src/pages/SalesHistoryPage.jsx`](../../../apps/web/src/pages/SalesHistoryPage.jsx) | 174 | Ruta `/sales`. Lista local (`collectAllSales` + `filterSales`), feature `sales:history`, abre el detalle |
-| [`apps/web/src/components/sales/sale-detail-modal.jsx`](../../../apps/web/src/components/sales/sale-detail-modal.jsx) | 144 | Detalle de solo lectura. Lee snapshot y pinta survey, vacaciones y worksheet con la moneda de pantalla |
-| [`apps/web/src/hooks/use-sale-actions.js`](../../../apps/web/src/hooks/use-sale-actions.js) | 8 | `saveSale` → `saveClientSale` |
-| [`apps/web/src/actions/sales.js`](../../../apps/web/src/actions/sales.js) | 48 | Valida, llama `registerClientSale` / `updateClientSale`, y si queda `pendiente` con follow programa `scheduleReminderPush` (`entryKey` `sale-proc-…`) |
+| [`apps/web/src/modulos/ventas/ui/sales-history-page.jsx`](../../../apps/web/src/modulos/ventas/ui/sales-history-page.jsx) | 174 | Ruta `/sales`. Lista local (`collectAllSales` + `filterSales`), feature `sales:history`, abre el detalle |
+| [`apps/web/src/modulos/ventas/ui/sale-detail-modal.jsx`](../../../apps/web/src/modulos/ventas/ui/sale-detail-modal.jsx) | 144 | Detalle de solo lectura. Lee snapshot y pinta survey, vacaciones y worksheet con la moneda de pantalla |
+| [`apps/web/src/modulos/ventas/ui/sale-fields.jsx`](../../../apps/web/src/modulos/ventas/ui/sale-fields.jsx) | — | Campos de la venta, extraídos del expediente. El modal de expediente solo importa `SaleFields` |
+| [`apps/web/src/modulos/ventas/hooks/use-sale-actions.js`](../../../apps/web/src/modulos/ventas/hooks/use-sale-actions.js) | 8 | `saveSale` → `saveClientSale` |
+| [`apps/web/src/modulos/ventas/servicios/acciones-venta.js`](../../../apps/web/src/modulos/ventas/servicios/acciones-venta.js) | 48 | Valida, llama `registerClientSale` / `updateClientSale`, y si queda `pendiente` con follow programa `scheduleReminderPush` (`entryKey` `sale-proc-…`) |
 | [`apps/web/src/components/ui/sales-modal.jsx`](../../../apps/web/src/components/ui/sales-modal.jsx) | 34 | **Shell genérico** de diálogo. Lo usan expediente, survey, worksheet, equipo, admin, red, ajustes de prima. No es dominio de ventas |
-| [`apps/web/src/components/clients/client-record-modal.jsx`](../../../apps/web/src/components/clients/client-record-modal.jsx) | 258 | Modal de expediente. Dentro está `SaleFields` (fecha, volumen, tours, folio, estado, `processDate`) |
+| [`apps/web/src/components/clients/client-record-modal.jsx`](../../../apps/web/src/components/clients/client-record-modal.jsx) | — | Modal de expediente. No se movió: importa `SaleFields` desde la fachada de ventas |
 
 Ruta: [`apps/web/src/routes/lazy-pages.js`](../../../apps/web/src/routes/lazy-pages.js) y [`apps/web/src/routes/index.jsx`](../../../apps/web/src/routes/index.jsx) (`path="sales"`). Nav: [`apps/web/src/lib/nav-config.js`](../../../apps/web/src/lib/nav-config.js) con feature `sales:history`.
 
@@ -213,12 +214,12 @@ Orden: **B puro → A UI → C API**. Cada uno con verificación sin dispositivo
 - Guard `check-ventas-shared-guard.mjs` (clon del de agenda, ramas `arquitectura/ventas-*`, mismos paths prohibidos) enganchado a `verificar:arquitectura:checks`.
 - Verificar: `npm run test:web`, `npm run verificar:arquitectura:checks`. Con stack local (sección 4.4 de [`PROYECTO.md`](../../PROYECTO.md)): `npm run verificar:arquitectura:completo`. E2E del SHA en CI, 0 fallos. No hay smoke de filas en B: no se escribe `sales`.
 
-### Tramo A — UI
+### Tramo A — UI (hecho)
 
-- Mover historial, detalle, `use-sale-actions` y `actions/sales.js` a `modulos/ventas/{ui,hooks,servicios}`.
+- Historial, detalle, `use-sale-actions` y la acción de guardar viven en `modulos/ventas/{ui,hooks,servicios}`.
 - `SalesModal` se queda en `components/ui` (decisión §5).
-- `SaleFields` sale de `client-record-modal.jsx` solo si se cierra la decisión §5. El archivo de expediente no se mueve entero.
-- La ruta `/sales` importa la fachada. Recordatorios siguen en `@/modulos/notificaciones`.
+- `SaleFields` salió de `client-record-modal.jsx`. El archivo de expediente no se movió.
+- La ruta `/sales` carga la página del módulo. Recordatorios siguen en `@/modulos/notificaciones`.
 - Verificar sin dispositivo: los golden de B siguen verdes; E2E de egress sin cambio de aserciones; smoke QA efímera (rol que pueda registrar) que da de alta una venta `venta` y una `pendiente` con `processDate`, compara las filas de `sales` (y la entrada de agenda que el store ya crea) contra el mismo flujo en `main`, y purga a 0. Contraseña aleatoria fuera del repo.
 
 ### Tramo C — API MVC
