@@ -2,4 +2,4 @@
 export {
   isOutboundSyncSuspended,
   runWithoutOutboundSync,
-} from "@/modulos/sync/fachada-node.js";
+} from "@/modulos/sync/servicios/sync-suspend.js";

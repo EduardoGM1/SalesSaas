@@ -4,4 +4,4 @@ export {
   DASHBOARD_TABLES,
   TABLE_REST_PATHS,
   restPathsNotForTable,
-} from "@/modulos/sync/fachada-table.js";
+} from "@/modulos/sync/servicios/sync-table-refresh.js";

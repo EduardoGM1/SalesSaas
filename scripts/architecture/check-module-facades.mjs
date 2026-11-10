@@ -70,6 +70,19 @@ function resolveModuleImport(spec, fromRel) {
   return null;
 }
 
+/** Shims legacy de sync: pueden apuntar a servicios/* para no ciclar el barrel. */
+const SYNC_SHIM_ALLOW_SERVICIOS = new Set([
+  "apps/web/src/lib/settings-sync.js",
+  "apps/web/src/lib/sync-api.js",
+  "apps/web/src/lib/sync-merge.js",
+  "apps/web/src/lib/sync-outbound.js",
+  "apps/web/src/lib/sync-outbox.js",
+  "apps/web/src/lib/sync-pending-deletes.js",
+  "apps/web/src/lib/sync-refresh.js",
+  "apps/web/src/lib/sync-suspend.js",
+  "apps/web/src/lib/sync-table-refresh.js",
+]);
+
 function isFacadeRest(rest) {
   if (!rest || rest === ".") return true;
   if (/^index(?:\.(js|ts|mjs|cjs|jsx|tsx))?$/.test(rest)) return true;
@@ -108,6 +121,13 @@ function main() {
         // Mismo módulo: OK
         if (self && self.app === target.app && self.modulo === target.modulo) continue;
         if (isFacadeRest(target.rest)) continue;
+        if (
+          SYNC_SHIM_ALLOW_SERVICIOS.has(rel)
+          && target.modulo === "sync"
+          && String(target.rest || "").startsWith("servicios/")
+        ) {
+          continue;
+        }
         violations.push({ file: rel, spec: m[1], modulo: `${target.app}/modulos/${target.modulo}` });
       }
     }

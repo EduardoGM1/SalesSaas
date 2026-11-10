@@ -40,7 +40,7 @@ test.describe("Egress — Realtime (estático)", () => {
 
   test("un cambio de tabla no referencia las otras 5 rutas REST", () => {
     const src = fs.readFileSync(
-      path.join(root, "apps/web/src/lib/sync-table-refresh.js"),
+      path.join(root, "apps/web/src/modulos/sync/servicios/sync-table-refresh.js"),
       "utf8",
     );
     expect(src).toMatch(/export const TABLE_REST_PATHS/);

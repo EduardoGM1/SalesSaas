@@ -2,4 +2,4 @@
 export {
   localNeedsOutboundPush,
   mergeSyncDatabases,
-} from "@/modulos/sync/fachada-node.js";
+} from "@/modulos/sync/servicios/sync-merge.js";

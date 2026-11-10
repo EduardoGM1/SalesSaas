@@ -6,4 +6,4 @@ export {
   mergePendingDeletes,
   queuePendingDelete,
   queueToolPendingDelete,
-} from "@/modulos/sync/fachada-node.js";
+} from "@/modulos/sync/servicios/sync-pending-deletes.js";

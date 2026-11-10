@@ -12,7 +12,7 @@ const root = process.cwd();
 test.describe("Egress — dispositivo con local vacío (estático)", () => {
   test("init omite recovery/GET extra si el blob local estaba vacío", () => {
     const provider = fs.readFileSync(
-      path.join(root, "apps/web/src/components/providers/sync-provider.jsx"),
+      path.join(root, "apps/web/src/modulos/sync/ui/sync-provider.jsx"),
       "utf8",
     );
     const recover = fs.readFileSync(

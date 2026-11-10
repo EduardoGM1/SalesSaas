@@ -5,4 +5,4 @@ export {
   isOutboxDirty,
   markOutboxDirty,
   peekOutboxGeneration,
-} from "@/modulos/sync/fachada-node.js";
+} from "@/modulos/sync/servicios/sync-outbox.js";

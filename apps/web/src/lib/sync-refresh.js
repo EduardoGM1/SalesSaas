@@ -3,4 +3,4 @@ export {
   registerSyncRefresh,
   unregisterSyncRefresh,
   requestSyncRefresh,
-} from "@/modulos/sync/fachada-node.js";
+} from "@/modulos/sync/servicios/sync-refresh.js";
