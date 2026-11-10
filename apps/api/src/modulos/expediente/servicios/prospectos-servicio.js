@@ -29,10 +29,10 @@ export async function listProspects(supabase, userId, { limit, offset, status })
       .from("prospect_workflows")
       .select("prospect_id")
       .eq("workspace_id", ctx.workspaceId)
-      .eq("cerrador_id", userId)
+      .or(`cerrador_id.eq.${userId},representante_id.eq.${userId}`)
       .neq("estado", "cancelado")
     : { data: [] };
-  const assignedIds = (assignments ?? []).map((row) => row.prospect_id);
+  const assignedIds = [...new Set((assignments ?? []).map((row) => row.prospect_id).filter(Boolean))];
   let q = supabase
     .from("prospects")
     .select(PROSPECT_LIST_COLUMNS, { count: "exact" })
