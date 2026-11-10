@@ -1,6 +1,6 @@
 # Admin / RBAC — inventario
 
-**Estado:** inventario cerrado; Tramo A (UI) en `admin-a.md`. Paths HTTP de `/api/v1/admin/*` y permisos RPC no se renombran.
+**Estado A+C.** UI y API viven en `modulos/admin`. Paths HTTP de `/api/v1/admin/*` y permisos RPC no se renombran.
 
 ## Qué entra
 

@@ -1,6 +1,6 @@
 # Admin / RBAC — Tramo C (API)
 
-**Estado:** en curso (rama `arquitectura/admin-tramo-c`).
+**Estado:** hecho. API desplegada `49cf9a6`. Rollback: [`ROLLBACK-api-admin-tramo-c.md`](../ROLLBACK-api-admin-tramo-c.md).
 
 ## Alcance
 
