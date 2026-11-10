@@ -1,6 +1,6 @@
 # Auth / sesión / PWA — Tramo C (API)
 
-**Estado:** hecho en código (rama `arquitectura/auth-tramo-c`).
+**Estado:** hecho. API desplegada `92776e1`. Rollback: [`ROLLBACK-api-auth-tramo-c.md`](../ROLLBACK-api-auth-tramo-c.md).
 
 ## Alcance
 
