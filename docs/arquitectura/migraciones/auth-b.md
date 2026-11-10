@@ -1,6 +1,6 @@
 # Auth / sesión / PWA — Tramo B (dominio ligero)
 
-**Estado:** en curso.
+**Estado:** hecho en código `612d6d6` (API).
 
 ## Alcance
 
