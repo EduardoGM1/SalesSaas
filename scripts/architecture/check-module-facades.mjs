@@ -83,15 +83,38 @@ const SYNC_SHIM_ALLOW_SERVICIOS = new Set([
   "apps/web/src/lib/sync-table-refresh.js",
 ]);
 
-/** Shims legacy de admin: mismos servicios/* sin ciclar fachada-node. */
-const ADMIN_SHIM_ALLOW_SERVICIOS = new Set([
+/** Shims legacy de admin (web + API): internos del módulo sin ciclar barrels. */
+const ADMIN_SHIM_ALLOW_INTERNALS = new Set([
   "apps/web/src/lib/admin/api.js",
   "apps/web/src/lib/admin/filters.ts",
   "apps/web/src/lib/admin/log-narrative.js",
   "apps/web/src/lib/admin/paquete-template-kind.js",
   "apps/web/src/lib/admin/permission-groups.js",
   "apps/web/src/lib/admin/types.ts",
+  "apps/api/src/routes/admin-helpers.js",
+  "apps/api/src/middleware/admin-auth.js",
+  "apps/api/src/lib/admin-peer-guard.js",
+  "apps/api/src/lib/admin/csv.js",
+  "apps/api/src/lib/admin/data.js",
+  "apps/api/src/lib/admin/filters.js",
+  "apps/api/src/services/admin-users-service.js",
+  "apps/api/src/services/admin-audit-service.js",
+  "apps/api/src/services/tenant-admin-service.js",
+  "apps/api/src/services/tenant-rbac-service.js",
+  "apps/api/src/services/delegacion-service.js",
+  "apps/api/src/services/modulos-custom-service.js",
+  "apps/api/src/services/empresa-roles-seed.js",
+  "apps/api/src/controllers/delegacion-controller.js",
+  "apps/api/src/controllers/modulos-custom-controller.js",
 ]);
+
+const ADMIN_SHIM_ALLOW_PREFIXES = [
+  "servicios/",
+  "controladores/",
+  "lib/",
+  "middleware/",
+  "rutas/",
+];
 
 function isFacadeRest(rest) {
   if (!rest || rest === ".") return true;
@@ -141,9 +164,9 @@ function main() {
           continue;
         }
         if (
-          ADMIN_SHIM_ALLOW_SERVICIOS.has(rel)
+          ADMIN_SHIM_ALLOW_INTERNALS.has(rel)
           && target.modulo === "admin"
-          && String(target.rest || "").startsWith("servicios/")
+          && ADMIN_SHIM_ALLOW_PREFIXES.some((p) => String(target.rest || "").startsWith(p))
         ) {
           continue;
         }

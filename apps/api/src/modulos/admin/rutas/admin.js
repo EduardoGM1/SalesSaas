@@ -3,9 +3,9 @@
  * Guards en admin-helpers.js — no duplicar ni relajar.
  */
 import { Router } from "express";
-import { authenticateApi } from "../middleware/auth.js";
+import { authenticateApi } from "../../../middleware/auth.js";
 import { requireApiAdmin } from "../middleware/admin-auth.js";
-import { apiError, json } from "../lib/http.js";
+import { apiError, json } from "../../../lib/http.js";
 import {
   adminPermissionSetHas,
   effectivePermissions,
@@ -14,31 +14,31 @@ import {
   hasAnyAdminNavPermission,
   isSuperAdmin,
 } from "@salesapp/shared/auth/permissions.js";
-import { parseAdminFilters, parseUserAdminFilters } from "../lib/admin/filters.js";
-import { toCsv } from "../lib/admin/csv.js";
+import { parseAdminFilters, parseUserAdminFilters } from "../lib/filters.js";
+import { toCsv } from "../lib/csv.js";
 import {
   getOverview,
   getUsers,
   getGoals,
   getSellerOptions,
   getToolsUsage,
-} from "../lib/admin/data.js";
-import { parseJsonBody, runService, internalErrorMessage } from "./route-utils.js";
+} from "../lib/data.js";
+import { parseJsonBody, runService, internalErrorMessage } from "../../../routes/route-utils.js";
 import { adminAuth, requireSuperAdminApi } from "./admin-helpers.js";
-import { rateLimit } from "../middleware/rate-limit.js";
-import * as adminUsersService from "../services/admin-users-service.js";
-import * as supportService from "../services/support-service.js";
-import * as membershipService from "../services/membership-service.js";
-import * as rolesService from "../services/roles-service.js";
-import * as adminAuditService from "../services/admin-audit-service.js";
-import * as flagsService from "../services/flags-service.js";
-import * as workspaceService from "../services/workspace-service.js";
-import * as modulosCustomController from "../controllers/modulos-custom-controller.js";
-import * as delegacionController from "../controllers/delegacion-controller.js";
-import * as tenantRbacService from "../services/tenant-rbac-service.js";
-import * as tenantAdminService from "../services/tenant-admin-service.js";
-import * as royalHolidayService from "../modulos/royal-holiday/fachada-node.js";
-import { requireEmpresaAdmin } from "../lib/tenant-access.js";
+import { rateLimit } from "../../../middleware/rate-limit.js";
+import * as adminUsersService from "../servicios/admin-users-service.js";
+import * as supportService from "../../../services/support-service.js";
+import * as membershipService from "../../../services/membership-service.js";
+import * as rolesService from "../../../services/roles-service.js";
+import * as adminAuditService from "../servicios/admin-audit-service.js";
+import * as flagsService from "../../../services/flags-service.js";
+import * as workspaceService from "../../../services/workspace-service.js";
+import * as modulosCustomController from "../controladores/modulos-custom-controller.js";
+import * as delegacionController from "../controladores/delegacion-controller.js";
+import * as tenantRbacService from "../servicios/tenant-rbac-service.js";
+import * as tenantAdminService from "../servicios/tenant-admin-service.js";
+import * as royalHolidayService from "../../royal-holiday/fachada-node.js";
+import { requireEmpresaAdmin } from "../../../lib/tenant-access.js";
 
 const router = Router();
 

@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { json } from "../lib/http.js";
-import adminRouter from "./admin.js";
+import { adminRouter } from "../modulos/admin/index.js";
 import sessionRouter from "./session.js";
 import customModulesRouter from "./custom-modules.js";
 import workspaceRouter from "./workspace.js";
