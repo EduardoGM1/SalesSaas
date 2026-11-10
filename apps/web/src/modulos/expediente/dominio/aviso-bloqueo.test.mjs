@@ -27,3 +27,11 @@ test("tearDownChannels envía unlock best-effort antes de untrack", () => {
   assert.ok(unlockAt >= 0 && untrackAt > unlockAt, "unlock debe ir antes de pCh.untrack");
   assert.match(src, /warnThrottled\(/, "warns de broadcast van por throttle");
 });
+
+test("multi-pestaña: locks llevan tab_id y no ignoran solo por user_id", () => {
+  const src = readFileSync(REALTIME, "utf8");
+  assert.match(src, /tab_id:\s*myTabId/);
+  assert.match(src, /shouldIgnoreRemoteLock/);
+  assert.match(src, /isOwnTabLock/);
+  assert.equal(src.includes("userId === myProfile.id) return; // propio lock"), false);
+});

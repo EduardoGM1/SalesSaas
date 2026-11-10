@@ -33,8 +33,11 @@ export function CollabField({
       if (key && dirtyKeysRef?.current) dirtyKeysRef.current.add(key);
     },
   });
+  const lockerLabel = locker?.same_user_other_tab
+    ? t("collab.otherTab")
+    : (locker?.name || t("collab.someone"));
   const hint = locked && locker
-    ? t("collab.fieldLockedBy", { name: locker.name || t("collab.someone") })
+    ? t("collab.fieldLockedBy", { name: lockerLabel })
     : null;
 
   let content;

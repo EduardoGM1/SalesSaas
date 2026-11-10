@@ -765,7 +765,7 @@ Construido con `git log main` y `docs/arquitectura/`. Las fechas son las del com
 | Volumen de venta y moneda | **Bloqueado (producto):** ¿`vol` es siempre USD, siempre moneda local, o hay selector? Hasta decidir no se toca el modelo |
 | Fecha de agenda de una venta | Corregido en `3acb234` y desplegado en el web. `findCalEntries` ya no suma un mes de más. El conteo previo al deploy seguía en 0, así que no se repararon filas. Historia del bug en [`arquitectura/backlog-seguridad.md`](./arquitectura/backlog-seguridad.md) §6 |
 | Módulos pendientes | Módulos 8 a 11 en producción. Siguen sync/storage/outbox, admin/RBAC y auth/session/PWA. |
-| Bloqueo de campos en varias pestañas | **Pendiente de diseño:** sync de locks/foco entre tabs del mismo usuario (`expediente-realtime` / collab) |
+| Bloqueo de campos en varias pestañas | **Cerrado:** `tab_id` en `field_lock`/`field_unlock`; la otra pestaña del mismo usuario ve el campo bloqueado (`bloqueo-multi-pestana.js`) |
 | Survey 5b.7 | **Diferible:** ids colaborativos + realtime dentro del Survey (no iniciado) |
 | Alcance de los canales en tiempo real | **Bloqueado (diseño):** miembros del WS ven/emiten en todos los expedientes; cambiar implica producto + RLS/canales |
 | HTTPS | **Ops:** pendiente de operaciones (cert/proxy) |

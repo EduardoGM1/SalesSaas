@@ -14,6 +14,10 @@ import { ensureRealtimeReady, removeChannelSafe } from "@/lib/presence/realtime.
 import {
   WARN_THROTTLE_MS,
   noteThrottledWarn,
+  getOrCreateTabId,
+  shouldIgnoreRemoteLock,
+  isOwnTabLock,
+  isSameUserOtherTab,
 } from "@/modulos/expediente/fachada-node.js";
 
 const DEBOUNCE_MS = 50;
@@ -22,6 +26,9 @@ export const FIELD_LOCK_TTL_MS = 60_000;
 const LOCK_HEARTBEAT_MS = 20_000;
 const LOCK_EVENT = "field_lock";
 const UNLOCK_EVENT = "field_unlock";
+
+/** Id estable por pestaña (sessionStorage). */
+const myTabId = getOrCreateTabId();
 
 /** @type {Map<string, number>} */
 const warnLastAt = new Map();
@@ -47,7 +54,7 @@ let lockHeartbeatTimer = null;
 let myFocusedField = null;
 let myProfile = null;
 
-/** @type {Map<string, { user_id: string, name: string, avatar_url: string|null, field_id: string, ts: number }>} */
+/** @type {Map<string, { user_id: string, name: string, avatar_url: string|null, field_id: string, ts: number, tab_id?: string|null, same_user_other_tab?: boolean }>} */
 let fieldLocks = new Map();
 
 const recentEventKeys = new Map();
@@ -134,12 +141,25 @@ function applyRemoteLock(payload) {
   const fieldId = payload?.field_id;
   const userId = payload?.user_id;
   if (!fieldId || !userId) return;
-  if (myProfile?.id && userId === myProfile.id) return; // propio lock ya está en myFocusedField
+  if (shouldIgnoreRemoteLock({
+    myTabId,
+    myUserId: myProfile?.id || null,
+    payload,
+  })) {
+    return;
+  }
+  const otherTab = isSameUserOtherTab({
+    myTabId,
+    myUserId: myProfile?.id || null,
+    lock: { user_id: userId, tab_id: payload.tab_id },
+  });
   fieldLocks.set(fieldId, {
     user_id: userId,
     name: payload.name || "Usuario",
     avatar_url: payload.avatar_url || null,
     field_id: fieldId,
+    tab_id: payload.tab_id ? String(payload.tab_id) : null,
+    same_user_other_tab: otherTab,
     ts: typeof payload.ts === "number" ? payload.ts : Date.now(),
   });
   emitLocks();
@@ -270,6 +290,7 @@ async function broadcastLock(fieldId) {
   const payload = {
     field_id: fieldId,
     user_id: myProfile.id,
+    tab_id: myTabId,
     name: myProfile.full_name?.trim() || myProfile.email?.split("@")[0] || "Usuario",
     avatar_url: myProfile.avatar_url || null,
     ts: Date.now(),
@@ -290,6 +311,7 @@ async function broadcastUnlock(fieldId) {
   const payload = {
     field_id: fieldId || myFocusedField,
     user_id: myProfile.id,
+    tab_id: myTabId,
     ts: Date.now(),
   };
   if (!payload.field_id) return;
@@ -478,14 +500,14 @@ export function getMyFocusedField() {
   return myFocusedField;
 }
 
-export function findFieldLocker(locksOrPeers, myId, fieldId) {
+export function findFieldLocker(locksOrPeers, myId, fieldId, tabId = myTabId) {
   if (!fieldId) return null;
   const now = Date.now();
   // Nuevo: array de locks desde Broadcast
   if (Array.isArray(locksOrPeers) && locksOrPeers[0]?.field_id !== undefined) {
     const hit = locksOrPeers.find((l) => {
       if (l.field_id !== fieldId) return false;
-      if (l.user_id === myId) return false;
+      if (isOwnTabLock({ myTabId: tabId, myUserId: myId, lock: l })) return false;
       return now - (l.ts || 0) < FIELD_LOCK_TTL_MS;
     });
     return hit || null;
@@ -493,11 +515,15 @@ export function findFieldLocker(locksOrPeers, myId, fieldId) {
   // Compat: Map snapshot
   if (locksOrPeers instanceof Map) {
     const lock = locksOrPeers.get(fieldId);
-    if (!lock || lock.user_id === myId) return null;
+    if (!lock || isOwnTabLock({ myTabId: tabId, myUserId: myId, lock })) return null;
     if (now - lock.ts > FIELD_LOCK_TTL_MS) return null;
     return lock;
   }
   return null;
+}
+
+export function getExpedienteTabId() {
+  return myTabId;
 }
 
 export function findSectionLocker(peers, myId, section) {

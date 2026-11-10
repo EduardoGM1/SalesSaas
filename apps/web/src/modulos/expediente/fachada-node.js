@@ -16,3 +16,11 @@ export {
 } from "./dominio/prospecto-compartido.ts";
 
 export { noteThrottledWarn, WARN_THROTTLE_MS } from "./dominio/aviso-bloqueo.js";
+
+export {
+  getOrCreateTabId,
+  shouldIgnoreRemoteLock,
+  isOwnTabLock,
+  isSameUserOtherTab,
+  TAB_ID_STORAGE_KEY,
+} from "./dominio/bloqueo-multi-pestana.js";

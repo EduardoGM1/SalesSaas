@@ -1,4 +1,13 @@
 {
   "comment": "Excepciones justificadas a la contención legacy. Cada entrada: archivo posix relativo a la raíz del monorepo + reason. Solo añadir en PR con justificación; preferir poner código nuevo en apps/*/src/modulos/.",
-  "files": []
+  "files": [
+    {
+      "file": "apps/web/src/lib/deferred-sale-bundles.js",
+      "reason": "Cola de ventas al suspender sync (fix 4d5f1e9); vive junto a cloud-persist-bridge hasta mover ventas/sync. No ampliar con más lógica aquí."
+    },
+    {
+      "file": "apps/web/src/lib/deferred-sale-bundles.test.mjs",
+      "reason": "Tests del helper deferred-sale-bundles (misma excepción temporal)."
+    }
+  ]
 }

@@ -79,7 +79,7 @@ La migración `0031_fix_expediente_presence_rls` autoriza SELECT (listen) e INSE
 |------|--------|
 | (a) Unlock best-effort en teardown/pagehide | Hecho |
 | (b) Throttle de warns | Hecho (`expediente-field-lock-helpers.js`) |
-| Multi-pestaña | **Pendiente** (heaps separados; propio `user_id` ignorado en locks remotos) |
+| Multi-pestaña | **Hecho:** `tab_id` por pestaña (`sts4_expediente_tab_id`); locks del mismo `user_id` con otro `tab_id` bloquean; eco de la propia pestaña se ignora |
 
 Plan deploy web-only: [`deploy-cliente-locks-pre-0098.md`](./deploy-cliente-locks-pre-0098.md) — **sin ejecutar**.
 

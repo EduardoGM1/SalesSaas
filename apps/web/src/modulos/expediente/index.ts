@@ -12,6 +12,10 @@ export {
   canAddToWorkspace,
   noteThrottledWarn,
   WARN_THROTTLE_MS,
+  getOrCreateTabId,
+  shouldIgnoreRemoteLock,
+  isOwnTabLock,
+  isSameUserOtherTab,
 } from "./fachada-node.js";
 
 export {
