@@ -181,6 +181,7 @@
     "apps/web/src/hooks/use-user-plan.js",
     "apps/web/src/hooks/use-workspace.js",
     "apps/web/src/layouts/AdminSection.jsx",
+    "apps/web/src/layouts/AuthLayout.jsx",
     "apps/web/src/lib/admin/api.js",
     "apps/web/src/lib/admin/filters.ts",
     "apps/web/src/lib/admin/log-narrative.js",

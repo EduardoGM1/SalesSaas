@@ -107,6 +107,12 @@ const ADMIN_SHIM_ALLOW_INTERNALS = new Set([
   "apps/api/src/controllers/delegacion-controller.js",
   "apps/api/src/controllers/modulos-custom-controller.js",
   "apps/api/src/lib/auth-rate-limits.js",
+  "apps/web/src/lib/session-api.js",
+  "apps/web/src/lib/session-cross-device.js",
+  "apps/web/src/lib/auth-callback.js",
+  "apps/web/src/lib/auth-intent.js",
+  "apps/web/src/lib/post-auth-home.js",
+  "apps/web/src/lib/local-session-reset.js",
 ]);
 
 const ADMIN_SHIM_ALLOW_PREFIXES = [
@@ -136,6 +142,7 @@ function isFacadeRest(rest) {
   if (rest === "store.js") return true;
   if (rest === "seccion.js") return true;
   if (rest === "fachada-ui.js") return true;
+  if (rest === "ui/AuthLayout.jsx") return true;
   return false;
 }
 

@@ -1,14 +1,16 @@
 import { Suspense } from "react";
 import { Routes, Route, Navigate, useParams } from "react-router-dom";
 import { DashboardLayout } from "@/layouts/DashboardLayout.jsx";
-import { AuthLayout } from "@/layouts/AuthLayout.jsx";
+import { AuthLayout } from "@/modulos/auth/ui/AuthLayout.jsx";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute.jsx";
 import { RouteFallback } from "@/components/layout/route-fallback.jsx";
-import { LoginPage } from "@/pages/LoginPage.jsx";
-import { RegisterPage } from "@/pages/RegisterPage.jsx";
-import { ForgotPasswordPage } from "@/pages/ForgotPasswordPage.jsx";
-import { ResetPasswordPage } from "@/pages/ResetPasswordPage.jsx";
-import { AuthCallbackPage } from "@/pages/AuthCallbackPage.jsx";
+import {
+  LoginPage,
+  RegisterPage,
+  ForgotPasswordPage,
+  ResetPasswordPage,
+  AuthCallbackPage,
+} from "@/modulos/auth/paginas.js";
 import { CalendarPage } from "@/modulos/agenda";
 import { AdminSection } from "@/modulos/admin/seccion.js";
 import { RhPremanifiestoGate } from "@/components/auth/RhPremanifiestoGate.jsx";
