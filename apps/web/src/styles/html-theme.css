@@ -300,9 +300,11 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
 .cal-dot{width:7px;height:7px;border-radius:50%;box-shadow:0 0 0 1px rgba(255,255,255,.9);}
 .cal-dot.sale{background:var(--green);}
 .cal-dot.sale-cancelled{background:var(--red);}
+.cal-dot.tour{background:var(--teal);}
 .cal-dot.note{background:var(--yellow);}
 .cal-dot.follow{background:var(--purple);}
 .cal-dot.descanso{background:var(--muted2);}
+.dg-dot.tour{background:var(--teal);}
 .dg-dot.descanso{background:var(--muted2);}
 
 /* DAY PANEL */

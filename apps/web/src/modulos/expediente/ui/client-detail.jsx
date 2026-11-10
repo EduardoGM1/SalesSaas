@@ -550,11 +550,7 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
                 {!isQuick && (
                   <div hidden={effectiveTab !== EXPEDIENTE_TABS.cliente}>
                     <CollapsibleSection
-                      defaultOpen={
-                        typeof window !== "undefined"
-                        && window.matchMedia("(min-width: 769px)").matches
-                        && !sharedRemote
-                      }
+                      defaultOpen={!sharedRemote}
                       className="card exp-side-card prospect-summary-card exp-collapsible-card"
                       title={<div className="prospect-summary-title">{t("exp.prospect.title")}</div>}
                       subtitle={t("exp.prospect.sub")}
@@ -656,11 +652,7 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
             </div>
           ) : (
             <CollapsibleSection
-              defaultOpen={
-                typeof window !== "undefined"
-                && window.matchMedia("(min-width: 769px)").matches
-                && !sharedRemote
-              }
+              defaultOpen={!sharedRemote}
               className="card exp-side-card prospect-summary-card exp-collapsible-card"
               title={<div className="prospect-summary-title">{t("exp.prospect.title")}</div>}
               subtitle={t("exp.prospect.sub")}
@@ -710,11 +702,11 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
           </CollapsibleSection>
         ))}
 
-        {!folderTab && (
+        {isQuick && !folderTab && (
           <>
         <CollapsibleSection
           mobileOnly
-          defaultOpen={false}
+          defaultOpen={true}
           className="card activity-card exp-collapsible-card"
           id="client-sales-card"
           title={<div className="card-heading">{t("exp.sales.title")}</div>}
@@ -753,7 +745,7 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
 
         <CollapsibleSection
           mobileOnly
-          defaultOpen={false}
+          defaultOpen={true}
           className="card activity-card exp-collapsible-card"
           id="client-activity-card"
           title={<div className="card-heading">{t("exp.activity.title")}</div>}

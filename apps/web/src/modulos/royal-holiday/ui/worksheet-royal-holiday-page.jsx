@@ -475,6 +475,7 @@ export function WorksheetRoyalHolidayPage({
             posicionesDisponibles={posicionesDisponibles}
             regalosCatalogo={regalosCatalogo}
             showExtras={false}
+            onGoFinanciamiento={() => setTabPersisted("financiamiento")}
           />
         </div>
 

@@ -15,11 +15,16 @@ import {
   scheduleCloudPersist,
   scheduleSaleBundle,
 } from "@/lib/cloud-persist.js";
+import { createDeferredSaleBundles } from "@/lib/deferred-sale-bundles.js";
 
 let suspended = false;
+const deferredSales = createDeferredSaleBundles();
 
 export function suspendCloudPersist(on) {
-  suspended = !!on;
+  const next = !!on;
+  const wasSuspended = suspended;
+  suspended = next;
+  if (wasSuspended && !next) deferredSales.flush(scheduleSaleBundle);
 }
 
 export function notifyProspectSaved(client) {
@@ -41,12 +46,20 @@ export function notifyProspectDeleted(id) {
 }
 
 export function notifySaleRegistered(clientId, saleId) {
-  if (suspended || !clientId || !saleId) return;
+  if (!clientId || !saleId) return;
+  if (suspended) {
+    deferredSales.queue(clientId, saleId);
+    return;
+  }
   scheduleSaleBundle(clientId, saleId);
 }
 
 export function notifySaleUpdated(clientId, saleId) {
-  if (suspended || !clientId || !saleId) return;
+  if (!clientId || !saleId) return;
+  if (suspended) {
+    deferredSales.queue(clientId, saleId);
+    return;
+  }
   scheduleSaleBundle(clientId, saleId);
 }
 

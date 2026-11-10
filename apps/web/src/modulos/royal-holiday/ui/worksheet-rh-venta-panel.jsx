@@ -90,6 +90,7 @@ export function WorksheetRhVentaPanel({
   posicionesDisponibles,
   regalosCatalogo,
   showExtras = false,
+  onGoFinanciamiento,
 }) {
   const { fmtResult, monedaOperativa, language } = moneda;
   const hc = Number(form.holiday_credits) || 0;
@@ -328,149 +329,38 @@ export function WorksheetRhVentaPanel({
           data-testid={testId}
           onChange={(e) => setRegaloColumnChecked(regalo, ev, column, e.target.checked, lineTotal)}
         />
+        <span className="rh-carga-check-label">{column === "venta" ? "Venta" : "Closing"}</span>
       </label>
     );
   };
 
+  const montoPendiente = mv <= 0;
+
   return (
     <section className="worksheet-rh-venta">
-      <div className="worksheet-rh-venta-top">
-        <div className="card tool-calc-card rh-card-creditos">
-          <div className="card-heading">Créditos</div>
-          <p className="muted rh-hint rh-card-sub">Ingresa créditos; el resto se calcula solo.</p>
-          <div className="tool-calc-fields">
-            <div className="frow frow-first tool-frow">
-              <div className="flabel">Créditos</div>
-              <div className="rh-credits-input">
-                <input
-                  className="input tool-num-input"
-                  type="number"
-                  disabled={readOnly}
-                  value={form.holiday_credits}
-                  placeholder="25,000.00"
-                  onChange={(e) => set("holiday_credits", e.target.value)}
-                />
-                <span className="muted rh-credits-suffix">HC</span>
-              </div>
-            </div>
-            <div className="frow tool-frow">
-              <div className="flabel">Programa</div>
-              <div className="rh-readonly rh-field-val">{bl?.programa || "—"}</div>
-            </div>
-            <div className="frow tool-frow">
-              <div className="flabel">Precio</div>
-              <div className="rh-readonly rh-field-val">{precioMin}</div>
-            </div>
-            <div className="frow tool-frow">
-              <div className="flabel">Cuota anual</div>
-              <div className="rh-readonly rh-field-val">{cuotaAnual}</div>
-            </div>
-            <div className="frow tool-frow">
-              <div className="flabel">Noches Privilege</div>
-              <input
-                className="input tool-num-input"
-                type="number"
-                min="0"
-                disabled={readOnly}
-                value={form.noches_privilege ?? ""}
-                onChange={(e) => set("noches_privilege", e.target.value)}
-              />
-            </div>
-            <div className="frow tool-frow">
-              <div className="flabel">Semanas</div>
-              <input
-                className="input tool-num-input"
-                type="number"
-                min="0"
-                disabled={readOnly}
-                value={form.semanas ?? ""}
-                onChange={(e) => set("semanas", e.target.value)}
-              />
-            </div>
+      {montoPendiente ? (
+        <div className="rh-regalos-monto-banner" role="status" data-testid="rh-regalos-monto-banner">
+          <AlertTriangle size={16} aria-hidden="true" />
+          <div className="rh-regalos-monto-banner-copy">
+            <strong>Falta el monto de venta</strong>
+            <span className="muted">
+              Muchos regalos quedan bloqueados hasta capturar el monto en Datos Financiamiento.
+            </span>
           </div>
+          {typeof onGoFinanciamiento === "function" ? (
+            <button type="button" className="btn btn-ghost btn-sm" onClick={onGoFinanciamiento}>
+              Ir a Financiamiento
+            </button>
+          ) : null}
         </div>
-
-        <div className="card tool-calc-card rh-card-membresias">
-          <div className="card-heading">Membresías</div>
-          <p className="muted rh-hint rh-card-sub">Selecciona una membresía</p>
-          <div className="rh-bl-membership-scroll">
-            <table className="client-table rh-mini-table rh-bl-membership-table">
-              <thead>
-                <tr>
-                  <th>Membresía</th>
-                  <th className="rh-col-num">Créditos</th>
-                  <th className="rh-col-num">Precio</th>
-                  <th className="rh-col-num">Cuota</th>
-                </tr>
-              </thead>
-              <tbody>
-                {bottomLineRows.length === 0 ? (
-                  <tr><td colSpan={4} className="muted">Sin membresías en catálogo</td></tr>
-                ) : null}
-                {bottomLineRows.map((row) => {
-                  const rowHc = String(row.holiday_credits);
-                  const selected = rowHc === selectedHc;
-                  return (
-                    <tr
-                      key={row.id || `${row.programa}-${rowHc}`}
-                      className={selected ? "is-selected rh-bl-row-selectable" : "rh-bl-row-selectable"}
-                      onClick={() => !readOnly && set("holiday_credits", rowHc)}
-                      title={`${row.programa} · ${rowHc} HC`}
-                    >
-                      <td>{row.programa || "—"}</td>
-                      <td className="rh-col-num">
-                        {Number(row.holiday_credits).toLocaleString("es-MX")}
-                      </td>
-                      <td className="rh-col-num">
-                        {row.precio_minimo_con_iva != null ? fmtResult(row.precio_minimo_con_iva) : "—"}
-                      </td>
-                      <td className="rh-col-num">
-                        {row.cuota_anual_mfee != null ? fmtResult(row.cuota_anual_mfee) : "—"}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        <div className="card tool-calc-card rh-card-monto">
-          <div className="card-heading">Monto de venta</div>
-          <p className="muted rh-hint rh-card-sub">Se toma de Datos Financiamiento.</p>
-          <div className="tool-calc-fields">
-            <div className="frow frow-first tool-frow">
-              <div className="flabel">Monto (Monto de venta)</div>
-              <div className="rh-readonly rh-field-val">{montoDisplay}</div>
-            </div>
-            <div className="frow tool-frow">
-              <div className="flabel">Membresía acorde al monto</div>
-              <div className="rh-readonly rh-field-val">{blByMonto?.programa || "—"}</div>
-            </div>
-            <div className="frow tool-frow">
-              <div className="flabel">Créditos acorde al monto</div>
-              <div className="rh-readonly rh-field-val">
-                {blByMonto?.holiday_credits != null
-                  ? Number(blByMonto.holiday_credits).toLocaleString("es-MX")
-                  : "—"}
-              </div>
-            </div>
-            <div className="frow tool-frow">
-              <div className="flabel">Vs precio Tabla 1</div>
-              <div className={`rh-readonly rh-field-val${deltaTabla1 != null && deltaTabla1 < 0 ? " rh-warn-text" : ""}`}>
-                {fmtDelta(deltaTabla1, fmtResult)}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+      ) : null}
 
       <div className="card tool-calc-card worksheet-rh-venta-regalos">
         <div className="card-heading">Regalos y cargos</div>
         <p className="muted rh-hint rh-regalos-sub">
-          Selecciona los regalos que se darán y define en qué concepto se aplicará su costo.
+          Selecciona los regalos y define si el costo va a venta o closing.
           All inclusive + certificado de vuelo no pueden sumar más de $1,500 USD.
-          Flyback admite carga simultánea a venta y closing; el resto de regalos es una sola carga.
+          Flyback admite carga simultánea a venta y closing.
         </p>
         <p className="muted rh-hint rh-regalos-scroll-hint">
           Desliza horizontalmente para ver todas las columnas.
@@ -516,6 +406,9 @@ export function WorksheetRhVentaPanel({
                         <div className="muted rh-regalo-bonus">
                           Activación socio {fmtResult(r.activacion_usd)}
                         </div>
+                      ) : null}
+                      {ev.estado !== "elegible" && ev.motivo ? (
+                        <div className="rh-regalo-motivo" title={ev.motivo}>{ev.motivo}</div>
                       ) : null}
                     </td>
                     <td className="rh-col-qty">
@@ -647,6 +540,137 @@ export function WorksheetRhVentaPanel({
             </div>
             <div className="vbox-label">Total regalos aplicados</div>
             <div className="vbox-sub">Venta + Gasto adm.</div>
+          </div>
+        </div>
+      </div>
+
+      <div className="worksheet-rh-venta-top">
+        <div className="card tool-calc-card rh-card-creditos">
+          <div className="card-heading">Créditos</div>
+          <p className="muted rh-hint rh-card-sub">Ingresa créditos; el resto se calcula solo.</p>
+          <div className="tool-calc-fields">
+            <div className="frow frow-first tool-frow">
+              <div className="flabel">Créditos</div>
+              <div className="rh-credits-input">
+                <input
+                  className="input tool-num-input"
+                  type="number"
+                  disabled={readOnly}
+                  value={form.holiday_credits}
+                  placeholder="25,000.00"
+                  onChange={(e) => set("holiday_credits", e.target.value)}
+                />
+                <span className="muted rh-credits-suffix">HC</span>
+              </div>
+            </div>
+            <div className="frow tool-frow">
+              <div className="flabel">Programa</div>
+              <div className="rh-readonly rh-field-val">{bl?.programa || "—"}</div>
+            </div>
+            <div className="frow tool-frow">
+              <div className="flabel">Precio</div>
+              <div className="rh-readonly rh-field-val">{precioMin}</div>
+            </div>
+            <div className="frow tool-frow">
+              <div className="flabel">Cuota anual</div>
+              <div className="rh-readonly rh-field-val">{cuotaAnual}</div>
+            </div>
+            <div className="frow tool-frow">
+              <div className="flabel">Noches Privilege</div>
+              <input
+                className="input tool-num-input"
+                type="number"
+                min="0"
+                disabled={readOnly}
+                value={form.noches_privilege ?? ""}
+                onChange={(e) => set("noches_privilege", e.target.value)}
+              />
+            </div>
+            <div className="frow tool-frow">
+              <div className="flabel">Semanas</div>
+              <input
+                className="input tool-num-input"
+                type="number"
+                min="0"
+                disabled={readOnly}
+                value={form.semanas ?? ""}
+                onChange={(e) => set("semanas", e.target.value)}
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="card tool-calc-card rh-card-membresias">
+          <div className="card-heading">Membresías</div>
+          <p className="muted rh-hint rh-card-sub">Selecciona una membresía</p>
+          <div className="rh-bl-membership-scroll">
+            <table className="client-table rh-mini-table rh-bl-membership-table">
+              <thead>
+                <tr>
+                  <th>Membresía</th>
+                  <th className="rh-col-num">Créditos</th>
+                  <th className="rh-col-num">Precio</th>
+                  <th className="rh-col-num">Cuota</th>
+                </tr>
+              </thead>
+              <tbody>
+                {bottomLineRows.length === 0 ? (
+                  <tr><td colSpan={4} className="muted">Sin membresías en catálogo</td></tr>
+                ) : null}
+                {bottomLineRows.map((row) => {
+                  const rowHc = String(row.holiday_credits);
+                  const selected = rowHc === selectedHc;
+                  return (
+                    <tr
+                      key={row.id || `${row.programa}-${rowHc}`}
+                      className={selected ? "is-selected rh-bl-row-selectable" : "rh-bl-row-selectable"}
+                      onClick={() => !readOnly && set("holiday_credits", rowHc)}
+                      title={`${row.programa} · ${rowHc} HC`}
+                    >
+                      <td>{row.programa || "—"}</td>
+                      <td className="rh-col-num">
+                        {Number(row.holiday_credits).toLocaleString("es-MX")}
+                      </td>
+                      <td className="rh-col-num">
+                        {row.precio_minimo_con_iva != null ? fmtResult(row.precio_minimo_con_iva) : "—"}
+                      </td>
+                      <td className="rh-col-num">
+                        {row.cuota_anual_mfee != null ? fmtResult(row.cuota_anual_mfee) : "—"}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div className="card tool-calc-card rh-card-monto">
+          <div className="card-heading">Monto de venta</div>
+          <p className="muted rh-hint rh-card-sub">Se toma de Datos Financiamiento.</p>
+          <div className="tool-calc-fields">
+            <div className="frow frow-first tool-frow">
+              <div className="flabel">Monto (Monto de venta)</div>
+              <div className="rh-readonly rh-field-val">{montoDisplay}</div>
+            </div>
+            <div className="frow tool-frow">
+              <div className="flabel">Membresía acorde al monto</div>
+              <div className="rh-readonly rh-field-val">{blByMonto?.programa || "—"}</div>
+            </div>
+            <div className="frow tool-frow">
+              <div className="flabel">Créditos acorde al monto</div>
+              <div className="rh-readonly rh-field-val">
+                {blByMonto?.holiday_credits != null
+                  ? Number(blByMonto.holiday_credits).toLocaleString("es-MX")
+                  : "—"}
+              </div>
+            </div>
+            <div className="frow tool-frow">
+              <div className="flabel">Vs precio Tabla 1</div>
+              <div className={`rh-readonly rh-field-val${deltaTabla1 != null && deltaTabla1 < 0 ? " rh-warn-text" : ""}`}>
+                {fmtDelta(deltaTabla1, fmtResult)}
+              </div>
+            </div>
           </div>
         </div>
       </div>

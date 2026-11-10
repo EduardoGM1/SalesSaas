@@ -19,7 +19,9 @@ import { shallow } from "zustand/shallow";
 import { EntryDialog } from "./entry-dialog.jsx";
 import { SaleDetailModal } from "@/modulos/ventas";
 import { useUserFeatures } from "@/hooks/use-user-features.js";
+import { clientDisplayName } from "@/modulos/expediente/dominio/identidad-prospecto.ts";
 import { resolveEntryClientId } from "../dominio/resolve-entry-client.ts";
+import { tourClientsForDay, tourDaysInMonth } from "../dominio/tours-del-dia.ts";
 
 export function CalendarPage() {
   const navigate = useNavigate();
@@ -43,12 +45,29 @@ export function CalendarPage() {
   const db = useDbStore((s) => s.db, shallow);
   const data = useDbStore((s) => s.db.cal[calKey(calYear, calMonth)] ?? EMPTY_CAL_MONTH, shallow);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [openGroups, setOpenGroups] = useState({ venta: true });
+  const [openGroups, setOpenGroups] = useState({ venta: true, tour: true });
   const [viewSaleId, setViewSaleId] = useState(null);
   const [peerNameById, setPeerNameById] = useState({});
   const { canViewSaleModal, canViewSaleDetail } = useUserFeatures();
   const isSala = active?.tipo === "sala_de_venta";
   const myUserId = userProfile?.id || null;
+
+  const tourDays = useMemo(
+    () => tourDaysInMonth(db?.clients, calYear, calMonth),
+    [db?.clients, calYear, calMonth],
+  );
+
+  const tourEntries = useMemo(() => {
+    if (!selDay) return [];
+    return tourClientsForDay(db?.clients, calYear, calMonth, selDay).map((c) => ({
+      id: `tour-${c.id}`,
+      t: "tour",
+      note: clientDisplayName(c),
+      clientId: c.id,
+      prospectId: c.prospectId || c.id,
+      tipo_tour: c.tipo_tour,
+    }));
+  }, [db?.clients, calYear, calMonth, selDay]);
 
   useEffect(() => {
     if (!isSala) {
@@ -96,6 +115,7 @@ export function CalendarPage() {
   const entries = selDay
     ? (data.days[selDay] || []).filter((entry) => !entry.completed && (entry.t !== "venta" || isActiveAgendaSale(db, entry)))
     : [];
+  const dayHasContent = entries.length > 0 || tourEntries.length > 0;
 
   const openAdd = () => {
     if (!selDay) return toast.info(t("cal.selectDayFirst"));
@@ -127,19 +147,29 @@ export function CalendarPage() {
                 <span className="dg-sum">{fmt(totalVol)}</span>
               </>
             )}
-            {type !== "venta" && <span className="dg-count">{items.length}{type === "nota" ? ` nota${items.length > 1 ? "s" : ""}` : type === "descanso" ? ` día${items.length > 1 ? "s" : ""}` : ""}</span>}
+            {type !== "venta" && (
+              <span className="dg-count">
+                {items.length}
+                {type === "nota" ? ` nota${items.length > 1 ? "s" : ""}`
+                  : type === "descanso" ? ` día${items.length > 1 ? "s" : ""}`
+                  : type === "tour" ? ` tour${items.length > 1 ? "s" : ""}`
+                  : ""}
+              </span>
+            )}
             <span className="dg-count">{open ? "▾" : "▸"}</span>
           </div>
         </button>
         {open && (
           <div className="dg-body open">
             {items.map((e, i) => {
-              const idx = selDay ? (data.days[selDay] || []).indexOf(e) : -1;
-              const clientId = resolveEntryClientId(db, e);
+              const idx = type === "tour" ? -1 : (selDay ? (data.days[selDay] || []).indexOf(e) : -1);
+              const clientId = type === "tour"
+                ? (e.clientId || e.prospectId || null)
+                : resolveEntryClientId(db, e);
               const cancelled = type === "venta" && isCancelledAgendaSale(db, e);
-              const owner = ownerLabel(e);
+              const owner = type === "tour" ? null : ownerLabel(e);
               return (
-                <div key={i} className={`dg-entry${cancelled ? " is-cancelled" : ""}`}>
+                <div key={e.id || i} className={`dg-entry${cancelled ? " is-cancelled" : ""}`}>
                   <div style={{ flex: 1 }}>
                     {e.t === "venta" && (
                       <div className={`dg-name${cancelled ? " is-cancelled" : ""}`}>
@@ -147,7 +177,15 @@ export function CalendarPage() {
                         {cancelled ? ` · ${t("status.cancelled")}` : ""}
                       </div>
                     )}
-                    {e.note && <div className="dp-date" style={{ color: e.t === "venta" ? undefined : "var(--text)" }}>{e.note}</div>}
+                    {e.t === "tour" && (
+                      <div className="dg-name">
+                        {e.note || t("cal.dayTours")}
+                        {e.tipo_tour ? ` · ${e.tipo_tour}` : ""}
+                      </div>
+                    )}
+                    {e.note && e.t !== "tour" && (
+                      <div className="dp-date" style={{ color: e.t === "venta" ? undefined : "var(--text)" }}>{e.note}</div>
+                    )}
                     {owner ? <span className="dg-owner-badge">{owner}</span> : null}
                   </div>
                   <div className="dg-entry-actions">
@@ -156,7 +194,7 @@ export function CalendarPage() {
                     ) : null}
                     {clientId ? (
                       <button type="button" className="dg-link" onClick={() => navigate(`/clients/${clientId}`)}>{t("common.goToFile")}</button>
-                    ) : e.t !== "venta" ? (
+                    ) : e.t !== "venta" && type !== "tour" ? (
                       <button type="button" className="dg-del" onClick={async () => {
                         if (await confirmDialog(translate("toast.cal.deleteEntry")) && selDay) deleteCalEntry(calYear, calMonth, selDay, idx);
                       }}>✕</button>
@@ -212,6 +250,7 @@ export function CalendarPage() {
                     <div className="cal-dots">
                       {es.some((e) => isActiveAgendaSale(db, e) && !isCancelledAgendaSale(db, e)) && <span className="cal-dot sale" />}
                       {es.some((e) => isCancelledAgendaSale(db, e)) && <span className="cal-dot sale-cancelled" />}
+                      {tourDays.has(d) && <span className="cal-dot tour" />}
                       {es.some((e) => e.t === "nota") && <span className="cal-dot note" />}
                       {es.some((e) => e.t === "follow") && <span className="cal-dot follow" />}
                       {es.some((e) => e.t === "descanso") && <span className="cal-dot descanso" />}
@@ -231,10 +270,11 @@ export function CalendarPage() {
               <button type="button" className="add-fab" onClick={openAdd}>+</button>
             </div>
             {!selDay && <div className="dp-empty">{t("cal.selectDayHint")}</div>}
-            {selDay && !entries.length && <div className="dp-empty">{t("cal.emptyDay")}</div>}
-            {selDay && entries.length > 0 && (
+            {selDay && !dayHasContent && <div className="dp-empty">{t("cal.emptyDay")}</div>}
+            {selDay && dayHasContent && (
               <div>
                 {renderGroup("venta", t("cal.sales"), "sale", entries.filter((e) => isActiveAgendaSale(db, e)))}
+                {renderGroup("tour", t("cal.dayTours"), "tour", tourEntries)}
                 {renderGroup("no-tour", t("cal.noTour"), "note", entries.filter((e) => e.t === "nota" && e.kind === "no-tour"))}
                 {renderGroup("nota", t("cal.notes"), "note", entries.filter((e) => e.t === "nota" && e.kind !== "no-tour"))}
                 {renderGroup("follow", t("cal.followups"), "follow", entries.filter((e) => e.t === "follow"))}
