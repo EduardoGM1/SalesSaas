@@ -6,7 +6,7 @@ import cors from "cors";
 import cookieParser from "cookie-parser";
 import helmet from "helmet";
 import v1Router from "./routes/v1.js";
-import authRouter from "./routes/auth.js";
+import { authRouter } from "./modulos/auth/index.js";
 import { webOrigins } from "./lib/origins.js";
 import { JSON_BODY_LIMIT } from "./lib/http-limits.js";
 import { isSupabaseConfigured } from "@salesapp/shared/supabase/config.js";

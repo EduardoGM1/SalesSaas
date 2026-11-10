@@ -115,6 +115,11 @@ const ADMIN_SHIM_ALLOW_INTERNALS = new Set([
   "apps/web/src/lib/local-session-reset.js",
   "apps/web/src/lib/pwa-register.js",
   "apps/web/src/lib/pwa-install.js",
+  "apps/api/src/routes/auth.js",
+  "apps/api/src/routes/session.js",
+  "apps/api/src/controllers/auth-controller.js",
+  "apps/api/src/controllers/session-controller.js",
+  "apps/api/src/services/session-service.js",
 ]);
 
 /** Shims UI auth en components/ pueden apuntar a ui/* del módulo. */

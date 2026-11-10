@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { json } from "../lib/http.js";
 import { adminRouter } from "../modulos/admin/index.js";
-import sessionRouter from "./session.js";
+import { sessionRouter } from "../modulos/auth/index.js";
 import customModulesRouter from "./custom-modules.js";
 import workspaceRouter from "./workspace.js";
 import { geoRouter, exchangeRatesRouter } from "../modulos/geo-fx/index.js";
