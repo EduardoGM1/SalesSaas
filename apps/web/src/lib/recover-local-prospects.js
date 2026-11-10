@@ -9,8 +9,14 @@ import { loadDatabase, getActiveWorkspaceId } from "@/lib/storage/local-storage-
 import { mergeSettingsForWorkspace } from "@/lib/storage/settings-scope.js";
 import { pullViaApi, reconcileViaApi } from "@/lib/sync-api.js";
 import { isEmptyDb, normalizeIds } from "@/lib/data/mappers";
-import { localNeedsOutboundPush } from "@/lib/sync-merge.js";
-import { clearOutboxAck, isOutboxDirty, markOutboxDirty } from "@/lib/sync-outbox.js";
+import { localNeedsOutboundPush, mergeSyncDatabases } from "@/lib/sync-merge.js";
+import {
+  clearOutboxAck,
+  getOutboxState,
+  isOutboxDirty,
+  markOutboxDirty,
+  recordOutboxRejected,
+} from "@/lib/sync-outbox.js";
 import { runWithoutOutboundSync } from "@/lib/sync-suspend.js";
 import { useDbStore } from "@/stores/db-store";
 import { useSyncStore } from "@/stores/sync-store";
@@ -126,33 +132,48 @@ export async function recoverLocalProspectsToCloud(opts = {}) {
       const storeDb = useDbStore.getState().db;
       const toPush = isEmptyDb(storeDb) ? local : storeDb;
       const { db: norm } = normalizeIds(toPush);
-      const remote = await reconcileViaApi(norm);
+      const result = await reconcileViaApi(norm);
+      const remote = result?.data;
       if (remote) {
-        const localSettings = useDbStore.getState().db.settings;
-        runWithoutOutboundSync(() => {
-          useDbStore.getState().replaceDb({
-            ...remote,
-            settings: mergeSettingsForWorkspace(
+        const localNow = useDbStore.getState().db;
+        const localSettings = localNow.settings;
+        const nextDb =
+          result.partial && Array.isArray(result.rejected) && result.rejected.length
+            ? mergeSyncDatabases(localNow, remote, {
               localSettings,
-              remote.settings,
-              getActiveWorkspaceId(),
-            ),
-            pendingDeletes: {
-              prospects: [],
-              sales: [],
-              calendar_entries: [],
-              activities: [],
-              tool_calculations: [],
-            },
-          });
+              workspaceId: getActiveWorkspaceId(),
+            })
+            : {
+              ...remote,
+              settings: mergeSettingsForWorkspace(
+                localSettings,
+                remote.settings,
+                getActiveWorkspaceId(),
+              ),
+              pendingDeletes: {
+                prospects: [],
+                sales: [],
+                calendar_entries: [],
+                activities: [],
+                tool_calculations: [],
+              },
+            };
+        runWithoutOutboundSync(() => {
+          useDbStore.getState().replaceDb(nextDb);
         });
       }
-      clearOutboxAck();
-      useSyncStore.getState().setPendingOutbound(false);
-      reconciled = true;
+      if (result?.partial && Array.isArray(result.rejected) && result.rejected.length) {
+        recordOutboxRejected(result.rejected);
+        useSyncStore.getState().refreshPendingFromOutbox();
+        reconciled = !getOutboxState().dirty;
+      } else {
+        clearOutboxAck();
+        useSyncStore.getState().refreshPendingFromOutbox();
+        reconciled = true;
+      }
     } catch (err) {
       markOutboxDirty("recovery-put-failed");
-      useSyncStore.getState().setPendingOutbound(true);
+      useSyncStore.getState().refreshPendingFromOutbox();
       error = err instanceof Error ? err.message : String(err);
     }
   }

@@ -4,12 +4,21 @@
  * Los shims de @/lib apuntan a servicios/* concretos.
  */
 export {
+  applyBlockedStrip,
+  canAttemptOutboxNow,
   clearOutboxAck,
+  clearOutboxBackoff,
+  clearOutboxBlocked,
+  getOutboxBlockedCount,
   getOutboxState,
   isOutboxDirty,
+  isOutboxOnLegacyKey,
   markOutboxDirty,
   peekOutboxGeneration,
+  recordOutboxFailure,
+  recordOutboxRejected,
 } from "./servicios/sync-outbox.js";
+
 export {
   registerSyncPush,
   unregisterSyncPush,

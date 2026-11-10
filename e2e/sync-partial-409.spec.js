@@ -1,7 +1,8 @@
 /**
- * Cliente desplegado (sin X-Sync-Protocol: 2) frente al 409 sync_partial del PUT /sync.
- * Ejecuta el SyncProvider real: ante el 409 conserva el blob local y el outbox,
- * y al recargar reintenta. El contraste muestra por qué un 200 parcial sería dañino.
+ * Cliente Sync Tramo 2 (X-Sync-Protocol: 2) ante respuesta parcial del PUT /sync.
+ * Ante 200 { partial, rejected } conserva filas locales rechazadas vía merge
+ * y marca blocked/outbox según código. El contraste muestra por qué un 200
+ * vacío sin merge borraría el expediente local.
  */
 import { test, expect } from "@playwright/test";
 import {
@@ -14,13 +15,15 @@ const EMPTY_CLOUD = { clients: {}, sales: {}, libre: {}, cal: {}, goals: {}, use
 const LOCAL_NAME = "EduardoTest";
 
 /** @param {import("@playwright/test").Page} page */
+/** @param {(body: any) => { status: number, contentType?: string, body: string }} putResponse */
 async function mockSync(page, putResponse) {
   const puts = [];
   await page.route("**/api/v1/sync", async (route) => {
     const req = route.request();
     if (req.method() === "PUT") {
-      puts.push({ protocol: req.headers()["x-sync-protocol"] ?? null, body: req.postDataJSON() });
-      await route.fulfill(putResponse());
+      const body = req.postDataJSON();
+      puts.push({ protocol: req.headers()["x-sync-protocol"] ?? null, body });
+      await route.fulfill(putResponse(body));
       return;
     }
     await route.fulfill({
@@ -40,36 +43,57 @@ const storedNames = async (page) => Object.values((await readStoredDb(page))?.cl
 const outbox = (page) =>
   page.evaluate((key) => JSON.parse(localStorage.getItem(key) || "null"), `sts4_outbound_v1:${E2E_WORKSPACE_ID}`);
 
-test("409 sync_partial: conserva datos locales y outbox, y reintenta al recargar", async ({ page }) => {
+test("protocolo 2 partial permanente: conserva local y marca blocked", async ({ page }) => {
   await prepareAuthenticatedPage(page);
-  const puts = await mockSync(page, () => ({
-    status: 409,
-    contentType: "application/json",
-    body: JSON.stringify({
-      error: "Algunos cambios no se pudieron sincronizar; se reintentará.",
-      code: "sync_partial",
-      rejected_counts: { rls_insert: 1 },
-      rejected: [{ table: "prospects", id: "x", code: "rls_insert" }],
-    }),
-  }));
+  const puts = await mockSync(page, (reqBody) => {
+    const id = Object.keys(reqBody?.data?.clients || {})[0] || "x";
+    return {
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        data: EMPTY_CLOUD,
+        partial: true,
+        rejected: [{ table: "prospects", id, code: "sin_permiso" }],
+      }),
+    };
+  });
 
   await page.goto("/", { waitUntil: "domcontentloaded" });
   await expect.poll(() => puts.length, { timeout: 20_000 }).toBeGreaterThan(0);
-  expect(puts[0].protocol).toBeNull();
+  expect(puts[0].protocol).toBe("2");
   expect(Object.values(puts[0].body.data.clients).map((c) => c.name)).toContain(LOCAL_NAME);
 
-  await expect.poll(async () => (await outbox(page))?.dirty, { timeout: 10_000 }).toBe(true);
-  expect(await storedNames(page)).toContain(LOCAL_NAME);
-
-  const before = puts.length;
-  await page.reload({ waitUntil: "domcontentloaded" });
-  await expect.poll(() => puts.length, { timeout: 20_000 }).toBeGreaterThan(before);
-  expect(Object.values(puts.at(-1).body.data.clients).map((c) => c.name)).toContain(LOCAL_NAME);
-  await expect.poll(async () => (await outbox(page))?.dirty, { timeout: 10_000 }).toBe(true);
+  await expect.poll(async () => (await outbox(page))?.blocked?.length ?? 0, { timeout: 10_000 }).toBeGreaterThan(0);
+  expect((await outbox(page))?.dirty).toBe(false);
   expect(await storedNames(page)).toContain(LOCAL_NAME);
 });
 
-test("contraste: un 200 sin la fila rechazada reemplazaría la base local", async ({ page }) => {
+test("protocolo 2 partial transient: conserva local y outbox dirty", async ({ page }) => {
+  await prepareAuthenticatedPage(page);
+  const puts = await mockSync(page, (reqBody) => {
+    const id = Object.keys(reqBody?.data?.clients || {})[0] || "x";
+    return {
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        data: EMPTY_CLOUD,
+        partial: true,
+        rejected: [{ table: "prospects", id, code: "rls_insert" }],
+      }),
+    };
+  });
+
+  await page.goto("/", { waitUntil: "domcontentloaded" });
+  await expect.poll(() => puts.length, { timeout: 20_000 }).toBeGreaterThan(0);
+  expect(puts[0].protocol).toBe("2");
+
+  await expect.poll(async () => (await outbox(page))?.dirty, { timeout: 10_000 }).toBe(true);
+  expect(await storedNames(page)).toContain(LOCAL_NAME);
+  const box = await outbox(page);
+  expect(box?.nextAttemptAt).toBeTruthy();
+});
+
+test("contraste: un 200 sin merge reemplazaría la base local", async ({ page }) => {
   await prepareAuthenticatedPage(page);
   const puts = await mockSync(page, () => ({
     status: 200,
@@ -79,5 +103,6 @@ test("contraste: un 200 sin la fila rechazada reemplazaría la base local", asyn
 
   await page.goto("/", { waitUntil: "domcontentloaded" });
   await expect.poll(() => puts.length, { timeout: 20_000 }).toBeGreaterThan(0);
+  expect(puts[0].protocol).toBe("2");
   await expect.poll(() => storedNames(page), { timeout: 10_000 }).not.toContain(LOCAL_NAME);
 });

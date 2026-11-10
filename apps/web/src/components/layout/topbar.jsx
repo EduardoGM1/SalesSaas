@@ -17,6 +17,7 @@ export function Topbar({ title, subtitle, showMonthNav, admin }) {
   const syncStatus = useSyncStore((s) => s.status);
   const syncError = useSyncStore((s) => s.lastError);
   const toolEditDenied = useSyncStore((s) => s.toolEditDenied);
+  const blockedOutboundCount = useSyncStore((s) => s.blockedOutboundCount);
 
   if (admin) {
     const { permissions, isSuperAdmin, pathname } = admin;
@@ -90,7 +91,17 @@ export function Topbar({ title, subtitle, showMonthNav, admin }) {
               Error
             </span>
           )}
-          {syncStatus !== "error" && toolEditDenied && (
+          {syncStatus !== "error" && blockedOutboundCount > 0 && (
+            <span
+              className="tb-sync-chip tb-sync-chip--pending"
+              title={t("sync.pendingUnsyncedDetail")}
+              aria-live="polite"
+            >
+              {t("sync.pendingUnsynced")}
+              {blockedOutboundCount > 1 ? ` (${blockedOutboundCount})` : ""}
+            </span>
+          )}
+          {syncStatus !== "error" && blockedOutboundCount === 0 && toolEditDenied && (
             <span
               className="tb-sync-chip tb-sync-chip--denied"
               title={t("sync.editDeniedDetail")}

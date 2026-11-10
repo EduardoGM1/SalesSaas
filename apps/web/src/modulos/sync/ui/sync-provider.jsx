@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { isEmptyDb, normalizeIds } from "@/lib/data/mappers";
+import { omitDeniedToolWrites } from "@/lib/tool-write-denial.js";
 import { pullViaApi, reconcileViaApi } from "../servicios/sync-api.js";
 import { loadDatabase, getActiveWorkspaceId, isCurrentWorkspaceStorageEvent } from "@/lib/storage/local-storage-adapter";
 import { ACCOUNT_KEY, USER_PREFS_KEY } from "@/lib/storage/keys";
@@ -25,9 +26,15 @@ import {
   mergePendingDeletes,
 } from "../servicios/sync-pending-deletes.js";
 import {
+  canAttemptOutboxNow,
   clearOutboxAck,
+  clearOutboxBackoff,
+  getOutboxState,
   isOutboxDirty,
+  isOutboxOnLegacyKey,
   markOutboxDirty,
+  recordOutboxFailure,
+  recordOutboxRejected,
 } from "../servicios/sync-outbox.js";
 import { recoverLocalBlobToCloud } from "@/lib/recover-local-prospects.js";
 import { alignWorkspaceWithServer } from "@/lib/workspace-align.js";
@@ -45,13 +52,14 @@ const RECOVERY_COOLDOWN_MS = 15_000;
 
 function markDirty(reason) {
   markOutboxDirty(reason);
-  useSyncStore.getState().setPendingOutbound(true);
+  useSyncStore.getState().refreshPendingFromOutbox();
 }
 
 function ackClean() {
   clearOutboxAck();
-  useSyncStore.getState().setPendingOutbound(false);
+  useSyncStore.getState().refreshPendingFromOutbox();
 }
+
 
 export function SyncProvider({ children }) {
   const userIdRef = useRef(null);
@@ -94,6 +102,17 @@ export function SyncProvider({ children }) {
       suspendCloudPersist(false);
     };
 
+    const scheduleBackoffTimer = () => {
+      const s = getOutboxState();
+      if (!s.nextAttemptAt) return;
+      const delay = Math.max(DEBOUNCE_MS, s.nextAttemptAt - Date.now());
+      if (timerRef.current) clearTimeout(timerRef.current);
+      timerRef.current = setTimeout(() => {
+        timerRef.current = null;
+        void doReconcile();
+      }, delay);
+    };
+
     const doReconcile = async () => {
       const uid = userIdRef.current;
       if (!uid || !enabledRef.current) return;
@@ -101,17 +120,72 @@ export function SyncProvider({ children }) {
         useSyncStore.getState().setStatus("offline");
         return;
       }
+      if (isOutboxOnLegacyKey()) {
+        useSyncStore.getState().setStatus("error", "Sync requiere un workspace activo.");
+        useSyncStore.getState().refreshPendingFromOutbox();
+        return;
+      }
+      if (!canAttemptOutboxNow()) {
+        useSyncStore.getState().refreshPendingFromOutbox();
+        scheduleBackoffTimer();
+        return;
+      }
       if (pushInFlightRef.current) return;
       pushInFlightRef.current = true;
       useSyncStore.getState().setStatus("syncing");
       try {
-        const remote = await reconcileViaApi(useDbStore.getState().db);
-        if (remote) applyRemote(remote, { clearPendingDeletes: true });
-        ackClean();
-        useSyncStore.getState().setSynced();
+        const local = useDbStore.getState().db;
+        const { db: norm, changed } = normalizeIds(omitDeniedToolWrites(local));
+        if (changed) {
+          suspendRef.current = true;
+          suspendCloudPersist(true);
+          useDbStore.getState().replaceDb({
+            ...norm,
+            settings: mergeSettingsForWorkspace(
+              local.settings,
+              norm.settings,
+              workspaceIdRef.current,
+            ),
+            pendingDeletes: local.pendingDeletes,
+          });
+          suspendRef.current = false;
+          suspendCloudPersist(false);
+        }
+
+        const result = await reconcileViaApi(useDbStore.getState().db);
+        const remote = result?.data;
+        if (result?.partial && Array.isArray(result.rejected) && result.rejected.length) {
+          const localNow = useDbStore.getState().db;
+          if (remote) {
+            const merged = mergeSyncDatabases(localNow, remote, {
+              localSettings: localNow.settings,
+              workspaceId: workspaceIdRef.current,
+            });
+            applyRemote(merged, { clearPendingDeletes: false });
+          }
+          recordOutboxRejected(result.rejected);
+          useSyncStore.getState().refreshPendingFromOutbox();
+          const after = getOutboxState();
+          if (after.dirty) {
+            useSyncStore.getState().setStatus(
+              "error",
+              "Algunos cambios no se pudieron sincronizar; se reintentará.",
+            );
+            scheduleBackoffTimer();
+          } else {
+            useSyncStore.getState().setSynced();
+          }
+        } else {
+          if (remote) applyRemote(remote, { clearPendingDeletes: true });
+          ackClean();
+          useSyncStore.getState().setSynced();
+        }
       } catch (err) {
-        markDirty("reconcile-error");
+        const code = err && typeof err === "object" ? err.code || err.status : null;
+        recordOutboxFailure(code);
+        useSyncStore.getState().refreshPendingFromOutbox();
         useSyncStore.getState().setStatus("error", err instanceof Error ? err.message : String(err));
+        scheduleBackoffTimer();
       } finally {
         pushInFlightRef.current = false;
       }
@@ -120,11 +194,17 @@ export function SyncProvider({ children }) {
     const scheduleSync = () => {
       markDirty("mutation");
       if (!enabledRef.current) return;
+      if (isOutboxOnLegacyKey()) return;
       if (timerRef.current) clearTimeout(timerRef.current);
+      const s = getOutboxState();
+      const delay =
+        s.nextAttemptAt && s.nextAttemptAt > Date.now()
+          ? Math.max(DEBOUNCE_MS, s.nextAttemptAt - Date.now())
+          : DEBOUNCE_MS;
       timerRef.current = setTimeout(() => {
         timerRef.current = null;
         void doReconcile();
-      }, DEBOUNCE_MS);
+      }, delay);
     };
 
     const flushOutbound = async () => {
@@ -249,6 +329,7 @@ export function SyncProvider({ children }) {
     registerSyncPush(flushOutbound);
 
     const onWorkspaceChanged = () => {
+      clearOutboxBackoff();
       void refreshInbound({ force: true, reason: "workspace:changed" });
     };
     window.addEventListener("workspace:changed", onWorkspaceChanged);
@@ -271,6 +352,7 @@ export function SyncProvider({ children }) {
       initedForRef.current = userId;
       userIdRef.current = userId;
       useSyncStore.getState().setStatus("loading");
+      clearOutboxBackoff();
       useSyncStore.getState().refreshPendingFromOutbox();
 
       let account = typeof window !== "undefined" ? localStorage.getItem(ACCOUNT_KEY) : null;
@@ -308,12 +390,11 @@ export function SyncProvider({ children }) {
         if (canPushLocal) {
           try {
             const { db: norm } = normalizeIds(localDb);
-            const remote = await reconcileViaApi(norm);
-            if (remote) applyRemote(remote, { clearPendingDeletes: true });
-            else applyRemote(norm);
-            ackClean();
+            applyRemote(norm);
+            clearOutboxBackoff();
+            enabledRef.current = true;
+            await doReconcile();
             localStorage.setItem(ACCOUNT_KEY, userId);
-            useSyncStore.getState().setSynced();
             await runLocalRecovery({ force: true, reason: "init-offline-push" });
             startRealtime(userId);
             return;
