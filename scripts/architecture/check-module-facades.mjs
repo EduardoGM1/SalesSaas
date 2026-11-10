@@ -106,6 +106,7 @@ const ADMIN_SHIM_ALLOW_INTERNALS = new Set([
   "apps/api/src/services/empresa-roles-seed.js",
   "apps/api/src/controllers/delegacion-controller.js",
   "apps/api/src/controllers/modulos-custom-controller.js",
+  "apps/api/src/lib/auth-rate-limits.js",
 ]);
 
 const ADMIN_SHIM_ALLOW_PREFIXES = [
@@ -114,6 +115,7 @@ const ADMIN_SHIM_ALLOW_PREFIXES = [
   "lib/",
   "middleware/",
   "rutas/",
+  "dominio/",
 ];
 
 function isFacadeRest(rest) {
@@ -165,7 +167,7 @@ function main() {
         }
         if (
           ADMIN_SHIM_ALLOW_INTERNALS.has(rel)
-          && target.modulo === "admin"
+          && (target.modulo === "admin" || target.modulo === "auth")
           && ADMIN_SHIM_ALLOW_PREFIXES.some((p) => String(target.rest || "").startsWith(p))
         ) {
           continue;
