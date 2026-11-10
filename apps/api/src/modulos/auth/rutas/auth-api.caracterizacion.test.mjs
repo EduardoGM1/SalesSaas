@@ -64,3 +64,23 @@ test("rate limits auth conservan cupos y mensaje", () => {
   assert.match(src, /max:\s*12/);
   assert.match(src, /max:\s*30/);
 });
+
+test("migración 0099 asigna liner de plataforma en handle_new_user", () => {
+  const mig = resolve(root, "../../supabase/migrations/0099_default_role_liner_on_register.sql");
+  assert.equal(existsSync(mig), true, mig);
+  const src = readFileSync(mig, "utf8");
+  assert.match(src, /handle_new_user/);
+  assert.match(src, /slug = 'liner'/);
+  assert.match(src, /empresa_id is null/);
+  assert.match(src, /role_id/);
+});
+
+test("migración 0100 endurece ownership y unique prospect_code", () => {
+  const mig = resolve(root, "../../supabase/migrations/0100_sync_tramo3_harden_ownership.sql");
+  assert.equal(existsSync(mig), true, mig);
+  const src = readFileSync(mig, "utf8");
+  assert.match(src, /enforce_immutable_ownership/);
+  assert.match(src, /prospects_user_ws_code_uniq/);
+  assert.match(src, /salesapp\.allow_ownership_change/);
+  assert.equal(/alter\s+table[\s\S]*workspace_id[\s\S]*set\s+default/i.test(src), false);
+});

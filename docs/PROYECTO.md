@@ -139,7 +139,7 @@ sales-app/
 │           ├── app.js        # Express, Helmet, /health, montaje de /auth y /api/v1
 │           └── index.js      # arranque
 ├── packages/shared/src/      # dominio compartido: auth/permisos, data/sync, push, cálculos, formato
-├── supabase/migrations/      # SQL numerado 0001…0098 (97 archivos; hueco histórico 0024)
+├── supabase/migrations/      # SQL numerado 0001…0100 (99 archivos; hueco histórico 0024)
 ├── e2e/                      # Playwright (specs + helpers con semilla local y mocks)
 ├── scripts/                  # utilidades, smokes, seeds; scripts/architecture/ = checks de CI
 ├── docs/                     # documentación; docs/arquitectura/ = decisiones, cortes, planes de deploy
@@ -161,7 +161,7 @@ Conteo de archivos versionados tras el Tramo C de notificaciones (API en `modulo
 | `apps/web/src/actions` | 4 | `apps/api/src/repositories` | 4 |
 | `apps/web/src/stores` | 3 | `apps/api/src/middleware` | 4 |
 | `apps/web/src/layouts` + `routes` + `styles` | 8 | `packages/shared/src` | 20 |
-| `supabase/migrations` | 97 | `e2e` | 16 |
+| `supabase/migrations` | 99 | `e2e` | 16 |
 | `scripts` | 140 | `docs` | 92 |
 
 ### Convenciones de nombres
@@ -752,14 +752,14 @@ Construido con `git log main` y `docs/arquitectura/`. Las fechas son las del com
 
 | Tema | Estado |
 |------|--------|
-| **Sync, Tramo 2 (cliente)** | Desplegado en web `ca9a15a` (código `6bcaf0f`): `X-Sync-Protocol: 2`, merge ante `partial`/`rejected`, backoff del outbox, ids normalizados antes del PUT, chip «Pendientes sin subir». Queda permiso calendario REST vs sync (§5) y Tramo 3 BD |
-| Sync, Tramo 3 (BD) | Endurecer las reglas de actualización de expedientes (requiere OK de BD) |
+| **Sync, Tramo 2 (cliente)** | Desplegado en web `ca9a15a` (código `6bcaf0f`): `X-Sync-Protocol: 2`, merge ante `partial`/`rejected`, backoff del outbox, ids normalizados antes del PUT, chip «Pendientes sin subir». Permiso calendario REST vs sync (§5) cerrado al subir el REST |
+| **Sync, Tramo 3 (BD)** | Migración `0100`: trigger de `user_id`/`workspace_id` inmutables (salvo `service_role` o GUC en RPC de transferencia), índice único `(user_id, workspace_id, prospect_code)`. Sin DEFAULT de `workspace_id` en INSERT. Rollback: [`rollback-0100-sync-tramo3-harden.sql`](./arquitectura/rollback-0100-sync-tramo3-harden.sql) |
 | Notificaciones | Tramos B+A+C en `main`. API desplegada `c3d03b1`; web `c621b92`. Pendiente: OneSignal (SDK, optIn, SW) fuera; ~40 consumidores de `@/lib/toast`; `presentarNotificacion("expediente_transferido")` (hoy no alcanzable; ver [`migraciones/notificaciones.md`](./arquitectura/migraciones/notificaciones.md) §7) |
 | Auth: refresh token reused | Ruido en pm2: `AuthApiError: Invalid Refresh Token: Already Used` (sesión concurrente / rehydrate; **no** es sync). Investigar si molesta a usuarios; no bloquea deploy |
 | Perfiles sin `role_id` | 2 perfiles reales legacy `vendedor` con `role_id` nulo; el operador los asignará a **liner** desde Admin → Usuarios. (Separado de la decisión de rol por defecto al registrarse) |
 | Agenda | Migrada completa (B+A+C). Queda fuera la parte compartida con sync |
 | Push de nota borrada | Al borrar una nota de usuario, `deleteCalEntry` en [`apps/web/src/stores/db-store.ts`](../apps/web/src/stores/db-store.ts) quita la fila local y encola el borrado de `calendar_entries`. No cancela el job `scheduled_note`. La programación usa `entryKey` = timestamp de la nota ([`apps/web/src/modulos/agenda/servicios/acciones-agenda.js`](../apps/web/src/modulos/agenda/servicios/acciones-agenda.js)); el cancelador `cancelarTrabajosPendientesPorEntry` ya existe en [`apps/api/src/modulos/notificaciones/repositorio/trabajos-push-repositorio.js`](../apps/api/src/modulos/notificaciones/repositorio/trabajos-push-repositorio.js) y solo se usa al reprogramar. El flush enviaría la push de una nota que ya no está. Bug de producto previo. Corrección prevista en el servicio de recordatorios. Sin corregir |
-| Permiso de calendario REST vs sync | `PUT /sync` exige `expedientes:editar` para `calendar_entries`; el REST no. Caracterizado. Decisión aplazada al Tramo 2 de sync. Detalle en [`arquitectura/backlog-seguridad.md`](./arquitectura/backlog-seguridad.md) §5 |
+| Permiso de calendario REST vs sync | **Cerrado:** REST de escritura exige `expedientes:editar` (paridad con `PUT /sync`). Ver [`backlog-seguridad.md`](./arquitectura/backlog-seguridad.md) §5 |
 | `verificar:arquitectura:completo` | No corrió en el Tramo C (sin stack local). Cómo levantarlo: sección 4.4 |
 | Volumen de venta y moneda | `vol` se guarda como el número tecleado, sin pasar por el módulo de moneda. La pantalla lo trata como USD al aplicar la tasa (`use-money` y `lib/format/money`). Con usuarios que capturan en MXN el dato es ambiguo: no se sabe si el número ya está en pesos o en dólares. Pregunta de producto. Sin corregir en el Tramo B de ventas |
 | Fecha de agenda de una venta | Corregido en `3acb234` y desplegado en el web. `findCalEntries` ya no suma un mes de más. El conteo previo al deploy seguía en 0, así que no se repararon filas. Historia del bug en [`arquitectura/backlog-seguridad.md`](./arquitectura/backlog-seguridad.md) §6 |
@@ -769,7 +769,8 @@ Construido con `git log main` y `docs/arquitectura/`. Las fechas son las del com
 | Alcance de los canales en tiempo real | Revisión de diseño pendiente de decisión (detalle en el apéndice privado) |
 | HTTPS | Pendiente de operaciones |
 | Retención de backups | Inventario parcial en [`retencion-backups-vps.md`](./arquitectura/retencion-backups-vps.md); falta la política general |
-| Perfiles sin rol por defecto | 2 reales legacy sin `role_id` (asignación manual a liner pendiente). **Decisión de producto pendiente** aparte: rol por defecto al registrarse o no |
+| Rol por defecto al registrarse | **Cerrado** con `0099`: `handle_new_user` asigna `role_id` = liner de plataforma. Los 2 perfiles legacy sin `role_id` siguen siendo asignación manual. Rollback: [`rollback-0099-default-role-liner.sql`](./arquitectura/rollback-0099-default-role-liner.sql) |
+| Zelle / método de pago por defecto | Aplazado (producto) |
 | Entornos | Supabase local o staging separado (propuesta en [`entornos.md`](./arquitectura/entornos.md)) |
 | Paridad de permisos web ↔ shared | Divergencia intencional documentada |
 | Dos flujos de venta (`sales` / `rh_ventas`) | Sin unificar |
@@ -820,7 +821,7 @@ Plantilla completa: [`arquitectura/contencion-y-fachadas.md`](./arquitectura/con
 
 ### Agregar una migración
 
-1. Crea `supabase/migrations/NNNN_descripcion.sql` con el siguiente número libre (hoy, el siguiente a `0098`).
+1. Crea `supabase/migrations/NNNN_descripcion.sql` con el siguiente número libre (hoy, el siguiente a `0100`).
 2. Escribe el rollback SQL junto al plan en `docs/arquitectura/` y un plan con snapshot previo, pruebas positivas y negativas, y criterios de rollback.
 3. **No la apliques a producción sin OK explícito**, backup y rollback preparados. Con OK, se aplica con `npm run db:migrate` ([`scripts/apply-migration.mjs`](../scripts/apply-migration.mjs)) o con el workflow manual Migrate.
 4. Registra en el plan que se aplicó y con qué resultado.

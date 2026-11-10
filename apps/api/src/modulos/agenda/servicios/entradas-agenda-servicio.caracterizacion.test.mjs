@@ -25,6 +25,10 @@ mock.module(pathToFileURL(WS_MOD).href, {
     async getRequestWorkspaceContext() {
       return ctx;
     },
+    async requireWorkspacePermission() {
+      if (!ctx.workspaceId) throw new ServiceError("Workspace activo requerido.", 403);
+      return ctx.workspaceId;
+    },
     scopeByWorkspace(query, workspaceId) {
       if (!workspaceId) throw new ServiceError("Workspace activo requerido.", 403);
       return query.eq("workspace_id", workspaceId);
@@ -233,13 +237,16 @@ serial("listar forma { data, total, limit, offset }", async () => {
   assert.equal(page.data[0].type, "descanso");
 });
 
-serial("REST de agenda no aplica expedientes:editar", () => {
+serial("REST de agenda exige expedientes:editar en escritura (paridad con sync)", () => {
   const src = readFileSync(SERVICE, "utf8");
-  assert.equal(src.includes("expedientes:editar"), false);
-  assert.equal(src.includes("requireWorkspacePermission"), false);
+  assert.match(src, /expedientes:editar/);
+  assert.match(src, /requireWorkspacePermission/);
+  assert.match(src, /crearEntradaAgenda[\s\S]*requireWorkspacePermission/);
+  assert.match(src, /actualizarEntradaAgenda[\s\S]*requireWorkspacePermission/);
+  assert.match(src, /eliminarEntradaAgenda[\s\S]*requireWorkspacePermission/);
 });
 
-serial("deuda sync: alta de calendar_entries exige expedientes:editar en sync.js", () => {
+serial("sync: alta de calendar_entries exige expedientes:editar en sync.js", () => {
   const src = readFileSync(resolve(ROOT, "packages/shared/src/data/sync.js"), "utf8");
   assert.match(src, /calendar_entries:\s*"expedientes:editar"/);
 });
