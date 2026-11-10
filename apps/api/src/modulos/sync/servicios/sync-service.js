@@ -5,10 +5,10 @@
  */
 import { SYNC_INSERT_PERMISSIONS, pullAll, reconcile, summarizeReport } from "@salesapp/shared/data/sync.js";
 import { normalizeIds } from "@salesapp/shared/data/mappers.js";
-import { ServiceError } from "../lib/service-error.js";
-import { logger } from "../lib/logger.js";
-import { getRequestWorkspaceContext, requireWorkspacePermission } from "../lib/workspace-scope.js";
-import { createServiceSupabaseClient } from "../lib/supabase-server.js";
+import { ServiceError } from "../../../lib/service-error.js";
+import { logger } from "../../../lib/logger.js";
+import { getRequestWorkspaceContext, requireWorkspacePermission } from "../../../lib/workspace-scope.js";
+import { createServiceSupabaseClient } from "../../../lib/supabase-server.js";
 
 export const SYNC_PARTIAL_MESSAGE = "Algunos cambios no se pudieron sincronizar; se reintentará.";
 

@@ -15,7 +15,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { reconcile, summarizeReport } from "@salesapp/shared/data/sync.js";
 import { normalizeIds, rowsToDb } from "@salesapp/shared/data/mappers.js";
-import { ServiceError } from "../lib/service-error.js";
+import { ServiceError } from "../../../lib/service-error.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
@@ -292,7 +292,7 @@ test("(ii) una venta ajena reenviada se omite y no bloquea el PUT", async () => 
 });
 
 test("guard: sync:shared no regenera sync.js (lógica propia del servidor)", () => {
-  const cfg = JSON.parse(readFileSync(resolve(HERE, "../../../../scripts/architecture/sync-shared-files.json"), "utf8"));
+  const cfg = JSON.parse(readFileSync(resolve(HERE, "../../../../../../scripts/architecture/sync-shared-files.json"), "utf8"));
   const regenerated = cfg.pairs.map((p) => p.shared);
   assert.ok(!regenerated.includes("packages/shared/src/data/sync.js"), "sync.js no puede estar en pairs");
   assert.ok(cfg.sharedOnlyNoted.includes("packages/shared/src/data/sync.js"));
@@ -467,7 +467,7 @@ test("(d) un expediente con tombstone se omite junto con sus hijos, sin rechazo"
 
 const wsContext = { workspaceId: WS, tipo: "sala_de_venta", rol: "liner", teamScope: false, active: null };
 const permissionDenied = new Set();
-mock.module(pathToFileURL(resolve(HERE, "../lib/workspace-scope.js")).href, {
+mock.module(pathToFileURL(resolve(HERE, "../../../lib/workspace-scope.js")).href, {
   namedExports: {
     getRequestWorkspaceContext: async () => wsContext,
     requireWorkspacePermission: async (_sb, _uid, permission) => {
@@ -476,7 +476,7 @@ mock.module(pathToFileURL(resolve(HERE, "../lib/workspace-scope.js")).href, {
   },
 });
 const logged = [];
-mock.module(pathToFileURL(resolve(HERE, "../lib/logger.js")).href, {
+mock.module(pathToFileURL(resolve(HERE, "../../../lib/logger.js")).href, {
   namedExports: {
     logger: {
       info: (event, fields) => logged.push({ level: "info", event, fields }),
@@ -537,7 +537,7 @@ test("(b) protocolo 2 con un rechazo: 200 con partial y rejected", async () => {
 });
 
 test("(b) runService responde 409 con code sync_partial y la lista de rechazos", async () => {
-  const { runService } = await import("../routes/route-utils.js");
+  const { runService } = await import("../../../routes/route-utils.js");
   const res = {
     statusCode: 200,
     body: null,

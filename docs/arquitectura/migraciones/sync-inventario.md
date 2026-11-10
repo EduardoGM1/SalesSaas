@@ -1,6 +1,6 @@
 # Sync / storage / outbox — inventario
 
-**Estado inventario.** Sin moves. Las claves `sts4_*`, los paths de sync y los códigos HTTP no se renombran.
+**Estado C (API en curso).** Las claves `sts4_*`, los paths de sync y los códigos HTTP no se renombran. La web del outbox sigue fuera.
 
 ## Qué entra
 
@@ -16,6 +16,10 @@ Web: `sync-provider.jsx`, `sync-api.js`, `sync-store.ts`, `sync-merge.js`, `sync
 | Claves `sts4_v1`, `sts4_outbound_v1` y `pendingDeletes` | Un rename deja a los clientes ya desplegados sin su cola |
 | `PUT /sync` y el permiso de alta de ventas | Sigue `ventas:registrar` para ventas y `expedientes:editar` para agenda. No se alinea con el REST |
 | `db-store` y `cloud-persist` | Los usan agenda, ventas y expediente. Solo se mueven si el import queda en una fachada y los códigos no cambian |
+
+## Tramo C — API (hecho en código)
+
+Rutas, controlador, servicio y `sync-reconcile` viven en `modulos/sync`. Paths `/sync`, wrap `sync`, mensaje partial y protocolos 1/2 iguales. El cron de tombstones y notificaciones importan la fachada.
 
 ## Verificación
 

@@ -11,7 +11,7 @@ import {
   cronFlushRemindersRouter,
 } from "../modulos/notificaciones/index.js";
 import profileRouter from "./profile.js";
-import syncRouter from "./sync.js";
+import { syncRouter } from "../modulos/sync/index.js";
 import { prospectsRouter, sharesRouter } from "../modulos/expediente/index.js";
 import chatRouter from "./chat.js";
 import { salesRouter } from "../modulos/ventas/index.js";

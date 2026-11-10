@@ -1,6 +1,6 @@
 import { Router } from "express";
-import { rutaAutenticada } from "./route-utils.js";
-import * as syncController from "../controllers/sync-controller.js";
+import { rutaAutenticada } from "../../../routes/route-utils.js";
+import * as syncController from "../controladores/sync-controller.js";
 
 const router = Router();
 

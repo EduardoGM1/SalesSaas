@@ -1,9 +1,4 @@
 {
   "comment": "Excepciones justificadas a la contención legacy. Cada entrada: archivo posix relativo a la raíz del monorepo + reason. Solo añadir en PR con justificación; preferir poner código nuevo en apps/*/src/modulos/.",
-  "files": [
-    {
-      "file": "apps/api/src/services/sync-reconcile.test.mjs",
-      "reason": "Pruebas del PUT /sync legacy (sync-service.js + shared/data/sync.js), Tramo 1 del fix; ver docs/arquitectura/sync-fix-diseno.md. No hay módulo sync aún; se mueve con él."
-    }
-  ]
+  "files": []
 }

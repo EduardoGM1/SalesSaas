@@ -2,7 +2,7 @@
  * Controller de sincronización bulk.
  * Orquesta auth context → service (nombres de negocio en español).
  */
-import * as syncService from "../services/sync-service.js";
+import * as syncService from "../servicios/sync-service.js";
 
 export async function obtenerSincronizacion(auth) {
   return syncService.obtenerBaseDatosUsuario(auth.supabase, auth.userId);

@@ -9,7 +9,7 @@ import { runService } from "./route-utils.js";
 import { authorizeCron } from "../lib/cron-auth.js";
 import * as supportController from "../controllers/support-controller.js";
 import { procesarExtraDpCron } from "../modulos/royal-holiday/fachada-node.js";
-import * as syncController from "../controllers/sync-controller.js";
+import { purgarTombstonesExpedientesCron } from "../modulos/sync/fachada-node.js";
 
 const router = Router();
 
@@ -25,6 +25,6 @@ function cronRoute(path, task) {
 
 cronRoute("/cron/cleanup-support-attachments", () => supportController.limpiarAdjuntosSoporteCron());
 cronRoute("/cron/rh-extra-dp", () => procesarExtraDpCron());
-cronRoute("/cron/purge-prospect-tombstones", () => syncController.purgarTombstonesExpedientesCron());
+cronRoute("/cron/purge-prospect-tombstones", () => purgarTombstonesExpedientesCron());
 
 export default router;
