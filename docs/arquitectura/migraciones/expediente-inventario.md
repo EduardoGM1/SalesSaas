@@ -1,6 +1,6 @@
 # Expediente / sharing — inventario
 
-**Estado A.** El dominio puro y la UI viven en `modulos/expediente`. OPC sigue en `components/clients`. La API, el realtime de red y la persistencia siguen fuera. Sin cambios de BD ni de paths HTTP.
+**Estado C.** Dominio, UI y API viven en `modulos/expediente`. OPC sigue en `components/clients`. El realtime de red y la persistencia siguen fuera. Sin cambios de BD ni de paths HTTP.
 
 ## Tramo A — UI (hecho)
 
@@ -23,7 +23,7 @@ Los nombres exportados no cambian. `db-store` sigue importando `@/lib/clients`: 
 | `opc-expediente.js` y su página | Royal Holiday / OPC. Módulo 11 |
 | `prospects-persist`, `clients-mirror`, `recover-local-prospects` | Outbox y sync |
 | `expediente-realtime.js` | I/O de presencia. Solo cambia el import del throttle |
-| API `prospects`, `sharing`, `prospect-edit-access` | Tramo C |
+| API `prospects`, `sharing`, `prospect-edit-access` | Tramo C (hecho) |
 | UI de `components/clients`, hooks y acciones | Tramo A |
 | `packages/shared/src/data/**`, `sync.js`, `db-store`, outbox | Misma regla que ventas y agenda |
 
@@ -35,7 +35,7 @@ Guard `check-expediente-shared-guard.mjs` en ramas `arquitectura/expediente-*`. 
 
 No hay smoke de filas: este tramo no escribe `prospects` ni `sales`.
 
-## Tramos que siguen
+## Tramos
 
 - **A — UI (hecho).** Páginas, modal, acciones y hooks de expediente. OPC y el store no se movieron.
-- **C — API.** `prospects`, shares y `prospect-edit-access`, con caracterización de códigos y permisos antes del move.
+- **C — API (hecho).** `prospects`, shares y `prospect-edit-access`. OPC, sync, `db-store` y el outbox no se movieron.
