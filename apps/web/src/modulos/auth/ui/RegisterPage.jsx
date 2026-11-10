@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Check, Lock, Mail, User } from "lucide-react";
 import { useI18n } from "@/hooks/use-i18n.js";
-import { AuthField } from "@/components/auth/auth-field.jsx";
+import { AuthField } from "./auth-field.jsx";
 import { safeNextPath } from "@/lib/safe-next.js";
 
 export function RegisterPage() {

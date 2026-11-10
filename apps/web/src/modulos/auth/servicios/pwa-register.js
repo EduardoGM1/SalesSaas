@@ -1,0 +1,83 @@
+import { registerSW } from "virtual:pwa-register";
+import { purgeAppCaches } from "@/lib/purge-app-caches.js";
+import { ensureFreshBuild } from "@/lib/ensure-fresh-build.js";
+
+let reloading = false;
+
+function reloadOnce() {
+  if (reloading) return;
+  reloading = true;
+  window.location.reload();
+}
+
+/**
+ * Si el HTML/SW quedó en una revisión vieja, el script module apunta a un chunk 404.
+ * En ese caso se limpian caches y se recarga una vez.
+ */
+const RETIRED_ENTRY_CHUNKS = ["index-DS5s4Hkv.js"];
+
+async function recoverFromStaleModuleScript() {
+  if (!("serviceWorker" in navigator)) return;
+  const script = document.querySelector('script[type="module"][src*="/assets/"]');
+  if (!script?.src) return;
+
+  const isRetired = RETIRED_ENTRY_CHUNKS.some((name) => script.src.includes(name));
+  try {
+    const res = await fetch(script.src, { method: "HEAD", cache: "no-store" });
+    if (!isRetired && res.ok) return;
+
+    console.warn("[pwa] stale module script detected, purging caches", script.src, res.status);
+    await purgeAppCaches();
+    reloadOnce();
+  } catch {
+    if (isRetired) {
+      await purgeAppCaches();
+      reloadOnce();
+    }
+  }
+}
+
+/** Activa SW y recarga al detectar versión nueva (evita chunks 404 tras deploy). */
+export function initPwaUpdates() {
+  if (!("serviceWorker" in navigator)) return;
+
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    reloadOnce();
+  });
+
+  void recoverFromStaleModuleScript();
+
+  registerSW({
+    immediate: true,
+    onRegisteredSW(_url, registration) {
+      if (!registration) return;
+
+      const askWaitingToActivate = () => {
+        if (registration.waiting) {
+          registration.waiting.postMessage({ type: "SKIP_WAITING" });
+        }
+      };
+
+      const check = () => {
+        registration.update().then(askWaitingToActivate).catch(() => {});
+        void ensureFreshBuild();
+      };
+
+      askWaitingToActivate();
+      check();
+
+      document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "visible") check();
+      });
+      window.addEventListener("focus", check);
+      window.addEventListener("pageshow", (event) => {
+        if (event.persisted) check();
+      });
+      window.setInterval(check, 15 * 60 * 1000);
+    },
+    onNeedRefresh() {
+      // registerType autoUpdate debería auto-aplicar; forzar por si el prompt path aparece.
+      reloadOnce();
+    },
+  });
+}

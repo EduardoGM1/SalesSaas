@@ -4,7 +4,7 @@ import { Lock, Mail } from "lucide-react";
 import { isSupabaseConfigured } from "@/lib/supabase/config.js";
 import { notifyAuthChanged } from "../servicios/session-api.js";
 import { useI18n } from "@/hooks/use-i18n.js";
-import { AuthField } from "@/components/auth/auth-field.jsx";
+import { AuthField } from "./auth-field.jsx";
 import { safeNextPath } from "@/lib/safe-next.js";
 import { resolvePostAuthPath } from "../servicios/post-auth-home.js";
 import { hasAuthParamsInUrl } from "../servicios/auth-callback.js";

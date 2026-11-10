@@ -3,7 +3,7 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Lock } from "lucide-react";
 import { isSupabaseConfigured } from "@/lib/supabase/config.js";
 import { useI18n } from "@/hooks/use-i18n.js";
-import { AuthField } from "@/components/auth/auth-field.jsx";
+import { AuthField } from "./auth-field.jsx";
 import { consumeAuthParamsFromUrl, hasAuthParamsInUrl } from "../servicios/auth-callback.js";
 
 export function ResetPasswordPage() {

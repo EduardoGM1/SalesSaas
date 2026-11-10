@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import { Routes, Route, Navigate, useParams } from "react-router-dom";
 import { DashboardLayout } from "@/layouts/DashboardLayout.jsx";
 import { AuthLayout } from "@/modulos/auth/ui/AuthLayout.jsx";
-import { ProtectedRoute } from "@/components/auth/ProtectedRoute.jsx";
+import { ProtectedRoute } from "@/modulos/auth/ui/ProtectedRoute.jsx";
 import { RouteFallback } from "@/components/layout/route-fallback.jsx";
 import {
   LoginPage,

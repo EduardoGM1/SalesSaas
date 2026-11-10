@@ -1,4 +1,4 @@
-import { AuthLandingShell } from "@/components/auth/auth-landing-shell.jsx";
+import { AuthLandingShell } from "./auth-landing-shell.jsx";
 
 export function AuthLayout() {
   return <AuthLandingShell />;

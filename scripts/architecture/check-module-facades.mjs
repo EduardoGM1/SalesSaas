@@ -113,6 +113,16 @@ const ADMIN_SHIM_ALLOW_INTERNALS = new Set([
   "apps/web/src/lib/auth-intent.js",
   "apps/web/src/lib/post-auth-home.js",
   "apps/web/src/lib/local-session-reset.js",
+  "apps/web/src/lib/pwa-register.js",
+  "apps/web/src/lib/pwa-install.js",
+]);
+
+/** Shims UI auth en components/ pueden apuntar a ui/* del módulo. */
+const AUTH_UI_SHIM_ALLOW = new Set([
+  "apps/web/src/components/auth/ProtectedRoute.jsx",
+  "apps/web/src/components/auth/auth-landing-shell.jsx",
+  "apps/web/src/components/auth/auth-field.jsx",
+  "apps/web/src/routes/index.jsx",
 ]);
 
 const ADMIN_SHIM_ALLOW_PREFIXES = [
@@ -143,6 +153,7 @@ function isFacadeRest(rest) {
   if (rest === "seccion.js") return true;
   if (rest === "fachada-ui.js") return true;
   if (rest === "ui/AuthLayout.jsx") return true;
+  if (rest === "ui/ProtectedRoute.jsx") return true;
   return false;
 }
 
@@ -176,6 +187,16 @@ function main() {
           ADMIN_SHIM_ALLOW_INTERNALS.has(rel)
           && (target.modulo === "admin" || target.modulo === "auth")
           && ADMIN_SHIM_ALLOW_PREFIXES.some((p) => String(target.rest || "").startsWith(p))
+        ) {
+          continue;
+        }
+        if (
+          AUTH_UI_SHIM_ALLOW.has(rel)
+          && target.modulo === "auth"
+          && (
+            String(target.rest || "").startsWith("ui/")
+            || isFacadeRest(target.rest)
+          )
         ) {
           continue;
         }

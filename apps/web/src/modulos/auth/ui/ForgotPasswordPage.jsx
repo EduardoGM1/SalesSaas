@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Mail } from "lucide-react";
 import { useI18n } from "@/hooks/use-i18n.js";
-import { AuthField } from "@/components/auth/auth-field.jsx";
+import { AuthField } from "./auth-field.jsx";
 import { setAuthIntent } from "../servicios/auth-intent.js";
 
 export function ForgotPasswordPage() {

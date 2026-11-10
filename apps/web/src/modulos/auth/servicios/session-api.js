@@ -3,7 +3,7 @@ import { markPresenceOffline } from "@/lib/presence-api.js";
 import { clearAdminSessionCache } from "@/modulos/admin/fachada-node.js";
 import { clearUserPlanCache } from "@/lib/user-plan-cache.js";
 import { createClient, primeRealtimeAuth } from "@/lib/supabase/client";
-import { isStandaloneApp } from "@/lib/pwa-install.js";
+import { isStandaloneApp } from "./pwa-install.js";
 import { resetLocalUserState } from "./local-session-reset.js";
 import { requestSyncPush } from "@/lib/sync-outbound.js";
 import { isOutboxDirty } from "@/lib/sync-outbox.js";
