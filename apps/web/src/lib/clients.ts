@@ -1,20 +1,9 @@
-import { generateProspectCode } from "@/lib/ids";
-import { ClientRecord } from "@/lib/storage/types";
-
-export function ensureProspectIdentity(c: ClientRecord): ClientRecord {
-  if (!c.id) c.id = `p${Date.now()}`;
-  if (!c.prospectId) c.prospectId = c.id;
-  if (!c.prospectCode) c.prospectCode = generateProspectCode(c.id);
-  return c;
-}
-
-export function clientDisplayName(c: ClientRecord | undefined): string {
-  return c?.name1 || c?.name || "Prospecto";
-}
-
-export function activeClients(clients: Record<string, ClientRecord>): ClientRecord[] {
-  return Object.values(clients)
-    .filter((c) => !["cerrado", "perdido"].includes(c.status || ""))
-    .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
-    .slice(0, 10);
-}
+/**
+ * Puente único que queda en lib/clients.
+ * db-store importa estas funciones y el tramo de expediente no puede editar db-store.
+ */
+export {
+  ensureProspectIdentity,
+  clientDisplayName,
+  activeClients,
+} from "@/modulos/expediente/fachada-node.js";

@@ -1,4 +1,4 @@
-import { clientDisplayName } from "@/lib/clients";
+import { clientDisplayName } from "@/modulos/expediente";
 import { buildShareTemplates } from "@/lib/share-message-templates.js";
 
 export function buildExternalShareUrl(origin, inviteToken) {

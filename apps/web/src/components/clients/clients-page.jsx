@@ -11,7 +11,7 @@ import { sharingApi } from "@/lib/network-api.js";
 import { participantsApi } from "@/lib/participants-api.js";
 import { Topbar } from "@/components/layout/topbar";
 import { PageBack } from "@/components/layout/page-back";
-import { clientDisplayName } from "@/lib/clients";
+import { clientDisplayName } from "@/modulos/expediente";
 import { isQuantifiableSaleClient } from "@/lib/calculations/tour-summary";
 import { shortDate } from "@/lib/format/dates";
 import { useI18n } from "@/hooks/use-i18n.js";

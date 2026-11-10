@@ -331,7 +331,6 @@
     "apps/web/src/lib/settings-sync.js",
     "apps/web/src/lib/share-external.js",
     "apps/web/src/lib/share-message-templates.js",
-    "apps/web/src/lib/shared-prospect.ts",
     "apps/web/src/lib/storage/keys.ts",
     "apps/web/src/lib/storage/local-storage-adapter.ts",
     "apps/web/src/lib/storage/settings-scope.js",

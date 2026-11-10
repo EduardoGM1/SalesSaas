@@ -1,4 +1,4 @@
-import { clientDisplayName } from "@/lib/clients";
+import { clientDisplayName } from "@/modulos/expediente";
 import { AppDatabase, ClientRecord, SaleRecord } from "@/lib/storage/types";
 import { construirInstantaneaVenta } from "./instantanea-venta";
 

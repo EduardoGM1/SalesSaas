@@ -1,4 +1,4 @@
-import { clientDisplayName } from "@/lib/clients";
+import { clientDisplayName } from "@/modulos/expediente";
 import { ClientRecord, SaleRecord } from "@/lib/storage/types";
 
 export function construirInstantaneaVenta(client: ClientRecord) {

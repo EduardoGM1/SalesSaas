@@ -2,7 +2,7 @@
  * Acciones de alta en agenda (escriben db.cal + recordatorios).
  * Contratos de entrada: t / kind no-tour intactos.
  */
-import { clientDisplayName } from "@/lib/clients";
+import { clientDisplayName } from "@/modulos/expediente";
 import { translate } from "@/lib/i18n.js";
 import { useDbStore } from "@/stores/db-store";
 import { toast } from "@/lib/toast";

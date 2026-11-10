@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { sharingApi } from "@/lib/network-api.js";
-import { prospectRowToClient, canEditShared } from "@/lib/shared-prospect";
+import { prospectRowToClient, canEditShared } from "@/modulos/expediente";
 import { EMPTY_TOOL_BUCKET } from "@/lib/store-empty.js";
 import { useExpedienteRealtime } from "@/hooks/use-expediente-realtime.js";
 import { markLocalToolSave } from "@/lib/collab-remote-notify.js";

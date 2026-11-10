@@ -460,7 +460,7 @@ sequenceDiagram
 - La sesión de navegador para Realtime se garantiza con cookies o con `GET /api/v1/auth/realtime-session`.
 - Los bloqueos huérfanos se limpian cuando el peer sale de Presence o vence el TTL.
 - La migración `0098` (en [`supabase/migrations/`](../supabase/migrations/)) habilitó la emisión de Broadcast en los canales de expediente para quien puede acceder al expediente. Está aplicada en producción desde el 2026-10-18, validada con un canario. [`0093_colaboracion_campos.sql`](../supabase/migrations/0093_colaboracion_campos.sql) añade campos de colaboración al workflow del expediente; no es el motor de bloqueos.
-- Archivos: [`apps/web/src/lib/expediente-realtime.js`](../apps/web/src/lib/expediente-realtime.js), [`apps/web/src/lib/expediente-field-lock-helpers.js`](../apps/web/src/lib/expediente-field-lock-helpers.js), [`apps/web/src/hooks/use-expediente-realtime.js`](../apps/web/src/hooks/use-expediente-realtime.js), [`apps/web/src/components/clients/collab-field.jsx`](../apps/web/src/components/clients/collab-field.jsx), [`apps/web/src/lib/presence/realtime.js`](../apps/web/src/lib/presence/realtime.js).
+- Archivos: [`apps/web/src/lib/expediente-realtime.js`](../apps/web/src/lib/expediente-realtime.js), [`apps/web/src/modulos/expediente/dominio/aviso-bloqueo.js`](../apps/web/src/modulos/expediente/dominio/aviso-bloqueo.js), [`apps/web/src/hooks/use-expediente-realtime.js`](../apps/web/src/hooks/use-expediente-realtime.js), [`apps/web/src/components/clients/collab-field.jsx`](../apps/web/src/components/clients/collab-field.jsx), [`apps/web/src/lib/presence/realtime.js`](../apps/web/src/lib/presence/realtime.js).
 - Pendiente: el bloqueo entre varias pestañas del mismo usuario.
 
 ### 7e. Notificaciones y recordatorios

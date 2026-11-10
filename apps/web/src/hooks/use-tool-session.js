@@ -5,7 +5,7 @@ import { useToolBucketReady } from "@/hooks/use-tool-bucket-ready";
 import { useSharedToolSession } from "@/hooks/use-shared-tool-session";
 import { useExpedienteRealtime } from "@/hooks/use-expediente-realtime.js";
 import { resolveToolBackHref } from "@/lib/calculator-nav.js";
-import { ensureProspectIdentity } from "@/lib/clients";
+import { ensureProspectIdentity } from "@/modulos/expediente";
 import { sharingApi } from "@/lib/network-api.js";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { isExpedienteUuid } from "@/lib/expediente-realtime.js";

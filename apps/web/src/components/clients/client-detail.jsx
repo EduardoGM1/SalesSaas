@@ -9,7 +9,7 @@ import { ShareProspectModal } from "@/components/network/share-prospect-modal.js
 import { MoveProspectModal } from "@/components/clients/move-prospect-modal.jsx";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { sharingApi } from "@/lib/network-api.js";
-import { prospectRowToClient, canEditShared, canCommentShared, canAddToWorkspace } from "@/lib/shared-prospect";
+import { prospectRowToClient, canEditShared, canCommentShared, canAddToWorkspace, clientDisplayName, ensureProspectIdentity } from "@/modulos/expediente";
 import { useExpedienteRealtime } from "@/hooks/use-expediente-realtime.js";
 import { retainToolWriteScope } from "@/lib/tool-write-denial.js";
 import { ExpedientePresenceBar } from "@/components/clients/expediente-presence-bar.jsx";
@@ -17,7 +17,6 @@ import { ProspectParticipantsPanel } from "@/components/clients/prospect-workflo
 import { useWorkspace } from "@/hooks/use-workspace.js";
 import { Topbar } from "@/components/layout/topbar";
 import { PageBack } from "@/components/layout/page-back";
-import { clientDisplayName, ensureProspectIdentity } from "@/lib/clients";
 import { longDate, ymdToday } from "@/lib/format/dates";
 import { formatMoneyValue, parseMoney } from "@/lib/format/money";
 import { statusLabel } from "@/lib/format/status";

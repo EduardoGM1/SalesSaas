@@ -3,9 +3,10 @@ import test from "node:test";
 import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { noteThrottledWarn, WARN_THROTTLE_MS } from "./expediente-field-lock-helpers.js";
+import { noteThrottledWarn, WARN_THROTTLE_MS } from "./aviso-bloqueo.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
+const REALTIME = resolve(HERE, "../../../lib/expediente-realtime.js");
 
 test("noteThrottledWarn: primer call emite; segundo dentro de ventana no", () => {
   const map = new Map();
@@ -16,7 +17,7 @@ test("noteThrottledWarn: primer call emite; segundo dentro de ventana no", () =>
 });
 
 test("tearDownChannels envía unlock best-effort antes de untrack", () => {
-  const src = readFileSync(resolve(HERE, "expediente-realtime.js"), "utf8");
+  const src = readFileSync(REALTIME, "utf8");
   const tearIdx = src.indexOf("async function tearDownChannels");
   assert.ok(tearIdx > 0);
   const slice = src.slice(tearIdx, tearIdx + 1200);

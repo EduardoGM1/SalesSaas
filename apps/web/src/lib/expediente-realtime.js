@@ -14,7 +14,7 @@ import { ensureRealtimeReady, removeChannelSafe } from "@/lib/presence/realtime.
 import {
   WARN_THROTTLE_MS,
   noteThrottledWarn,
-} from "./expediente-field-lock-helpers.js";
+} from "@/modulos/expediente";
 
 const DEBOUNCE_MS = 50;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;

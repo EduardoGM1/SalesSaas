@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Topbar } from "@/components/layout/topbar";
 import { PageBack } from "@/components/layout/page-back.jsx";
 import { SaveToolModal } from "@/components/calculators/save-tool-modal";
-import { ensureProspectIdentity } from "@/lib/clients";
+import { ensureProspectIdentity } from "@/modulos/expediente";
 import { computeSurvey } from "../dominio/calculo-survey";
 import { GastosPanel } from "./gastos-panel.jsx";
 import { ResumenPanel } from "./resumen-panel.jsx";
