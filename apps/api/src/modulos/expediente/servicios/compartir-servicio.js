@@ -754,6 +754,15 @@ async function transferPersonalToSala(userId, prospectId, targetWorkspaceId) {
     /* el chat no bloquea la transferencia ya persistida */
   }
 
+  // Estadísticos RH viven en rh_ventas por workspace; la RPC solo mueve prospects.
+  const { error: rhMoveErr } = await admin
+    .from("rh_ventas")
+    .update({ workspace_id: targetWorkspaceId })
+    .eq("prospect_id", prospectId);
+  if (rhMoveErr) {
+    /* no bloquear transferencia CRM si RH falla */
+  }
+
   const [{ data: workflow }, { data: sala }, { data: actor }] = await Promise.all([
     admin.from("prospect_workflows").select("gerente_id").eq("prospect_id", prospectId).maybeSingle(),
     admin.from("workspaces").select("nombre").eq("id", targetWorkspaceId).maybeSingle(),
@@ -827,6 +836,13 @@ export async function transferProspectOwnership(supabase, userId, prospectId, {
     .select()
     .maybeSingle();
   if (upErr) throw new ServiceError(upErr.message, 400);
+  const admin = createServiceSupabaseClient();
+  if (admin) {
+    await admin
+      .from("rh_ventas")
+      .update({ workspace_id: dstWs })
+      .eq("prospect_id", prospectId);
+  }
   return assertFound(data, "Expediente no encontrado.");
 }
 

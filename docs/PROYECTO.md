@@ -717,6 +717,7 @@ Construido con `git log main` y `docs/arquitectura/`. Las fechas son las del com
 | 11-10 | `b8c7050` | Módulo 14 **auth, Tramo A parcial**: páginas auth + session-api | Contener login/callback sin tocar PWA/OneSignal aún | CI checks verdes; **web** `b8c7050`; API `612d6d6` | [`ROLLBACK-web-auth-tramo-a.md`](./arquitectura/ROLLBACK-web-auth-tramo-a.md) |
 | 11-10 | `f211cc5` | Módulo 14 **auth, Tramo A**: ProtectedRoute + PWA register/install | Completar UI de sesión; OneSignal sigue fuera | CI checks verdes; **web** `f211cc5`; API `612d6d6` | [`ROLLBACK-web-auth-tramo-a.md`](./arquitectura/ROLLBACK-web-auth-tramo-a.md) |
 | 11-10 | `92776e1` | Módulo 14 **auth, Tramo C**: API `/auth` y session en `modulos/auth` | Contener login/session sin cambiar paths ni cookies | CI checks verdes; **API** `92776e1`; web `f211cc5` | [`ROLLBACK-api-auth-tramo-c.md`](./arquitectura/ROLLBACK-api-auth-tramo-c.md) |
+| 11-10 | `cdc02a0` | Fix listado de expedientes: el representante asignado también ve el expediente | Sin `teamScope` solo entraba el cerrador, no el rep | **API** `cdc02a0`; web sin cambio | `git revert` + redeploy API |
 | 10-18 | `1f86f78`, `4fe9465`, `3f75b3a`, `72a3ca4` | **Tramo 1 de `PUT /sync`** + smoke de roundtrip, guard de `sync:shared`, baseline 156, plan de deploy con backup lógico y criterios de rollback | Corregir la regresión de sync | **Desplegado `72a3ca4` (API) el 10-18**: CI verde, (a)–(e) en verde en producción, 0 errores 5xx | [`ROLLBACK-api-sync-tramo1.md`](./arquitectura/ROLLBACK-api-sync-tramo1.md) |
 
 ### Regresión de `PUT /sync`
