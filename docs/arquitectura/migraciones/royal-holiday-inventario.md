@@ -1,18 +1,18 @@
 # Royal Holiday — inventario
 
-**Estado A.** La UI vive en `modulos/royal-holiday`. Las fórmulas siguen en `packages/shared`. La API sigue fuera. Sin cambios de BD ni de paths HTTP.
+**Estado C.** La UI y la API viven en `modulos/royal-holiday`. Las fórmulas siguen en `packages/shared`. Sin cambios de BD ni de paths HTTP.
 
 ## Qué ya está hecho
 
-`apps/web/src/lib/calculations/royal-holiday.js` solo reexporta `@salesapp/shared/calculations/royal-holiday.js`. No hay un dominio nuevo que extraer. `handleCancelacionVenta` sigue como import dinámico desde ventas.
+`apps/web/src/lib/calculations/royal-holiday.js` solo reexporta `@salesapp/shared/calculations/royal-holiday.js`. No hay un dominio nuevo que extraer. `handleCancelacionVenta` sigue como import dinámico desde ventas, ahora hacia `fachada-node.js`.
 
 ## Tramo A — UI (hecho)
 
 Páginas de `pages/rh`, la hoja `worksheet-royal-holiday-page.jsx`, los paneles de worksheet que solo sirven a Royal Holiday y `opc-expediente-page.jsx`. Las rutas no cambian: `/clients/opc-nuevo`, `/tools/rh/*` y `/ops/rh/*`. El lazy de OPC sigue exportando `OpcExpedientePage`.
 
-## Tramo C — API
+## Tramo C — API (hecho)
 
-`routes/royal-holiday.js`, su controlador y `royal-holiday-service.js`. Paths y códigos iguales. El cliente `royal-holiday-api.js` pasa a la fachada del módulo.
+Rutas, controlador y servicio en `modulos/royal-holiday`. Paths y códigos iguales. El cron de Extra DP y el admin importan la fachada. Humo de lectura: catálogo y preview sin sesión responden 401. No se escribieron filas.
 
 ## Qué no entra
 
