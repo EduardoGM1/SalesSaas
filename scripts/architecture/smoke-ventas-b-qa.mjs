@@ -118,11 +118,24 @@ async function main() {
     }
 
     if (onHistory && historyText.includes(FOLIO)) {
+      await page.keyboard.press("Escape");
       await page.locator("select[name='status']").selectOption("venta");
       await page.locator("form.admin-filters-form button[type='submit']").click();
-      await page.waitForTimeout(600);
-      const filtered = await page.locator("body").innerText();
-      step("filtro de historial por estado venta", page.url().includes("status=venta") && filtered.includes(FOLIO));
+      let filtered = "";
+      let sawFolio = false;
+      for (let i = 0; i < 12; i += 1) {
+        await page.waitForTimeout(500);
+        filtered = await page.locator("body").innerText();
+        if (page.url().includes("status=venta") && filtered.includes(FOLIO)) {
+          sawFolio = true;
+          break;
+        }
+      }
+      step(
+        "filtro de historial por estado venta",
+        sawFolio,
+        sawFolio ? "folio" : page.url(),
+      );
     } else {
       step("filtro de historial por estado venta", false, "historial no mostró la venta");
     }
