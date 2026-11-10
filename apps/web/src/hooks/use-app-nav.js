@@ -17,7 +17,7 @@ import {
   getRhOpcHomeHref,
   getSidebarNavGroups,
 } from "@/lib/nav-config.js";
-import { warmAdminSession } from "@/hooks/use-admin-session.js";
+import { warmAdminSession } from "@/modulos/admin/fachada-node.js";
 
 export function useAppNav() {
   const mounted = useMounted();

@@ -10,7 +10,7 @@ import { ForgotPasswordPage } from "@/pages/ForgotPasswordPage.jsx";
 import { ResetPasswordPage } from "@/pages/ResetPasswordPage.jsx";
 import { AuthCallbackPage } from "@/pages/AuthCallbackPage.jsx";
 import { CalendarPage } from "@/modulos/agenda";
-import { AdminSection } from "@/layouts/AdminSection.jsx";
+import { AdminSection } from "@/modulos/admin/seccion.js";
 import { RhPremanifiestoGate } from "@/components/auth/RhPremanifiestoGate.jsx";
 import { RhToolFlagGate } from "@/components/auth/RhToolFlagGate.jsx";
 import { ToolPermissionGate } from "@/components/auth/ToolPermissionGate.jsx";

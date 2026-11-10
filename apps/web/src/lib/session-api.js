@@ -1,6 +1,6 @@
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { markPresenceOffline } from "@/lib/presence-api.js";
-import { clearAdminSessionCache } from "@/hooks/use-admin-session.js";
+import { clearAdminSessionCache } from "@/modulos/admin/fachada-node.js";
 import { clearUserPlanCache } from "@/lib/user-plan-cache.js";
 import { createClient, primeRealtimeAuth } from "@/lib/supabase/client";
 import { isStandaloneApp } from "@/lib/pwa-install.js";

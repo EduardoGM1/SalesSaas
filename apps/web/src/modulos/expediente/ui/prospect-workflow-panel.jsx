@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Clock3, MessageSquare } from "lucide-react";
-import { AdminStatusBadge } from "@/components/admin/admin-ui.jsx";
+import { AdminStatusBadge } from "@/modulos/admin/fachada-ui.js";
 import { ProspectCollaborationGroups } from "./prospect-collaboration-groups.jsx";
 import { ProspectParticipantAssignModal } from "./prospect-participant-assign-modal.jsx";
 import { CollapsibleSection } from "@/components/ui/collapsible-section.jsx";

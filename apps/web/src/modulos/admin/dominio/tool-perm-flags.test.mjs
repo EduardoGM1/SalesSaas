@@ -3,7 +3,7 @@ import { describe, it } from "node:test";
 import {
   dropDisallowedToolPerms,
   permisosVisiblesParaFlags,
-} from "../../../../../packages/shared/src/auth/permission-catalog.js";
+} from "../../../../../../packages/shared/src/auth/permission-catalog.js";
 
 describe("dropDisallowedToolPerms", () => {
   it("quita herramientas del módulo apagado y conserva expedientes", () => {

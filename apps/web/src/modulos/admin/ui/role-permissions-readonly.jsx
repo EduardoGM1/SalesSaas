@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
-import { AdminStatusBadge } from "@/components/admin/admin-ui.jsx";
-import { formatModuloLabel, groupPermissionsByModulo, permisosForKeys } from "@/lib/admin/permission-groups.js";
+import { AdminStatusBadge } from "./admin-ui.jsx";
+import { formatModuloLabel, groupPermissionsByModulo, permisosForKeys } from "../servicios/permission-groups.js";
 
 const PREVIEW_PER_GROUP = 3;
 

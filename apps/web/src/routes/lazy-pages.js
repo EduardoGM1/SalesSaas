@@ -35,13 +35,13 @@ export const RhOkrPage = namedLazy(() => import("@/modulos/royal-holiday/paginas
 export const RhCalendarioDescansosPage = namedLazy(() => import("@/modulos/royal-holiday/paginas.js"), "RhCalendarioDescansosPage");
 export const RhPropinasPage = namedLazy(() => import("@/modulos/royal-holiday/paginas.js"), "RhPropinasPage");
 
-export const AdminOverviewPage = namedLazy(() => import("@/pages/admin/AdminOverviewPage.jsx"), "AdminOverviewPage");
-export const AdminUsersPage = namedLazy(() => import("@/pages/admin/AdminUsersPage.jsx"), "AdminUsersPage");
-export const AdminGoalsPage = namedLazy(() => import("@/pages/admin/AdminGoalsPage.jsx"), "AdminGoalsPage");
-export const AdminToolsUsagePage = namedLazy(() => import("@/pages/admin/AdminToolsUsagePage.jsx"), "AdminToolsUsagePage");
-export const AdminSupportPage = namedLazy(() => import("@/pages/admin/AdminSupportPage.jsx"), "AdminSupportPage");
-export const AdminRolesPage = namedLazy(() => import("@/pages/admin/AdminRolesPage.jsx"), "AdminRolesPage");
-export const AdminModulesPage = namedLazy(() => import("@/pages/admin/AdminModulesPage.jsx"), "AdminModulesPage");
-export const AdminEmpresasPage = namedLazy(() => import("@/pages/admin/AdminEmpresasPage.jsx"), "AdminEmpresasPage");
-export const AdminLogsPage = namedLazy(() => import("@/pages/admin/AdminLogsPage.jsx"), "AdminLogsPage");
-export const AdminLegacyRedirect = namedLazy(() => import("@/components/layout/admin-topbar-tabs.jsx"), "AdminLegacyRedirect");
+export const AdminOverviewPage = namedLazy(() => import("@/modulos/admin/paginas.js"), "AdminOverviewPage");
+export const AdminUsersPage = namedLazy(() => import("@/modulos/admin/paginas.js"), "AdminUsersPage");
+export const AdminGoalsPage = namedLazy(() => import("@/modulos/admin/paginas.js"), "AdminGoalsPage");
+export const AdminToolsUsagePage = namedLazy(() => import("@/modulos/admin/paginas.js"), "AdminToolsUsagePage");
+export const AdminSupportPage = namedLazy(() => import("@/modulos/admin/paginas.js"), "AdminSupportPage");
+export const AdminRolesPage = namedLazy(() => import("@/modulos/admin/paginas.js"), "AdminRolesPage");
+export const AdminModulesPage = namedLazy(() => import("@/modulos/admin/paginas.js"), "AdminModulesPage");
+export const AdminEmpresasPage = namedLazy(() => import("@/modulos/admin/paginas.js"), "AdminEmpresasPage");
+export const AdminLogsPage = namedLazy(() => import("@/modulos/admin/paginas.js"), "AdminLogsPage");
+export const AdminLegacyRedirect = namedLazy(() => import("@/modulos/admin/paginas.js"), "AdminLegacyRedirect");

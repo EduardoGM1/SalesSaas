@@ -1,7 +1,7 @@
 
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useI18n } from "@/hooks/use-i18n.js";
-import { filtersToSearchParams } from "@/lib/admin/filters";
+import { filtersToSearchParams } from "../servicios/filters";
 
 const STATUS_OPTIONS = [
   { value: "", key: "admin.filters.allStatuses" },

@@ -1,6 +1,6 @@
 # Admin / RBAC — inventario
 
-**Estado inventario.** Sin moves. Paths HTTP de `/api/v1/admin/*` y permisos RPC no se renombran.
+**Estado:** inventario cerrado; Tramo A (UI) en `admin-a.md`. Paths HTTP de `/api/v1/admin/*` y permisos RPC no se renombran.
 
 ## Qué entra
 

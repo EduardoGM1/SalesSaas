@@ -13,23 +13,23 @@ import {
   AdminPageState,
   AdminStatusBadge,
   AdminSubNav,
-} from "@/components/admin/admin-ui.jsx";
-import { AdminOverflowMenu } from "@/components/admin/admin-overflow-menu.jsx";
-import { BuscadorUsuario } from "@/components/admin/buscador-usuario.jsx";
-import { AdminSidePanel } from "@/components/admin/admin-side-panel.jsx";
-import { ModuleChecklist } from "@/components/admin/module-checklist.jsx";
-import { ApplyRoleTemplate } from "@/components/admin/apply-role-template.jsx";
-import { RoleEditorModal } from "@/components/admin/role-editor-modal.jsx";
-import { PermissionMatrix } from "@/components/admin/permission-matrix.jsx";
+} from "./admin-ui.jsx";
+import { AdminOverflowMenu } from "./admin-overflow-menu.jsx";
+import { BuscadorUsuario } from "./buscador-usuario.jsx";
+import { AdminSidePanel } from "./admin-side-panel.jsx";
+import { ModuleChecklist } from "./module-checklist.jsx";
+import { ApplyRoleTemplate } from "./apply-role-template.jsx";
+import { RoleEditorModal } from "./role-editor-modal.jsx";
+import { PermissionMatrix } from "./permission-matrix.jsx";
 import { CollapsibleSection } from "@/components/ui/collapsible-section.jsx";
 import {
   isLibraryModuleTemplate,
   isRoleTechnicalPackage,
   librarySystemTemplates,
   sortLibraryPackages,
-} from "@/lib/admin/paquete-template-kind.js";
-import { useAdminFetch } from "@/hooks/use-admin-session.js";
-import { adminJson } from "@/lib/admin/api.js";
+} from "../servicios/paquete-template-kind.js";
+import { useAdminFetch } from "../hooks/use-admin-session.js";
+import { adminJson } from "../servicios/api.js";
 import {
   BRAND_ICON_PRESET,
   processBrandingImage,

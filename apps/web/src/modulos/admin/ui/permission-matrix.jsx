@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { groupPermissionsByModulo, permisosForKeys } from "@/lib/admin/permission-groups.js";
+import { groupPermissionsByModulo, permisosForKeys } from "../servicios/permission-groups.js";
 
 /**
  * Matriz de acciones (permisos) agrupada por módulo.

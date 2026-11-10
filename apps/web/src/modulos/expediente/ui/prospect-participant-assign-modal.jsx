@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { SalesModal } from "@/components/ui/sales-modal";
-import { BuscadorUsuario } from "@/components/admin/buscador-usuario.jsx";
+import { BuscadorUsuario } from "@/modulos/admin/fachada-ui.js";
 
 function profileToUser(profile) {
   if (!profile?.id) return null;

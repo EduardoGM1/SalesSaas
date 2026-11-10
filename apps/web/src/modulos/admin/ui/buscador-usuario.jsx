@@ -1,7 +1,7 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Search, UserRound } from "lucide-react";
-import { adminJson } from "@/lib/admin/api.js";
+import { adminJson } from "../servicios/api.js";
 
 const DEBOUNCE_MS = 300;
 const MIN_CHARS = 2;

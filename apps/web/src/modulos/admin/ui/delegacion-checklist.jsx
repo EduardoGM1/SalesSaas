@@ -1,4 +1,4 @@
-import { PermissionMatrix } from "@/components/admin/permission-matrix.jsx";
+import { PermissionMatrix } from "./permission-matrix.jsx";
 
 /**
  * Checklist de permisos delegables (alcance del delegante: capa:app).

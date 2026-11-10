@@ -83,6 +83,16 @@ const SYNC_SHIM_ALLOW_SERVICIOS = new Set([
   "apps/web/src/lib/sync-table-refresh.js",
 ]);
 
+/** Shims legacy de admin: mismos servicios/* sin ciclar fachada-node. */
+const ADMIN_SHIM_ALLOW_SERVICIOS = new Set([
+  "apps/web/src/lib/admin/api.js",
+  "apps/web/src/lib/admin/filters.ts",
+  "apps/web/src/lib/admin/log-narrative.js",
+  "apps/web/src/lib/admin/paquete-template-kind.js",
+  "apps/web/src/lib/admin/permission-groups.js",
+  "apps/web/src/lib/admin/types.ts",
+]);
+
 function isFacadeRest(rest) {
   if (!rest || rest === ".") return true;
   if (/^index(?:\.(js|ts|mjs|cjs|jsx|tsx))?$/.test(rest)) return true;
@@ -99,6 +109,8 @@ function isFacadeRest(rest) {
   if (rest === "fachada-modales.js") return true;
   if (rest === "provider.js") return true;
   if (rest === "store.js") return true;
+  if (rest === "seccion.js") return true;
+  if (rest === "fachada-ui.js") return true;
   return false;
 }
 
@@ -124,6 +136,13 @@ function main() {
         if (
           SYNC_SHIM_ALLOW_SERVICIOS.has(rel)
           && target.modulo === "sync"
+          && String(target.rest || "").startsWith("servicios/")
+        ) {
+          continue;
+        }
+        if (
+          ADMIN_SHIM_ALLOW_SERVICIOS.has(rel)
+          && target.modulo === "admin"
           && String(target.rest || "").startsWith("servicios/")
         ) {
           continue;

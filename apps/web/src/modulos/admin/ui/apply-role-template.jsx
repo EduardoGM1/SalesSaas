@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { dropDisallowedToolPerms } from "@salesapp/shared/auth/permission-catalog.js";
-import { snapshotFromLibraryTemplate } from "@/lib/admin/paquete-template-kind.js";
+import { snapshotFromLibraryTemplate } from "../servicios/paquete-template-kind.js";
 
 /**
  * Copia inicial desde una plantilla de biblioteca. No enlaza el puesto al paquete.

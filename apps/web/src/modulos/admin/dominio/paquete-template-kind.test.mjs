@@ -4,7 +4,7 @@ import {
   isLibraryModuleTemplate,
   isRoleTechnicalPackage,
   snapshotFromLibraryTemplate,
-} from "./paquete-template-kind.js";
+} from "../servicios/paquete-template-kind.js";
 
 describe("paquete-template-kind", () => {
   it("trata slugs de biblioteca de sistema como plantillas", () => {

@@ -1,8 +1,8 @@
 import { Link, useNavigate } from "react-router-dom";
 import { Search } from "lucide-react";
-import { AdminFilterBar } from "@/components/admin/admin-ui.jsx";
+import { AdminFilterBar } from "./admin-ui.jsx";
 import { useI18n } from "@/hooks/use-i18n.js";
-import { userFiltersToSearchParams } from "@/lib/admin/filters";
+import { userFiltersToSearchParams } from "../servicios/filters";
 
 const ROLES = [
   { value: "", key: "admin.filters.allRoles" },

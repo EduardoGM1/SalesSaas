@@ -66,12 +66,12 @@ export function Sidebar() {
                   to={href}
                   className={cn("sb-item", active && "active")}
                   onMouseEnter={() => {
-                    void import("@/pages/admin/AdminOverviewPage.jsx");
-                    void import("@/hooks/use-admin-session.js").then((m) => m.prefetchAdminSession?.());
+                    void import("@/modulos/admin/paginas.js");
+                    void import("@/modulos/admin/fachada-node.js").then((m) => m.prefetchAdminSession?.());
                   }}
                   onFocus={() => {
-                    void import("@/pages/admin/AdminOverviewPage.jsx");
-                    void import("@/hooks/use-admin-session.js").then((m) => m.prefetchAdminSession?.());
+                    void import("@/modulos/admin/paginas.js");
+                    void import("@/modulos/admin/fachada-node.js").then((m) => m.prefetchAdminSession?.());
                   }}
                 >
                   <Icon size={18} strokeWidth={2} />

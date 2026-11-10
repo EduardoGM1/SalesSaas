@@ -1,0 +1,10 @@
+export { AdminOverviewPage } from "./ui/AdminOverviewPage.jsx";
+export { AdminUsersPage } from "./ui/AdminUsersPage.jsx";
+export { AdminGoalsPage } from "./ui/AdminGoalsPage.jsx";
+export { AdminToolsUsagePage } from "./ui/AdminToolsUsagePage.jsx";
+export { AdminSupportPage } from "./ui/AdminSupportPage.jsx";
+export { AdminRolesPage } from "./ui/AdminRolesPage.jsx";
+export { AdminModulesPage } from "./ui/AdminModulesPage.jsx";
+export { AdminEmpresasPage } from "./ui/AdminEmpresasPage.jsx";
+export { AdminLogsPage } from "./ui/AdminLogsPage.jsx";
+export { AdminLegacyRedirect } from "./ui/admin-topbar-tabs.jsx";

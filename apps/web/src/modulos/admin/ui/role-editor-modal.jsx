@@ -2,11 +2,11 @@ import {
   dropDisallowedToolPerms,
   permisosVisiblesParaFlags,
 } from "@salesapp/shared/auth/permission-catalog.js";
-import { AdminStatusBadge } from "@/components/admin/admin-ui.jsx";
-import { ModuleChecklist } from "@/components/admin/module-checklist.jsx";
-import { PermissionMatrix } from "@/components/admin/permission-matrix.jsx";
-import { ApplyRoleTemplate } from "@/components/admin/apply-role-template.jsx";
-import { RolePermissionsReadonly } from "@/components/admin/role-permissions-readonly.jsx";
+import { AdminStatusBadge } from "./admin-ui.jsx";
+import { ModuleChecklist } from "./module-checklist.jsx";
+import { PermissionMatrix } from "./permission-matrix.jsx";
+import { ApplyRoleTemplate } from "./apply-role-template.jsx";
+import { RolePermissionsReadonly } from "./role-permissions-readonly.jsx";
 import { SalesModal } from "@/components/ui/sales-modal";
 
 /**
