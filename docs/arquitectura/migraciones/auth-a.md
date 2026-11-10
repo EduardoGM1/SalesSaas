@@ -1,11 +1,13 @@
-# Auth / sesión / PWA — Tramo A (web, parcial)
+# Auth / sesión / PWA — Tramo A (web)
 
-**Estado:** web núcleo desplegado `f211cc5` (páginas, session-api, ProtectedRoute, PWA register/install). Rollback: [`ROLLBACK-web-auth-tramo-a.md`](../ROLLBACK-web-auth-tramo-a.md). Pendiente en A: OneSignal/push y supabase browser.
+**Estado:** núcleo + OneSignal/push en `modulos/auth`. Rollback web: [`ROLLBACK-web-auth-tramo-a.md`](../ROLLBACK-web-auth-tramo-a.md) (núcleo `f211cc5`); OneSignal/push en tip posterior.
 
-## Alcance de este corte
+## Alcance cerrado
 
-Páginas auth, `AuthLayout`, `session-api` y helpers de callback/intent/home/reset local → `modulos/auth` con `paginas.js` y shims.
+Páginas auth, `AuthLayout`, `session-api`, helpers de callback/intent/home/reset local, `ProtectedRoute`, PWA register/install, OneSignal (`servicios/onesignal.js`), `push-enable` y `OneSignalProvider`.
+
+Shims legacy: `lib/onesignal.js`, `lib/push-enable.js`, `components/providers/onesignal-provider.jsx`.
 
 ## Aún pendiente en A
 
-`ProtectedRoute`, supabase browser, PWA register/install, OneSignal/push.
+`supabase` browser (`lib/supabase/client`) — refinamiento menor; no bloquea el cierre del tramo.

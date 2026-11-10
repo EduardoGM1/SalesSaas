@@ -3,7 +3,7 @@ import { StoreHydration } from "@/components/providers/store-hydration.jsx";
 import { SyncProvider } from "@/components/providers/sync-provider.jsx";
 import { SincronizacionTipoCambio } from "@/modulos/geo-fx";
 import { PresenceProvider } from "@/components/providers/presence-provider.jsx";
-import { OneSignalProvider } from "@/components/providers/onesignal-provider.jsx";
+import { OneSignalProvider } from "@/modulos/auth/ui/onesignal-provider.jsx";
 import { PushPermissionPrompt } from "@/components/notifications/push-permission-prompt.jsx";
 import { AutoPushCoordinator } from "@/components/notifications/auto-push-coordinator.jsx";
 import { InAppNotificationsCoordinator } from "@/modulos/notificaciones";
