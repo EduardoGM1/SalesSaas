@@ -1,6 +1,6 @@
 # Sync / storage / outbox — inventario
 
-**Estado C (API hecho).** Las claves `sts4_*`, los paths de sync y los códigos HTTP no se renombran. La web del outbox sigue fuera.
+**Estado A+C.** API y web viven en `modulos/sync`. Las claves `sts4_*`, los paths y los códigos HTTP no se renombran. `db-store` sigue fuera; los shims de `@/lib/sync-*` lo alimentan.
 
 ## Qué entra
 
@@ -17,7 +17,11 @@ Web: `sync-provider.jsx`, `sync-api.js`, `sync-store.ts`, `sync-merge.js`, `sync
 | `PUT /sync` y el permiso de alta de ventas | Sigue `ventas:registrar` para ventas y `expedientes:editar` para agenda. No se alinea con el REST |
 | `db-store` y `cloud-persist` | Los usan agenda, ventas y expediente. Solo se mueven si el import queda en una fachada y los códigos no cambian |
 
-## Tramo C — API (hecho en código)
+## Tramo A — Web (hecho en código)
+
+Provider, store, outbox, merge, refresh y shims en rutas legacy. Entradas delgadas: `provider.js`, `store.js`, `fachada-node.js`, `fachada-api.js`, `fachada-table.js`.
+
+## Tramo C — API (hecho)
 
 Rutas, controlador, servicio y `sync-reconcile` viven en `modulos/sync`. Paths `/sync`, wrap `sync`, mensaje partial y protocolos 1/2 iguales. El cron de tombstones y notificaciones importan la fachada.
 

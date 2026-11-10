@@ -75,6 +75,8 @@ function isFacadeRest(rest) {
   if (/^index(?:\.(js|ts|mjs|cjs|jsx|tsx))?$/.test(rest)) return true;
   // Entradas delgadas (no usar index.js: Vite lo prioriza sobre index.ts)
   if (rest === "fachada-node.js") return true;
+  if (rest === "fachada-api.js") return true;
+  if (rest === "fachada-table.js") return true;
   if (rest === "fachada-i18n.js") return true;
   if (rest === "fachada-preguntas.js") return true;
   if (rest === "fachada-toast.js") return true;
@@ -82,6 +84,8 @@ function isFacadeRest(rest) {
   if (rest === "hoja.js") return true;
   if (rest === "opc.js") return true;
   if (rest === "fachada-modales.js") return true;
+  if (rest === "provider.js") return true;
+  if (rest === "store.js") return true;
   return false;
 }
 
