@@ -8,7 +8,7 @@ export const MessagesPage = namedLazy(() => import("@/pages/MessagesPage.jsx"), 
 export const NetworkPage = namedLazy(() => import("@/pages/NetworkPage.jsx"), "NetworkPage");
 export const ContactPage = namedLazy(() => import("@/pages/ContactPage.jsx"), "ContactPage");
 export const TeamPage = namedLazy(() => import("@/pages/TeamPage.jsx"), "TeamPage");
-export const SalesHistoryPage = namedLazy(() => import("@/modulos/ventas/ui/sales-history-page.jsx"), "SalesHistoryPage");
+export const SalesHistoryPage = namedLazy(() => import("@/modulos/ventas"), "SalesHistoryPage");
 export const ToolsHubPage = namedLazy(() => import("@/pages/ToolsHubPage.jsx"), "ToolsHubPage");
 export const GoalsPage = namedLazy(() => import("@/components/goals/goals-page.jsx"), "GoalsPage");
 export const MetasPage = namedLazy(() => import("@/components/goals/metas-page.jsx"), "MetasPage");
