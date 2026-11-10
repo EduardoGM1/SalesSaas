@@ -1,8 +1,8 @@
 /**
  * HTTP de ventas. El recálculo RH de cancelación queda en el service.
  */
-import { parseLimitOffset } from "../lib/http.js";
-import * as ventasService from "../services/sales-service.js";
+import { parseLimitOffset } from "../../../lib/http.js";
+import * as ventasService from "../servicios/ventas-servicio.js";
 
 export async function listarVentas(auth, req) {
   const paging = parseLimitOffset(req.query);

@@ -3,8 +3,8 @@
  */
 import { isUuid } from "@salesapp/shared/data/mappers.js";
 import { SALE_LIST_COLUMNS } from "@salesapp/shared/data/sync-columns.js";
-import { ServiceError, assertFound } from "../lib/service-error.js";
-import { scopeByWorkspace } from "../lib/workspace-scope.js";
+import { ServiceError, assertFound } from "../../../lib/service-error.js";
+import { scopeByWorkspace } from "../../../lib/workspace-scope.js";
 
 export async function listarVentas(supabase, { userId, workspaceId, teamScope, limit, offset, prospect_id, from, to }) {
   let q = supabase

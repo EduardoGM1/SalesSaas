@@ -1,6 +1,6 @@
 # Inventario — ventas (módulo 9)
 
-**Estado A.** Tramo B (dominio) y Tramo A (UI, hook y acciones) están en `modulos/ventas`. Tramo C (API) sin empezar. `SalesModal` sigue en `components/ui`. El expediente solo cambia el import de `SaleFields`. Sin cambios de BD.
+**Estado C.** Tramos B, A y C están en `modulos/ventas` (web y API). `SalesModal` sigue en `components/ui`. Sync, shared, `db-store` y Royal Holiday no se movieron. El `import()` de `handleCancelacionVenta` sigue en el servicio. Sin cambios de BD.
 
 **Contratos congelados:** ver §2. No renombrar. **shared/sync intocable** en los tramos B/A/C (guard del mismo corte que el de agenda, ver §4).
 
@@ -70,10 +70,10 @@ Ya es MVC. Paths sin cambio.
 
 | Archivo | Líneas | Papel |
 |---------|-------:|-------|
-| [`apps/api/src/routes/sales.js`](../../../apps/api/src/routes/sales.js) | 10 | `GET/POST /sales`, `GET/PATCH/DELETE /sales/:id` |
-| [`apps/api/src/controllers/sales-controller.js`](../../../apps/api/src/controllers/sales-controller.js) | 26 | Paginación y delegación |
-| [`apps/api/src/services/sales-service.js`](../../../apps/api/src/services/sales-service.js) | 65 | Permisos y, si el parche deja `status=cancelada`, `import()` de `handleCancelacionVenta` |
-| [`apps/api/src/repositories/sales-repository.js`](../../../apps/api/src/repositories/sales-repository.js) | 49 | `SALE_LIST_COLUMNS`; el listado añade `prospects(name, name1, prospect_code)` |
+| [`apps/api/src/modulos/ventas/rutas/ventas.js`](../../../apps/api/src/modulos/ventas/rutas/ventas.js) | 10 | `GET/POST /sales`, `GET/PATCH/DELETE /sales/:id` |
+| [`apps/api/src/modulos/ventas/controladores/ventas-controlador.js`](../../../apps/api/src/modulos/ventas/controladores/ventas-controlador.js) | 26 | Paginación y delegación |
+| [`apps/api/src/modulos/ventas/servicios/ventas-servicio.js`](../../../apps/api/src/modulos/ventas/servicios/ventas-servicio.js) | 65 | Permisos y, si el parche deja `status=cancelada`, `import()` de `handleCancelacionVenta` |
+| [`apps/api/src/modulos/ventas/repositorio/ventas-repositorio.js`](../../../apps/api/src/modulos/ventas/repositorio/ventas-repositorio.js) | 49 | `SALE_LIST_COLUMNS`; el listado añade `prospects(name, name1, prospect_code)` |
 
 Montaje: [`apps/api/src/routes/v1.js`](../../../apps/api/src/routes/v1.js). Otro lector del path del repositorio: [`e2e/egress-payload.spec.js`](../../../e2e/egress-payload.spec.js) (el Tramo C tendrá que actualizar esa ruta, como en agenda, sin cambiar la aserción de columnas).
 
@@ -222,11 +222,11 @@ Orden: **B puro → A UI → C API**. Cada uno con verificación sin dispositivo
 - La ruta `/sales` carga la página del módulo. Recordatorios siguen en `@/modulos/notificaciones`.
 - Verificar sin dispositivo: los golden de B siguen verdes; E2E de egress sin cambio de aserciones; smoke QA efímera (rol que pueda registrar) que da de alta una venta `venta` y una `pendiente` con `processDate`, compara las filas de `sales` (y la entrada de agenda que el store ya crea) contra el mismo flujo en `main`, y purga a 0. Contraseña aleatoria fuera del repo.
 
-### Tramo C — API MVC
+### Tramo C — API MVC (hecho)
 
-- Caracterización **antes** del move, en commit aparte: códigos, forma `{ data, total, limit, offset }` / `{ ok: true }`, permisos de §1.3, 401/403/404/400, aislamiento por workspace. Mismos nombres y resultados después.
-- Mover a `apps/api/src/modulos/ventas/{rutas,controladores,servicios,repositorio}`. Fachadas `index.js` y `fachada-node.js`. `v1.js` importa la fachada. Sin shims si no quedan consumidores.
-- El `import()` de `handleCancelacionVenta` se queda en el servicio. No se mueve Royal Holiday.
+- Caracterización previa en [`ventas-tramo-c-caracterizacion.md`](./ventas-tramo-c-caracterizacion.md).
+- La API vive en `apps/api/src/modulos/ventas/{rutas,controladores,servicios,repositorio}`. `v1.js` importa la fachada. Sin shim.
+- El `import()` de `handleCancelacionVenta` sigue en el servicio. Royal Holiday no se movió.
 - `bodyToSaleInsert`, `saleToPatch`, `SALE_LIST_COLUMNS` siguen en shared.
 - Verificar: checks + guard; `test:security` con los tests nuevos y la misma lista de nombres previos; `test:web` sin cambios de comportamiento; E2E 0 fallos (el spec de egress apunta al repositorio nuevo, aserciones iguales); smoke API con QA efímera: 401 sin token, alta, edición, borrado, 403 sin `ventas:registrar`, aislamiento entre workspaces, filas de `sales` comparadas con `main`, purga a 0.
 - Regla de corte: si cambia un código, un payload o una fila de `sales`, o el guard se dispara, no se despliega.

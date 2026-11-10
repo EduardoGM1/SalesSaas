@@ -27,7 +27,7 @@ test.describe("Egress — columnas de sync (estático)", () => {
 
   test("listados REST de sales/activities/calendar no usan select('*')", () => {
     const sales = fs.readFileSync(
-      path.join(root, "apps/api/src/repositories/sales-repository.js"),
+      path.join(root, "apps/api/src/modulos/ventas/repositorio/ventas-repositorio.js"),
       "utf8",
     );
     const activities = fs.readFileSync(

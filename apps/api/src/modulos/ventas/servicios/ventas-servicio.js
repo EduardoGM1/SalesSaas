@@ -3,14 +3,14 @@
  */
 import { isUuid } from "@salesapp/shared/data/mappers.js";
 import { bodyToSaleInsert } from "@salesapp/shared/api/validators.js";
-import { ServiceError } from "../lib/service-error.js";
-import { logger } from "../lib/logger.js";
-import { saleToPatch } from "../lib/patch-whitelist.js";
+import { ServiceError } from "../../../lib/service-error.js";
+import { logger } from "../../../lib/logger.js";
+import { saleToPatch } from "../../../lib/patch-whitelist.js";
 import {
   getRequestWorkspaceContext,
   requireWorkspacePermission,
-} from "../lib/workspace-scope.js";
-import * as ventasRepo from "../repositories/sales-repository.js";
+} from "../../../lib/workspace-scope.js";
+import * as ventasRepo from "../repositorio/ventas-repositorio.js";
 
 export async function listarVentas(supabase, userId, { limit, offset, prospect_id, from, to }) {
   const ctx = await getRequestWorkspaceContext(supabase, userId);
@@ -53,7 +53,7 @@ export async function actualizarVenta(supabase, userId, id, body) {
   const sale = await ventasRepo.actualizarVenta(supabase, { id, userId, workspaceId, patch });
   if (String(patch.status || "").toLowerCase() === "cancelada") {
     try {
-      const { handleCancelacionVenta } = await import("./royal-holiday-service.js");
+      const { handleCancelacionVenta } = await import("../../../services/royal-holiday-service.js");
       await handleCancelacionVenta(id);
     } catch (err) {
       logger.warn("[rh] cancelacion comisión", { error: err, sale_id: id });

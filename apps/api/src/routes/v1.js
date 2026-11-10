@@ -14,7 +14,7 @@ import profileRouter from "./profile.js";
 import syncRouter from "./sync.js";
 import prospectsRouter from "./prospects.js";
 import chatRouter from "./chat.js";
-import salesRouter from "./sales.js";
+import { salesRouter } from "../modulos/ventas/index.js";
 import { calendarRouter } from "../modulos/agenda/index.js";
 import { goalsRouter } from "../modulos/metas/index.js";
 import { surveyPreguntasRouter } from "../modulos/survey/index.js";

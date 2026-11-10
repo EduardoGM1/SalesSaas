@@ -1,6 +1,6 @@
 import { Router } from "express";
-import { rutaAutenticada } from "./route-utils.js";
-import * as salesController from "../controllers/sales-controller.js";
+import { rutaAutenticada } from "../../../routes/route-utils.js";
+import * as salesController from "../controladores/ventas-controlador.js";
 
 const router = Router();
 router.get("/sales", rutaAutenticada(salesController.listarVentas));

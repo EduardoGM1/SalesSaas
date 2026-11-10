@@ -30,7 +30,7 @@ Al excederse responde `429` con header `Retry-After`.
 |---|---|---|
 | Sesión y perfil | `/auth/session`, `/profile` | `session-service`, `profile-service` |
 | Prospectos (expedientes) | `/prospects` | `prospects-service` |
-| Ventas | `/sales` | `sales-service` |
+| Ventas | `/sales` | `modulos/ventas` |
 | Calendario | `/calendar-entries` | `calendar-service` |
 | Metas | `/goals` | `goals-service` |
 | Actividades | `/activities` | `activities-service` |
