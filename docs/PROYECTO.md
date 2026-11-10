@@ -723,6 +723,7 @@ Construido con `git log main` y `docs/arquitectura/`. Las fechas son las del com
 | 11-10 | `faf5b3a` | Auth Tramo A: OneSignal + `push-enable` + provider en `modulos/auth` (shims legacy) | Contener push web del borde auth | **web** `faf5b3a`; API sin cambio | `git revert` + redeploy web (`web-dist/pre-20261110-161947`) |
 | 11-10 | `ccb2804` | Auth Tramo A cierre: supabase browser (`client`/`config`/`realtime-auth`/`ensure-browser-session`) en `modulos/auth` | Contener el borde supabase del web | **web** `ccb2804`; API sin cambio. Backup `web-dist/pre-20261110-190631` | `git revert` + redeploy web |
 | 11-10 | `6bcaf0f` → tip `ca9a15a` | Sync Tramo 2 web: protocolo 2, merge partial, backoff outbox, pendientes bloqueados en topbar | Cliente v1 reintentaba ~700/día el mismo rechazo; riesgo de perder filas con 200 parcial | **web** `ca9a15a`; API sin cambio (Tramo 1 ya en prod). Backup `web-dist/pre-20261110-180249` | `git revert` + redeploy web |
+| 11-10 | `7d82e99` | Calendario REST=`expedientes:editar`; `0099` liner al registrarse; `0100` Tramo 3 ownership + unique code | Cerrar §5, rol por defecto y endurecer BD sync | **API** `7d82e99`; migraciones `0099`/`0100` aplicadas en prod (RO: 0 dups; trigger bloquea UPDATE de ownership). Web sin cambio | Rollbacks SQL `rollback-0099` / `rollback-0100`; `git revert` + redeploy API |
 | 10-18 | `1f86f78`, `4fe9465`, `3f75b3a`, `72a3ca4` | **Tramo 1 de `PUT /sync`** + smoke de roundtrip, guard de `sync:shared`, baseline 156, plan de deploy con backup lógico y criterios de rollback | Corregir la regresión de sync | **Desplegado `72a3ca4` (API) el 10-18**: CI verde, (a)–(e) en verde en producción, 0 errores 5xx | [`ROLLBACK-api-sync-tramo1.md`](./arquitectura/ROLLBACK-api-sync-tramo1.md) |
 
 ### Regresión de `PUT /sync`
@@ -730,7 +731,7 @@ Construido con `git log main` y `docs/arquitectura/`. Las fechas son las del com
 - **Causa:** `9f2b5ac` regeneró `packages/shared/src/data/mappers.js` a partir del web con `sync:shared`. La copia del servidor perdió el estampado de `workspace_id` y la conservación del dueño, que el web nunca tuvo. Con eso, cualquier fila nueva subía sin workspace y RLS la rechazaba, y un primer fallo abortaba todo el `PUT`.
 - **Ventana:** la primera API con ese commit se desplegó el **2026-10-13** (con `054f0ab`). Desde el **14-10** hubo 0 sincronizaciones correctas de usuarios con expedientes. La corrección se desplegó el **2026-10-18** (`72a3ca4`).
 - **Corrección (Tramo 1, solo API):** la lógica del servidor se movió a `packages/shared/src/data/sync.js`, un archivo que no se regenera desde el web: workspace de la sesión, dueño real, aislamiento por fila, idempotencia y `409 sync_partial` ([`sync-fix-diseno.md`](./arquitectura/sync-fix-diseno.md), [`deploy-api-sync-tramo1.md`](./arquitectura/deploy-api-sync-tramo1.md)).
-- **Pendiente:** confirmar con tráfico real que los usuarios afectados vuelven a sincronizar (en la primera media hora después del deploy no hubo `PUT /sync` reales) y el Tramo 2 de cliente.
+- **Tramos 2 y 3:** cliente (`ca9a15a`) y BD (`0100` en `7d82e99`) cerrados. Queda observar tráfico real de sync.
 
 ### Lecciones aprendidas
 
