@@ -39,7 +39,7 @@ const gate = { deny: new Set(), calls: [] };
 const rhCalls = [];
 
 mock.module(pathToFileURL(resolve(API, "lib/workspace-scope.js")).href, {
-  exports: {
+  namedExports: {
     async getRequestWorkspaceContext() {
       return ctx;
     },
@@ -60,7 +60,7 @@ mock.module(pathToFileURL(resolve(API, "lib/workspace-scope.js")).href, {
 });
 
 mock.module(pathToFileURL(resolve(API, "services/royal-holiday-service.js")).href, {
-  exports: {
+  namedExports: {
     async handleCancelacionVenta(saleId) {
       rhCalls.push(saleId);
     },
