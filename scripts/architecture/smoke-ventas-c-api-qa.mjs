@@ -49,20 +49,25 @@ function supabaseEnv() {
       if (!env[k]) env[k] = line.slice(i + 1).trim().replace(/^['"]|['"]$/g, "");
     }
   }
-  const url = (env.SUPABASE_URL || env.VITE_SUPABASE_URL || "").replace(/\/$/, "");
-  const anon = env.SUPABASE_ANON_KEY || env.VITE_SUPABASE_ANON_KEY;
+  const url = (env.VITE_SUPABASE_URL || env.SUPABASE_URL || "").replace(/\/$/, "");
+  const anon = env.VITE_SUPABASE_ANON_KEY || env.SUPABASE_ANON_KEY;
   if (!url || !anon) throw new Error("Falta SUPABASE_URL/ANON");
   return { url, anon };
 }
 async function token(email) {
   const { url, anon } = supabaseEnv();
-  const res = await fetch(`${url}/auth/v1/token?grant_type=password`, {
-    method: "POST",
-    headers: { apikey: anon, "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password: PASS }),
-  });
+  let res;
+  try {
+    res = await fetch(`${url}/auth/v1/token?grant_type=password`, {
+      method: "POST",
+      headers: { apikey: anon, "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password: PASS }),
+    });
+  } catch (err) {
+    throw new Error(`token red ${err.cause?.code || err.message}`);
+  }
   const body = await res.json().catch(() => ({}));
-  if (!res.ok || !body.access_token) throw new Error(`token ${res.status}`);
+  if (!res.ok || !body.access_token) throw new Error(`token ${res.status} ${body.error_code || body.error || ""}`.trim());
   return body.access_token;
 }
 async function api(method, path, tok, body) {
