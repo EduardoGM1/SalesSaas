@@ -1,6 +1,6 @@
 # Admin / RBAC — Tramo A (UI web)
 
-**Estado:** en curso (rama `arquitectura/admin-tramo-a`).
+**Estado:** hecho. Web desplegado `60a43e2`. Rollback: [`ROLLBACK-web-admin-tramo-a.md`](../ROLLBACK-web-admin-tramo-a.md).
 
 ## Alcance
 
