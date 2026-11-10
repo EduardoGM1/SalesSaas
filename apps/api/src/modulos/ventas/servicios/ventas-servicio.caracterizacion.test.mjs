@@ -59,7 +59,7 @@ mock.module(pathToFileURL(resolve(API, "lib/workspace-scope.js")).href, {
   },
 });
 
-mock.module(pathToFileURL(resolve(API, "services/royal-holiday-service.js")).href, {
+mock.module(pathToFileURL(resolve(API, "modulos/royal-holiday/fachada-node.js")).href, {
   namedExports: {
     async handleCancelacionVenta(saleId) {
       rhCalls.push(saleId);
@@ -143,7 +143,7 @@ test("servicio: permisos y el import de cancelación RH", () => {
   assert.match(src, /"sales:view_detail"/);
   assert.match(src, /"ventas:editar"/);
   assert.match(src, /"ventas:cancelar"/);
-  assert.match(src, /import\(.*royal-holiday-service/);
+  assert.match(src, /import\("\.\.\/\.\.\/royal-holiday\/fachada-node\.js"\)/);
   assert.match(src, /handleCancelacionVenta/);
 });
 

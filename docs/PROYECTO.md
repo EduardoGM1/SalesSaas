@@ -558,7 +558,7 @@ flowchart TD
   PM --> RP[("rh_premanifiesto")]
 ```
 
-- La API vive en `/api/v1/royal-holiday/:empresaId/*` ([`apps/api/src/routes/royal-holiday.js`](../apps/api/src/routes/royal-holiday.js)): catálogo, preview, ventas, config de Money Box, premanifiesto, línea, OKR, resumen, propinas, descansos y comisiones.
+- La API vive en `/api/v1/royal-holiday/:empresaId/*` ([`apps/api/src/modulos/royal-holiday/rutas/royal-holiday.js`](../apps/api/src/modulos/royal-holiday/rutas/royal-holiday.js)): catálogo, preview, ventas, config de Money Box, premanifiesto, línea, OKR, resumen, propinas, descansos y comisiones.
 - Hay dos flujos de venta que conviven: `sales` (dashboard y metas) y `rh_ventas` (Worksheet RH). Guardar en RH no alimenta las metas ([`ROLES-Y-PERMISOS.md`](./ROLES-Y-PERMISOS.md) §7).
 - Fix de la semana: el deep link `?sub=moneybox` del Worksheet RH embebido vuelve a funcionar (`02f1864`).
 - Documentación de producto: [`royal-holiday/README.md`](./royal-holiday/README.md), [`FLUJO-USUARIO-ROYAL-HOLIDAY.md`](./FLUJO-USUARIO-ROYAL-HOLIDAY.md), [`royal-holiday/PREMANIFIESTO-CSI-CAPACITACION.md`](./royal-holiday/PREMANIFIESTO-CSI-CAPACITACION.md).

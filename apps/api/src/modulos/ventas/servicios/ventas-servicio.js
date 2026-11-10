@@ -53,7 +53,7 @@ export async function actualizarVenta(supabase, userId, id, body) {
   const sale = await ventasRepo.actualizarVenta(supabase, { id, userId, workspaceId, patch });
   if (String(patch.status || "").toLowerCase() === "cancelada") {
     try {
-      const { handleCancelacionVenta } = await import("../../../services/royal-holiday-service.js");
+      const { handleCancelacionVenta } = await import("../../royal-holiday/fachada-node.js");
       await handleCancelacionVenta(id);
     } catch (err) {
       logger.warn("[rh] cancelacion comisión", { error: err, sale_id: id });

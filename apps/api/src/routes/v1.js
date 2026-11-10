@@ -23,7 +23,7 @@ import toolsRouter from "./tools.js";
 import networkRouter from "./network.js";
 import messagesRouter from "./messages.js";
 import cronRouter from "./cron.js";
-import royalHolidayRouter from "./royal-holiday.js";
+import { royalHolidayRouter } from "../modulos/royal-holiday/index.js";
 import supportRouter from "./support.js";
 const router = Router();
 

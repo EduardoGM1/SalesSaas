@@ -24,7 +24,7 @@ const env = { ...loadEnv(resolve(root, ".env")), ...loadEnv(resolve(root, ".env.
 process.env.SUPABASE_URL = env.SUPABASE_URL || env.VITE_SUPABASE_URL || env.NEXT_PUBLIC_SUPABASE_URL;
 process.env.SUPABASE_SERVICE_ROLE_KEY = env.SUPABASE_SERVICE_ROLE_KEY;
 
-const { saveVenta } = await import("../apps/api/src/services/royal-holiday-service.js");
+const { saveVenta } = await import("../apps/api/src/modulos/royal-holiday/servicios/royal-holiday-service.js");
 const admin = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, {
   auth: { persistSession: false },
 });

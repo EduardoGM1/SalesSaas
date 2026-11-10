@@ -12,7 +12,7 @@ import { dirname, resolve } from "path";
 import { fileURLToPath } from "url";
 import { createClient } from "@supabase/supabase-js";
 import ws from "ws";
-import { publishMantenimientos2027 } from "../apps/api/src/services/royal-holiday-service.js";
+import { publishMantenimientos2027 } from "../apps/api/src/modulos/royal-holiday/servicios/royal-holiday-service.js";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 

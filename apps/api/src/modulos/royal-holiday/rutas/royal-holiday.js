@@ -1,7 +1,7 @@
 import { Router } from "express";
-import { apiError } from "../lib/http.js";
-import { requireAuth, rutaAutenticada, parseJsonBody, runService } from "./route-utils.js";
-import * as rh from "../controllers/royal-holiday-controller.js";
+import { apiError } from "../../../lib/http.js";
+import { requireAuth, rutaAutenticada, parseJsonBody, runService } from "../../../routes/route-utils.js";
+import * as rh from "../controladores/royal-holiday-controller.js";
 
 const router = Router();
 

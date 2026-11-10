@@ -37,7 +37,7 @@ import * as modulosCustomController from "../controllers/modulos-custom-controll
 import * as delegacionController from "../controllers/delegacion-controller.js";
 import * as tenantRbacService from "../services/tenant-rbac-service.js";
 import * as tenantAdminService from "../services/tenant-admin-service.js";
-import * as royalHolidayService from "../services/royal-holiday-service.js";
+import * as royalHolidayService from "../modulos/royal-holiday/fachada-node.js";
 import { requireEmpresaAdmin } from "../lib/tenant-access.js";
 
 const router = Router();

@@ -1,5 +1,5 @@
-import { ServiceError } from "../lib/service-error.js";
-import { createServiceSupabaseClient } from "../lib/supabase-server.js";
+import { ServiceError } from "../../../lib/service-error.js";
+import { createServiceSupabaseClient } from "../../../lib/supabase-server.js";
 import {
   calcularFechaPagoComision,
   toDateStr,
@@ -28,7 +28,7 @@ import {
   catalogoParaFecha,
   filasBottomLine2027,
 } from "@salesapp/shared/calculations/royal-holiday-bottom-line-2027.js";
-import { logger } from "../lib/logger.js";
+import { logger } from "../../../lib/logger.js";
 
 const CATALOG_TTL_MS = 45_000;
 /** @type {Map<string, { expires: number, bundle: object }>} */

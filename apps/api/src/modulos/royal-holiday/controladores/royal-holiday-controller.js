@@ -2,7 +2,7 @@
  * HTTP Royal Holiday. Autorización de módulo/empresa aquí (guardRhRequest);
  * las fórmulas de comisión y Extra DP siguen en royal-holiday-service.
  */
-import * as royalHolidayService from "../services/royal-holiday-service.js";
+import * as royalHolidayService from "../servicios/royal-holiday-service.js";
 import {
   assertEmpresaIdMatch,
   assertOpsConfigReadAccess,
@@ -11,7 +11,7 @@ import {
   RH_CATALOG_FLAGS,
   RH_FLAGS,
   RH_PREMANIFIESTO_READ_FLAGS,
-} from "../services/rh-access.js";
+} from "../../../services/rh-access.js";
 
 function workspaceQuery(query) {
   return query?.workspaceId ? String(query.workspaceId) : undefined;
