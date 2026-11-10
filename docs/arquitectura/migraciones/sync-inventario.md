@@ -1,6 +1,6 @@
 # Sync / storage / outbox — inventario
 
-**Estado C (API en curso).** Las claves `sts4_*`, los paths de sync y los códigos HTTP no se renombran. La web del outbox sigue fuera.
+**Estado C (API hecho).** Las claves `sts4_*`, los paths de sync y los códigos HTTP no se renombran. La web del outbox sigue fuera.
 
 ## Qué entra
 
