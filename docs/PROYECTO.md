@@ -721,7 +721,7 @@ Construido con `git log main` y `docs/arquitectura/`. Las fechas son las del com
 | 11-10 | `820410a` | Fix transferencia: `rh_ventas` sigue al workspace destino | Estadísticos RH quedaban en personal tras pasar a sala | **API** `820410a`; web sin cambio | `git revert` + redeploy API |
 | 11-10 | `4d5f1e9` | Fixes producto web: tours en agenda (`tourDate`), cola de ventas al suspender sync, expediente móvil abierto, regalos RH arriba con aviso de monto | Calendario sin puntito de tour; ventas perdidas en suspend; UX móvil/regalos | **web** `4d5f1e9`; API sin cambio. Zelle no modelado (queda decisión de producto) | `git revert` + redeploy web (`web-dist/pre-20261110-161645`) |
 | 11-10 | `faf5b3a` | Auth Tramo A cierre: OneSignal + `push-enable` + provider en `modulos/auth` (shims legacy) | Contener push web del borde auth | **web** `faf5b3a`; API sin cambio. Queda supabase browser como refinamiento | `git revert` + redeploy web (`web-dist/pre-20261110-161947`) |
-| 11-10 | `6bcaf0f` | Sync Tramo 2 web: protocolo 2, merge partial, backoff outbox, pendientes bloqueados en topbar | Cliente v1 reintentaba ~700/día el mismo rechazo; riesgo de perder filas con 200 parcial | **web** `6bcaf0f`; API sin cambio (Tramo 1 ya en prod) | `git revert` + redeploy web |
+| 11-10 | `6bcaf0f` → tip `ca9a15a` | Sync Tramo 2 web: protocolo 2, merge partial, backoff outbox, pendientes bloqueados en topbar | Cliente v1 reintentaba ~700/día el mismo rechazo; riesgo de perder filas con 200 parcial | **web** `ca9a15a`; API sin cambio (Tramo 1 ya en prod). Backup `web-dist/pre-20261110-180249` | `git revert` + redeploy web |
 | 10-18 | `1f86f78`, `4fe9465`, `3f75b3a`, `72a3ca4` | **Tramo 1 de `PUT /sync`** + smoke de roundtrip, guard de `sync:shared`, baseline 156, plan de deploy con backup lógico y criterios de rollback | Corregir la regresión de sync | **Desplegado `72a3ca4` (API) el 10-18**: CI verde, (a)–(e) en verde en producción, 0 errores 5xx | [`ROLLBACK-api-sync-tramo1.md`](./arquitectura/ROLLBACK-api-sync-tramo1.md) |
 
 ### Regresión de `PUT /sync`
@@ -751,7 +751,7 @@ Construido con `git log main` y `docs/arquitectura/`. Las fechas son las del com
 
 | Tema | Estado |
 |------|--------|
-| **Sync, Tramo 2 (cliente)** | Desplegado en web `6bcaf0f`: `X-Sync-Protocol: 2`, merge ante `partial`/`rejected`, backoff del outbox, ids normalizados antes del PUT, chip «Pendientes sin subir». Queda permiso calendario REST vs sync (§5) y Tramo 3 BD |
+| **Sync, Tramo 2 (cliente)** | Desplegado en web `ca9a15a` (código `6bcaf0f`): `X-Sync-Protocol: 2`, merge ante `partial`/`rejected`, backoff del outbox, ids normalizados antes del PUT, chip «Pendientes sin subir». Queda permiso calendario REST vs sync (§5) y Tramo 3 BD |
 | Sync, Tramo 3 (BD) | Endurecer las reglas de actualización de expedientes (requiere OK de BD) |
 | Notificaciones | Tramos B+A+C en `main`. API desplegada `c3d03b1`; web `c621b92`. Pendiente: OneSignal (SDK, optIn, SW) fuera; ~40 consumidores de `@/lib/toast`; `presentarNotificacion("expediente_transferido")` (hoy no alcanzable; ver [`migraciones/notificaciones.md`](./arquitectura/migraciones/notificaciones.md) §7) |
 | Auth: refresh token reused | Ruido en pm2: `AuthApiError: Invalid Refresh Token: Already Used` (sesión concurrente / rehydrate; **no** es sync). Investigar si molesta a usuarios; no bloquea deploy |
