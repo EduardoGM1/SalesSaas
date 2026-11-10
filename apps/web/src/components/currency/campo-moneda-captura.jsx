@@ -1,4 +1,4 @@
-import { CollabField } from "@/components/clients/collab-field.jsx";
+import { CollabField } from "@/modulos/expediente";
 import { selectOnFocus } from "@/lib/focus-select.js";
 import { formatDecimalInput } from "@/lib/format/numeric-input.js";
 

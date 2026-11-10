@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { sharingApi } from "@/lib/network-api.js";
-import { prospectRowToClient, canEditShared } from "@/modulos/expediente";
+import { prospectRowToClient, canEditShared } from "../fachada-node.js";
 import { EMPTY_TOOL_BUCKET } from "@/lib/store-empty.js";
-import { useExpedienteRealtime } from "@/hooks/use-expediente-realtime.js";
+import { useExpedienteRealtime } from "./use-expediente-realtime.js";
 import { markLocalToolSave } from "@/lib/collab-remote-notify.js";
 
 export function useSharedToolSession(prospectId, contactId, section = "detail") {

@@ -23,7 +23,7 @@ test.describe("Egress — Realtime (estático)", () => {
 
   test("canales de chat, pins y soporte llevan filtro postgres_changes", () => {
     const clients = fs.readFileSync(
-      path.join(root, "apps/web/src/components/clients/clients-page.jsx"),
+      path.join(root, "apps/web/src/modulos/expediente/ui/clients-page.jsx"),
       "utf8",
     );
     const notify = fs.readFileSync(

@@ -17,7 +17,7 @@ import { useMoney } from "@/hooks/use-money.js";
 import { useMonedaToolBucket } from "@/hooks/use-moneda-tool.js";
 import { useToolSession } from "@/hooks/use-tool-session.js";
 import { useFlushLibreToolOnLeave } from "@/hooks/use-flush-libre-tool-on-leave.js";
-import { CollabField, collabFieldId } from "@/components/clients/collab-field.jsx";
+import { CollabField, collabFieldId } from "@/modulos/expediente";
 import { applyRemoteFormState, fieldKeyFromCollabId, markFieldsDirty, clearDirtyFields } from "@/lib/collab-form-merge.js";
 import { useDbStore } from "@/stores/db-store";
 import { useSyncStore } from "@/stores/sync-store";
@@ -29,7 +29,7 @@ import {
   serializeDiscovery,
 } from "../dominio/discovery-storage.js";
 import { useSurveyQuestions } from "../hooks/use-survey-questions.js";
-import { SubTabsDrawer } from "@/components/clients/client-folder-nav.jsx";
+import { SubTabsDrawer } from "@/modulos/expediente";
 import { MotivacionesPanel } from "./motivaciones-panel.jsx";
 import { ConfigureQuestionsModal } from "./configure-questions-modal.jsx";
 import { useFlags } from "@/hooks/use-flag.js";

@@ -1,5 +1,5 @@
 import { useI18n } from "@/hooks/use-i18n.js";
-import { ExpedientePresenceBar } from "@/components/clients/expediente-presence-bar.jsx";
+import { ExpedientePresenceBar } from "@/modulos/expediente";
 
 /** Presencia + aviso de solo lectura por permiso (sin banner de “también está en el apartado”). */
 export function SharedToolBanner({ show, peers, embedded = false }) {

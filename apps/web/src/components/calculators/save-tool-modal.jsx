@@ -4,7 +4,7 @@ import {  useNavigate  } from "react-router-dom";
 import { SalesModal } from "@/components/ui/sales-modal";
 import { toast } from "@/lib/toast";
 import { translate } from "@/lib/i18n.js";
-import { activeClients, clientDisplayName } from "@/modulos/expediente";
+import { activeClients, clientDisplayName } from "@/modulos/expediente/fachada-node.js";
 import { ymdToday } from "@/lib/format/dates";
 import { parseMoney } from "@/lib/format/money";
 import { createEmptyClient, useDbStore } from "@/stores/db-store";

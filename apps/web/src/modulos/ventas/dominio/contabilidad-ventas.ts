@@ -1,4 +1,4 @@
-import { clientDisplayName } from "@/modulos/expediente";
+import { clientDisplayName } from "@/modulos/expediente/fachada-node.js";
 import { AppDatabase, CalEntry, ClientRecord, SaleRecord } from "@/lib/storage/types";
 
 export function ventaCancelada(sale: Pick<SaleRecord, "status"> | null | undefined): boolean {

@@ -20,7 +20,7 @@ import { useFlag } from "@/hooks/use-flag.js";
 import { WORKSHEET_ROYAL_HOLIDAY_FLAG } from "@/lib/auth/tool-flags.js";
 import { PermissionsUnavailableNotice } from "@/components/auth/permissions-unavailable-notice.jsx";
 import { CalcCardSkeleton } from "@/components/ui/content-skeleton.jsx";
-import { CollabField, collabFieldId } from "@/components/clients/collab-field.jsx";
+import { CollabField, collabFieldId } from "@/modulos/expediente";
 import { SelectorMoneda } from "@/components/currency/selector-moneda.jsx";
 import { CampoMonedaCaptura } from "@/components/currency/campo-moneda-captura.jsx";
 import { applyRemoteFormState, fieldKeyFromCollabId, markFieldsDirty, clearDirtyFields } from "@/lib/collab-form-merge.js";

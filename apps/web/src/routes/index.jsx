@@ -9,8 +9,6 @@ import { RegisterPage } from "@/pages/RegisterPage.jsx";
 import { ForgotPasswordPage } from "@/pages/ForgotPasswordPage.jsx";
 import { ResetPasswordPage } from "@/pages/ResetPasswordPage.jsx";
 import { AuthCallbackPage } from "@/pages/AuthCallbackPage.jsx";
-import { ExpedienteLinkPage } from "@/pages/ExpedienteLinkPage.jsx";
-import { ExpedienteInvitePage } from "@/pages/ExpedienteInvitePage.jsx";
 import { CalendarPage } from "@/modulos/agenda";
 import { AdminSection } from "@/layouts/AdminSection.jsx";
 import { RhPremanifiestoGate } from "@/components/auth/RhPremanifiestoGate.jsx";
@@ -26,6 +24,8 @@ import {
   SettingsPage,
   ClientsPage,
   ClientDetailPage,
+  ExpedienteLinkPage,
+  ExpedienteInvitePage,
   OpcExpedientePage,
   MessagesPage,
   NetworkPage,
@@ -127,9 +127,9 @@ export function AppRoutes() {
   return (
     <Routes>
       <Route path="/auth/callback" element={<AuthCallbackPage />} />
-      <Route path="/share/:token" element={<ExpedienteInvitePage />} />
-      <Route path="/e/i/:token" element={<ExpedienteInvitePage />} />
-      <Route path="/e/:prospectId" element={<ExpedienteLinkPage />} />
+      <Route path="/share/:token" element={<Lazy><ExpedienteInvitePage /></Lazy>} />
+      <Route path="/e/i/:token" element={<Lazy><ExpedienteInvitePage /></Lazy>} />
+      <Route path="/e/:prospectId" element={<Lazy><ExpedienteLinkPage /></Lazy>} />
       <Route element={<AuthLayout />}>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />

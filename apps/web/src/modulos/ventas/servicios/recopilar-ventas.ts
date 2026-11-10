@@ -1,4 +1,4 @@
-import { clientDisplayName } from "@/modulos/expediente";
+import { clientDisplayName } from "@/modulos/expediente/fachada-node.js";
 import { AppDatabase, ClientRecord, SaleRecord } from "@/lib/storage/types";
 import { construirInstantaneaVenta } from "./instantanea-venta";
 

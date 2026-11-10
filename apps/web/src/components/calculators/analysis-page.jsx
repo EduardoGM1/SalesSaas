@@ -3,7 +3,7 @@ import { useMemo } from "react";
 import { Topbar } from "@/components/layout/topbar";
 import { PageBack } from "@/components/layout/page-back";
 import { SharedToolBanner } from "@/components/calculators/shared-tool-banner.jsx";
-import { clientDisplayName } from "@/modulos/expediente";
+import { clientDisplayName } from "@/modulos/expediente/fachada-node.js";
 import { computeSurvey, surveyHasData } from "@/modulos/survey";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { useMoney } from "@/hooks/use-money.js";

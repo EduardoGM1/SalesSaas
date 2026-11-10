@@ -12,7 +12,7 @@ import { useI18n } from "@/hooks/use-i18n.js";
 import { useMonedaToolBucket } from "@/hooks/use-moneda-tool.js";
 import { useToolSession } from "@/hooks/use-tool-session.js";
 import { useFlushLibreToolOnLeave } from "@/hooks/use-flush-libre-tool-on-leave.js";
-import { CollabField, collabFieldId } from "@/components/clients/collab-field.jsx";
+import { CollabField, collabFieldId } from "@/modulos/expediente";
 import { SelectorMoneda } from "@/components/currency/selector-moneda.jsx";
 import { CampoMonedaCaptura } from "@/components/currency/campo-moneda-captura.jsx";
 import { applyRemoteFormState, fieldKeyFromCollabId, markFieldsDirty, clearDirtyFields } from "@/lib/collab-form-merge.js";

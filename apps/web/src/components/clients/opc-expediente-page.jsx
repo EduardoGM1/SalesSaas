@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { Topbar } from "@/components/layout/topbar";
 import { PageBack } from "@/components/layout/page-back.jsx";
 import { SalesModal } from "@/components/ui/sales-modal";
-import { createProspectFromName } from "@/actions/clients.js";
+import { createProspectFromName } from "@/modulos/expediente";
 import { DEFAULT_TOUR_TYPES } from "@/lib/store-empty.js";
 import { useDbStore } from "@/stores/db-store";
 import { useRhEmpresa, readRhEmpresaFromSession } from "@/hooks/use-rh-empresa.js";

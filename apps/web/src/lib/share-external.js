@@ -1,4 +1,4 @@
-import { clientDisplayName } from "@/modulos/expediente";
+import { clientDisplayName } from "@/modulos/expediente/fachada-node.js";
 import { buildShareTemplates } from "@/lib/share-message-templates.js";
 
 export function buildExternalShareUrl(origin, inviteToken) {

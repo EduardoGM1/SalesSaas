@@ -7,7 +7,7 @@ import {
   deleteClientWithConfirm,
   filterAndSortClients,
   saveClientEdit,
-} from "@/actions/clients.js";
+} from "../servicios/acciones-expediente.js";
 
 export function useClientActions() {
   const navigate = useNavigate();

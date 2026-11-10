@@ -1,4 +1,4 @@
-import { clientDisplayName, ensureProspectIdentity } from "@/modulos/expediente";
+import { clientDisplayName, ensureProspectIdentity } from "../fachada-node.js";
 import { getLang, getMonths, translate } from "@/lib/i18n.js";
 import { longDate } from "@/lib/format/dates";
 import { isValidSingleName } from "@/lib/format/single-name-input.js";

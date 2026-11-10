@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Eye, FolderPlus, Pencil } from "lucide-react";
 import { SalesModal } from "@/components/ui/sales-modal";
-import { MoveProspectModal } from "@/components/clients/move-prospect-modal.jsx";
+import { MoveProspectModal } from "@/modulos/expediente/fachada-modales.js";
 import { sharingApi } from "@/lib/network-api.js";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { useWorkspace } from "@/hooks/use-workspace.js";

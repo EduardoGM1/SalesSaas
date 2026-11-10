@@ -3,7 +3,6 @@
   "files": [
     "apps/web/src/components/admin/buscador-usuario.jsx",
     "apps/web/src/modulos/agenda/ui/calendar-page.jsx",
-    "apps/web/src/components/clients/clients-page.jsx",
     "apps/web/src/components/layout/workspace-rail.jsx"
   ]
 }

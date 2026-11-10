@@ -78,6 +78,8 @@ function isFacadeRest(rest) {
   if (rest === "fachada-i18n.js") return true;
   if (rest === "fachada-preguntas.js") return true;
   if (rest === "fachada-toast.js") return true;
+  if (rest === "paginas.js") return true;
+  if (rest === "fachada-modales.js") return true;
   return false;
 }
 

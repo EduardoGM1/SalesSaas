@@ -1,4 +1,4 @@
-import { CollabField } from "@/components/clients/collab-field.jsx";
+import { CollabField } from "@/modulos/expediente";
 import { SelectorMoneda } from "@/components/currency/selector-moneda.jsx";
 import { CampoMonedaCaptura } from "@/components/currency/campo-moneda-captura.jsx";
 import { selectOnFocus } from "@/lib/focus-select.js";

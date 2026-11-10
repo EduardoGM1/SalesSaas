@@ -1,6 +1,10 @@
-# Expediente / sharing — inventario y Tramo B
+# Expediente / sharing — inventario
 
-**Estado B.** El dominio puro vive en `modulos/expediente`. La UI, la API, el realtime y la persistencia siguen en sus carpetas. Sin cambios de BD ni de paths HTTP.
+**Estado A.** El dominio puro y la UI viven en `modulos/expediente`. OPC sigue en `components/clients`. La API, el realtime de red y la persistencia siguen fuera. Sin cambios de BD ni de paths HTTP.
+
+## Tramo A — UI (hecho)
+
+Páginas, modal, acciones y hooks de expediente están en `modulos/expediente/{ui,hooks,servicios}`. Las rutas `/clients`, `/clients/:id`, `/share/:token`, `/e/i/:token` y `/e/:prospectId` no cambian. `db-store` no se editó. `opc-expediente-page.jsx` no se movió.
 
 ## Qué entra en el Tramo B
 
@@ -33,5 +37,5 @@ No hay smoke de filas: este tramo no escribe `prospects` ni `sales`.
 
 ## Tramos que siguen
 
-- **A — UI.** Páginas, modal, acciones y hooks de expediente, sin mover OPC ni el store.
+- **A — UI (hecho).** Páginas, modal, acciones y hooks de expediente. OPC y el store no se movieron.
 - **C — API.** `prospects`, shares y `prospect-edit-access`, con caracterización de códigos y permisos antes del move.

@@ -6,7 +6,7 @@ import {
 } from "lucide-react";
 import { Topbar } from "@/components/layout/topbar.jsx";
 import { PageBack } from "@/components/layout/page-back.jsx";
-import { NewClientModal } from "@/components/clients/new-client-modal.jsx";
+import { NewClientModal } from "@/modulos/expediente/fachada-modales.js";
 import { PremiumFeatureCard } from "@/components/premium/premium-feature-card.jsx";
 import { ContentFade, ToolCardSkeleton } from "@/components/ui/content-skeleton.jsx";
 import { useAppStore } from "@/stores/app-store.js";

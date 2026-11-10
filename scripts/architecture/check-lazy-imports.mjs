@@ -1,7 +1,7 @@
 /**
  * Instantánea de import() dinámicos en:
  * - apps/web/src/routes/lazy-pages.js
- * - apps/web/src/components/clients/client-detail.jsx
+ * - apps/web/src/modulos/expediente/ui/client-detail.jsx
  * - apps/web/src/components/layout/sidebar.jsx
  *
  * Falla si un import("@/…") apunta a un archivo inexistente.
@@ -14,7 +14,7 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..")
 const WEB_SRC = path.join(ROOT, "apps/web/src");
 const TARGETS = [
   "apps/web/src/routes/lazy-pages.js",
-  "apps/web/src/components/clients/client-detail.jsx",
+  "apps/web/src/modulos/expediente/ui/client-detail.jsx",
   "apps/web/src/components/layout/sidebar.jsx",
 ];
 

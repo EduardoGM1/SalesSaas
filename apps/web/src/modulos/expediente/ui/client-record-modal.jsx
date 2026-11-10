@@ -1,7 +1,7 @@
 
 import { useEffect, useState } from "react";
 import { SalesModal } from "@/components/ui/sales-modal";
-import { CountryCitySelects } from "@/components/clients/country-city-selects.jsx";
+import { CountryCitySelects } from "./country-city-selects.jsx";
 import { selectOnFocus } from "@/lib/focus-select.js";
 import { formatSingleNameInput, isValidSingleName, SINGLE_NAME_MAX_LENGTH } from "@/lib/format/single-name-input.js";
 import { isSaleFormValid, SaleFields } from "@/modulos/ventas";

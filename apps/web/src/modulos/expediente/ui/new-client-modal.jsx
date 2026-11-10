@@ -5,7 +5,7 @@ import { selectOnFocus } from "@/lib/focus-select.js";
 import { formatSingleNameInput, isValidSingleName, SINGLE_NAME_MAX_LENGTH } from "@/lib/format/single-name-input.js";
 import { DEFAULT_TOUR_TYPES } from "@/lib/store-empty.js";
 import { useDbStore } from "@/stores/db-store";
-import { createProspectFromName } from "@/actions/clients.js";
+import { createProspectFromName } from "../servicios/acciones-expediente.js";
 import { adoptLibreToolsToClient } from "@/lib/tools/adopt-libre-tools";
 import { shallow } from "zustand/shallow";
 

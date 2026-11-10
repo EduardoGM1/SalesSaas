@@ -3,17 +3,17 @@ import { Suspense, useEffect, useRef, useState } from "react";
 import {  useNavigate  } from "react-router-dom";
 import { FileText, Palmtree, DollarSign, MessageSquare, User, Presentation } from "lucide-react";
 import { SalesModal } from "@/components/ui/sales-modal";
-import { ClientRecordModal } from "@/components/clients/client-record-modal.jsx";
+import { ClientRecordModal } from "./client-record-modal.jsx";
 import { CollapsibleSection } from "@/components/ui/collapsible-section.jsx";
 import { ShareProspectModal } from "@/components/network/share-prospect-modal.jsx";
-import { MoveProspectModal } from "@/components/clients/move-prospect-modal.jsx";
+import { MoveProspectModal } from "./move-prospect-modal.jsx";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { sharingApi } from "@/lib/network-api.js";
-import { prospectRowToClient, canEditShared, canCommentShared, canAddToWorkspace, clientDisplayName, ensureProspectIdentity } from "@/modulos/expediente";
-import { useExpedienteRealtime } from "@/hooks/use-expediente-realtime.js";
+import { prospectRowToClient, canEditShared, canCommentShared, canAddToWorkspace, clientDisplayName, ensureProspectIdentity } from "../fachada-node.js";
+import { useExpedienteRealtime } from "../hooks/use-expediente-realtime.js";
 import { retainToolWriteScope } from "@/lib/tool-write-denial.js";
-import { ExpedientePresenceBar } from "@/components/clients/expediente-presence-bar.jsx";
-import { ProspectParticipantsPanel } from "@/components/clients/prospect-workflow-panel.jsx";
+import { ExpedientePresenceBar } from "./expediente-presence-bar.jsx";
+import { ProspectParticipantsPanel } from "./prospect-workflow-panel.jsx";
 import { useWorkspace } from "@/hooks/use-workspace.js";
 import { Topbar } from "@/components/layout/topbar";
 import { PageBack } from "@/components/layout/page-back";
@@ -26,21 +26,21 @@ import { useUserPermissions } from "@/hooks/use-user-permissions.js";
 import { useFlag, useFlags } from "@/hooks/use-flag.js";
 import { TOOL_PERMISSION_KEYS } from "@/lib/auth/tool-permissions.js";
 import { TOOL_FLAG_KEYS, WORKSHEET_ROYAL_HOLIDAY_FLAG, WORKSHEET_RH_MONEY_BOX_TAB_FLAG } from "@/lib/auth/tool-flags.js";
-import { useExpedienteFolderNav, EXPEDIENTE_TABS } from "@/hooks/use-expediente-folder-nav.js";
-import { ClientFolderStrip, SubTabsDrawer } from "@/components/clients/client-folder-nav.jsx";
+import { useExpedienteFolderNav, EXPEDIENTE_TABS } from "../hooks/use-expediente-folder-nav.js";
+import { ClientFolderStrip, SubTabsDrawer } from "./client-folder-nav.jsx";
 import { namedLazy } from "@/lib/lazy-retry.js";
 
 const SurveyPage = namedLazy(() => import("@/modulos/survey"), "SurveyPage");
 const VacacionesPage = namedLazy(() => import("@/components/calculators/vacaciones-page.jsx"), "VacacionesPage");
 const WorksheetPage = namedLazy(() => import("@/components/calculators/worksheet-page.jsx"), "WorksheetPage");
 const PresentacionViewer = namedLazy(
-  () => import("@/components/clients/presentacion-viewer.jsx"),
+  () => import("./presentacion-viewer.jsx"),
   "PresentacionViewer",
 );
 import { useDbStore } from "@/stores/db-store";
 import { useAppStore } from "@/stores/app-store";
 import { shallow } from "zustand/shallow";
-import { useClientActions } from "@/hooks/use-client-actions.js";
+import { useClientActions } from "../hooks/use-client-actions.js";
 import { useSaleActions } from "@/modulos/ventas";
 import { useCalendarActions } from "@/modulos/agenda";
 import { toast } from "@/lib/toast";
