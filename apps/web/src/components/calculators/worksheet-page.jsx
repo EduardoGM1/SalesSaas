@@ -6,7 +6,7 @@ import { SaveToolModal } from "@/components/calculators/save-tool-modal";
 import { Topbar } from "@/components/layout/topbar";
 import { PageBack } from "@/components/layout/page-back.jsx";
 import { SharedToolBanner } from "@/components/calculators/shared-tool-banner.jsx";
-import { WorksheetRoyalHolidayPage } from "@/components/calculators/worksheet-royal-holiday-page.jsx";
+import { WorksheetRoyalHolidayPage } from "@/modulos/royal-holiday/hoja.js";
 import { WS_CONFIG_IDS, WS_DEFAULTS } from "@/lib/constants";
 import { computeWorksheet, ensureWSConfig } from "@/lib/calculations/worksheet";
 import { buildOperationalFields, WORKSHEET_MONEY_FIELDS } from "@/modulos/moneda";

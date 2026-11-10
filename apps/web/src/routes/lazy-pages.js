@@ -5,7 +5,7 @@ export const ClientsPage = namedLazy(() => import("@/modulos/expediente/paginas.
 export const ClientDetailPage = namedLazy(() => import("@/modulos/expediente/paginas.js"), "ClientDetail");
 export const ExpedienteLinkPage = namedLazy(() => import("@/modulos/expediente/paginas.js"), "ExpedienteLinkPage");
 export const ExpedienteInvitePage = namedLazy(() => import("@/modulos/expediente/paginas.js"), "ExpedienteInvitePage");
-export const OpcExpedientePage = namedLazy(() => import("@/components/clients/opc-expediente-page.jsx"), "OpcExpedientePage");
+export const OpcExpedientePage = namedLazy(() => import("@/modulos/royal-holiday/opc.js"), "OpcExpedientePage");
 export const MessagesPage = namedLazy(() => import("@/pages/MessagesPage.jsx"), "MessagesPage");
 export const NetworkPage = namedLazy(() => import("@/pages/NetworkPage.jsx"), "NetworkPage");
 export const ContactPage = namedLazy(() => import("@/pages/ContactPage.jsx"), "ContactPage");

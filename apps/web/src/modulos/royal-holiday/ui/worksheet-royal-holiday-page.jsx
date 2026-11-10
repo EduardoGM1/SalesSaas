@@ -5,7 +5,7 @@ import { useToolSession } from "@/hooks/use-tool-session.js";
 import { useMonedaToolBucket } from "@/hooks/use-moneda-tool.js";
 import { useFlushLibreToolOnLeave } from "@/hooks/use-flush-libre-tool-on-leave.js";
 import { useWorkspace } from "@/hooks/use-workspace.js";
-import { royalHolidayApi } from "@/lib/royal-holiday-api.js";
+import { royalHolidayApi } from "../cliente.js";
 import { toast } from "@/lib/toast";
 import {
   RH_EXTRA_DP_PLAZO_DIAS,
@@ -14,22 +14,22 @@ import {
   toDateStr,
   fechaLimiteExtraDp,
 } from "@/lib/calculations/royal-holiday.js";
-import { WorksheetRhFinancingPanel } from "@/components/calculators/worksheet-rh-financing-panel.jsx";
-import { WorksheetRhVentaPanel } from "@/components/calculators/worksheet-rh-venta-panel.jsx";
-import { WorksheetRhHojaPanel } from "@/components/calculators/worksheet-rh-hoja-panel.jsx";
+import { WorksheetRhFinancingPanel } from "./worksheet-rh-financing-panel.jsx";
+import { WorksheetRhVentaPanel } from "./worksheet-rh-venta-panel.jsx";
+import { WorksheetRhHojaPanel } from "./worksheet-rh-hoja-panel.jsx";
 import { WorksheetRhMoneyBoxPanel } from "@/modulos/money-box";
 import { useFlag } from "@/hooks/use-flag.js";
 import { WORKSHEET_RH_MONEY_BOX_TAB_FLAG } from "@/lib/auth/tool-flags.js";
 import { useDbStore } from "@/stores/db-store";
 import { useSyncStore } from "@/stores/sync-store";
 import { isToolWriteDenied } from "@/lib/tool-write-denial.js";
-import { buildRhWorksheetState } from "@/lib/calculations/worksheet-rh-preview.js";
+import { buildRhWorksheetState } from "../dominio/worksheet-rh-preview.js";
 import { montoVentaWorksheet } from "@/lib/calculations/royal-holiday.js";
 import {
   DEFAULT_RH_FORM,
   rhFormFromBucket,
   rhFormToBucket,
-} from "@/lib/calculations/worksheet-rh-bucket.js";
+} from "../dominio/worksheet-rh-bucket.js";
 import { markFieldsDirty } from "@/lib/collab-form-merge.js";
 import { SelectorMoneda } from "@/components/currency/selector-moneda.jsx";
 import {

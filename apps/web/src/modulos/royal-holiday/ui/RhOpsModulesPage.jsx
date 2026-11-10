@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { RhToolLoading, RhToolShell } from "@/components/rh/rh-tool-shell.jsx";
 import { useRhEmpresa } from "@/hooks/use-rh-empresa.js";
-import { royalHolidayApi } from "@/lib/royal-holiday-api.js";
+import { royalHolidayApi } from "../cliente.js";
 import { toast } from "@/lib/toast";
 
 function today() {

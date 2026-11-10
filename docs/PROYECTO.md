@@ -562,7 +562,7 @@ flowchart TD
 - Hay dos flujos de venta que conviven: `sales` (dashboard y metas) y `rh_ventas` (Worksheet RH). Guardar en RH no alimenta las metas ([`ROLES-Y-PERMISOS.md`](./ROLES-Y-PERMISOS.md) §7).
 - Fix de la semana: el deep link `?sub=moneybox` del Worksheet RH embebido vuelve a funcionar (`02f1864`).
 - Documentación de producto: [`royal-holiday/README.md`](./royal-holiday/README.md), [`FLUJO-USUARIO-ROYAL-HOLIDAY.md`](./FLUJO-USUARIO-ROYAL-HOLIDAY.md), [`royal-holiday/PREMANIFIESTO-CSI-CAPACITACION.md`](./royal-holiday/PREMANIFIESTO-CSI-CAPACITACION.md).
-- Archivos: [`apps/web/src/components/calculators/worksheet-royal-holiday-page.jsx`](../apps/web/src/components/calculators/worksheet-royal-holiday-page.jsx), [`apps/web/src/modulos/money-box/`](../apps/web/src/modulos/money-box/), [`apps/web/src/lib/calculations/worksheet-rh-bucket.js`](../apps/web/src/lib/calculations/worksheet-rh-bucket.js).
+- Archivos: [`apps/web/src/modulos/royal-holiday/ui/worksheet-royal-holiday-page.jsx`](../apps/web/src/modulos/royal-holiday/ui/worksheet-royal-holiday-page.jsx), [`apps/web/src/modulos/money-box/`](../apps/web/src/modulos/money-box/), [`apps/web/src/modulos/royal-holiday/dominio/worksheet-rh-bucket.js`](../apps/web/src/modulos/royal-holiday/dominio/worksheet-rh-bucket.js).
 
 ---
 

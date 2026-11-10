@@ -36,12 +36,15 @@ test("rutas de expediente y de OPC no cambian", () => {
   }
 });
 
-test("lazy de lista y ficha; OPC sigue en components", () => {
+test("lazy de lista y ficha; OPC conserva el nombre", () => {
   const lazy = readFileSync(resolve(WEB, "routes/lazy-pages.js"), "utf8");
   assert.match(lazy, /namedLazy\(\(\) => import\([^)]+\), "ClientsPage"\)/);
   assert.match(lazy, /namedLazy\(\(\) => import\([^)]+\), "ClientDetail"\)/);
-  assert.match(lazy, /opc-expediente-page\.jsx"\), "OpcExpedientePage"/);
-  assert.ok(existsSync(resolve(WEB, "components/clients/opc-expediente-page.jsx")));
+  assert.match(lazy, /modulos\/royal-holiday\/opc\.js"\), "OpcExpedientePage"/);
+  assert.ok(
+    existsSync(resolve(WEB, "modulos/royal-holiday/ui/opc-expediente-page.jsx"))
+      || existsSync(resolve(WEB, "components/clients/opc-expediente-page.jsx")),
+  );
 });
 
 test("acciones de expediente conservan los cuatro exports", () => {

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { MoneyBoxCalculator } from "./money-box-calculator.jsx";
-import { royalHolidayApi } from "@/lib/royal-holiday-api.js";
+import { royalHolidayApi } from "@/modulos/royal-holiday/fachada-node.js";
 import { termsFromRhFinanciamiento } from "../dominio/calculo-money-box";
 import { toast } from "@/lib/toast";
 

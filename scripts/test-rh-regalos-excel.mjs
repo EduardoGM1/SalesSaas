@@ -22,7 +22,7 @@ import {
   mergeRhForm,
   rhFormFromBucket,
   rhFormToBucket,
-} from "../apps/web/src/lib/calculations/worksheet-rh-bucket.js";
+} from "../apps/web/src/modulos/royal-holiday/dominio/worksheet-rh-bucket.js";
 
 function fail(msg) {
   console.error("FAIL", msg);

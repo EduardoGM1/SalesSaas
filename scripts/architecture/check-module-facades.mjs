@@ -79,6 +79,8 @@ function isFacadeRest(rest) {
   if (rest === "fachada-preguntas.js") return true;
   if (rest === "fachada-toast.js") return true;
   if (rest === "paginas.js") return true;
+  if (rest === "hoja.js") return true;
+  if (rest === "opc.js") return true;
   if (rest === "fachada-modales.js") return true;
   return false;
 }

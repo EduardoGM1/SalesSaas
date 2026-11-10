@@ -54,12 +54,21 @@ test("los lazy conservan el nombre exportado", () => {
   for (const name of NAMES) {
     assert.match(lazy, new RegExp(`namedLazy\\([^\\n]+, "${name}"\\)`));
   }
-  assert.match(lazy, /opc-expediente-page\.jsx"\), "OpcExpedientePage"/);
+  assert.match(lazy, /modulos\/royal-holiday\/opc\.js"\), "OpcExpedientePage"/);
 });
 
 test("las páginas de ops existen en el módulo o en el legado", () => {
   const moved = resolve(HERE, "RhOpsHubPage.jsx");
   const legacy = resolve(WEB, "pages/rh/RhOpsHubPage.jsx");
   assert.equal(existsSync(moved) || existsSync(legacy), true);
-  assert.equal(existsSync(resolve(WEB, "components/clients/opc-expediente-page.jsx")), true);
+  assert.equal(
+    existsSync(resolve(HERE, "opc-expediente-page.jsx"))
+      || existsSync(resolve(WEB, "components/clients/opc-expediente-page.jsx")),
+    true,
+  );
+  assert.equal(
+    existsSync(resolve(HERE, "worksheet-royal-holiday-page.jsx"))
+      || existsSync(resolve(WEB, "components/calculators/worksheet-royal-holiday-page.jsx")),
+    true,
+  );
 });

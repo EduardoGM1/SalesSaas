@@ -7,7 +7,7 @@ import { createProspectFromName } from "@/modulos/expediente";
 import { DEFAULT_TOUR_TYPES } from "@/lib/store-empty.js";
 import { useDbStore } from "@/stores/db-store";
 import { useRhEmpresa, readRhEmpresaFromSession } from "@/hooks/use-rh-empresa.js";
-import { royalHolidayApi } from "@/lib/royal-holiday-api.js";
+import { royalHolidayApi } from "../cliente.js";
 import { persistProspectOnlineFirst } from "@/lib/prospects-persist.js";
 import { toast } from "@/lib/toast";
 import { selectOnFocus } from "@/lib/focus-select.js";
@@ -21,7 +21,7 @@ import {
   matchOlaByHora,
   normalizeHora,
   opcDisplayName,
-} from "@/lib/opc-expediente.js";
+} from "../dominio/opc-expediente.js";
 
 const TABS = [
   { id: "cliente", label: "Información cliente" },
