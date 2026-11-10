@@ -38,6 +38,10 @@ export async function programarRecordatorio(auth, _req, body) {
   return pushService.scheduleOperationalReminder(auth.userId, body);
 }
 
+export async function cancelarRecordatorio(auth, _req, body) {
+  return pushService.cancelOperationalReminder(auth.userId, body);
+}
+
 export async function vaciarRecordatoriosPropios(auth) {
   return pushService.flushDueScheduledPushes({ userId: auth.userId, limit: 20 });
 }

@@ -19,6 +19,7 @@ router.get("/notifications/push-diagnostics", rutaAutenticada(notificationsContr
 router.post("/notifications/device", rutaAutenticada(notificationsController.registrarDispositivo, { cuerpo: true, wrap: "data" }));
 router.post("/notifications/digest-reminders", rutaAutenticada(notificationsController.digerirRecordatorios, { wrap: "data" }));
 router.post("/notifications/schedule-reminder", rutaAutenticada(notificationsController.programarRecordatorio, { cuerpo: true, wrap: "data" }));
+router.post("/notifications/cancel-reminder", rutaAutenticada(notificationsController.cancelarRecordatorio, { cuerpo: true, wrap: "data" }));
 router.post("/notifications/flush-reminders", rutaAutenticada(notificationsController.vaciarRecordatoriosPropios, { wrap: "data" }));
 
 export default router;

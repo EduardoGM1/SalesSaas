@@ -27,6 +27,11 @@ export const notificationsApi = {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   }),
+  cancelReminder: (payload) => apiFetch("/notifications/cancel-reminder", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  }),
   flushReminders: () => apiFetch("/notifications/flush-reminders", {
     method: "POST",
     headers: { "Content-Type": "application/json" },

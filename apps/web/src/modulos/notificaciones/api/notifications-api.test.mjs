@@ -25,6 +25,7 @@ test("endpoints, métodos y cuerpos", async () => {
   await notificationsApi.digestReminders({ timezone_offset_minutes: 360 });
   await notificationsApi.digestReminders();
   await notificationsApi.scheduleReminder({ type: "follow", send_at: "2026-10-19T16:30:00.000Z" });
+  await notificationsApi.cancelReminder({ entry_key: "123" });
   await notificationsApi.flushReminders();
 
   const json = { "Content-Type": "application/json" };
@@ -36,6 +37,7 @@ test("endpoints, métodos y cuerpos", async () => {
     { url: "/api/v1/notifications/digest-reminders", credentials: "include", method: "POST", headers: json, body: '{"timezone_offset_minutes":360}' },
     { url: "/api/v1/notifications/digest-reminders", credentials: "include", method: "POST", headers: json, body: "{}" },
     { url: "/api/v1/notifications/schedule-reminder", credentials: "include", method: "POST", headers: json, body: '{"type":"follow","send_at":"2026-10-19T16:30:00.000Z"}' },
+    { url: "/api/v1/notifications/cancel-reminder", credentials: "include", method: "POST", headers: json, body: '{"entry_key":"123"}' },
     { url: "/api/v1/notifications/flush-reminders", credentials: "include", method: "POST", headers: json, body: "{}" },
   ]);
 });

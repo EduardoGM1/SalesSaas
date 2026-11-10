@@ -23,6 +23,7 @@ import {
   notifyToolSaved,
   notifyUserActivityAdded,
 } from "@/lib/cloud-persist-bridge.js";
+import { cancelReminderPush } from "@/modulos/notificaciones";
 import {
   AppDatabase,
   CalEntry,
@@ -305,6 +306,8 @@ export const useDbStore = create<DbState>((set, get) => ({
     set((s) => {
       const db = cloneDb(s.db);
       const entry = db.cal[k]?.days[day]?.[index];
+      // Misma clave que scheduleReminderPush(entryKey: ts) al crear nota/follow.
+      if (entry?.ts != null) cancelReminderPush({ entryKey: String(entry.ts) });
       if (entry?.id) {
         queuePendingDelete(db, "calendar_entries", entry.id);
         notifyCalEntryDeleted(entry.id);

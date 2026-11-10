@@ -55,6 +55,7 @@ export {
   notifySessionRevoked,
   digestOperationalReminders,
   scheduleOperationalReminder,
+  cancelOperationalReminder,
   flushDueScheduledPushes,
   savePushSubscription,
   removePushSubscription,

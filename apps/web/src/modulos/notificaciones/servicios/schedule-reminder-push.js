@@ -44,3 +44,20 @@ export function scheduleReminderPush({
       );
     });
 }
+
+/**
+ * Cancela el job pending del aviso (misma entryKey = String(ts) al crear).
+ * Fire-and-forget; no toast (borrar nota no debe fallar por red).
+ */
+export function cancelReminderPush({ entryKey }) {
+  if (!isSupabaseConfigured()) return;
+  const key = String(entryKey ?? "").trim();
+  if (!key) return;
+  if (typeof navigator !== "undefined" && !navigator.onLine) return;
+
+  void notificationsApi
+    .cancelReminder({ entry_key: key })
+    .catch((err) => {
+      console.warn("[reminder-push] No se pudo cancelar:", err?.message || err);
+    });
+}

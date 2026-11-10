@@ -674,6 +674,22 @@ export async function scheduleOperationalReminder(userId, body = {}) {
 }
 
 /**
+ * Cancela jobs pending del entry_key (p. ej. al borrar la nota en agenda).
+ * Body: entry_key | entryKey | ts.
+ */
+export async function cancelOperationalReminder(userId, body = {}) {
+  const serviceSb = createServiceSupabaseClient();
+  if (!serviceSb) throw new ServiceError("Notificaciones push no configuradas.", 503);
+  if (!userId) throw new ServiceError("Usuario requerido.", 401);
+
+  const entryKey = String(body.entry_key ?? body.entryKey ?? body.ts ?? "").trim();
+  if (!entryKey) throw new ServiceError("entry_key es requerido.", 400);
+
+  await trabajosRepo.cancelarTrabajosPendientesPorEntry(serviceSb, userId, entryKey);
+  return { ok: true, cancelled: true, entry_key: entryKey };
+}
+
+/**
  * Envía jobs pendientes cuya hora ya llegó (mismo sendToUser que mensajes).
  * Pensado para cron cada minuto + poll del cliente.
  */

@@ -20,7 +20,7 @@ export {
   maybeFlushScheduledReminders,
   startScheduledReminderFlushLoop,
 } from "./servicios/reminder-digest.js";
-export { scheduleReminderPush, localReminderToIso } from "./servicios/schedule-reminder-push.js";
+export { scheduleReminderPush, cancelReminderPush, localReminderToIso } from "./servicios/schedule-reminder-push.js";
 export { Toaster } from "./ui/toaster.jsx";
 export { InAppNotificationsCoordinator } from "./ui/in-app-notifications-coordinator.jsx";
 export { NotificationsSettings } from "./ui/notifications-settings.jsx";
