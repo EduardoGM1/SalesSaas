@@ -5,7 +5,12 @@
 import { ServiceError } from "../lib/service-error.js";
 import { createServiceSupabaseClient } from "../lib/supabase-server.js";
 import { getRequestWorkspaceContext, requireWorkspacePermission } from "../lib/workspace-scope.js";
-import { canEditProspectRecord, canRegisterProspectSale } from "../modulos/expediente/fachada-node.js";
+import {
+  canEditProspectRecord,
+  canRegisterProspectSale,
+  loadVisibilityActor,
+  workflowAssignmentOrFilter,
+} from "../modulos/expediente/fachada-node.js";
 import { notifyCloserAssigned } from "../modulos/notificaciones/index.js";
 import { rpcEffectiveWorkspacePermissions } from "../lib/workspace-permission-rpc.js";
 import { readCollaborationId } from "../lib/collaboration-id.js";
@@ -458,9 +463,9 @@ export async function listActiveProspects(supabase, actorId) {
     .eq("usuario_id", actorId)
     .maybeSingle();
   if (!member) throw new ServiceError("No perteneces a esta sala.", 403, "WORKSPACE_ACCESS_DENIED");
-  const permissionKeys = await rpcEffectiveWorkspacePermissions(admin, actorId, workspaceId);
-  const permissions = new Set(permissionKeys);
-  const isManager = member.rol_en_workspace === "gerente" || permissions.has("expedientes:ver_equipo");
+  // Etapa 1 (D2): excepción solo por rol/slug/es_admin — NUNCA por ver_equipo.
+  const visibility = await loadVisibilityActor(admin, actorId, workspaceId);
+  const isManager = visibility.exception;
 
   let query = admin
     .from("prospect_workflows")
@@ -470,10 +475,7 @@ export async function listActiveProspects(supabase, actorId) {
     .order("updated_at", { ascending: false });
 
   if (!isManager) {
-    const isCloser = member.roles?.slug === "cerrador" || permissions.has("workflow:cerrar");
-    query = isCloser
-      ? query.or(`cerrador_id.eq.${actorId},representante_id.eq.${actorId}`)
-      : query.eq("representante_id", actorId);
+    query = query.or(workflowAssignmentOrFilter(actorId));
   }
 
   const { data, error } = await query;

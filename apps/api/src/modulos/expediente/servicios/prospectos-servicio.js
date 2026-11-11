@@ -10,6 +10,12 @@ import {
 import { permissionDeniedError, rpcEffectiveWorkspacePermissions } from "../../../lib/workspace-permission-rpc.js";
 import { canEditProspectRecord } from "../dominio/acceso-edicion.js";
 import { logger } from "../../../lib/logger.js";
+import {
+  loadVisibilityActor,
+  listAssignedProspectIds,
+  listSharedProspectIds,
+  actorCanViewProspect,
+} from "./visibilidad-expediente-servicio.js";
 
 function requiredProspectViewPermission(teamScope) {
   return teamScope ? "expedientes:ver_equipo" : "expedientes:ver_propios";
@@ -24,24 +30,25 @@ export async function listProspects(supabase, userId, { limit, offset, status })
     ctx.workspaceId,
   );
 
-  const { data: assignments } = !ctx.teamScope
-    ? await supabase
-      .from("prospect_workflows")
-      .select("prospect_id")
-      .eq("workspace_id", ctx.workspaceId)
-      .or(`cerrador_id.eq.${userId},representante_id.eq.${userId}`)
-      .neq("estado", "cancelado")
-    : { data: [] };
-  const assignedIds = [...new Set((assignments ?? []).map((row) => row.prospect_id).filter(Boolean))];
+  // Etapa 1: teamScope/ver_equipo ya NO implica ver todos — solo excepción de rol.
+  const visibility = await loadVisibilityActor(supabase, userId, ctx.workspaceId);
+  const assignedIds = visibility.exception
+    ? []
+    : await listAssignedProspectIds(supabase, userId, ctx.workspaceId);
+  const sharedIds = visibility.exception
+    ? []
+    : await listSharedProspectIds(supabase, userId, ctx.workspaceId);
+  const visibleIds = [...new Set([...assignedIds, ...sharedIds])];
+
   let q = supabase
     .from("prospects")
     .select(PROSPECT_LIST_COLUMNS, { count: "exact" })
     .order("created_at", { ascending: false })
     .range(offset, offset + limit - 1);
   q = scopeByWorkspace(q, ctx.workspaceId);
-  if (!ctx.teamScope) {
-    q = assignedIds.length
-      ? q.or(`user_id.eq.${userId},id.in.(${assignedIds.join(",")})`)
+  if (!visibility.exception) {
+    q = visibleIds.length
+      ? q.or(`user_id.eq.${userId},id.in.(${visibleIds.join(",")})`)
       : q.eq("user_id", userId);
   }
   if (status) q = q.eq("status", status);
@@ -103,6 +110,10 @@ export async function getProspect(supabase, userId, id) {
   q = scopeByWorkspace(q, ctx.workspaceId);
   const { data, error } = await q.maybeSingle();
   if (error) throw new ServiceError(error.message, 500);
+  // Mismo 404 que UUID inexistente si no pasa el predicado (no filtrar solo por RLS).
+  if (!data || !(await actorCanViewProspect(supabase, userId, ctx.workspaceId, id))) {
+    throw new ServiceError("Expediente no encontrado.", 404);
+  }
   return assertFound(data, "Expediente no encontrado.");
 }
 

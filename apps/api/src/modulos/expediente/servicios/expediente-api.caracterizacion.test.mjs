@@ -90,6 +90,41 @@ mock.module(pathToFileURL(resolve(API, "lib/workspace-permission-rpc.js")).href,
   },
 });
 
+const visibilityState = {
+  exception: false,
+  assignedIds: [],
+  sharedIds: [],
+  canView: null,
+};
+
+mock.module(pathToFileURL(resolve(HERE, "visibilidad-expediente-servicio.js")).href, {
+  namedExports: {
+    async loadVisibilityActor() {
+      return {
+        exception: visibilityState.exception,
+        isSuperAdmin: false,
+        rolEnWorkspace: null,
+        roleSlug: null,
+        esAdminEmpresa: false,
+      };
+    },
+    async listAssignedProspectIds() {
+      return visibilityState.assignedIds;
+    },
+    async listSharedProspectIds() {
+      return visibilityState.sharedIds;
+    },
+    async actorCanViewProspect(_sb, _uid, _ws, id) {
+      if (typeof visibilityState.canView === "boolean") return visibilityState.canView;
+      return db.prospect?.id === id;
+    },
+    workflowAssignmentOrFilter(userId) {
+      return `representante_id.eq.${userId},cerrador_id.eq.${userId}`;
+    },
+    WORKFLOW_PERSON_COLUMNS: ["representante_id", "cerrador_id"],
+  },
+});
+
 function payload(q) {
   if (q.table === "prospect_workflows") return { data: q.terminal === "maybe" ? db.workflow : [], error: null };
   if (q.table === "workspaces") return { data: { tipo: db.workspaceTipo }, error: null };
@@ -146,6 +181,10 @@ function reset() {
   db.permKeys = [];
   db.deleteError = null;
   db.deleteCount = 1;
+  visibilityState.exception = false;
+  visibilityState.assignedIds = [];
+  visibilityState.sharedIds = [];
+  visibilityState.canView = null;
 }
 
 async function codes(fn) {
@@ -220,6 +259,24 @@ test("un expediente ausente es 404", async () => {
   const err = await codes(() => prospects.getProspect(sb(), USER, PROSPECT));
   assert.equal(err.status, 404);
   assert.equal(err.message, "Expediente no encontrado.");
+});
+
+test("getProspect de expediente ajeno sin predicado es el mismo 404", async () => {
+  reset();
+  db.prospect = { id: PROSPECT, user_id: OTHER, workspace_id: WS };
+  visibilityState.canView = false;
+  const err = await codes(() => prospects.getProspect(sb(), USER, PROSPECT));
+  assert.equal(err.status, 404);
+  assert.equal(err.message, "Expediente no encontrado.");
+});
+
+test("getProspect propio con predicado ok devuelve la fila", async () => {
+  reset();
+  db.prospect = { id: PROSPECT, user_id: USER, workspace_id: WS, name: "Ana" };
+  visibilityState.canView = true;
+  const row = await prospects.getProspect(sb(), USER, PROSPECT);
+  assert.equal(row.id, PROSPECT);
+  assert.equal(row.name, "Ana");
 });
 
 test("un parche vacío es 400", async () => {

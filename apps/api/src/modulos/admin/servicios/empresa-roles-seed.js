@@ -257,6 +257,8 @@ export async function ensureEmpresaOperationalRoles(admin, empresaId) {
     const workflowKeys = spec.slug === "cerrador"
       ? ["workflow:ver", "workflow:avanzar", "workflow:cerrar"]
       : spec.slug === "gerente"
+        // ver_equipo en gerente: dashboards/metas de equipo. La excepción de
+        // “ver todos los expedientes” es rol/slug/es_admin (D2), NUNCA ver_equipo.
         ? [
           "workflow:ver",
           "workflow:revisar",
