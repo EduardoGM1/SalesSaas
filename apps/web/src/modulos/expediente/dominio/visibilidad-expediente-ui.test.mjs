@@ -15,6 +15,8 @@ test("ficha local valida acceso en sala vía GET", () => {
   assert.match(src, /localFetchState === "denied"/);
   assert.match(src, /status === 403 \|\| status === 404/);
   assert.match(src, /exp\.noAccessTitle/);
+  assert.match(src, /!c && localFetchState === "loading"/);
+  assert.match(src, /verifiedSalaIdRef/);
 });
 
 test("lista de clientes empty state en sala", () => {

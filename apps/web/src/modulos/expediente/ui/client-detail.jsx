@@ -167,21 +167,25 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
   }, [sharedRemote, id]);
 
   const [localFetchState, setLocalFetchState] = useState("idle"); // idle | loading | missing | denied | error
+  const verifiedSalaIdRef = useRef(null);
 
   useEffect(() => {
     if (sharedRemote || !hydrated || !id) {
       setLocalFetchState("idle");
+      verifiedSalaIdRef.current = null;
       return undefined;
     }
-    const mustVerifySala = isSupabaseConfigured() && !isPersonalWorkspace;
-    const mustHydrate = !localC && isSupabaseConfigured();
+    const hasLocal = Boolean(useDbStore.getState().db.clients[id]);
+    const mustVerifySala = isSupabaseConfigured() && !isPersonalWorkspace && verifiedSalaIdRef.current !== id;
+    const mustHydrate = !hasLocal && isSupabaseConfigured();
     if (!mustVerifySala && !mustHydrate) {
-      if (!localC && !isSupabaseConfigured()) setLocalFetchState("missing");
+      if (!hasLocal && !isSupabaseConfigured()) setLocalFetchState("missing");
       else setLocalFetchState("idle");
       return undefined;
     }
     let cancelled = false;
-    setLocalFetchState("loading");
+    // Solo bloquear UI si aún no hay cliente local (deep links / E2E no deben esperar el GET).
+    if (!hasLocal) setLocalFetchState("loading");
     import("@/lib/prospects-persist.js")
       .then(({ fetchProspectById }) => fetchProspectById(id))
       .then((row) => {
@@ -191,6 +195,7 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
           return;
         }
         useDbStore.getState().saveClient(prospectRowToClient(row), { skipCloud: true });
+        verifiedSalaIdRef.current = id;
         setLocalFetchState("idle");
       })
       .catch((err) => {
@@ -198,13 +203,20 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
         const status = Number(err?.status || 0);
         if (status === 403 || status === 404) {
           useDbStore.getState().deleteClient(id, { skipCloud: true });
+          verifiedSalaIdRef.current = id;
           setLocalFetchState("denied");
+          return;
+        }
+        // Con cliente local, un error de red no tapa la ficha.
+        if (hasLocal) {
+          verifiedSalaIdRef.current = id;
+          setLocalFetchState("idle");
           return;
         }
         setLocalFetchState("error");
       });
     return () => { cancelled = true; };
-  }, [sharedRemote, hydrated, id, localC, isPersonalWorkspace]);
+  }, [sharedRemote, hydrated, id, isPersonalWorkspace]);
 
   const collab = useExpedienteRealtime({
     prospectId: id,
@@ -277,7 +289,7 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
 
   if (sharedRemote && remoteLoading) return <Topbar title={t("exp.title")} subtitle={t("exp.loading")} />;
   if (!sharedRemote && !hydrated) return <Topbar title={t("exp.title")} subtitle={t("exp.loading")} />;
-  if (!sharedRemote && localFetchState === "loading") {
+  if (!sharedRemote && !c && localFetchState === "loading") {
     return <Topbar title={t("exp.title")} subtitle={t("exp.loading")} />;
   }
   if (!sharedRemote && localFetchState === "denied") {
