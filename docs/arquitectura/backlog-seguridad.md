@@ -24,6 +24,8 @@ Evidencia 2026-11-10 (Sala Royal Holiday, RO): 9 expedientes, 3 miembros, **los 
 
 **Cierre Etapa 1 (2026-11-11):** `0101_visibilidad_expedientes_asignacion.sql` + `0102_fix_prospects_select_insert_returning.sql` (atajo dueño en SELECT para `INSERT … RETURNING`). API en SHA de Etapa 1. Matriz QA efímera post-apply OK; impacto RO Sala RH: cerrador 9→1. Rollback: [`rollback-0101-visibilidad-expedientes.sql`](./rollback-0101-visibilidad-expedientes.sql) / [`rollback-0102-prospects-select-insert-returning.sql`](./rollback-0102-prospects-select-insert-returning.sql).
 
+**Estado 2026-11-11:** implementado en rama `arquitectura/visibilidad-etapa-1` (`4341343`, migración `0101`). **No cerrado en prod** hasta apply verificado + matriz QA §6.4.
+
 ## 2. `sync.reconcile.failed` con errores de RLS (preexistente, multiusuario)
 
 Ruta: `PUT /api/v1/sync` → `reconciliarBaseDatosUsuario` → `reconcile` (`packages/shared/src/data/sync.js`).
