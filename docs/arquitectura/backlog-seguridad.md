@@ -2,24 +2,27 @@
 
 Consultas solo lectura sobre producción; conteos agregados, sin ids ni emails. Excluye cuentas QA `@saletse-test.com`.
 
-## 1. Miembros del workspace acceden a los canales de todos los expedientes del workspace
+## 1. Miembros del workspace acceden a los canales (y a la lectura) de expedientes ajenos
 
-**Modelo:** `user_can_access_prospect` (0052) concede acceso si el usuario es miembro del workspace del expediente (`user_in_workspace`). La rama de `prospect_shares` también exige membresía, y `createShare` solo permite compartir con miembros del mismo workspace. Consecuencia: cualquier miembro (incluido un "invitado" agregado para compartir) puede suscribirse a `expediente:{uuid}` de **cualquier** expediente del workspace, no solo los compartidos. Con 0098 también podría emitir `field_lock` en ellos. **No se cambia** en este plan.
+**Estado:** abierto — **enlazado al diagnóstico** [`visibilidad-expedientes.md`](./visibilidad-expedientes.md) (2026-11-10). No se implementa en el PR de docs.
 
-Evidencia: diagnóstico efímero del canario — B como invitado (`seed-collab-share`) logra SUBSCRIBED en P1 compartido; en el incidente 0090 ya se observó lo mismo en P2 no compartido.
+**Modelo:** `user_can_access_prospect` (0052) concede acceso si el usuario es miembro del workspace del expediente (`user_in_workspace`). La rama de `prospect_shares` también exige membresía, y `createShare` solo permite compartir con miembros del mismo workspace. Consecuencia: cualquier miembro (incluido un "invitado" agregado para compartir) puede suscribirse a `expediente:{uuid}` de **cualquier** expediente del workspace. Con 0098 también podría emitir `field_lock` ahí.
 
-| Métrica (prod, sin QA) | Valor |
-|------------------------|------:|
-| Workspaces `personal` / `sala_de_venta` | 3 / 1 |
-| Workspaces con más de 1 miembro | 1 (sala) |
-| Miembros no dueños con acceso a expedientes ajenos | 2 |
-| Expedientes alcanzables por miembros no dueños | 1 |
-| Pares miembro × expediente ajeno sin share explícito | 2 |
-| Workspaces personales con invitados | 0 |
-| Shares reales (`prospect_shares`) | 0 |
+**Regla de negocio confirmada (2026-11-10):** en sala, solo asignados (colaboración) ven/abren; excepción gerente / asistente de sala / administrador. Hoy, además, `dashboard:ver_equipo` + `expedientes:ver_equipo` abren lista/sync/ficha de lectura de **toda** la sala (teamScope), incluso sin asignación ni edición.
 
-**Exposición actual:** mínima (1 sala, 1 expediente). Crece linealmente con miembros × expedientes por sala.  
-**Opciones (requieren OK):** separar "ver ficha" de "unirse al canal" (predicado de canal basado en dueño / share / rol de sala explícito), o aceptar el modelo de sala como frontera de confianza y documentarlo como tal.
+Evidencia histórica: canario collab — B como invitado (`seed-collab-share`) logra SUBSCRIBED en P1; incidente 0090 en P2 no compartido.  
+Evidencia 2026-11-10 (Sala Royal Holiday, RO): 9 expedientes, 3 miembros, **los 3** con `ver_equipo`; 1 miembro con teamScope fuera de la excepción propuesta (cerrador) ve los 9 en Clientes con “Sin permiso de edición”.
+
+| Métrica (prod, sin QA) | Valor (corte 2026-10-18) | Remediado 2026-11-10 (sala RH) |
+|------------------------|-------------------------:|-------------------------------:|
+| Workspaces `personal` / `sala_de_venta` | 3 / 1 | — |
+| Workspaces con más de 1 miembro | 1 (sala) | 1 |
+| Expedientes en la sala medida | 1 | **9** |
+| Miembros con `expedientes:ver_equipo` | — | **3** |
+| TeamScope sin excepción (gerente/asistente/admin) | — | **1** |
+| Shares reales | 0 | 0 |
+
+**Cierre propuesto:** Etapa 1 del plan en [`visibilidad-expedientes.md`](./visibilidad-expedientes.md) (RLS + `user_can_access_prospect` + API), con OK de migración, backup y rollback. No aceptar “la sala es frontera de confianza” si la regla de negocio dice lo contrario.
 
 ## 2. `sync.reconcile.failed` con errores de RLS (preexistente, multiusuario)
 

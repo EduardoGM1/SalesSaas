@@ -725,6 +725,7 @@ Construido con `git log main` y `docs/arquitectura/`. Las fechas son las del com
 | 11-10 | `6bcaf0f` → tip `ca9a15a` | Sync Tramo 2 web: protocolo 2, merge partial, backoff outbox, pendientes bloqueados en topbar | Cliente v1 reintentaba ~700/día el mismo rechazo; riesgo de perder filas con 200 parcial | **web** `ca9a15a`; API sin cambio (Tramo 1 ya en prod). Backup `web-dist/pre-20261110-180249` | `git revert` + redeploy web |
 | 11-10 | `7d82e99` | Calendario REST=`expedientes:editar`; `0099` liner al registrarse; `0100` Tramo 3 ownership + unique code | Cerrar §5, rol por defecto y endurecer BD sync | **API** `7d82e99`; migraciones `0099`/`0100` aplicadas en prod (RO: 0 dups; trigger bloquea UPDATE de ownership). Web sin cambio | Rollbacks SQL `rollback-0099` / `rollback-0100`; `git revert` + redeploy API |
 | 11-11 | `351d702` | Fixes producto: alta móvil con borrador local + timeout/reintentos; abrir ficha vía GET si falta local; cola de ventas con reintento; reparar agenda de ventas huérfanas al hidratar | Crear/abrir en móvil fallaba; residual de ventas/calendario | **web** `351d702`; API sin cambio. Backup `web-dist/pre-20261111-003843` | `git revert` + redeploy web |
+| 11-11 | docs | Diagnóstico visibilidad de expedientes en sala (solo asignados; excepción gerente/asistente/admin) | Incidente: no asignado ve los 9 de RH en solo lectura | Solo docs; sin deploy. Plan Etapas 1–3 + OK BD pendiente | `git revert` del commit de docs |
 | 10-18 | `1f86f78`, `4fe9465`, `3f75b3a`, `72a3ca4` | **Tramo 1 de `PUT /sync`** + smoke de roundtrip, guard de `sync:shared`, baseline 156, plan de deploy con backup lógico y criterios de rollback | Corregir la regresión de sync | **Desplegado `72a3ca4` (API) el 10-18**: CI verde, (a)–(e) en verde en producción, 0 errores 5xx | [`ROLLBACK-api-sync-tramo1.md`](./arquitectura/ROLLBACK-api-sync-tramo1.md) |
 
 ### Regresión de `PUT /sync`
@@ -768,7 +769,7 @@ Construido con `git log main` y `docs/arquitectura/`. Las fechas son las del com
 | Módulos 1–14 | **Cerrados** (contención B/A/C según inventario). Queda deuda de contención fina: OneSignal/toast, crons residuales, `db-store`/sync compartido, Survey 5b.7 |
 | Bloqueo de campos en varias pestañas | **Cerrado:** `tab_id` en `field_lock`/`field_unlock`; la otra pestaña del mismo usuario ve el campo bloqueado (`bloqueo-multi-pestana.js`) |
 | Survey 5b.7 | **Diferible:** ids colaborativos + realtime dentro del Survey (no iniciado) |
-| Alcance de los canales en tiempo real | **Bloqueado (diseño):** miembros del WS ven/emiten en todos los expedientes; cambiar implica producto + RLS/canales |
+| Alcance de los canales / visibilidad en sala | **Diagnóstico listo:** regla confirmada (solo asignados; excepción gerente/asistente/admin). Hallazgo guest/canales + teamScope/`ver_equipo` documentados en [`visibilidad-expedientes.md`](./arquitectura/visibilidad-expedientes.md); cierre pendiente Etapa 1 (OK BD) |
 | HTTPS | **Ops:** pendiente de operaciones (cert/proxy) |
 | Retención de backups | **Ops:** inventario parcial en [`retencion-backups-vps.md`](./arquitectura/retencion-backups-vps.md); falta política general |
 | Rol por defecto al registrarse | **Cerrado** con `0099`: `handle_new_user` asigna liner de plataforma. Legacy sin `role_id` también asignados (2026-11-10). Rollback: [`rollback-0099-default-role-liner.sql`](./arquitectura/rollback-0099-default-role-liner.sql) |
@@ -898,6 +899,7 @@ Glosario ES/EN de la migración: [`arquitectura/glosario.md`](./arquitectura/glo
 | [`arquitectura/pendiente-bloqueo-campos-collab.md`](./arquitectura/pendiente-bloqueo-campos-collab.md), [`arquitectura/deploy-cliente-locks-pre-0098.md`](./arquitectura/deploy-cliente-locks-pre-0098.md) | Bloqueo de campos y 0098 |
 | [`arquitectura/deploy-fix-sub-moneybox.md`](./arquitectura/deploy-fix-sub-moneybox.md) | Fix `?sub=moneybox` |
 | [`arquitectura/backlog-seguridad.md`](./arquitectura/backlog-seguridad.md) | Backlog de seguridad |
+| [`arquitectura/visibilidad-expedientes.md`](./arquitectura/visibilidad-expedientes.md) | Diagnóstico: visibilidad por asignación en sala |
 | [`arquitectura/retencion-backups-vps.md`](./arquitectura/retencion-backups-vps.md) | Retención de backups |
 | [`../scripts/README.md`](../scripts/README.md) | Índice de scripts |
 | [`../apps/api/API.md`](../apps/api/API.md), [`../supabase/README.md`](../supabase/README.md) | Catálogo HTTP; Auth y URLs de Supabase |
