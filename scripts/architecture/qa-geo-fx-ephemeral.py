@@ -527,7 +527,7 @@ def seed_workflow_collab(
     meta = psql(
         client,
         f"""
-SELECT p.workspace_id::text || '|' || coalesce(w.tipo, '')
+SELECT p.workspace_id::text || '|' || coalesce(w.tipo::text, '')
 FROM prospects p
 LEFT JOIN workspaces w ON w.id = p.workspace_id
 WHERE p.id = '{pid}'::uuid;
