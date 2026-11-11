@@ -14,7 +14,7 @@
 | **Etapa 2** sync/caché | **Desplegada prod** (`c9c1dfd`) | Pull teamScope filtrado + purge blob; backup `api/pre-20261111-104024` |
 | **Etapa 3** UI | **Desplegada prod** (`c9c1dfd`) | Lista/buscador/ficha “sin acceso”; backup `web-dist/pre-20261111-104134` |
 
-**Residuales post-`c9c1dfd`:** desplegados en prod **`4f51a13`** — allowlist UI (`GET /prospects` cache + purge mirror); Agenda/Metas scoped; `useVisibleClients` en lista/buscador; seed strip `*:ver_equipo`. **Drift BD `rol_permisos` cerrado** 2026-11-11 con `0103` (15→0). Matriz §6.4: ops + runner in-repo (realtime denial PASS; share ficha PASS* gap; roles sala GAP).
+**Residuales post-`c9c1cfd`:** desplegados en prod **`4f51a13`** — allowlist UI (`GET /prospects` cache + purge mirror); Agenda/Metas scoped; `useVisibleClients` en lista/buscador; seed strip `*:ver_equipo`. **Drift BD `rol_permisos` cerrado** 2026-11-11 con `0103` (15→0). Matriz §6.4: ops + runner in-repo (realtime denial PASS; share ficha PASS* gap; roles sala GAP). **D7 (edición por asignación collab):** migración `0104` (`prospects` UPDATE / predicado de edición) + API `acceso-edicion`; rama `fix/asignado-puede-editar`.
 
 Conteos de impacto: consultas RO en producción (`BEGIN READ ONLY` … `ROLLBACK`), agregados sin ids ni emails.
 
@@ -28,16 +28,16 @@ No hay tabla `prospect_participants`. El store es **`public.prospect_workflows`*
 
 | Etiqueta UI (Colaboración) | Columna | Migración | ¿Abre listado REST hoy? | ¿Abre edición ficha hoy? | ¿Chat expediente hoy? |
 |----------------------------|---------|-----------|-------------------------|--------------------------|------------------------|
-| Gerente | `gerente_id` | 0055 | No | Solo si rol/permiso gerente (`workflow:revisar` / `rol_en_workspace=gerente`) | Sí (`sync_prospect_chat_members`) |
-| Hostes | `hostes_id` | 0093 | No | No | No |
-| Filtro | `filtro_id` | 0093 | No | No | No |
-| OPC | `opc_id` | 0093 | No | No | No |
-| Liner | `liner_id` | 0093 | No | No | No |
-| FTB | `ftb_id` | 0093 | No | No | No |
-| Closer 1 / 2 (In House) | `inhouse_closer1_id`, `inhouse_closer2_id` | 0093 | No | No | No |
-| Imagen | `imagen_id` | 0093 | No | No | No |
-| Self-Gen | `self_gen_id` | 0093 | No | No | No |
-| Closer 1 / 2 (Members) | `members_closer1_id`, `members_closer2_id` | 0093 | No | No | No |
+| Gerente | `gerente_id` | 0055 | No | **Sí** si asignado en columna **o** rol/permiso gerente (`workflow:revisar` / `rol_en_workspace=gerente`) — D7 | Sí (`sync_prospect_chat_members`) |
+| Hostes | `hostes_id` | 0093 | No | **Sí** (asignación workflow / D7) | No |
+| Filtro | `filtro_id` | 0093 | No | **Sí** (asignación workflow / D7) | No |
+| OPC | `opc_id` | 0093 | No | **Sí** (asignación workflow / D7) | No |
+| Liner | `liner_id` | 0093 | No | **Sí** (asignación workflow / D7) | No |
+| FTB | `ftb_id` | 0093 | No | **Sí** (asignación workflow / D7) | No |
+| Closer 1 / 2 (In House) | `inhouse_closer1_id`, `inhouse_closer2_id` | 0093 | No | **Sí** (asignación workflow / D7) | No |
+| Imagen | `imagen_id` | 0093 | No | **Sí** (asignación workflow / D7) | No |
+| Self-Gen | `self_gen_id` | 0093 | No | **Sí** (asignación workflow / D7) | No |
+| Closer 1 / 2 (Members) | `members_closer1_id`, `members_closer2_id` | 0093 | No | **Sí** (asignación workflow / D7) | No |
 | **Vendedor** | `representante_id` | 0055 | **Sí** (`listProspects`) | **Sí** | Sí |
 | **Cerrador** | `cerrador_id` | 0055 | **Sí** | **Sí** | Sí |
 | Textos | `contrato`, `vlo`, `resultado_prospect_id` | 0093 | N/A | N/A | N/A |
@@ -75,7 +75,7 @@ Columnas collab en API: `COLAB_USER_COLUMNS` en `apps/api/src/services/prospect-
 | Lista REST | `listProspects` | Sin `teamScope`: `user_id` **o** `representante_id`/`cerrador_id`. Con `teamScope` (`dashboard:ver_equipo`): **todos** del workspace. |
 | Detalle REST | `getProspect` | Solo workspace + permiso de vista; **sin** filtro de asignación; se apoya en RLS. |
 | RLS SELECT prospects | `prospects_select_tenant_role` (0056) | Miembro ∧ (`user_id` ∨ `expedientes:ver_equipo` ∨ cerrador ∨ share). **No** incluye representante ni collab 0093. |
-| Edición | `canEditProspectRecord` | Dueño+`editar` ∨ rep ∨ cerrador ∨ gerente/`workflow:revisar` ∨ (`editar`+`ver_equipo`). |
+| Edición | `canEditProspectRecord` | Dueño+`editar` ∨ asignado en **cualquier** columna de persona de `WORKFLOW_PERSON_COLUMNS` (D7: paridad rep/cerrador) ∨ gerente/`workflow:revisar` ∨ (`editar`+`ver_equipo`). Share `view` **no** abre edición. |
 | Inbox | `listActiveProspects` | Gerente/`ver_equipo`: todos; si no: rep/cerrador. |
 
 ### 1.3 Definición propuesta para la regla nueva (“asignado”)
@@ -284,7 +284,7 @@ Matriz contra prod solo con QA + purga; no usar cuentas reales.
 
 ---
 
-## 8. Decisiones D1–D6 (cerradas 2026-11-10)
+## 8. Decisiones D1–D7 (cerradas 2026-11-10; D7 2026-11-11)
 
 | ID | Decisión |
 |----|----------|
@@ -294,6 +294,7 @@ Matriz contra prod solo con QA + purga; no usar cuentas reales.
 | D4 | Premanifiesto sigue aparte (excepción de producto) |
 | D5 | **No** crear `expedientes:ver_todos`; función SQL `es_gerente_asistente_o_admin(uid, workspace)` |
 | D6 | **OK** apply Etapa 1 (2026-11-11): `0101` + hotfix `0102` |
+| D7 | Quien está **asignado** en cualquier columna de persona de workflow (`WORKFLOW_PERSON_COLUMNS`, incl. collab 0093 + gerente + vendedor + cerrador) **puede editar** la ficha — misma paridad que `representante_id` / `cerrador_id`. **No** cambia `canRegisterProspectSale`. Un `prospect_shares` con `view` permite ver, **no** editar. Implementación: migración `0104` + API `acceso-edicion`. |
 
 ---
 

@@ -11,6 +11,10 @@ Uso:
   python scripts/architecture/qa-geo-fx-ephemeral.py purge <email>
   python scripts/architecture/qa-geo-fx-ephemeral.py seed-prospect <email> <prospect_id> [name] [prospect_code]
   python scripts/architecture/qa-geo-fx-ephemeral.py seed-collab-share <owner_email> <recipient_email> <prospect_id> [permission]
+  python scripts/architecture/qa-geo-fx-ephemeral.py seed-workflow-collab <prospect_id> <column> <profile_id> [--allow-rh]
+  python scripts/architecture/qa-geo-fx-ephemeral.py join-workspace-ephemeral <email> <workspace_id> [rol]
+  python scripts/architecture/qa-geo-fx-ephemeral.py set-active-workspace <email> <workspace_id>
+  python scripts/architecture/qa-geo-fx-ephemeral.py seed-ws-guest <owner_email> <guest_email>
 
 Sin secretos en stdout salvo el uid (provision). Password solo entra por argv.
 
@@ -39,6 +43,25 @@ from vps_ssh import connect_vps, load_env_file  # noqa: E402
 
 ENV_FILE = "/var/www/Saletse/.env"
 DB = "saletse-prod-db"
+SALA_RH_ID = "b0b1c8b0-ddaf-49a3-a3c4-ef92a2507815"
+
+# Espejo de WORKFLOW_PERSON_COLUMNS (visibilidad-expediente.js)
+WORKFLOW_PERSON_COLUMNS = (
+    "gerente_id",
+    "representante_id",
+    "cerrador_id",
+    "hostes_id",
+    "filtro_id",
+    "opc_id",
+    "liner_id",
+    "ftb_id",
+    "inhouse_closer1_id",
+    "inhouse_closer2_id",
+    "imagen_id",
+    "self_gen_id",
+    "members_closer1_id",
+    "members_closer2_id",
+)
 
 
 def run(client, cmd: str, timeout: int = 180) -> str:
@@ -418,6 +441,153 @@ SELECT 'wsm|' || COUNT(*)::text FROM workspace_miembros WHERE usuario_id = '{uid
     return {"uid": uid, "email": email, "diag": diag}
 
 
+def seed_ws_guest(client, owner_email: str, guest_email: str) -> dict:
+    """Añade guest al WS personal del owner y activa ese WS en el guest."""
+    owner_sql = owner_email.replace("'", "''")
+    guest_sql = guest_email.replace("'", "''")
+    out = psql(
+        client,
+        f"""
+WITH ids AS (
+  SELECT
+    (SELECT id FROM profiles WHERE email = '{owner_sql}') AS owner_id,
+    (SELECT id FROM profiles WHERE email = '{guest_sql}') AS guest_id,
+    (
+      SELECT COALESCE(
+        o.workspace_activo_id,
+        (SELECT w.id FROM workspaces w
+         JOIN workspace_miembros wm ON wm.workspace_id = w.id
+         WHERE wm.usuario_id = o.id AND w.tipo = 'personal'
+         LIMIT 1)
+      )
+      FROM profiles o WHERE o.email = '{owner_sql}'
+    ) AS owner_ws_id
+),
+ins AS (
+  INSERT INTO workspace_miembros (usuario_id, workspace_id, rol_en_workspace)
+  SELECT guest_id, owner_ws_id, 'vendedor'
+  FROM ids
+  WHERE guest_id IS NOT NULL AND owner_ws_id IS NOT NULL
+    AND EXISTS (SELECT 1 FROM workspaces w WHERE w.id = ids.owner_ws_id AND w.tipo = 'personal')
+  ON CONFLICT (usuario_id, workspace_id) DO NOTHING
+  RETURNING usuario_id, workspace_id
+),
+act AS (
+  UPDATE profiles p
+  SET workspace_activo_id = ids.owner_ws_id
+  FROM ids
+  WHERE p.id = ids.guest_id
+    AND ids.owner_ws_id IS NOT NULL
+    AND EXISTS (SELECT 1 FROM workspaces w WHERE w.id = ids.owner_ws_id AND w.tipo = 'personal')
+  RETURNING p.id, p.workspace_activo_id
+),
+ov AS (
+  INSERT INTO public.usuario_permisos_override (usuario_id, permiso_id, otorgado)
+  SELECT ids.guest_id, perm.id, true
+  FROM ids
+  CROSS JOIN permisos perm
+  WHERE ids.guest_id IS NOT NULL
+    AND perm.clave IN ('expedientes:editar', 'expedientes:ver_propios', 'expedientes:crear')
+  ON CONFLICT (usuario_id, permiso_id) DO UPDATE
+    SET otorgado = true, updated_at = now()
+  RETURNING usuario_id
+)
+SELECT coalesce((SELECT guest_id::text FROM ids), '')
+  || '|' || coalesce((SELECT owner_ws_id::text FROM ids), '')
+  || '|ins=' || (SELECT COUNT(*)::text FROM ins)
+  || '|act=' || (SELECT COUNT(*)::text FROM act)
+  || '|ov=' || (SELECT COUNT(*)::text FROM ov);
+""",
+    ).strip()
+    parts = (out.splitlines()[0] if out else "||").split("|")
+    return {
+        "guest_id": parts[0] if parts else "",
+        "workspace_id": parts[1] if len(parts) > 1 else "",
+        "inserted": "ins=1" in out,
+        "activated": "act=1" in out,
+        "overrides": "ov=" in out,
+    }
+
+
+def seed_workflow_collab(
+    client,
+    prospect_id: str,
+    column: str,
+    profile_email_or_id: str,
+    *,
+    allow_rh: bool = False,
+) -> dict:
+    """Upsert prospect_workflows y fija una columna de persona (D7 smoke)."""
+    col = (column or "").strip()
+    if col not in WORKFLOW_PERSON_COLUMNS:
+        raise SystemExit(f"columna no permitida: {col}")
+    pid = prospect_id.replace("'", "''")
+    who = profile_email_or_id.replace("'", "''")
+
+    meta = psql(
+        client,
+        f"""
+SELECT p.workspace_id::text || '|' || coalesce(w.tipo, '')
+FROM prospects p
+LEFT JOIN workspaces w ON w.id = p.workspace_id
+WHERE p.id = '{pid}'::uuid;
+""",
+    ).strip()
+    if not meta:
+        raise SystemExit("seed-workflow-collab: prospect no existe")
+    ws_id, ws_tipo = (meta.splitlines()[0].split("|") + ["", ""])[:2]
+    if ws_id == SALA_RH_ID and not allow_rh:
+        raise SystemExit(
+            "seed-workflow-collab: rechazado — prospect en Sala RH "
+            "(pasa --allow-rh solo si es intencional)"
+        )
+
+    clear = who.lower() in ("null", "none", "-", "clear")
+    if clear:
+        uid_sql = "NULL"
+        uid = ""
+    else:
+        uid_out = psql(
+            client,
+            f"""
+SELECT id::text FROM profiles
+WHERE id::text = '{who}' OR email = '{who}'
+LIMIT 1;
+""",
+        ).strip()
+        if not uid_out:
+            raise SystemExit(f"seed-workflow-collab: perfil no encontrado: {profile_email_or_id}")
+        uid = uid_out.splitlines()[0].strip()
+        uid_sql = f"'{uid}'::uuid"
+
+    out = psql(
+        client,
+        f"""
+INSERT INTO prospect_workflows (
+  prospect_id, workspace_id, representante_id, created_by, estado, {col}
+)
+SELECT p.id, p.workspace_id, p.user_id, p.user_id, 'en_progreso', {uid_sql}
+FROM prospects p
+WHERE p.id = '{pid}'::uuid
+ON CONFLICT (prospect_id) DO UPDATE SET
+  {col} = EXCLUDED.{col},
+  updated_at = now()
+RETURNING prospect_id::text, workspace_id::text, coalesce({col}::text, '');
+""",
+    ).strip()
+    if not out:
+        raise SystemExit("seed-workflow-collab: sin fila")
+    parts = out.splitlines()[0].split("|")
+    return {
+        "prospect_id": parts[0] if parts else prospect_id,
+        "workspace_id": parts[1] if len(parts) > 1 else ws_id,
+        "column": col,
+        "profile_id": parts[2] if len(parts) > 2 else uid,
+        "workspace_tipo": ws_tipo,
+        "cleared": clear,
+    }
+
+
 def seed_prospect(
     client,
     email: str,
@@ -621,6 +791,55 @@ FROM ids;
         "ok": ok,
         "assert": "share>=1 && guest_miembro=0 && conn>=1 && owner_ws",
     }
+
+
+def join_workspace_ephemeral(
+    client,
+    email: str,
+    workspace_id: str,
+    rol_en_workspace: str = "vendedor",
+) -> dict:
+    """Miembro guest en sala QA (sin tocar sala RH salvo workspace_id explícito)."""
+    if workspace_id == SALA_RH_ID:
+        raise SystemExit(
+            f"join-workspace-ephemeral: prohibido sala RH ({SALA_RH_ID}); usar sala QA efímera."
+        )
+    email_sql = email.replace("'", "''")
+    ws = workspace_id.replace("'", "''")
+    rol = (rol_en_workspace or "vendedor").replace("'", "''")
+    psql(
+        client,
+        f"""
+INSERT INTO workspace_miembros (usuario_id, workspace_id, rol_en_workspace)
+SELECT p.id, '{ws}'::uuid, '{rol}'
+FROM profiles p
+WHERE p.email = '{email_sql}'
+ON CONFLICT (usuario_id, workspace_id) DO UPDATE SET rol_en_workspace = EXCLUDED.rol_en_workspace;
+""",
+    )
+    return {"email": email, "workspace_id": workspace_id, "rol_en_workspace": rol_en_workspace}
+
+
+def set_active_workspace(client, email: str, workspace_id: str) -> dict:
+    email_sql = email.replace("'", "''")
+    ws = workspace_id.replace("'", "''")
+    out = psql(
+        client,
+        f"""
+UPDATE profiles p
+SET workspace_activo_id = '{ws}'::uuid
+WHERE p.email = '{email_sql}'
+  AND EXISTS (
+    SELECT 1 FROM workspace_miembros wm
+    WHERE wm.usuario_id = p.id AND wm.workspace_id = '{ws}'::uuid
+  )
+RETURNING id::text, workspace_activo_id::text;
+""",
+    ).strip()
+    if not out:
+        raise SystemExit("set-active-workspace: sin fila (¿email/membresía?)")
+    parts = out.splitlines()[0].split("|")
+    return {"email": email, "uid": parts[0], "workspace_activo_id": parts[1] if len(parts) > 1 else ws}
 
 
 def seed_collab_share(
@@ -861,12 +1080,40 @@ WHERE n.nspname = 'realtime'
 def main() -> None:
     if len(sys.argv) < 2:
         raise SystemExit(
-            "uso: provision|counts|purge|seed-prospect|seed-collab-share|seed-collab-share-only|"
-            "assert-collab-share-only|grant-survey-config|grant-money-box|check-broadcast-policy ..."
+            "uso: provision|counts|purge|seed-prospect|seed-workflow-collab|"
+            "join-workspace-ephemeral|set-active-workspace|seed-collab-share|"
+            "seed-collab-share-only|seed-ws-guest|assert-collab-share-only|"
+            "grant-survey-config|grant-money-box|check-broadcast-policy ..."
         )
     cmd = sys.argv[1]
     client = connect_vps(load_env_file(ROOT))
     try:
+        if cmd == "seed-workflow-collab":
+            raw = [a for a in sys.argv[2:] if a != "--allow-rh"]
+            allow_rh = "--allow-rh" in sys.argv[2:]
+            if len(raw) < 3:
+                raise SystemExit(
+                    "seed-workflow-collab <prospect_id> <column> <profile_id> [--allow-rh]"
+                )
+            print(
+                json.dumps(
+                    seed_workflow_collab(client, raw[0], raw[1], raw[2], allow_rh=allow_rh),
+                )
+            )
+            return
+        if cmd == "join-workspace-ephemeral":
+            if len(sys.argv) < 4:
+                raise SystemExit(
+                    "join-workspace-ephemeral <email> <workspace_id> [rol_en_workspace]"
+                )
+            rol = sys.argv[4] if len(sys.argv) > 4 else "vendedor"
+            print(json.dumps(join_workspace_ephemeral(client, sys.argv[2], sys.argv[3], rol)))
+            return
+        if cmd == "set-active-workspace":
+            if len(sys.argv) < 4:
+                raise SystemExit("set-active-workspace <email> <workspace_id>")
+            print(json.dumps(set_active_workspace(client, sys.argv[2], sys.argv[3])))
+            return
         if cmd == "check-broadcast-policy":
             print(json.dumps(check_broadcast_policy(client)))
             return
@@ -882,10 +1129,17 @@ def main() -> None:
         if cmd == "prospect-check":
             print(json.dumps(prospect_check(client, sys.argv[2], sys.argv[3])))
             return
+        if cmd == "seed-ws-guest":
+            if len(sys.argv) < 4:
+                raise SystemExit("seed-ws-guest <owner_email> <guest_email>")
+            print(json.dumps(seed_ws_guest(client, sys.argv[2], sys.argv[3])))
+            return
         if len(sys.argv) < 3:
             raise SystemExit(
-                "uso: provision|counts|purge|seed-prospect|seed-collab-share|seed-collab-share-only|"
-                "assert-collab-share-only|grant-survey-config|grant-money-box <email> ..."
+                "uso: provision|counts|purge|seed-prospect|seed-workflow-collab|"
+                "join-workspace-ephemeral|set-active-workspace|seed-collab-share|"
+                "seed-collab-share-only|seed-ws-guest|assert-collab-share-only|"
+                "grant-survey-config|grant-money-box <email> ..."
             )
         email = sys.argv[2]
         if cmd == "provision":

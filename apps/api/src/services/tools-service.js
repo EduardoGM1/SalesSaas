@@ -11,6 +11,7 @@ import {
 } from "../lib/workspace-scope.js";
 import { TOOL_FLAG_KEYS } from "./flags-service.js";
 import { notifyProspectSectionChanged } from "../modulos/notificaciones/index.js";
+import { WORKFLOW_PERSON_COLUMNS } from "../modulos/expediente/fachada-node.js";
 
 const SECTION_TOOLS = new Set(["survey", "vacaciones", "worksheet"]);
 
@@ -26,8 +27,8 @@ async function calculationOwnerId(supabase, actorId, prospectId) {
 
 /**
  * Los cálculos se guardan bajo el user_id del dueño del expediente. Si el actor
- * no es el dueño, solo puede escribir si tiene share `edit` o es participante
- * (representante/cerrador) del pipeline; poder leer el prospecto no basta.
+ * no es el dueño, solo puede escribir si tiene share `edit` o está asignado en
+ * alguna columna de persona del workflow; poder leer el prospecto no basta.
  */
 async function assertCanWriteAsOwner(supabase, actorId, ownerId, prospectId) {
   if (ownerId === actorId || !isUuid(prospectId)) return;
@@ -41,13 +42,13 @@ async function assertCanWriteAsOwner(supabase, actorId, ownerId, prospectId) {
       .maybeSingle(),
     client
       .from("prospect_workflows")
-      .select("representante_id, cerrador_id")
+      .select(WORKFLOW_PERSON_COLUMNS.join(", "))
       .eq("prospect_id", prospectId)
       .maybeSingle(),
   ]);
-  const canEdit = share?.permission === "edit"
-    || wf?.representante_id === actorId
-    || wf?.cerrador_id === actorId;
+  const assignedOnWorkflow = wf
+    && WORKFLOW_PERSON_COLUMNS.some((col) => wf[col] === actorId);
+  const canEdit = share?.permission === "edit" || assignedOnWorkflow;
   if (!canEdit) throw new ServiceError("No tienes permiso para editar este expediente.", 403);
 }
 
