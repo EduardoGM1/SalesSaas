@@ -18,6 +18,7 @@ export function NewClientModal({ open, onOpenChange, onCreated, adoptLibreTools 
   const [missingName, setMissingName] = useState(false);
   const [invalidName, setInvalidName] = useState(false);
   const [missingTipoTour, setMissingTipoTour] = useState(false);
+  const [creating, setCreating] = useState(false);
   const nameRef = useRef(null);
 
   useEffect(() => {
@@ -25,6 +26,7 @@ export function NewClientModal({ open, onOpenChange, onCreated, adoptLibreTools 
     setMissingName(false);
     setInvalidName(false);
     setMissingTipoTour(false);
+    setCreating(false);
     const timer = window.setTimeout(() => nameRef.current?.focus(), 300);
     return () => window.clearTimeout(timer);
   }, [open]);
@@ -36,6 +38,7 @@ export function NewClientModal({ open, onOpenChange, onCreated, adoptLibreTools 
     setMissingName(false);
     setInvalidName(false);
     setMissingTipoTour(false);
+    setCreating(false);
   };
 
   const handleOpenChange = (next) => {
@@ -44,6 +47,7 @@ export function NewClientModal({ open, onOpenChange, onCreated, adoptLibreTools 
   };
 
   const handleCreate = async () => {
+    if (creating) return;
     let hasError = false;
     const trimmed = name.trim();
     if (!trimmed) {
@@ -63,30 +67,35 @@ export function NewClientModal({ open, onOpenChange, onCreated, adoptLibreTools 
     }
     if (hasError) return;
 
-    const result = await createProspectFromName(name.trim(), tipoTour, tourCuantificable, initialTourDate || undefined);
-    if (!result.ok) {
-      if (result.reason === "missing_name") {
-        setMissingName(true);
-        setInvalidName(false);
-        nameRef.current?.focus();
-      } else if (result.reason === "invalid_name") {
-        setInvalidName(true);
-        setMissingName(false);
-        nameRef.current?.focus();
-      } else if (result.reason === "missing_tour_type") {
-        setMissingTipoTour(true);
+    setCreating(true);
+    try {
+      const result = await createProspectFromName(name.trim(), tipoTour, tourCuantificable, initialTourDate || undefined);
+      if (!result.ok) {
+        if (result.reason === "missing_name") {
+          setMissingName(true);
+          setInvalidName(false);
+          nameRef.current?.focus();
+        } else if (result.reason === "invalid_name") {
+          setInvalidName(true);
+          setMissingName(false);
+          nameRef.current?.focus();
+        } else if (result.reason === "missing_tour_type") {
+          setMissingTipoTour(true);
+        }
+        return;
       }
-      return;
-    }
 
-    let client = result.client;
-    if (adoptLibreTools) {
-      adoptLibreToolsToClient(client.id);
-      client = useDbStore.getState().getClient(client.id) ?? client;
-    }
+      let client = result.client;
+      if (adoptLibreTools) {
+        adoptLibreToolsToClient(client.id);
+        client = useDbStore.getState().getClient(client.id) ?? client;
+      }
 
-    onCreated?.(client);
-    handleOpenChange(false);
+      onCreated?.(client);
+      handleOpenChange(false);
+    } finally {
+      setCreating(false);
+    }
   };
 
   return (
@@ -170,8 +179,10 @@ export function NewClientModal({ open, onOpenChange, onCreated, adoptLibreTools 
         </select>
       </div>
       <div className="btn-row" style={{ marginTop: 20 }}>
-        <button type="button" className="btn btn-ghost" onClick={() => handleOpenChange(false)}>{t("common.cancel")}</button>
-        <button type="button" className="btn btn-primary" onClick={handleCreate}>{t("clients.createExpediente")}</button>
+        <button type="button" className="btn btn-ghost" disabled={creating} onClick={() => handleOpenChange(false)}>{t("common.cancel")}</button>
+        <button type="button" className="btn btn-primary" disabled={creating} onClick={handleCreate}>
+          {creating ? t("common.loading") : t("clients.createExpediente")}
+        </button>
       </div>
     </SalesModal>
   );

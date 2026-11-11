@@ -166,6 +166,36 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
     return retainToolWriteScope(id);
   }, [sharedRemote, id]);
 
+  const [localFetchState, setLocalFetchState] = useState("idle"); // idle | loading | missing | error
+
+  useEffect(() => {
+    if (sharedRemote || !hydrated || !id || localC) {
+      setLocalFetchState("idle");
+      return undefined;
+    }
+    if (!isSupabaseConfigured()) {
+      setLocalFetchState("missing");
+      return undefined;
+    }
+    let cancelled = false;
+    setLocalFetchState("loading");
+    import("@/lib/prospects-persist.js")
+      .then(({ fetchProspectById }) => fetchProspectById(id))
+      .then((row) => {
+        if (cancelled) return;
+        if (!row?.id) {
+          setLocalFetchState("missing");
+          return;
+        }
+        useDbStore.getState().saveClient(prospectRowToClient(row), { skipCloud: true });
+        setLocalFetchState("idle");
+      })
+      .catch(() => {
+        if (!cancelled) setLocalFetchState("error");
+      });
+    return () => { cancelled = true; };
+  }, [sharedRemote, hydrated, id, localC]);
+
   const collab = useExpedienteRealtime({
     prospectId: id,
     section: "detail",
@@ -237,6 +267,9 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
 
   if (sharedRemote && remoteLoading) return <Topbar title={t("exp.title")} subtitle={t("exp.loading")} />;
   if (!sharedRemote && !hydrated) return <Topbar title={t("exp.title")} subtitle={t("exp.loading")} />;
+  if (!sharedRemote && !c && localFetchState === "loading") {
+    return <Topbar title={t("exp.title")} subtitle={t("exp.loading")} />;
+  }
   if (!c) return (
     <>
       <Topbar title={t("exp.title")} subtitle={t("exp.notFound")} />

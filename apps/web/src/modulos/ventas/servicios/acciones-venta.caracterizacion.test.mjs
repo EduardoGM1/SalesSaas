@@ -89,6 +89,7 @@ export function scheduleReminderPush(job) { globalThis.__saleReminders.push(job)
       "--bundle",
       "--format=esm",
       "--platform=neutral",
+      "--main-fields=module,main,browser",
       `--outfile="${out.replace(/\\/g, "/")}"`,
       `--alias:@=${aliasRoot}`,
       `--alias:@/lib/toast=${toast.replace(/\\/g, "/")}`,

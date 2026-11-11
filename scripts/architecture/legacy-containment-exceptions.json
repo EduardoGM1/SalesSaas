@@ -8,6 +8,14 @@
     {
       "file": "apps/web/src/lib/deferred-sale-bundles.test.mjs",
       "reason": "Tests del helper deferred-sale-bundles (misma excepción temporal)."
+    },
+    {
+      "file": "apps/web/src/lib/abort-timeout.js",
+      "reason": "Polyfill AbortSignal.timeout para create/persist móvil; helper compartido fuera de módulos hasta mover sync/web fetch."
+    },
+    {
+      "file": "apps/web/src/lib/abort-timeout.test.mjs",
+      "reason": "Tests del polyfill abort-timeout (misma excepción temporal)."
     }
   ]
 }

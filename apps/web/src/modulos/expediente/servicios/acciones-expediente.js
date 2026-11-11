@@ -75,13 +75,14 @@ export async function createProspectFromName(name, tipoTour, tourCuantificable, 
       return { ok: true, client };
     } catch (err) {
       const offline = err?.offline === true;
+      // Borrador local = éxito de UX; la outbox reintenta la nube.
       useDbStore.getState().saveClient(draft);
       toast.error(
         offline
           ? "Sin conexión al servidor; el expediente quedó pendiente de sincronizar."
-          : (err?.message || "No se pudo guardar el expediente en la nube."),
+          : (err?.message || "No se pudo guardar el expediente en la nube; quedó pendiente de sincronizar."),
       );
-      return { ok: offline, client: draft, pending: true, reason: offline ? "offline" : "cloud_error" };
+      return { ok: true, client: draft, pending: true, reason: offline ? "offline" : "cloud_error" };
     }
   }
 

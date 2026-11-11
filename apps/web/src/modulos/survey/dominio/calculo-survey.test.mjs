@@ -22,6 +22,7 @@ async function load() {
       "--bundle",
       "--format=esm",
       "--platform=neutral",
+      "--main-fields=module,main,browser",
       `--outfile="${OUT.replace(/\\/g, "/")}"`,
       `--alias:@=${WEB_SRC.replace(/\\/g, "/")}`,
       "--log-level=error",

@@ -115,6 +115,13 @@ const ADMIN_SHIM_ALLOW_INTERNALS = new Set([
   "apps/web/src/lib/local-session-reset.js",
   "apps/web/src/lib/pwa-register.js",
   "apps/web/src/lib/pwa-install.js",
+  "apps/web/src/lib/onesignal.js",
+  "apps/web/src/lib/push-enable.js",
+  "apps/web/src/lib/supabase/client.ts",
+  "apps/web/src/lib/supabase/config.ts",
+  "apps/web/src/lib/supabase/ensure-browser-session.js",
+  "apps/web/src/lib/supabase/realtime-auth.ts",
+  "apps/web/src/components/providers/onesignal-provider.jsx",
   "apps/api/src/routes/auth.js",
   "apps/api/src/routes/session.js",
   "apps/api/src/controllers/auth-controller.js",
@@ -137,6 +144,7 @@ const ADMIN_SHIM_ALLOW_PREFIXES = [
   "middleware/",
   "rutas/",
   "dominio/",
+  "ui/",
 ];
 
 function isFacadeRest(rest) {

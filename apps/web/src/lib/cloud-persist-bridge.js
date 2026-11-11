@@ -24,7 +24,12 @@ export function suspendCloudPersist(on) {
   const next = !!on;
   const wasSuspended = suspended;
   suspended = next;
-  if (wasSuspended && !next) deferredSales.flush(scheduleSaleBundle);
+  if (wasSuspended && !next) {
+    // Diferir un tick para que replaceDb / set Zustand asienten la venta en el store.
+    const flush = () => deferredSales.flush(scheduleSaleBundle);
+    if (typeof queueMicrotask === "function") queueMicrotask(flush);
+    else setTimeout(flush, 0);
+  }
 }
 
 export function notifyProspectSaved(client) {

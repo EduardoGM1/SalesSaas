@@ -20,6 +20,7 @@ execSync(
     "--bundle",
     "--format=esm",
     "--platform=neutral",
+      "--main-fields=module,main,browser",
     `--alias:@=${aliasRoot}`,
     `--outfile="${OUT.replace(/\\/g, "/")}"`,
   ].join(" "),

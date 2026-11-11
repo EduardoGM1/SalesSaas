@@ -19,7 +19,7 @@ import { shallow } from "zustand/shallow";
 import { EntryDialog } from "./entry-dialog.jsx";
 import { SaleDetailModal } from "@/modulos/ventas";
 import { useUserFeatures } from "@/hooks/use-user-features.js";
-import { clientDisplayName } from "@/modulos/expediente/dominio/identidad-prospecto.ts";
+import { clientDisplayName } from "@/modulos/expediente";
 import { resolveEntryClientId } from "../dominio/resolve-entry-client.ts";
 import { tourClientsForDay, tourDaysInMonth } from "../dominio/tours-del-dia.ts";
 

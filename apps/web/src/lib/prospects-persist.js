@@ -2,11 +2,14 @@
  * Única fuente de verdad para persistir expedientes vía REST.
  * Usado por cloud-persist, mirror, recovery y createProspectFromName.
  */
+import { abortTimeout } from "@/lib/abort-timeout.js";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { markOutboxDirty } from "@/lib/sync-outbox.js";
 import { requestSyncPush } from "@/lib/sync-outbound.js";
 
 const API = "/api/v1";
+const FETCH_TIMEOUT_MS = 25000;
+const MAX_TRANSIENT_RETRIES = 2;
 
 export function isCloudAvailable() {
   return (
@@ -14,6 +17,20 @@ export function isCloudAvailable() {
     && typeof navigator !== "undefined"
     && navigator.onLine
   );
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function isTransientError(err) {
+  const status = Number(err?.status || 0);
+  if (status === 408 || status === 429 || status >= 500) return true;
+  const name = String(err?.name || "");
+  const msg = String(err?.message || err || "").toLowerCase();
+  if (name === "AbortError" || name === "TimeoutError") return true;
+  if (msg.includes("timeout") || msg.includes("network") || msg.includes("fetch")) return true;
+  return false;
 }
 
 export function prospectToApiBody(client) {
@@ -83,12 +100,12 @@ export function prospectRowToClient(row, existing) {
   };
 }
 
-async function apiJson(method, path, body) {
+async function apiJsonOnce(method, path, body) {
   const res = await fetch(`${API}${path}`, {
     method,
     credentials: "include",
     cache: "no-store",
-    signal: AbortSignal.timeout(25000),
+    signal: abortTimeout(FETCH_TIMEOUT_MS),
     headers: {
       Accept: "application/json",
       ...(body != null ? { "Content-Type": "application/json" } : {}),
@@ -102,6 +119,20 @@ async function apiJson(method, path, body) {
     throw err;
   }
   return json;
+}
+
+async function apiJson(method, path, body) {
+  let lastErr;
+  for (let attempt = 0; attempt <= MAX_TRANSIENT_RETRIES; attempt += 1) {
+    try {
+      return await apiJsonOnce(method, path, body);
+    } catch (err) {
+      lastErr = err;
+      if (attempt >= MAX_TRANSIENT_RETRIES || !isTransientError(err)) throw err;
+      await sleep(400 * (attempt + 1));
+    }
+  }
+  throw lastErr;
 }
 
 /** Crea expediente nuevo (POST). */
@@ -140,6 +171,13 @@ export async function persistProspectUpsert(client, { preferCreate = false } = {
 export async function persistProspectDelete(id) {
   await apiJson("DELETE", `/prospects/${id}`);
   return { ok: true };
+}
+
+/** Obtiene un expediente por id (GET). */
+export async function fetchProspectById(id) {
+  if (!id) throw new Error("Expediente sin id.");
+  const json = await apiJson("GET", `/prospects/${id}`);
+  return json?.data ?? json;
 }
 
 export function queueProspectFallback(reason) {

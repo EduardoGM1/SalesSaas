@@ -22,6 +22,7 @@ async function loadCalcs() {
       "--bundle",
       "--format=esm",
       "--platform=neutral",
+      "--main-fields=module,main,browser",
       `--outfile="${OUT.replace(/\\/g, "/")}"`,
       `--alias:@=${aliasRoot}`,
       "--log-level=error",

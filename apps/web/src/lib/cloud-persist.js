@@ -263,10 +263,14 @@ export function findCalEntries(db, { saleId, entryId } = {}) {
   return hits;
 }
 
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 /** Sincroniza efectos colaterales de una venta (agenda + actividad). */
 export async function persistSaleBundle(clientId, saleId, db) {
   const client = db.clients[clientId];
-  if (!client) return;
+  if (!client) return { ok: false, missing: "client" };
   const sale = (client.sales || []).find((s) => s.saleId === saleId);
   if (sale) await persistSaleUpsert(clientId, sale);
   await persistProspectUpsert(client);
@@ -275,6 +279,7 @@ export async function persistSaleBundle(clientId, saleId, db) {
   for (const { entry, entryDate } of findCalEntries(db, { saleId })) {
     await persistCalendarUpsert(entry, entryDate);
   }
+  return { ok: true, hasSale: !!sale };
 }
 
 export function scheduleSaleBundle(clientId, saleId) {
@@ -283,9 +288,18 @@ export function scheduleSaleBundle(clientId, saleId) {
     reason: "sale",
     run: async () => {
       const { useDbStore } = await import("@/stores/db-store");
-      const db = useDbStore.getState().db;
-      await persistSaleBundle(clientId, saleId, db);
-      return { ok: true };
+      let db = useDbStore.getState().db;
+      let result = await persistSaleBundle(clientId, saleId, db);
+      // Carrera: flush tras unsuspend antes de que el store tenga la venta.
+      if (result?.missing !== "client" && result && !result.hasSale) {
+        await sleep(120);
+        db = useDbStore.getState().db;
+        result = await persistSaleBundle(clientId, saleId, db);
+      }
+      if (result?.missing === "client" || (result && !result.hasSale)) {
+        queueFallback("sale-bundle-missing");
+      }
+      return { ok: true, ...result };
     },
   });
 }

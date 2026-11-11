@@ -249,14 +249,49 @@ function ensureSaleInClientAndAgenda(db: AppDatabase, clientId: string, sale: Sa
   db.clients[clientId] = client;
 }
 
-export const useDbStore = create<DbState>((set, get) => ({
-  db: typeof window !== "undefined" ? loadDatabase() : emptyDatabase(),
+function saleHasCalendarEntry(db: AppDatabase, saleId: string): boolean {
+  if (!saleId) return false;
+  for (const month of Object.values(db.cal || {})) {
+    for (const entries of Object.values(month.days || {})) {
+      for (const entry of entries || []) {
+        if (entry?.saleId === saleId) return true;
+      }
+    }
+  }
+  return false;
+}
 
-  hydrate: () => set({ db: loadDatabase() }),
+/** Repara ventas locales sin entrada de agenda (residual histórico / carrera sync). */
+function repairMissingSaleAgenda(db: AppDatabase): number {
+  let repaired = 0;
+  for (const [clientId, raw] of Object.entries(db.clients || {})) {
+    const client = ensureProspectIdentity(raw);
+    for (const sale of client.sales || []) {
+      if (!sale?.saleId || !sale.date) continue;
+      if (!shouldKeepSaleOnAgenda(sale) && !(sale.addProcessingFollowup && sale.processDate)) continue;
+      if (saleHasCalendarEntry(db, sale.saleId)) continue;
+      ensureSaleInClientAndAgenda(db, clientId, withSaleSnapshot(client, sale));
+      repaired += 1;
+    }
+  }
+  return repaired;
+}
+
+function loadAndRepairDatabase(): AppDatabase {
+  const db = loadDatabase();
+  if (repairMissingSaleAgenda(db) > 0) saveDatabase(db);
+  return db;
+}
+
+export const useDbStore = create<DbState>((set, get) => ({
+  db: typeof window !== "undefined" ? loadAndRepairDatabase() : emptyDatabase(),
+
+  hydrate: () => set({ db: loadAndRepairDatabase() }),
 
   persist: () => saveDatabase(get().db),
 
   replaceDb: (db) => {
+    repairMissingSaleAgenda(db);
     set({ db });
     saveDatabase(db);
   },

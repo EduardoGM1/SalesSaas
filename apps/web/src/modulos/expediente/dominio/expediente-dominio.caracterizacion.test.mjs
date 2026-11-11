@@ -29,6 +29,7 @@ async function loadTs(entry, outfile) {
       "--bundle",
       "--format=esm",
       "--platform=neutral",
+      "--main-fields=module,main,browser",
       `--outfile="${outfile.replace(/\\/g, "/")}"`,
       `--alias:@=${aliasRoot}`,
       "--log-level=error",
