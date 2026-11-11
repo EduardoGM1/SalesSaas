@@ -51,7 +51,38 @@ async function pullTable(sb, table, userId, workspaceId, teamScope) {
   return all;
 }
 
-async function pullAll(sb, userId, workspaceId = null, { teamScope = false } = {}) {
+/**
+ * Etapa 2 visibilidad: con teamScope y sin excepción de rol, recorta TEAM_TABLES
+ * al predicado (dueño ∪ asignación ∪ share). Nunca confía solo en ver_equipo.
+ * @param {Record<string, object[]>} rows
+ * @param {string} userId
+ * @param {{ visibleProspectIds?: string[] }} scope
+ */
+function filterPullRowsForVisibility(rows, userId, scope = {}) {
+  const visible = new Set((scope.visibleProspectIds || []).filter(Boolean));
+  const keepProspect = (p) => p?.user_id === userId || visible.has(p.id);
+  const keepByProspect = (r) => {
+    if (!r) return false;
+    if (r.user_id === userId) return true;
+    if (r.prospect_id && visible.has(r.prospect_id)) return true;
+    return false;
+  };
+  return {
+    prospects: (rows.prospects || []).filter(keepProspect),
+    sales: (rows.sales || []).filter(keepByProspect),
+    calendar_entries: (rows.calendar_entries || []).filter(keepByProspect),
+    goals: rows.goals || [],
+    activities: (rows.activities || []).filter(keepByProspect),
+    tool_calculations: (rows.tool_calculations || []).filter(keepByProspect),
+  };
+}
+
+async function pullAll(sb, userId, workspaceId = null, opts = {}) {
+  const {
+    teamScope = false,
+    visibilityException = true,
+    visibleProspectIds = null,
+  } = opts;
   const tables = [
     "prospects",
     "sales",
@@ -63,7 +94,7 @@ async function pullAll(sb, userId, workspaceId = null, { teamScope = false } = {
   const results = await Promise.all(
     tables.map((t) => pullTable(sb, t, userId, workspaceId, teamScope)),
   );
-  const rows = {
+  let rows = {
     prospects: results[0],
     sales: results[1],
     calendar_entries: results[2],
@@ -71,6 +102,12 @@ async function pullAll(sb, userId, workspaceId = null, { teamScope = false } = {
     activities: results[4],
     tool_calculations: results[5],
   };
+  const applyVisibilityFilter = teamScope && workspaceId && visibilityException !== true;
+  if (applyVisibilityFilter) {
+    rows = filterPullRowsForVisibility(rows, userId, {
+      visibleProspectIds: visibleProspectIds ?? [],
+    });
+  }
   return rowsToDb(rows);
 }
 
@@ -549,6 +586,7 @@ function summarizeReport(report) {
 
 export {
   SYNC_INSERT_PERMISSIONS,
+  filterPullRowsForVisibility,
   pullAll,
   reconcile,
   summarizeReport,

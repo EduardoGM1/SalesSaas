@@ -68,6 +68,36 @@ export async function listAssignedProspectIds(supabase, userId, workspaceId) {
   return [...new Set((data ?? []).map((r) => r.prospect_id).filter(Boolean))];
 }
 
+/** Ids de expedientes de los que el actor es dueño (user_id) en el workspace. */
+export async function listOwnedProspectIds(supabase, userId, workspaceId) {
+  const admin = adminClient() || supabase;
+  const { data, error } = await admin
+    .from("prospects")
+    .select("id")
+    .eq("workspace_id", workspaceId)
+    .eq("user_id", userId);
+  if (error) throw error;
+  return (data ?? []).map((r) => r.id).filter(Boolean);
+}
+
+/** Ids visibles para pull sync (sin excepción): dueño ∪ asignación ∪ share. */
+export async function resolveSyncPullVisibility(supabase, userId, workspaceId, teamScope) {
+  if (!teamScope || !workspaceId) {
+    return { visibilityException: true, visibleProspectIds: null };
+  }
+  const visibility = await loadVisibilityActor(supabase, userId, workspaceId);
+  if (visibility.exception) {
+    return { visibilityException: true, visibleProspectIds: null };
+  }
+  const [assignedIds, sharedIds, ownedIds] = await Promise.all([
+    listAssignedProspectIds(supabase, userId, workspaceId),
+    listSharedProspectIds(supabase, userId, workspaceId),
+    listOwnedProspectIds(supabase, userId, workspaceId),
+  ]);
+  const visibleProspectIds = [...new Set([...assignedIds, ...sharedIds, ...ownedIds])];
+  return { visibilityException: false, visibleProspectIds };
+}
+
 /** Ids compartidos con el actor en el workspace. */
 export async function listSharedProspectIds(supabase, userId, workspaceId) {
   const admin = adminClient() || supabase;

@@ -59,12 +59,42 @@ function mergeToolBuckets(localBucket, remoteBucket) {
   return toolBucketTs(l) >= toolBucketTs(r) ? { ...l } : { ...r };
 }
 
-function mergeClients(localClients, remoteClients) {
+function localClientNeedsRetain(localClient, remoteClients, clientId) {
+  if (!localClient) return false;
+  const remoteClient = remoteClients?.[clientId];
+  if (!remoteClient) return true;
+  if (tsOfClient(localClient) > tsOfClient(remoteClient)) return true;
+  const remoteSalesById = new Map((remoteClient.sales || []).map((s) => [s.saleId, s]));
+  for (const sale of localClient.sales || []) {
+    if (!sale?.saleId) continue;
+    const rs = remoteSalesById.get(sale.saleId);
+    if (!rs || tsOfSale(sale) > tsOfSale(rs)) return true;
+  }
+  for (const tool of ["survey", "vacaciones", "worksheet"]) {
+    const lb = localClient.data?.[tool];
+    const rb = remoteClient.data?.[tool];
+    if (!isNonEmptyTool(lb) || isToolMetaStub(lb)) continue;
+    if (!cloudHasTool(rb) || (isNonEmptyTool(rb) && toolBucketTs(lb) > toolBucketTs(rb))) {
+      return true;
+    }
+  }
+  for (const a of localClient.activities || []) {
+    if (!a?.id) continue;
+    const remoteActs = new Map((remoteClient.activities || []).map((x) => [x.id, x]));
+    const ra = remoteActs.get(a.id);
+    if (!ra || tsOfActivity(a) > tsOfActivity(ra)) return true;
+  }
+  return false;
+}
+
+function mergeClients(localClients, remoteClients, { visibilityPurge = false } = {}) {
   const out = { ...remoteClients };
   for (const [id, local] of Object.entries(localClients || {})) {
     const remote = out[id];
     if (!remote) {
-      out[id] = local;
+      if (!visibilityPurge || localClientNeedsRetain(local, remoteClients, id)) {
+        out[id] = local;
+      }
       continue;
     }
     if (tsOfClient(local) >= tsOfClient(remote)) {
@@ -142,6 +172,44 @@ function mergeSalesArchive(localSales, remoteSales) {
     if (!remote || tsOfSale(local) >= tsOfSale(remote)) out[id] = local;
   }
   return out;
+}
+
+function pruneDatabaseOrphans(db) {
+  const clientIds = new Set(Object.keys(db.clients || {}));
+  const validSaleIds = new Set();
+  for (const client of Object.values(db.clients || {})) {
+    for (const s of client.sales || []) {
+      if (s?.saleId) validSaleIds.add(s.saleId);
+    }
+  }
+  const sales = { ...(db.sales || {}) };
+  for (const [id, sale] of Object.entries(sales)) {
+    const pid = sale?.formerClientId;
+    if (pid && !clientIds.has(pid)) delete sales[id];
+    else if (sale?.saleId) validSaleIds.add(sale.saleId);
+  }
+  const cal = JSON.parse(JSON.stringify(db.cal || {}));
+  for (const [key, month] of Object.entries(cal)) {
+    for (const [dayStr, entries] of Object.entries(month.days || {})) {
+      const kept = (entries || []).filter((e) => {
+        const pid = e?.clientId || e?.prospectId;
+        if (!pid) return true;
+        return clientIds.has(pid);
+      });
+      if (kept.length) month.days[dayStr] = kept;
+      else delete month.days[dayStr];
+    }
+    for (const [dayStr, entries] of Object.entries(month.weeks || {})) {
+      const kept = (entries || []).filter((e) => {
+        const pid = e?.clientId || e?.prospectId;
+        if (!pid) return true;
+        return clientIds.has(pid);
+      });
+      if (kept.length) month.weeks[dayStr] = kept;
+      else delete month.weeks[dayStr];
+    }
+  }
+  return { ...db, sales, cal };
 }
 
 function mergeCal(localCal, remoteCal) {
@@ -284,16 +352,17 @@ function cloudHasTool(bucket) {
 /**
  * @param {import("@/lib/storage/types").AppDatabase} local
  * @param {import("@/lib/storage/types").AppDatabase} remote
- * @param {{ localSettings?: object, workspaceId?: string|null }} [opts]
+ * @param {{ localSettings?: object, workspaceId?: string|null, visibilityPurge?: boolean }} [opts]
  */
 export function mergeSyncDatabases(local, remote, opts = {}) {
   const baseRemote = remote && typeof remote === "object" ? remote : {};
   const baseLocal = local && typeof local === "object" ? local : {};
   const localSettings = opts.localSettings ?? baseLocal.settings ?? {};
   const workspaceId = opts.workspaceId ?? getActiveWorkspaceId();
+  const visibilityPurge = opts.visibilityPurge === true;
 
-  return {
-    clients: mergeClients(baseLocal.clients, baseRemote.clients),
+  const merged = {
+    clients: mergeClients(baseLocal.clients, baseRemote.clients, { visibilityPurge }),
     sales: mergeSalesArchive(baseLocal.sales, baseRemote.sales),
     cal: mergeCal(baseLocal.cal, baseRemote.cal),
     goals: mergeGoals(baseLocal.goals, baseRemote.goals),
@@ -305,4 +374,6 @@ export function mergeSyncDatabases(local, remote, opts = {}) {
       baseRemote.pendingDeletes,
     ),
   };
+  if (!visibilityPurge) return merged;
+  return pruneDatabaseOrphans(merged);
 }

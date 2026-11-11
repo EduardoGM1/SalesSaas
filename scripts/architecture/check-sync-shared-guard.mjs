@@ -15,6 +15,10 @@ const FORBIDDEN_EXACT = new Set([
   "packages/shared/src/data/sync.js",
 ]);
 
+/** Única rama que puede editar sync.js (Etapa 2 visibilidad). */
+const SYNC_VISIBILIDAD_BRANCH = "arquitectura/sync-visibilidad";
+const SYNC_JS_PATH = "packages/shared/src/data/sync.js";
+
 export function isSyncBranch(name) {
   const n = String(name || "").replace(/^refs\/heads\//, "");
   return n.startsWith("arquitectura/sync-");
@@ -30,8 +34,22 @@ export function isForbiddenPath(rel) {
   return false;
 }
 
-export function findForbidden(changedPaths) {
-  return [...new Set((changedPaths || []).map((p) => p.replace(/\\/g, "/")).filter(isForbiddenPath))].sort();
+export function isSyncVisibilidadBranch(name) {
+  const n = String(name || "").replace(/^refs\/heads\//, "");
+  return n === SYNC_VISIBILIDAD_BRANCH;
+}
+
+export function findForbidden(changedPaths, branch = "") {
+  const allowSyncJs = isSyncBranch(branch) && isSyncVisibilidadBranch(branch);
+  return [...new Set(
+    (changedPaths || [])
+      .map((p) => p.replace(/\\/g, "/"))
+      .filter((p) => {
+        if (!isForbiddenPath(p)) return false;
+        if (allowSyncJs && p === SYNC_JS_PATH) return false;
+        return true;
+      }),
+  )].sort();
 }
 
 function git(cmd) {
@@ -111,6 +129,23 @@ function selfTest() {
     }
   };
 
+  if (!isSyncVisibilidadBranch(SYNC_VISIBILIDAD_BRANCH)) {
+    console.error("✗ isSyncVisibilidadBranch");
+    failed++;
+  } else console.log("✓ isSyncVisibilidadBranch");
+
+  const allowVis = findForbidden([SYNC_JS_PATH], SYNC_VISIBILIDAD_BRANCH);
+  if (allowVis.length) {
+    console.error("✗ sync-visibilidad debe permitir sync.js");
+    failed++;
+  } else console.log("✓ sync-visibilidad permite solo sync.js");
+
+  const blockMappers = findForbidden(["packages/shared/src/data/mappers.js"], SYNC_VISIBILIDAD_BRANCH);
+  if (!blockMappers.length) {
+    console.error("✗ sync-visibilidad aún bloquea mappers.js");
+    failed++;
+  } else console.log("✓ sync-visibilidad bloquea mappers.js");
+
   if (!isSyncBranch("arquitectura/sync-tramo-c")) {
     console.error("✗ isSyncBranch tramo-c");
     failed++;
@@ -156,7 +191,7 @@ function main() {
   }
 
   const changed = changedFilesVsBase(base);
-  const forbidden = findForbidden(changed);
+  const forbidden = findForbidden(changed, branch);
   if (forbidden.length) {
     console.error("✗ Guard sync/shared: la rama toca shared data o db-store:");
     for (const f of forbidden) console.error(`  × ${f}`);

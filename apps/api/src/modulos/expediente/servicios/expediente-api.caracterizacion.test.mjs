@@ -114,6 +114,19 @@ mock.module(pathToFileURL(resolve(HERE, "visibilidad-expediente-servicio.js")).h
     async listSharedProspectIds() {
       return visibilityState.sharedIds;
     },
+    async listOwnedProspectIds() {
+      return [];
+    },
+    async resolveSyncPullVisibility(_sb, _uid, _ws, teamScope) {
+      if (!teamScope) return { visibilityException: true, visibleProspectIds: null };
+      if (visibilityState.exception) {
+        return { visibilityException: true, visibleProspectIds: null };
+      }
+      return {
+        visibilityException: false,
+        visibleProspectIds: [...new Set([...visibilityState.assignedIds, ...visibilityState.sharedIds])],
+      };
+    },
     async actorCanViewProspect(_sb, _uid, _ws, id) {
       if (typeof visibilityState.canView === "boolean") return visibilityState.canView;
       return db.prospect?.id === id;

@@ -3,7 +3,12 @@ import test from "node:test";
 import { spawnSync } from "node:child_process";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { findForbidden, isForbiddenPath, isSyncBranch } from "./check-sync-shared-guard.mjs";
+import {
+  findForbidden,
+  isForbiddenPath,
+  isSyncBranch,
+  isSyncVisibilidadBranch,
+} from "./check-sync-shared-guard.mjs";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const CLI = resolve(dirname(fileURLToPath(import.meta.url)), "check-sync-shared-guard.mjs");
@@ -28,6 +33,21 @@ test("findForbidden falla si el diff toca shared data", () => {
   assert.deepEqual(findForbidden(["packages/shared/src/data/sync.js", "docs/x.md"]), [
     "packages/shared/src/data/sync.js",
   ]);
+});
+
+test("arquitectura/sync-visibilidad permite solo sync.js entre prohibidos", () => {
+  assert.equal(isSyncVisibilidadBranch("arquitectura/sync-visibilidad"), true);
+  assert.deepEqual(
+    findForbidden(
+      ["packages/shared/src/data/sync.js", "packages/shared/src/data/mappers.js"],
+      "arquitectura/sync-visibilidad",
+    ),
+    ["packages/shared/src/data/mappers.js"],
+  );
+  assert.deepEqual(
+    findForbidden(["packages/shared/src/data/sync.js"], "arquitectura/sync-tramo-c"),
+    ["packages/shared/src/data/sync.js"],
+  );
 });
 
 test("CLI --self-test exit 0", () => {
