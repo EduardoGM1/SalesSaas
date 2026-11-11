@@ -7,7 +7,9 @@ export { listSharesWithContact } from "./servicios/compartir-servicio.js";
 export {
   loadVisibilityActor,
   listAssignedProspectIds,
+  listOwnedProspectIds,
   listSharedProspectIds,
+  resolveSyncPullVisibility,
   actorCanViewProspect,
   workflowAssignmentOrFilter,
   WORKFLOW_PERSON_COLUMNS,

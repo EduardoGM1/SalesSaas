@@ -469,6 +469,7 @@ const wsContext = { workspaceId: WS, tipo: "sala_de_venta", rol: "liner", teamSc
 const permissionDenied = new Set();
 mock.module(pathToFileURL(resolve(HERE, "../../../lib/workspace-scope.js")).href, {
   namedExports: {
+    getRequestWorkspaceId: async () => wsContext.workspaceId,
     getRequestWorkspaceContext: async () => wsContext,
     requireWorkspacePermission: async (_sb, _uid, permission) => {
       if (permissionDenied.has(permission)) throw new ServiceError("Sin permiso", 403);

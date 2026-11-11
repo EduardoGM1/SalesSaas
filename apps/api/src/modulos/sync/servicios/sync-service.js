@@ -9,7 +9,7 @@ import { ServiceError } from "../../../lib/service-error.js";
 import { logger } from "../../../lib/logger.js";
 import { getRequestWorkspaceContext, requireWorkspacePermission } from "../../../lib/workspace-scope.js";
 import { createServiceSupabaseClient } from "../../../lib/supabase-server.js";
-import { resolveSyncPullVisibility } from "../../expediente/servicios/visibilidad-expediente-servicio.js";
+import { resolveSyncPullVisibility } from "../../expediente/fachada-visibilidad.js";
 
 async function pullOptsForSession(supabase, userId, ctx) {
   const vis = await resolveSyncPullVisibility(supabase, userId, ctx.workspaceId, ctx.teamScope);
