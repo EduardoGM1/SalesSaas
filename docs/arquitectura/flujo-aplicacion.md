@@ -358,9 +358,12 @@ Detalle operativo (emails temporales, reportes): solo en apéndice privado local
 2. **`teamScope` sigue atado a `dashboard:ver_equipo`**, pero lista/sync **ya no** interpretan eso como “ver todos” (0101); fácil confundir con docs antiguos.
 3. **Docs previos §1.1** decían que collab no editaba; **código D7** (2026-11-11) sí — esta página alinea a código.
 4. **Fallback `resolver_flag` / permisos globales en personal** cuando falla RPC: sala es fail-closed; personal no — backlog de hardening.
-5. **Money Box** en rutas sin el mismo `ToolPermissionGate` que Survey/Worksheet: revisar simetría de gates.
-6. **`check-doc-proyecto`**: enlaces a backups `api/pre-20261111-104024` (paths no en repo) rompen el checker — docs históricas.
-7. **Permisos del catálogo no cableados a UI**: inventario exhaustivo **sin confirmar** en esta pasada (hace falta barrido `permission-catalog` vs `can(`).
+5. **Money Box** en rutas sin el mismo `ToolPermissionGate` que Survey/Worksheet; `RhToolFlagGate` trata flag ausente del catálogo (`null`) como **fail-open**.
+6. **REST PATCH vs RLS D7:** `updateProspect` exige siempre `expedientes:editar` antes de `canEditProspectRecord`; RLS `0104` permite UPDATE por sola asignación — REST más estricto que BD para asignados sin esa clave.
+7. **Catálogo vs código:** en `permission-catalog` aparecen sin uso claro en `apps/` p. ej. `agenda:usar`, `dashboard:ver_propio`, `notificaciones:configurar_propias`, `mensajes:usar`, `red:usar`. Al revés, `workflow:*` y `gestionar_empresas` se usan en API/RLS/admin **fuera** del catálogo shared.
+8. **Superadmin sesión vs SQL:** `session-service` exige `is_super_admin && role === "admin"`; RPC `effective_workspace_permissions` solo mira `is_super_admin` — posible divergencia UI/API.
+9. **`getRequestWorkspaceContext` no lanza `WORKSPACE_*`:** ante error devuelve workspace nulo; los 403/503 salen de `requireWorkspacePermission` / Flag / RPC (`workspace-permission-rpc.js`).
+10. **Clave local `sts4_user_v1`** (no `sts4_user`); docs/ejemplos antiguos a veces citan el nombre corto.
 
 ---
 
