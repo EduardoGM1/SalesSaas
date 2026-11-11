@@ -771,7 +771,7 @@ Construido con `git log main` y `docs/arquitectura/`. Las fechas son las del com
 | Módulos 1–14 | **Cerrados** (contención B/A/C según inventario). Queda deuda de contención fina: OneSignal/toast, crons residuales, `db-store`/sync compartido, Survey 5b.7 |
 | Bloqueo de campos en varias pestañas | **Cerrado:** `tab_id` en `field_lock`/`field_unlock`; la otra pestaña del mismo usuario ve el campo bloqueado (`bloqueo-multi-pestana.js`) |
 | Survey 5b.7 | **Diferible:** ids colaborativos + realtime dentro del Survey (no iniciado) |
-| Alcance de los canales / visibilidad en sala | **Etapa 1 en prod** (`0101`+`0102`). Etapas 2–3 (sync purge + UI) en curso hacia deploy |
+| Alcance de los canales / visibilidad en sala | **Etapas 1–3:** BD/API (`0101`+`0102`), sync pull filtrado + purge local, UX sin acceso/empty sala |
 | HTTPS | **Ops:** pendiente de operaciones (cert/proxy) |
 | Retención de backups | **Ops:** inventario parcial en [`retencion-backups-vps.md`](./arquitectura/retencion-backups-vps.md); falta política general |
 | Rol por defecto al registrarse | **Cerrado** con `0099`: `handle_new_user` asigna liner de plataforma. Legacy sin `role_id` también asignados (2026-11-10). Rollback: [`rollback-0099-default-role-liner.sql`](./arquitectura/rollback-0099-default-role-liner.sql) |

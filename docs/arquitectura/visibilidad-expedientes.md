@@ -293,9 +293,9 @@ Matriz contra prod solo con QA + purga; no usar cuentas reales.
 
 ## 9. Relación con backlog de seguridad
 
-El hallazgo [`backlog-seguridad.md`](./backlog-seguridad.md) §1 quedó **cerrado en Etapa 1** (2026-11-11): `user_can_access_prospect` + RLS SELECT + API usan el predicado de asignación/excepción. Queda **Etapa 2** (sync/caché, rama `arquitectura/sync-visibilidad`, sin deploy) y **Etapa 3** (UI).
+El hallazgo [`backlog-seguridad.md`](./backlog-seguridad.md) §1 quedó **cerrado en Etapa 1** (2026-11-11). **Etapas 2–3** en la misma entrega: pull sync filtrado + purge blob (`visibilityPurge`) y UX ficha/lista (“Sin acceso” / empty sala).
 
-Hotfix `0102`: la policy SELECT solo con `user_can_access_prospect(uid, id)` rompía `INSERT … RETURNING` (la función re-lee `prospects` y no ve la fila nueva). Atajo: `(user_id = auth.uid() ∧ user_in_workspace) ∨ user_can_access_prospect`.
+Hotfix `0102`: atajo dueño en SELECT para `INSERT … RETURNING`.
 
 Impacto post-apply (Sala RH, RO): cerrador 9→1; gerente/asistente sin pérdida.
 

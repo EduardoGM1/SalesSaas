@@ -166,15 +166,18 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
     return retainToolWriteScope(id);
   }, [sharedRemote, id]);
 
-  const [localFetchState, setLocalFetchState] = useState("idle"); // idle | loading | missing | error
+  const [localFetchState, setLocalFetchState] = useState("idle"); // idle | loading | missing | denied | error
 
   useEffect(() => {
-    if (sharedRemote || !hydrated || !id || localC) {
+    if (sharedRemote || !hydrated || !id) {
       setLocalFetchState("idle");
       return undefined;
     }
-    if (!isSupabaseConfigured()) {
-      setLocalFetchState("missing");
+    const mustVerifySala = isSupabaseConfigured() && !isPersonalWorkspace;
+    const mustHydrate = !localC && isSupabaseConfigured();
+    if (!mustVerifySala && !mustHydrate) {
+      if (!localC && !isSupabaseConfigured()) setLocalFetchState("missing");
+      else setLocalFetchState("idle");
       return undefined;
     }
     let cancelled = false;
@@ -190,11 +193,18 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
         useDbStore.getState().saveClient(prospectRowToClient(row), { skipCloud: true });
         setLocalFetchState("idle");
       })
-      .catch(() => {
-        if (!cancelled) setLocalFetchState("error");
+      .catch((err) => {
+        if (cancelled) return;
+        const status = Number(err?.status || 0);
+        if (status === 403 || status === 404) {
+          useDbStore.getState().deleteClient(id, { skipCloud: true });
+          setLocalFetchState("denied");
+          return;
+        }
+        setLocalFetchState("error");
       });
     return () => { cancelled = true; };
-  }, [sharedRemote, hydrated, id, localC]);
+  }, [sharedRemote, hydrated, id, localC, isPersonalWorkspace]);
 
   const collab = useExpedienteRealtime({
     prospectId: id,
@@ -267,8 +277,27 @@ export function ClientDetail({ id, sharedRemote = false, backHref = "/clients", 
 
   if (sharedRemote && remoteLoading) return <Topbar title={t("exp.title")} subtitle={t("exp.loading")} />;
   if (!sharedRemote && !hydrated) return <Topbar title={t("exp.title")} subtitle={t("exp.loading")} />;
-  if (!sharedRemote && !c && localFetchState === "loading") {
+  if (!sharedRemote && localFetchState === "loading") {
     return <Topbar title={t("exp.title")} subtitle={t("exp.loading")} />;
+  }
+  if (!sharedRemote && localFetchState === "denied") {
+    return (
+      <>
+        <Topbar title={t("exp.title")} subtitle={t("exp.noAccessTitle")} />
+        <div className="sales-page" style={{ padding: "16px 20px", maxWidth: 520 }}>
+          <PageBack inline href={backHref} />
+          <p className="card-sub" style={{ marginTop: 12 }}>{t("exp.noAccessBody")}</p>
+        </div>
+      </>
+    );
+  }
+  if (!sharedRemote && localFetchState === "error") {
+    return (
+      <>
+        <Topbar title={t("exp.title")} subtitle={t("exp.loadError")} />
+        <div className="sales-page"><PageBack inline href={backHref} /></div>
+      </>
+    );
   }
   if (!c) return (
     <>

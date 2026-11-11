@@ -476,7 +476,9 @@ export function ClientsPage() {
         </div>
 
         {!totalCount ? (
-          <div className="client-empty">{t("clients.emptyCreate")}</div>
+          <div className="client-empty">
+            {isSalaWorkspace ? t("clients.emptySala") : t("clients.emptyCreate")}
+          </div>
         ) : !allRows.length ? (
           <div className="client-search-empty">{t("clients.noResults", { query })}</div>
         ) : (

@@ -420,6 +420,7 @@ export function SyncProvider({ children }) {
         const merged = mergeSyncDatabases(localDb, cloudDb, {
           localSettings: localDb.settings,
           workspaceId: workspaceIdRef.current,
+          visibilityPurge: true,
         });
         applyRemote(merged, { clearPendingDeletes: !hasPendingDeletes(localDb) });
         localStorage.setItem(ACCOUNT_KEY, userId);
