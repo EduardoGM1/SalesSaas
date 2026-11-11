@@ -24,7 +24,7 @@ Evidencia 2026-11-10 (Sala Royal Holiday, RO): 9 expedientes, 3 miembros, **los 
 | TeamScope sin excepción (gerente/asistente/admin) | — | **1** |
 | Shares reales | 0 | 0 |
 
-**Cierre (2026-11-11):** Etapa 1 — `0101_visibilidad_expedientes_asignacion.sql` + `0102_fix_prospects_select_insert_returning.sql` (atajo dueño en SELECT para `INSERT … RETURNING`). Etapas 2–3 — deploy conjunto `c9c1dfd` (backups `api/pre-20261111-104024`, `web-dist/pre-20261111-104134`). Matriz QA efímera post-apply OK; impacto RO Sala RH: cerrador 9→1. Rollback BD: [`rollback-0101-visibilidad-expedientes.sql`](./rollback-0101-visibilidad-expedientes.sql) / [`rollback-0102-prospects-select-insert-returning.sql`](./rollback-0102-prospects-select-insert-returning.sql).
+**Cierre (2026-11-11):** Etapa 1 — `0101_visibilidad_expedientes_asignacion.sql` + `0102_fix_prospects_select_insert_returning.sql` (atajo dueño en SELECT para `INSERT … RETURNING`). Etapas 2–3 — deploy conjunto `c9c1dfd` (backups ops fuera del repo: `pre-20261111-104024` / `pre-20261111-104134`). Matriz QA efímera post-apply OK; impacto RO Sala RH: cerrador 9→1. Rollback BD: [`rollback-0101-visibilidad-expedientes.sql`](./rollback-0101-visibilidad-expedientes.sql) / [`rollback-0102-prospects-select-insert-returning.sql`](./rollback-0102-prospects-select-insert-returning.sql).
 
 ## 2. `sync.reconcile.failed` con errores de RLS (preexistente, multiusuario)
 

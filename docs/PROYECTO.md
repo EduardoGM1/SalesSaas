@@ -225,7 +225,11 @@ flowchart LR
 - El envelope `{ data }` / `{ error }` lo aplica `runService` ([`apps/api/src/routes/route-utils.js`](../apps/api/src/routes/route-utils.js)).
 - La autorización por workspace (`requireWorkspacePermission`, `requireWorkspaceFlag`) vive en [`apps/api/src/lib/workspace-scope.js`](../apps/api/src/lib/workspace-scope.js) y es *fail-closed*. En los módulos densos (Royal Holiday, sync, flags) las consultas siguen dentro del servicio.
 
-### 4.3 Módulos verticales
+### 4.3 Flujo de la aplicación (diagramas)
+
+Mapa de arranque → sesión → permisos → navegación → módulos → datos, con Mermaid + SVG y matriz rol×acción (Sala RH / personal): [`arquitectura/flujo-aplicacion.md`](./arquitectura/flujo-aplicacion.md). Imágenes: [`arquitectura/flujo/`](./arquitectura/flujo/). Diagnóstico de visibilidad de expedientes: [`arquitectura/visibilidad-expedientes.md`](./arquitectura/visibilidad-expedientes.md).
+
+### 4.4 Módulos verticales
 
 Decisión de arquitectura **A + B** ([`arquitectura/decisiones.md`](./arquitectura/decisiones.md) §1): cada módulo es una carpeta vertical con MVC interno. Antes de mover nada se extrae el dominio puro con pruebas (B) y después se mueve a `modulos/<nombre>/` (A).
 
@@ -247,7 +251,7 @@ apps/api/src/modulos/<nombre>/
 
 **Reglas de dependencia**: los componentes no hacen `fetch` directo fuera de la allowlist [`scripts/architecture/allowlist-component-fetch.json`](../scripts/architecture/allowlist-component-fetch.json); los imports cruzados entre módulos van por fachada; `packages/shared` no importa de `apps/`.
 
-### 4.4 Checks de arquitectura
+### 4.5 Checks de arquitectura
 
 `npm run verificar:arquitectura:checks` (corre en CI) encadena:
 
@@ -271,7 +275,7 @@ apps/api/src/modulos/<nombre>/
 
 Si el host de Supabase de `.env.local` no resuelve, los dos procesos se arrancan con el overlay de auth del apéndice privado (el mismo de los smokes). Esas variables no se commitean.
 
-### 4.5 Estado de la migración a módulos
+### 4.6 Estado de la migración a módulos
 
 | # | Módulo | Web | API | Tramo / SHA principal | Detalle |
 |---|--------|-----|-----|-----------------------|---------|
@@ -727,7 +731,7 @@ Construido con `git log main` y `docs/arquitectura/`. Las fechas son las del com
 | 11-11 | `351d702` | Fixes producto: alta móvil con borrador local + timeout/reintentos; abrir ficha vía GET si falta local; cola de ventas con reintento; reparar agenda de ventas huérfanas al hidratar | Crear/abrir en móvil fallaba; residual de ventas/calendario | **web** `351d702`; API sin cambio. Backup `web-dist/pre-20261111-003843` | `git revert` + redeploy web |
 | 11-11 | docs | Diagnóstico visibilidad de expedientes en sala (solo asignados; excepción gerente/asistente/admin) | Incidente: no asignado ve los 9 de RH en solo lectura | Solo docs; sin deploy. Plan Etapas 1–3 + OK BD pendiente | `git revert` del commit de docs |
 | 11-11 | `4341343` + `0101`/`0102` | Etapa 1 visibilidad: predicado asignación/excepción en BD+API; hotfix SELECT dueño para INSERT RETURNING | Cerrador sin asignación veía los 9 de RH; create fallaba tras 0101 | **API** `4341343`; migraciones `0101`+`0102` en prod | Rollbacks SQL `rollback-0101` / `rollback-0102`; `git revert` + redeploy API |
-| 11-11 | `c9c1dfd` | Visibilidad Etapas 2–3: pull sync filtrado + purge blob; UX sin acceso/empty sala; fachada-visibilidad | teamScope traía ajenos al blob; ficha sin mensaje de acceso | **API+web** `c9c1dfd`. Backups `api/pre-20261111-104024`, `web-dist/pre-20261111-104134` | `git revert` + redeploy API/web |
+| 11-11 | `c9c1dfd` | Visibilidad Etapas 2–3: pull sync filtrado + purge blob; UX sin acceso/empty sala; fachada-visibilidad | teamScope traía ajenos al blob; ficha sin mensaje de acceso | **API+web** `c9c1dfd`. Backups ops fuera del repo (`pre-20261111-104024` API / `pre-20261111-104134` web-dist) | `git revert` + redeploy API/web |
 | 11-11 | `92f76bd` | E2E: seed UUID + mock sync tras Sync T2 (`6bcaf0f`) | 12 fallos en main (skeleton RH) | CI E2E 157/5/0 | `git revert` |
 | 10-18 | `1f86f78`, `4fe9465`, `3f75b3a`, `72a3ca4` | **Tramo 1 de `PUT /sync`** + smoke de roundtrip, guard de `sync:shared`, baseline 156, plan de deploy con backup lógico y criterios de rollback | Corregir la regresión de sync | **Desplegado `72a3ca4` (API) el 10-18**: CI verde, (a)–(e) en verde en producción, 0 errores 5xx | [`ROLLBACK-api-sync-tramo1.md`](./arquitectura/ROLLBACK-api-sync-tramo1.md) |
 
