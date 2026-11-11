@@ -9,6 +9,7 @@ import {
 } from "../../../lib/workspace-scope.js";
 import { permissionDeniedError, rpcEffectiveWorkspacePermissions } from "../../../lib/workspace-permission-rpc.js";
 import { canEditProspectRecord } from "../dominio/acceso-edicion.js";
+import { WORKFLOW_PERSON_COLUMNS } from "../dominio/visibilidad-expediente.js";
 import { logger } from "../../../lib/logger.js";
 import {
   loadVisibilityActor,
@@ -141,7 +142,7 @@ export async function updateProspect(supabase, userId, id, body) {
 
   const { data: workflow } = await supabase
     .from("prospect_workflows")
-    .select("representante_id, cerrador_id")
+    .select(WORKFLOW_PERSON_COLUMNS.join(", "))
     .eq("prospect_id", id)
     .maybeSingle();
 

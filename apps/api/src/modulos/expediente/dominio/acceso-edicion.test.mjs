@@ -42,6 +42,45 @@ test("cerrador asignado puede editar aunque no tenga ver_equipo", () => {
   );
 });
 
+test("D7: liner/opc/hostes asignados en collab pueden editar", () => {
+  for (const col of ["liner_id", "opc_id", "hostes_id", "ftb_id", "imagen_id"]) {
+    assert.equal(
+      canEditProspectRecord({
+        actorId: OTHER,
+        prospect: { ...prospect, user_id: ACTOR },
+        workflow: { [col]: OTHER },
+        permissions: new Set(),
+      }),
+      true,
+      col,
+    );
+  }
+});
+
+test("D7: ajeno sin columna de persona no edita", () => {
+  assert.equal(
+    canEditProspectRecord({
+      actorId: OTHER,
+      prospect: { ...prospect, user_id: ACTOR },
+      workflow: { liner_id: ACTOR, representante_id: ACTOR },
+      permissions: new Set(["expedientes:editar"]),
+    }),
+    false,
+  );
+});
+
+test("D7: asignación collab no otorga can_register_sale", () => {
+  assert.equal(
+    canRegisterProspectSale({
+      actorId: OTHER,
+      workflow: { liner_id: OTHER, cerrador_id: null },
+      permissions: new Set(["expedientes:editar"]),
+      memberRole: "vendedor",
+    }),
+    false,
+  );
+});
+
 test("ver_equipo solo no basta para editar expediente ajeno", () => {
   assert.equal(
     canEditProspectRecord({

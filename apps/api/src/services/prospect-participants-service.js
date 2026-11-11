@@ -8,6 +8,7 @@ import { getRequestWorkspaceContext, requireWorkspacePermission } from "../lib/w
 import {
   canEditProspectRecord,
   canRegisterProspectSale,
+  canViewProspectByPredicate,
   loadVisibilityActor,
   workflowAssignmentOrFilter,
 } from "../modulos/expediente/fachada-node.js";
@@ -164,13 +165,10 @@ async function ensureParticipants(access, actorId) {
 }
 
 function canViewParticipants(access, participants, actorId) {
-  const representanteId = participants?.representante_id ?? access.prospect.user_id;
-  const cerradorId = participants?.cerrador_id ?? null;
   return access.isManager
-    || representanteId === actorId
-    || cerradorId === actorId
     || access.permissions.has("workflow:ver")
-    || access.permissions.has("expedientes:ver_propios");
+    || access.permissions.has("expedientes:ver_propios")
+    || canViewProspectByPredicate(actorId, access.prospect, participants);
 }
 
 function assertCanManageParticipants(access, message) {
@@ -179,15 +177,15 @@ function assertCanManageParticipants(access, message) {
 
 /**
  * Autoriza la vista y solo entonces inicializa el row si falta.
- * Quien no pasa el check grosero (gerente/dueño/ver_propios) solo puede ser
- * representante/cerrador de un row YA existente — nunca provoca un insert.
+ * Gerente / workflow:ver / ver_propios / dueño pueden provocar ensure.
+ * Un asignado collab puro solo entra si ya existe el row (nunca insert).
  */
 async function participantsAfterAuth(access, actorId) {
   if (canViewParticipants(access, null, actorId)) {
     return ensureParticipants(access, actorId);
   }
   const existing = await loadExistingParticipants(access);
-  if (existing && (existing.representante_id === actorId || existing.cerrador_id === actorId)) {
+  if (existing && canViewProspectByPredicate(actorId, access.prospect, existing)) {
     return existing;
   }
   throw new ServiceError("No puedes ver este expediente.", 403);
