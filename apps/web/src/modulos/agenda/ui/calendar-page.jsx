@@ -20,6 +20,10 @@ import { EntryDialog } from "./entry-dialog.jsx";
 import { SaleDetailModal } from "@/modulos/ventas";
 import { useUserFeatures } from "@/hooks/use-user-features.js";
 import { clientDisplayName } from "@/modulos/expediente";
+import {
+  scopeCalMonthForDerivedViews,
+  scopeClientsForDerivedViews,
+} from "@/modulos/expediente/fachada-visibilidad.js";
 import { resolveEntryClientId } from "../dominio/resolve-entry-client.ts";
 import { tourClientsForDay, tourDaysInMonth } from "../dominio/tours-del-dia.ts";
 
@@ -50,16 +54,27 @@ export function CalendarPage() {
   const [peerNameById, setPeerNameById] = useState({});
   const { canViewSaleModal, canViewSaleDetail } = useUserFeatures();
   const isSala = active?.tipo === "sala_de_venta";
+  const workspaceId = active?.id || null;
   const myUserId = userProfile?.id || null;
 
+  const { clients: clientsForAgenda, calMonth: calForAgenda } = useMemo(() => {
+    const { clients } = scopeClientsForDerivedViews(db?.clients, { isSala, workspaceId });
+    const calMonth = scopeCalMonthForDerivedViews(data, {
+      clients: db?.clients,
+      isSala,
+      workspaceId,
+    });
+    return { clients, calMonth };
+  }, [db?.clients, data, isSala, workspaceId]);
+
   const tourDays = useMemo(
-    () => tourDaysInMonth(db?.clients, calYear, calMonth),
-    [db?.clients, calYear, calMonth],
+    () => tourDaysInMonth(clientsForAgenda, calYear, calMonth),
+    [clientsForAgenda, calYear, calMonth],
   );
 
   const tourEntries = useMemo(() => {
     if (!selDay) return [];
-    return tourClientsForDay(db?.clients, calYear, calMonth, selDay).map((c) => ({
+    return tourClientsForDay(clientsForAgenda, calYear, calMonth, selDay).map((c) => ({
       id: `tour-${c.id}`,
       t: "tour",
       note: clientDisplayName(c),
@@ -67,7 +82,7 @@ export function CalendarPage() {
       prospectId: c.prospectId || c.id,
       tipo_tour: c.tipo_tour,
     }));
-  }, [db?.clients, calYear, calMonth, selDay]);
+  }, [clientsForAgenda, calYear, calMonth, selDay]);
 
   useEffect(() => {
     if (!isSala) {
@@ -113,7 +128,7 @@ export function CalendarPage() {
   const dim = new Date(calYear, calMonth + 1, 0).getDate();
   const today = new Date();
   const entries = selDay
-    ? (data.days[selDay] || []).filter((entry) => !entry.completed && (entry.t !== "venta" || isActiveAgendaSale(db, entry)))
+    ? (calForAgenda.days[selDay] || []).filter((entry) => !entry.completed && (entry.t !== "venta" || isActiveAgendaSale(db, entry)))
     : [];
   const dayHasContent = entries.length > 0 || tourEntries.length > 0;
 
@@ -162,7 +177,9 @@ export function CalendarPage() {
         {open && (
           <div className="dg-body open">
             {items.map((e, i) => {
-              const idx = type === "tour" ? -1 : (selDay ? (data.days[selDay] || []).indexOf(e) : -1);
+              const idx = type === "tour" ? -1 : (selDay
+                ? (data.days[selDay] || []).findIndex((x) => (e?.id ? x?.id === e.id : x === e))
+                : -1);
               const clientId = type === "tour"
                 ? (e.clientId || e.prospectId || null)
                 : resolveEntryClientId(db, e);
@@ -236,7 +253,7 @@ export function CalendarPage() {
               {Array.from({ length: first }).map((_, i) => <div key={`e${i}`} className="cal-day other" />)}
               {Array.from({ length: dim }, (_, i) => {
                 const d = i + 1;
-                const es = (data.days[d] || []).filter((entry) => !entry.completed);
+                const es = (calForAgenda.days[d] || []).filter((entry) => !entry.completed);
                 const isToday = today.getFullYear() === calYear && today.getMonth() === calMonth && today.getDate() === d;
                 const isSel = selDay === d;
                 return (

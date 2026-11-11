@@ -1,7 +1,7 @@
 # Visibilidad de expedientes en sala (diagnóstico — Fase 1)
 
-**Fecha:** 2026-11-10 (actualizado 2026-11-11)  
-**Ramas:** diagnóstico `bc1e067` (main); Etapa 1 `arquitectura/visibilidad-etapa-1` (`4341343`); Etapa 2 `arquitectura/sync-visibilidad` (`0095a7a`, **sin deploy**).  
+**Fecha:** 2026-11-10 (actualizado 2026-11-11, prod Etapas 1–3)  
+**Ramas / prod:** diagnóstico `bc1e067` (main); entrega visibilidad **`c9c1dfd`** (API + web, 2026-11-11). Etapa 1: migraciones `0101` + `0102`. Etapas 2–3: mismo SHA; backups `api/pre-20261111-104024`, `web-dist/pre-20261111-104134`.  
 **Regla de negocio confirmada (usuario):** en un workspace `sala_de_venta`, un usuario solo ve y puede abrir los expedientes en los que está **asignado como colaborador**. **Excepción:** gerentes, asistentes de sala y administradores ven todos.  
 **Evidencia de incidente:** en prod, un usuario sin asignación ve los 9 expedientes de Sala Royal Holiday en Clientes y abre la ficha en solo lectura (“Sin permiso de edición”).
 
@@ -10,9 +10,11 @@
 | Etapa | Estado | Notas |
 |-------|--------|-------|
 | Diagnóstico | Cerrado en main | Docs; E2E main en 0 (`92f76bd`) tras fix seed Sync T2 |
-| **Etapa 1** servidor/BD | Código en rama; **apply prod pendiente** | Migración `0101` + rollback; API list/get/active; gates locales OK. Requiere matriz QA efímera antes/después + canary |
-| **Etapa 2** sync/caché | Código en rama; **sin deploy** | pull filtrado + purge local; revisión pendiente |
-| Etapa 3 UI | No iniciada | — |
+| **Etapa 1** servidor/BD | **Aplicada prod** (2026-11-11) | `0101` + hotfix `0102`; API con predicado; matriz QA efímera post-apply OK |
+| **Etapa 2** sync/caché | **Desplegada prod** (`c9c1dfd`) | Pull teamScope filtrado + purge blob; backup `api/pre-20261111-104024` |
+| **Etapa 3** UI | **Desplegada prod** (`c9c1dfd`) | Lista/buscador/ficha “sin acceso”; backup `web-dist/pre-20261111-104134` |
+
+**Residuales post-`c9c1dfd` (rama `arquitectura/visibilidad-residuos`):** allowlist UI vía caché del último `GET /prospects` + purge mirror; Agenda/Metas con `scopeClientsForDerivedViews` / `scopeCalMonthForDerivedViews`; seed `ver_equipo` estrecha en código (strip no-gerente) + plan RO `scripts/architecture/plan-estrechar-ver-equipo-seed-ro.md` (sin apply prod aún); matriz §6.4 residual OK (prospects+sync; realtime SKIP). Hook `use-visible-clients.js` sin imports hoy (huérfano; no borrar).
 
 Conteos de impacto: consultas RO en producción (`BEGIN READ ONLY` … `ROLLBACK`), agregados sin ids ni emails.
 
@@ -238,6 +240,8 @@ Cuentas `@saletse-test.com`, contraseña aleatoria fuera del repo, purga a 0.
 
 Matriz contra prod solo con QA + purga; no usar cuentas reales.
 
+**Residual post-`c9c1dfd` (2026-11-11):** smoke QA efímera OK — gerente/asignado/sin/share en `GET /prospects` + `GET /sync` clients; ficha ajena 404; realtime ⊘ SKIP; purga a 0. Script/reporte fuera del repo (`~/.saletse-ops`). Gaps documentados: asistente/admin empresa y presence realtime en runner in-repo pendiente.
+
 ---
 
 ## 7. Plan por etapas + rollback
@@ -263,6 +267,7 @@ Matriz contra prod solo con QA + purga; no usar cuentas reales.
 | CI | Guards sync verdes; smoke sync roundtrip QA |
 | Prueba | teamScope gerente vs liner vs cerrador; offline reopen |
 | Sync.js | Sí se toca → rama/`arquitectura/sync-*` o etapa con guard consciente |
+| **OK usuario / deploy** | **Hecho** (2026-11-11). API + web `c9c1dfd`; rollback vía backup `api/pre-20261111-104024` + `web-dist/pre-20261111-104134` |
 
 ### Etapa 3 — UI
 
@@ -273,8 +278,9 @@ Matriz contra prod solo con QA + purga; no usar cuentas reales.
 | Rollback | Restaurar dist anterior |
 | CI | test:web + E2E |
 | Prueba | Captura incidente (cerrador sin asignación) → 0 ajenos en Clientes |
+| **OK usuario / deploy** | **Hecho** (2026-11-11), junto con Etapa 2 en `c9c1dfd` (ver fila deploy Etapa 2) |
 
-**Orden:** 1 → 2 → 3. No desplegar UI antes del servidor (daría falsa sensación de seguridad).
+**Orden:** 1 → 2 → 3. No desplegar UI antes del servidor (daría falsa sensación de seguridad). **Prod:** secuencia completada 2026-11-11.
 
 ---
 
@@ -293,16 +299,18 @@ Matriz contra prod solo con QA + purga; no usar cuentas reales.
 
 ## 9. Relación con backlog de seguridad
 
-El hallazgo [`backlog-seguridad.md`](./backlog-seguridad.md) §1 quedó **cerrado en Etapa 1** (2026-11-11). **Etapas 2–3** en la misma entrega: pull sync filtrado + purge blob (`visibilityPurge`) y UX ficha/lista (“Sin acceso” / empty sala).
+El hallazgo [`backlog-seguridad.md`](./backlog-seguridad.md) §1 quedó **cerrado** (2026-11-11): Etapa 1 (`0101`/`0102`) + Etapas 2–3 en prod `c9c1dfd` (pull sync filtrado + purge blob `visibilityPurge`; UX ficha/lista “Sin acceso” / empty sala).
 
 Hotfix `0102`: atajo dueño en SELECT para `INSERT … RETURNING`.
 
 Impacto post-apply (Sala RH, RO): cerrador 9→1; gerente/asistente sin pérdida.
 
+**Residuales post-cierre** (rama `arquitectura/visibilidad-residuos`): allowlist UI + Agenda/Metas scoped; seed strip `ver_equipo` en código + plan RO (apply prod pendiente); matriz §6.4 residual OK (realtime SKIP).
+
 ---
 
 ## 10. Fuera de alcance de este documento
 
-- Implementación, migraciones, deploy, cambios de seed en prod.  
+- Runbooks de deploy/rollback recurrentes y cambios de seed en prod (la ejecución de Etapas 1–3 en prod quedó registrada en §7).  
 - Zelle / pagos.  
 - Unificar `sales` / `rh_ventas`.

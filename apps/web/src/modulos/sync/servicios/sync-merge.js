@@ -59,7 +59,7 @@ function mergeToolBuckets(localBucket, remoteBucket) {
   return toolBucketTs(l) >= toolBucketTs(r) ? { ...l } : { ...r };
 }
 
-function localClientNeedsRetain(localClient, remoteClients, clientId) {
+export function localClientNeedsRetain(localClient, remoteClients, clientId) {
   if (!localClient) return false;
   const remoteClient = remoteClients?.[clientId];
   if (!remoteClient) return true;

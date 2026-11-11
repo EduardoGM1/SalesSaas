@@ -25,6 +25,18 @@ export {
   deleteClientWithConfirm,
 } from "./servicios/acciones-expediente.js";
 
+export {
+  scopeClientsForList,
+  scopeClientsForDerivedViews,
+  scopeCalMonthForDerivedViews,
+  filterClientsVisibles,
+  filterCalMonthVisibles,
+  localIdsToPurgeAfterMirror,
+  getVisibleProspectIds,
+  setVisibleProspectIds,
+  mergeVisibleProspectIds,
+} from "./fachada-visibilidad.js";
+
 export { useClientActions } from "./hooks/use-client-actions.js";
 export { useExpedienteFolderNav, EXPEDIENTE_TABS, WORKSHEET_RH_SUBS } from "./hooks/use-expediente-folder-nav.js";
 export {

@@ -25,6 +25,7 @@ import { runWithoutOutboundSync } from "@/lib/sync-suspend.js";
 import { useClientActions } from "../hooks/use-client-actions.js";
 import { requestSyncRefresh } from "@/lib/sync-refresh.js";
 import { mirrorClientsWithCloud } from "@/lib/clients-mirror.js";
+import { mergeVisibleProspectIds } from "@/modulos/expediente/dominio/visible-prospects-cache.js";
 import { toast } from "@/lib/toast";
 
 /** Solo el valor de catálogo (Q, NQ, CT, Member…); sin sufijo "- 1" / "- 0". */
@@ -185,13 +186,16 @@ export function ClientsPage() {
     const rows = Array.isArray(body.data) ? body.data : [];
     const total = Number(body.total) || 0;
     runWithoutOutboundSync(() => {
-    for (const row of rows) {
-      if (!row?.id) continue;
-      saveClient(prospectRowToClient(row, getClient(row.id)), { skipCloud: true });
-    }
+      for (const row of rows) {
+        if (!row?.id) continue;
+        saveClient(prospectRowToClient(row, getClient(row.id)), { skipCloud: true });
+      }
     });
+    if (isSalaWorkspace && active?.id) {
+      mergeVisibleProspectIds(active.id, rows.map((r) => r.id).filter(Boolean));
+    }
     return { rows, total };
-  }, [canShare, getClient, saveClient]);
+  }, [active?.id, canShare, getClient, isSalaWorkspace, saveClient]);
 
   const refreshPinned = useCallback(() => {
     if (!canShare) return Promise.resolve();
@@ -247,7 +251,10 @@ export function ClientsPage() {
         await requestSyncRefresh({ force: true, reason: "clients-page" });
         if (cancelled) return;
         // 2) Espejo REST: bajar nube → store + subir solo-locales
-        const mirror = await mirrorClientsWithCloud();
+        const mirror = await mirrorClientsWithCloud({
+          purgeNonRemote: isSalaWorkspace,
+          workspaceId: active?.id || null,
+        });
         if (cancelled) return;
         setRemoteTotal(mirror.remoteTotal);
         if (mirror.posted?.length) {
@@ -278,7 +285,7 @@ export function ClientsPage() {
     })();
 
     return () => { cancelled = true; };
-  }, [canShare, hydrated, workspaceReady, location.key, active?.id, fetchProspectPage]);
+  }, [canShare, hydrated, workspaceReady, location.key, active?.id, fetchProspectPage, isSalaWorkspace]);
 
   useEffect(() => {
     if (!canShare || !hydrated || !workspaceReady) return;
@@ -289,7 +296,10 @@ export function ClientsPage() {
       setRemoteOffset(0);
       setRemoteLoading(true);
       setListError(null);
-      mirrorClientsWithCloud()
+      mirrorClientsWithCloud({
+        purgeNonRemote: isSalaWorkspace,
+        workspaceId: active?.id || null,
+      })
         .then((mirror) => setRemoteTotal(mirror.remoteTotal))
         .catch((err) => {
           setListError(err instanceof Error ? err.message : String(err));
@@ -299,7 +309,7 @@ export function ClientsPage() {
     };
     document.addEventListener("visibilitychange", onVisible);
     return () => document.removeEventListener("visibilitychange", onVisible);
-  }, [canShare, hydrated, workspaceReady, refreshPinned, refreshTeamMeta]);
+  }, [canShare, hydrated, workspaceReady, refreshPinned, refreshTeamMeta, isSalaWorkspace, active?.id]);
 
   const pinnedIdsKey = useMemo(
     () => pinned.map((p) => p.id).filter(Boolean).sort().join(","),
@@ -375,7 +385,12 @@ export function ClientsPage() {
     [allRows, visibleLimit],
   );
   const localOwnedCount = ownedAll.length;
-  const totalCount = Math.max(remoteTotal ?? localOwnedCount, localOwnedCount) + pinnedOnly.length;
+  // En sala el total remoto (GET /prospects) manda; no inflar con blob viejo.
+  const totalCount = (
+    isSalaWorkspace && remoteTotal != null
+      ? remoteTotal
+      : Math.max(remoteTotal ?? localOwnedCount, localOwnedCount)
+  ) + pinnedOnly.length;
   const hasSearch = query.trim().length > 0;
   const canFetchMoreRemote = canShare
     && remoteTotal != null

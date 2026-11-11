@@ -3,6 +3,41 @@ import { ServiceError } from "../../../lib/service-error.js";
 /** Rol plataforma Liner (ex-Vendedor, mismo UUID tras migración 0069). */
 const LINER_PLATFORM_ROLE_ID = "a0000000-0000-4000-8000-000000000003";
 
+/**
+ * Claves *:ver_equipo del catálogo. En seed solo las conserva el puesto `gerente`
+ * (dashboards/metas de equipo). La excepción D2 de “ver todos los expedientes”
+ * es rol/slug/es_admin/superadmin — NUNCA estas claves.
+ */
+export const VER_EQUIPO_CLAVES = Object.freeze([
+  "expedientes:ver_equipo",
+  "ventas:ver_equipo",
+  "dashboard:ver_equipo",
+  "metas:ver_equipo",
+]);
+
+/** Slugs de puesto de empresa que el seed mantiene con *:ver_equipo. */
+export const SEED_KEEPS_VER_EQUIPO = Object.freeze(new Set(["gerente"]));
+
+/**
+ * Extras de workflow (+ ver_equipo solo en gerente) por slug de puesto.
+ * Asistentes no usan esta lista (delegatedOnly).
+ */
+export function workflowKeysForOperationalRole(slug) {
+  if (slug === "cerrador") {
+    return ["workflow:ver", "workflow:avanzar", "workflow:cerrar"];
+  }
+  if (slug === "gerente") {
+    return [
+      "workflow:ver",
+      "workflow:revisar",
+      "workflow:asignar_cerrador",
+      ...VER_EQUIPO_CLAVES,
+    ];
+  }
+  // liner, marketing, opc, y cualquier puesto operativo genérico
+  return ["workflow:ver", "workflow:avanzar"];
+}
+
 const LINER_FLAG_MATCH = (clave) =>
   clave === "survey"
   || String(clave).startsWith("survey.tab.")
@@ -25,6 +60,17 @@ const LIBRARY_PACKAGE_SLUGS = new Set([
   "marketing",
   "opc-lobby",
 ]);
+
+/** Quita *:ver_equipo de rol_permisos (idempotente). No toca predicados RLS. */
+async function stripVerEquipoFromRole(admin, roleId, verEquipoPermIds) {
+  if (!roleId || !verEquipoPermIds?.length) return;
+  const { error } = await admin
+    .from("rol_permisos")
+    .delete()
+    .eq("rol_id", roleId)
+    .in("permiso_id", verEquipoPermIds);
+  if (error) throw new ServiceError(error.message, 400);
+}
 
 /**
  * Paquete propio del puesto (puesto-{slug}). Copia los flags de la plantilla
@@ -187,6 +233,14 @@ export async function ensureEmpresaOperationalRoles(admin, empresaId) {
     { slug: "asistente_empresa", nombre: "Asistente de Empresa", packageSlug: null, scope: "empresa", delegatedOnly: true },
   ];
 
+  const { data: verEquipoPerms, error: veErr } = await admin
+    .from("permisos")
+    .select("id")
+    .in("clave", [...VER_EQUIPO_CLAVES]);
+  if (veErr) throw new ServiceError(veErr.message, 500);
+  const verEquipoPermIds = (verEquipoPerms ?? []).map((p) => p.id).filter(Boolean);
+  const verEquipoIdSet = new Set(verEquipoPermIds);
+
   for (const spec of rolesSpec) {
     const technicalPackageId = spec.packageSlug
       ? await ensureForkedRolePackage(admin, empresaId, {
@@ -230,6 +284,7 @@ export async function ensureEmpresaOperationalRoles(admin, empresaId) {
     }
 
     if (spec.delegatedOnly) {
+      // Asistentes: sin catálogo en rol_permisos; D2 los exceptúa por slug, no por ver_equipo.
       await admin.from("rol_permisos").delete().eq("rol_id", roleId);
       continue;
     }
@@ -241,6 +296,7 @@ export async function ensureEmpresaOperationalRoles(admin, empresaId) {
     const have = new Set((existingPerms ?? []).map((r) => r.permiso_id));
 
     // Base operativa = permisos del Liner de plataforma (expedientes, ventas, agenda…).
+    // Nunca copiar *:ver_equipo desde la base; solo gerente los recibe vía workflowKeys.
     const { data: basePerms } = await admin
       .from("rol_permisos")
       .select("permiso_id")
@@ -254,21 +310,7 @@ export async function ensureEmpresaOperationalRoles(admin, empresaId) {
       );
     }
 
-    const workflowKeys = spec.slug === "cerrador"
-      ? ["workflow:ver", "workflow:avanzar", "workflow:cerrar"]
-      : spec.slug === "gerente"
-        // ver_equipo en gerente: dashboards/metas de equipo. La excepción de
-        // “ver todos los expedientes” es rol/slug/es_admin (D2), NUNCA ver_equipo.
-        ? [
-          "workflow:ver",
-          "workflow:revisar",
-          "workflow:asignar_cerrador",
-          "expedientes:ver_equipo",
-          "ventas:ver_equipo",
-          "dashboard:ver_equipo",
-          "metas:ver_equipo",
-        ]
-        : ["workflow:ver", "workflow:avanzar"];
+    const workflowKeys = workflowKeysForOperationalRole(spec.slug);
 
     const { data: wfPerms } = await admin
       .from("permisos")
@@ -278,7 +320,9 @@ export async function ensureEmpresaOperationalRoles(admin, empresaId) {
     const toInsert = [];
     const seen = new Set(have);
     for (const id of [
-      ...(basePerms ?? []).map((row) => row.permiso_id),
+      ...(basePerms ?? [])
+        .map((row) => row.permiso_id)
+        .filter((id) => id && !verEquipoIdSet.has(id)),
       ...(wfPerms ?? []).map((p) => p.id),
     ]) {
       if (!id || seen.has(id)) continue;
@@ -296,6 +340,11 @@ export async function ensureEmpresaOperationalRoles(admin, empresaId) {
           if (oneErr && oneErr.code !== "23505") throw new ServiceError(oneErr.message, 400);
         }
       }
+    }
+
+    // Residual D2: re-seed debe ESTRECHAR — quitar *:ver_equipo de puestos no excepción.
+    if (!SEED_KEEPS_VER_EQUIPO.has(spec.slug)) {
+      await stripVerEquipoFromRole(admin, roleId, verEquipoPermIds);
     }
 
     // Verificación: Gerente/Liner/Cerrador nunca deben quedar en 0 permisos.

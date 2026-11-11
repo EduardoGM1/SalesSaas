@@ -4,7 +4,9 @@ Consultas solo lectura sobre producción; conteos agregados, sin ids ni emails. 
 
 ## 1. Miembros del workspace acceden a los canales (y a la lectura) de expedientes ajenos
 
-**Estado:** **cerrado en Etapa 1** (2026-11-11) — migraciones `0101` + hotfix `0102` en prod; predicado alineado en RLS/`user_can_access_prospect`/API. Ver [`visibilidad-expedientes.md`](./visibilidad-expedientes.md). Etapa 2 (sync/caché) pendiente; sin deploy de sync aún.
+**Estado:** **cerrado** (2026-11-11) — Etapa 1: `0101` + hotfix `0102` en prod; Etapas 2–3: API + web `c9c1dfd` (sync filtrado + purge + UI). Predicado y superficies alineados. Ver [`visibilidad-expedientes.md`](./visibilidad-expedientes.md) §7–§9.
+
+**Residuales** (rama `arquitectura/visibilidad-residuos`): allowlist UI + Agenda/Metas scoped; seed strip `ver_equipo` en código + plan RO (apply prod pendiente); matriz §6.4 residual OK (realtime SKIP).
 
 **Modelo:** `user_can_access_prospect` (0052) concede acceso si el usuario es miembro del workspace del expediente (`user_in_workspace`). La rama de `prospect_shares` también exige membresía, y `createShare` solo permite compartir con miembros del mismo workspace. Consecuencia: cualquier miembro (incluido un "invitado" agregado para compartir) puede suscribirse a `expediente:{uuid}` de **cualquier** expediente del workspace. Con 0098 también podría emitir `field_lock` ahí.
 
@@ -22,9 +24,7 @@ Evidencia 2026-11-10 (Sala Royal Holiday, RO): 9 expedientes, 3 miembros, **los 
 | TeamScope sin excepción (gerente/asistente/admin) | — | **1** |
 | Shares reales | 0 | 0 |
 
-**Cierre Etapa 1 (2026-11-11):** `0101_visibilidad_expedientes_asignacion.sql` + `0102_fix_prospects_select_insert_returning.sql` (atajo dueño en SELECT para `INSERT … RETURNING`). API en SHA de Etapa 1. Matriz QA efímera post-apply OK; impacto RO Sala RH: cerrador 9→1. Rollback: [`rollback-0101-visibilidad-expedientes.sql`](./rollback-0101-visibilidad-expedientes.sql) / [`rollback-0102-prospects-select-insert-returning.sql`](./rollback-0102-prospects-select-insert-returning.sql).
-
-**Estado 2026-11-11:** implementado en rama `arquitectura/visibilidad-etapa-1` (`4341343`, migración `0101`). **No cerrado en prod** hasta apply verificado + matriz QA §6.4.
+**Cierre (2026-11-11):** Etapa 1 — `0101_visibilidad_expedientes_asignacion.sql` + `0102_fix_prospects_select_insert_returning.sql` (atajo dueño en SELECT para `INSERT … RETURNING`). Etapas 2–3 — deploy conjunto `c9c1dfd` (backups `api/pre-20261111-104024`, `web-dist/pre-20261111-104134`). Matriz QA efímera post-apply OK; impacto RO Sala RH: cerrador 9→1. Rollback BD: [`rollback-0101-visibilidad-expedientes.sql`](./rollback-0101-visibilidad-expedientes.sql) / [`rollback-0102-prospects-select-insert-returning.sql`](./rollback-0102-prospects-select-insert-returning.sql).
 
 ## 2. `sync.reconcile.failed` con errores de RLS (preexistente, multiusuario)
 

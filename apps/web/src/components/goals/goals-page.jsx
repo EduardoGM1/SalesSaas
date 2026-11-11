@@ -7,6 +7,10 @@ import { DashboardKpiCard } from "@/components/goals/dashboard-kpi-card.jsx";
 import { CollapsibleSection } from "@/components/ui/collapsible-section.jsx";
 import { CustomModulePanel } from "@/components/custom-modules/CustomModulePanel.jsx";
 import { normalizeGoal, getDashboardWeeks, workingDaysRemaining } from "@/modulos/metas";
+import {
+  scopeCalMonthForDerivedViews,
+  scopeClientsForDerivedViews,
+} from "@/modulos/expediente/fachada-visibilidad.js";
 import { productionTourSaleCounts } from "@/lib/calculations/tour-summary";
 import { useI18n } from "@/hooks/use-i18n.js";
 import { useMoney } from "@/hooks/use-money.js";
@@ -40,19 +44,32 @@ export function GoalsPage() {
   const goalVentas = useDbStore((s) => s.db.goals[monthKey]?.ventas ?? 0, shallow);
   const clients = useDbStore((s) => s.db.clients, shallow);
   const tourTypes = useDbStore((s) => s.db.settings?.tourTypes ?? DEFAULT_TOUR_TYPES, shallow);
+  const isSala = active?.tipo === "sala_de_venta";
+  const workspaceId = active?.id || null;
   const goal = useMemo(
     () => normalizeGoal({ vol: goalVol, tours: goalTours, ventas: goalVentas }),
     [goalVol, goalTours, goalVentas],
   );
+
+  const { clients: clientsForDashboard, calMonth: calForDashboard } = useMemo(() => {
+    const scoped = scopeClientsForDerivedViews(clients, { isSala, workspaceId });
+    const calMonth = scopeCalMonthForDerivedViews(data, {
+      clients,
+      isSala,
+      workspaceId,
+    });
+    return { clients: scoped.clients, calMonth };
+  }, [clients, data, isSala, workspaceId]);
+
   const weeks = useMemo(
-    () => getDashboardWeeks(calYear, calMonth, data, goal, clients),
-    [calYear, calMonth, data, goal, clients],
+    () => getDashboardWeeks(calYear, calMonth, calForDashboard, goal, clientsForDashboard),
+    [calYear, calMonth, calForDashboard, goal, clientsForDashboard],
   );
 
   /** Fuente única: Tours/Ventas del mes seleccionado (misma consulta web/móvil). */
   const { summary: tourSummary, tours: productionTours, sales: productionSales } = useMemo(
-    () => productionTourSaleCounts(clients, tourTypes, calYear, calMonth),
-    [clients, tourTypes, calYear, calMonth],
+    () => productionTourSaleCounts(clientsForDashboard, tourTypes, calYear, calMonth),
+    [clientsForDashboard, tourTypes, calYear, calMonth],
   );
 
   /** Volumen del mes (agenda/ventas por sale.date); Tours/Ventas del mismo periodo. */
@@ -68,7 +85,7 @@ export function GoalsPage() {
   };
 
   const vfalt = Math.max(0, goal.vol - totals.real);
-  const drest = workingDaysRemaining(calYear, calMonth, data);
+  const drest = workingDaysRemaining(calYear, calMonth, calForDashboard);
   const prod = drest > 0 ? vfalt / drest : 0;
   // KPIs con la misma base de Tours/Ventas que Datos de producción
   const vprom = totals.sales > 0 ? totals.real / totals.sales : 0;
