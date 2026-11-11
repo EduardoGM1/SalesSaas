@@ -442,7 +442,7 @@ sequenceDiagram
 - **Bulk:** `GET` y `PUT /api/v1/sync` ([`apps/api/src/modulos/sync/rutas/sync.js`](../apps/api/src/modulos/sync/rutas/sync.js), [`apps/api/src/modulos/sync/controladores/sync-controller.js`](../apps/api/src/modulos/sync/controladores/sync-controller.js), [`apps/api/src/modulos/sync/servicios/sync-service.js`](../apps/api/src/modulos/sync/servicios/sync-service.js) y la lógica de reconciliación en [`packages/shared/src/data/sync.js`](../packages/shared/src/data/sync.js), que solo usa la API). El alcance es el workspace de la sesión, no el del cuerpo.
 - **Tramo 1** (desplegado en `72a3ca4`): las filas nuevas toman el workspace de la sesión, se conserva el dueño real (no se reescriben filas ajenas), los fallos se aíslan por fila, hay idempotencia por clave natural (un mismo blob reenviado con ids distintos no duplica) y un `409 sync_partial` evita que el cliente borre su base local ([`arquitectura/sync-fix-diseno.md`](./arquitectura/sync-fix-diseno.md)).
 - **REST por entidad:** `/api/v1/prospects`, `/sales`, `/calendar-entries`, `/goals`, `/tool-calculations`, `/activities`. El cliente las usa para cambios puntuales y cae al outbox si fallan ([`apps/web/src/lib/cloud-persist.js`](../apps/web/src/lib/cloud-persist.js)).
-- **Reintentos:** al fallar, el outbox queda `dirty` y reintenta al volver la conexión, al pasar a primer plano, en `auth:resume` y al recargar. **No hay backoff exponencial** (es deuda del Tramo 2).
+- **Reintentos:** Tramo 2 desplegado: backoff del outbox, merge ante `partial`/`rejected`, chip de pendientes bloqueados (`ca9a15a` / código `6bcaf0f`).
 - Archivos del cliente: [`apps/web/src/lib/sync-api.js`](../apps/web/src/lib/sync-api.js), [`apps/web/src/lib/sync-outbox.js`](../apps/web/src/lib/sync-outbox.js), [`apps/web/src/lib/sync-outbound.js`](../apps/web/src/lib/sync-outbound.js), [`apps/web/src/components/providers/sync-provider.jsx`](../apps/web/src/components/providers/sync-provider.jsx). Prueba del contrato con el cliente real: [`e2e/sync-partial-409.spec.js`](../e2e/sync-partial-409.spec.js).
 
 ### 7d. Colaboración en tiempo real
@@ -466,7 +466,7 @@ sequenceDiagram
 - Los bloqueos huérfanos se limpian cuando el peer sale de Presence o vence el TTL.
 - La migración `0098` (en [`supabase/migrations/`](../supabase/migrations/)) habilitó la emisión de Broadcast en los canales de expediente para quien puede acceder al expediente. Está aplicada en producción desde el 2026-10-18, validada con un canario. [`0093_colaboracion_campos.sql`](../supabase/migrations/0093_colaboracion_campos.sql) añade campos de colaboración al workflow del expediente; no es el motor de bloqueos.
 - Archivos: [`apps/web/src/lib/expediente-realtime.js`](../apps/web/src/lib/expediente-realtime.js), [`apps/web/src/modulos/expediente/dominio/aviso-bloqueo.js`](../apps/web/src/modulos/expediente/dominio/aviso-bloqueo.js), [`apps/web/src/modulos/expediente/hooks/use-expediente-realtime.js`](../apps/web/src/modulos/expediente/hooks/use-expediente-realtime.js), [`apps/web/src/modulos/expediente/ui/collab-field.jsx`](../apps/web/src/modulos/expediente/ui/collab-field.jsx), [`apps/web/src/lib/presence/realtime.js`](../apps/web/src/lib/presence/realtime.js).
-- Pendiente: el bloqueo entre varias pestañas del mismo usuario.
+- Multi-pestaña del mismo usuario: cerrado en `7f2b193` (`tab_id` en locks).
 
 ### 7e. Notificaciones y recordatorios
 
@@ -764,18 +764,18 @@ Construido con `git log main` y `docs/arquitectura/`. Las fechas son las del com
 | `verificar:arquitectura:completo` | No corrió en el Tramo C (sin stack local). Cómo levantarlo: sección 4.4 |
 | Volumen de venta y moneda | **Bloqueado (producto):** ¿`vol` es siempre USD, siempre moneda local, o hay selector? Hasta decidir no se toca el modelo |
 | Fecha de agenda de una venta | Corregido en `3acb234` y desplegado en el web. `findCalEntries` ya no suma un mes de más. El conteo previo al deploy seguía en 0, así que no se repararon filas. Historia del bug en [`arquitectura/backlog-seguridad.md`](./arquitectura/backlog-seguridad.md) §6 |
-| Módulos pendientes | Módulos 8 a 11 en producción. Siguen sync/storage/outbox, admin/RBAC y auth/session/PWA. |
+| Módulos 1–14 | **Cerrados** (contención B/A/C según inventario). Queda deuda de contención fina: OneSignal/toast, crons residuales, `db-store`/sync compartido, Survey 5b.7 |
 | Bloqueo de campos en varias pestañas | **Cerrado:** `tab_id` en `field_lock`/`field_unlock`; la otra pestaña del mismo usuario ve el campo bloqueado (`bloqueo-multi-pestana.js`) |
 | Survey 5b.7 | **Diferible:** ids colaborativos + realtime dentro del Survey (no iniciado) |
 | Alcance de los canales en tiempo real | **Bloqueado (diseño):** miembros del WS ven/emiten en todos los expedientes; cambiar implica producto + RLS/canales |
 | HTTPS | **Ops:** pendiente de operaciones (cert/proxy) |
 | Retención de backups | **Ops:** inventario parcial en [`retencion-backups-vps.md`](./arquitectura/retencion-backups-vps.md); falta política general |
-| Rol por defecto al registrarse | **Cerrado** con `0099`: `handle_new_user` asigna `role_id` = liner de plataforma. Los 2 perfiles legacy sin `role_id` siguen siendo asignación manual. Rollback: [`rollback-0099-default-role-liner.sql`](./arquitectura/rollback-0099-default-role-liner.sql) |
+| Rol por defecto al registrarse | **Cerrado** con `0099`: `handle_new_user` asigna liner de plataforma. Legacy sin `role_id` también asignados (2026-11-10). Rollback: [`rollback-0099-default-role-liner.sql`](./arquitectura/rollback-0099-default-role-liner.sql) |
 | Zelle / método de pago por defecto | Aplazado (producto) |
 | Entornos | Supabase local o staging separado (propuesta en [`entornos.md`](./arquitectura/entornos.md)) |
 | Paridad de permisos web ↔ shared | Divergencia intencional documentada |
 | Dos flujos de venta (`sales` / `rh_ventas`) | Sin unificar |
-| Docs desactualizados | `README.md` (Vercel), [`FLUJO-USUARIO-POR-ROL.md`](./FLUJO-USUARIO-POR-ROL.md) (menú RH), enlaces a docs que ya no están en el repo (ver la [sección 14](#14-glosario-y-mapa-de-documentos)) |
+| Docs desactualizados | `README.md` actualizado (VPS). Queda [`FLUJO-USUARIO-POR-ROL.md`](./FLUJO-USUARIO-POR-ROL.md) (menú RH) y enlaces rotos a docs retirados (sección 14) |
 
 ---
 
