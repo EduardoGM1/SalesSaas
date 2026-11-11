@@ -14,7 +14,7 @@
 | **Etapa 2** sync/caché | **Desplegada prod** (`c9c1dfd`) | Pull teamScope filtrado + purge blob; backup `api/pre-20261111-104024` |
 | **Etapa 3** UI | **Desplegada prod** (`c9c1dfd`) | Lista/buscador/ficha “sin acceso”; backup `web-dist/pre-20261111-104134` |
 
-**Residuales post-`c9c1dfd`:** desplegados en prod **`4f51a13`** — allowlist UI (`GET /prospects` cache + purge mirror); Agenda/Metas scoped; seed strip `*:ver_equipo` (re-seed/apply plan RO pendiente para drift BD); matriz §6.4 residual OK (realtime SKIP). Hook `useVisibleClients` cableado en `useClientActions` (lista/buscador) vía `scopeClientsForList`.
+**Residuales post-`c9c1dfd`:** desplegados en prod **`4f51a13`** — allowlist UI (`GET /prospects` cache + purge mirror); Agenda/Metas scoped; seed strip `*:ver_equipo`. **Drift BD `rol_permisos` cerrado** 2026-11-11 con `0103` (15→0 filas no-gerente; backup `_backup_rp_ver_equipo_0103`; script `apply-estrechar-ver-equipo-0103.py`). Matriz §6.4 residual OK (realtime SKIP).
 
 Conteos de impacto: consultas RO en producción (`BEGIN READ ONLY` … `ROLLBACK`), agregados sin ids ni emails.
 
@@ -305,7 +305,7 @@ Hotfix `0102`: atajo dueño en SELECT para `INSERT … RETURNING`.
 
 Impacto post-apply (Sala RH, RO): cerrador 9→1; gerente/asistente sin pérdida.
 
-**Residuales post-cierre:** desplegados **`4f51a13`** (allowlist UI + Agenda/Metas + seed strip en código); plan RO apply drift `ver_equipo` pendiente; matriz §6.4 residual OK (realtime SKIP).
+**Residuales post-cierre:** desplegados **`4f51a13`** (allowlist UI + Agenda/Metas + seed strip en código); **drift BD `*:ver_equipo` aplicado** (`0103`, 15→0; sin tocar 0101/0102 ni delegaciones — B=0); matriz §6.4 residual OK (realtime SKIP).
 
 ---
 

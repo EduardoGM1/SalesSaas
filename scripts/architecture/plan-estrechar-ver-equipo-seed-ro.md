@@ -1,7 +1,9 @@
 # Plan RO — estrechar `*:ver_equipo` (residual D2)
 
-**Estado:** plan escrito; **no** ejecutar mutate en prod desde este documento.  
-**Contexto:** Etapas 1–3 ya en prod (`c9c1dfd`). El predicado RLS / `es_gerente_asistente_o_admin` **no** se toca. Residual: seed/roles/delegación aún pueden dejar `*:ver_equipo` en puestos fuera de la excepción D2.  
+**Estado:** **aplicado en prod** 2026-11-11 (UTC `201715`).  
+**Ruta:** migración `supabase/migrations/0103_estrechar_ver_equipo_puestos.sql` vía `scripts/architecture/apply-estrechar-ver-equipo-0103.py apply` (backup `_backup_rp_ver_equipo_0103`).  
+**Conteos (sin PII):** drift `rol_permisos` **15 → 0**; Sala RH (C) solo `gerente` post-apply; (B) delegaciones `ver_equipo` = **0**; overrides sala = **0**. Snapshots: `~/.saletse-ops/ver-equipo-ro-before-20261111-201715.json` / `…-after-…`.  
+**Contexto:** Etapas 1–3 ya en prod (`c9c1dfd`). El predicado RLS / `es_gerente_asistente_o_admin` **no** se tocó. Seed API ya estrecha en re-seed; este apply cerró drift residual en BD.  
 **Código seed:** `apps/api/src/modulos/admin/servicios/empresa-roles-seed.js` — re-seed **añade** extras de gerente y **quita** `*:ver_equipo` de liner/cerrador/marketing/opc.
 
 Sala RH (referencia histórica): `b0b1c8b0-ddaf-49a3-a3c4-ef92a2507815`.
