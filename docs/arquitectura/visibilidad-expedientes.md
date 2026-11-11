@@ -14,7 +14,7 @@
 | **Etapa 2** sync/caché | **Desplegada prod** (`c9c1dfd`) | Pull teamScope filtrado + purge blob; backup `api/pre-20261111-104024` |
 | **Etapa 3** UI | **Desplegada prod** (`c9c1dfd`) | Lista/buscador/ficha “sin acceso”; backup `web-dist/pre-20261111-104134` |
 
-**Residuales post-`c9c1cfd`:** desplegados en prod **`4f51a13`** — allowlist UI (`GET /prospects` cache + purge mirror); Agenda/Metas scoped; `useVisibleClients` en lista/buscador; seed strip `*:ver_equipo`. **Drift BD `rol_permisos` cerrado** 2026-11-11 con `0103` (15→0). Matriz §6.4: ops + runner in-repo (realtime denial PASS; share ficha PASS* gap; roles sala GAP). **D7 (edición por asignación collab):** migración `0104` (`prospects` UPDATE / predicado de edición) + API `acceso-edicion`; rama `fix/asignado-puede-editar`.
+**Residuales post-`c9c1cfd`:** desplegados en prod **`4f51a13`** — allowlist UI (`GET /prospects` cache + purge mirror); Agenda/Metas scoped; `useVisibleClients` en lista/buscador; seed strip `*:ver_equipo`. **Drift BD `rol_permisos` cerrado** 2026-11-11 con `0103` (15→0). Matriz §6.4: ops + runner in-repo (realtime denial PASS; share ficha PASS* gap; roles sala GAP). **D7 (edición por asignación collab):** apply `0104` + API en prod **`53e3015`** (2026-11-11); smoke personal PATCH OK (`smoke-d7-edit-personal-qa.mjs`).
 
 Conteos de impacto: consultas RO en producción (`BEGIN READ ONLY` … `ROLLBACK`), agregados sin ids ni emails.
 
