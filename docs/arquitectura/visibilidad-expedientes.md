@@ -14,7 +14,7 @@
 | **Etapa 2** sync/caché | **Desplegada prod** (`c9c1dfd`) | Pull teamScope filtrado + purge blob; backup `api/pre-20261111-104024` |
 | **Etapa 3** UI | **Desplegada prod** (`c9c1dfd`) | Lista/buscador/ficha “sin acceso”; backup `web-dist/pre-20261111-104134` |
 
-**Residuales post-`c9c1dfd`:** desplegados en prod **`4f51a13`** — allowlist UI (`GET /prospects` cache + purge mirror); Agenda/Metas scoped; seed strip `*:ver_equipo`. **Drift BD `rol_permisos` cerrado** 2026-11-11 con `0103` (15→0 filas no-gerente; backup `_backup_rp_ver_equipo_0103`; script `apply-estrechar-ver-equipo-0103.py`). Matriz §6.4 residual OK (realtime SKIP).
+**Residuales post-`c9c1dfd`:** desplegados en prod **`4f51a13`** — allowlist UI (`GET /prospects` cache + purge mirror); Agenda/Metas scoped; `useVisibleClients` en lista/buscador; seed strip `*:ver_equipo`. **Drift BD `rol_permisos` cerrado** 2026-11-11 con `0103` (15→0). Matriz §6.4: ops + runner in-repo (realtime denial PASS; share ficha PASS* gap; roles sala GAP).
 
 Conteos de impacto: consultas RO en producción (`BEGIN READ ONLY` … `ROLLBACK`), agregados sin ids ni emails.
 
@@ -240,7 +240,7 @@ Cuentas `@saletse-test.com`, contraseña aleatoria fuera del repo, purga a 0.
 
 Matriz contra prod solo con QA + purga; no usar cuentas reales.
 
-**Residual post-`c9c1dfd` (2026-11-11):** smoke QA efímera OK — gerente/asignado/sin/share en `GET /prospects` + `GET /sync` clients; ficha ajena 404; realtime ⊘ SKIP; purga a 0. Script/reporte fuera del repo (`~/.saletse-ops`). Gaps documentados: asistente/admin empresa y presence realtime en runner in-repo pendiente.
+**Residual post-`c9c1dfd` (2026-11-11):** smoke QA efímera ops OK (prospects+sync; realtime SKIP). Runner in-repo `scripts/architecture/smoke-visibilidad-matriz-6-4-qa.mjs`: owner/sin-asignación + realtime denial **PASS**; guest denial **PASS**; share ficha puede **PASS\*** (404 getProspect vs share — gap documentado); Gerente/Asistente/Admin **GAP** (sin seed sala efímera).
 
 ---
 

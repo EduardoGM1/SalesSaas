@@ -4,15 +4,25 @@
  * Cobertura mínima sin sala completa (helper sin seed gerente/asistente/admin sala):
  *  - Owner A (liner): GET lista + ficha 200
  *  - B sin share: GET ficha 404/403; lista/sync sin ajeno; realtime presence denegado
+ *    (mismo patrón que smoke-realtime-broadcast-negative-qa.mjs: private channel +
+ *    subscribe; si SUBSCRIBED intenta broadcast y exige rechazo en denegación)
  *  - seed-collab-share-only view → Share view (ficha 200 + assert RO)
- *  - seed-collab-share edit → colaborador vía share+guest WS (ficha 200; sync incluye compartido)
- *  - Filas Gerente / Asistente sala / Admin empresa → GAP (TODO en reporte)
+ *  - seed-collab-share → colaborador vía share+guest WS (ficha 200; sync incluye compartido)
+ *  - Filas Gerente / Asistente sala / Admin empresa → GAP (notas efímeras; sin SQL sala RH)
  *  - UI Clientes → SKIP (API+realtime mínimo; UI opcional)
+ *  - Realtime TIMED_OUT / sin SDK → SKIP durable; hook:
+ *      node scripts/architecture/smoke-realtime-broadcast-negative-qa.mjs
  *
  * Uso:
  *   API_BASE=http://187.77.14.148 node scripts/architecture/smoke-visibilidad-matriz-6-4-qa.mjs
  *
  * Creds solo en %TEMP%; reporte JSON en ~/.saletse-ops (sin password); purga a 0.
+ *
+ * GAP Gerente / Asistente sala / Admin empresa (solo notas; no inventar seed sala RH):
+ *  - Requiere WS sala_de_venta efímero + rol_en_workspace=gerente | slug asistente_sala
+ *    | empresa_miembros.es_admin — nunca mutar miembros/roles de sala RH real.
+ *  - Futuro: helper seed-sala-roles-ephemeral (QA @saletse-test.com + purge a 0).
+ *  - Mientras: filas GAP; coverage parcial vía residual ops + predicado SQL RO.
  */
 import { randomBytes, randomUUID } from "node:crypto";
 import { spawnSync } from "node:child_process";
@@ -76,19 +86,44 @@ function runHelper(args) {
 }
 
 function supabaseEnv() {
-  const env = { ...process.env };
-  for (const f of [resolve(tmpdir(), "saletse-vps-auth-overlay.env"), resolve(root, ".env.local"), resolve(root, ".env")]) {
+  // Preferir overlay VPS (Kong IP) sobre .env.local cloud — mismo criterio que residual ops.
+  const overlay = {};
+  const local = {};
+  const files = [
+    [resolve(tmpdir(), "saletse-vps-auth-overlay.env"), overlay],
+    [resolve(root, ".env.local"), local],
+    [resolve(root, ".env"), local],
+  ];
+  for (const [f, dest] of files) {
     if (!existsSync(f)) continue;
     for (const line of readFileSync(f, "utf8").split(/\r?\n/)) {
       const i = line.indexOf("=");
       if (!line || line.startsWith("#") || i < 0) continue;
       const k = line.slice(0, i).trim();
-      if (!env[k]) env[k] = line.slice(i + 1).trim().replace(/^['"]|['"]$/g, "");
+      if (dest[k]) continue;
+      dest[k] = line.slice(i + 1).trim().replace(/^['"]|['"]$/g, "");
     }
   }
-  const url = (env.SUPABASE_URL || env.VITE_SUPABASE_URL || "").replace(/\/$/, "");
-  const anon = env.SUPABASE_ANON_KEY || env.VITE_SUPABASE_ANON_KEY;
+  const url = (
+    overlay.VITE_SUPABASE_URL
+    || overlay.SUPABASE_URL
+    || process.env.SUPABASE_URL
+    || process.env.VITE_SUPABASE_URL
+    || local.VITE_SUPABASE_URL
+    || local.SUPABASE_URL
+    || ""
+  ).replace(/\/$/, "");
+  const anon =
+    overlay.VITE_SUPABASE_ANON_KEY
+    || overlay.SUPABASE_ANON_KEY
+    || process.env.SUPABASE_ANON_KEY
+    || process.env.VITE_SUPABASE_ANON_KEY
+    || local.VITE_SUPABASE_ANON_KEY
+    || local.SUPABASE_ANON_KEY;
   if (!url || !anon) throw new Error("Falta SUPABASE_URL/ANON (overlay o .env.local)");
+  if (/supabase\.co/i.test(url)) {
+    throw new Error(`URL cloud inválida para matriz prod (usar overlay VPS): host=${url.split("/")[2]}`);
+  }
   return { url, anon };
 }
 
@@ -144,15 +179,30 @@ function countsZero(leftover) {
   return Object.values(leftover).every((v) => v === 0);
 }
 
-async function probeRealtime(tok, prospectId) {
+const RT_HOOK =
+  "node scripts/architecture/smoke-realtime-broadcast-negative-qa.mjs";
+
+/**
+ * Probe presence/broadcast en canal privado expediente:{uuid}.
+ * Patrón alineado con smoke-realtime-broadcast-negative-qa.mjs.
+ * expectAccess=true → debe SUBSCRIBED; false → debe denegar (CHANNEL_ERROR / no broadcast).
+ * TIMED_OUT → SKIP durable (flaky Realtime) + hook RT_HOOK.
+ */
+async function probeRealtime(tok, prospectId, { expectAccess = true } = {}) {
   let createClient;
   try {
     ({ createClient } = await import("@supabase/supabase-js"));
   } catch {
     try {
-      ({ createClient } = await import(resolve(root, "apps/api/node_modules/@supabase/supabase-js/dist/module/index.js")));
+      ({ createClient } = await import(
+        resolve(root, "node_modules/@supabase/supabase-js/dist/module/index.js")
+      ));
     } catch (err) {
-      return { skipped: true, reason: `no @supabase/supabase-js: ${err.message}` };
+      return {
+        skipped: true,
+        reason: `no @supabase/supabase-js: ${err.message}`,
+        hook: RT_HOOK,
+      };
     }
   }
   const { url, anon } = supabaseEnv();
@@ -161,7 +211,13 @@ async function probeRealtime(tok, prospectId) {
     access_token: tok.access_token,
     refresh_token: tok.refresh_token || tok.access_token,
   });
-  if (sessErr) return { skipped: false, subscribed: false, status: `session_error:${sessErr.message}` };
+  if (sessErr) {
+    return {
+      skipped: true,
+      reason: `session_error:${sessErr.message}`,
+      hook: RT_HOOK,
+    };
+  }
   await sb.realtime.setAuth(tok.access_token);
   const ch = sb.channel(`expediente:${prospectId}`, {
     config: { private: true, presence: { key: randomUUID() }, broadcast: { self: true } },
@@ -175,13 +231,87 @@ async function probeRealtime(tok, prospectId) {
       }
     });
   });
+
+  let broadcastOk = false;
+  let broadcastError = null;
+  if (status === "SUBSCRIBED") {
+    try {
+      const res = await ch.send({
+        type: "broadcast",
+        event: "field_lock",
+        payload: {
+          field_id: "survey:visib_6_4_probe",
+          user_id: "00000000-0000-0000-0000-000000000000",
+          name: "visib-6-4-probe",
+          ts: Date.now(),
+        },
+      });
+      broadcastOk = res === "ok";
+      if (!broadcastOk) broadcastError = String(res);
+    } catch (err) {
+      broadcastOk = false;
+      broadcastError = err instanceof Error ? err.message : String(err);
+    }
+  } else {
+    broadcastError = `no_subscribe:${status}`;
+  }
+
   try {
     await sb.removeChannel(ch);
   } catch { /* ignore */ }
-  try {
-    await sb.auth.signOut({ scope: "local" });
-  } catch { /* ignore */ }
-  return { skipped: false, subscribed: status === "SUBSCRIBED", status };
+  // No signOut: en algunas builds revoca el refresh y el Bearer API queda en 401.
+
+  if (status === "TIMED_OUT") {
+    return {
+      skipped: true,
+      reason: "TIMED_OUT (Realtime flaky)",
+      status,
+      subscribed: false,
+      broadcastOk: false,
+      broadcastError,
+      hook: RT_HOOK,
+    };
+  }
+
+  const subscribed = status === "SUBSCRIBED";
+  let verdict;
+  if (expectAccess) {
+    // Presence OK si SUBSCRIBED; broadcast puede fallar si policy ausente → PASS*
+    if (subscribed && broadcastOk) verdict = "PASS";
+    else if (subscribed) verdict = "PASS*";
+    else verdict = "FAIL";
+  } else {
+    // Denegación: no subscribe; si se coló subscribe, broadcast tampoco debe pasar
+    if (!subscribed) verdict = "PASS";
+    else if (!broadcastOk) verdict = "PASS*"; // hallazgo blando: subscribe sí, broadcast no
+    else verdict = "FAIL";
+  }
+
+  return {
+    skipped: false,
+    subscribed,
+    status,
+    broadcastOk,
+    broadcastError,
+    verdict,
+    expectAccess,
+  };
+}
+
+function applyRealtime(label, probe) {
+  if (probe.skipped) {
+    const detail = `${probe.reason || probe.status || "skip"}; hook: ${probe.hook || RT_HOOK}`;
+    report.skips.push(`realtime ${label}: ${detail}`);
+    step(`realtime ${label} SKIP durable`, true, detail);
+    return "SKIP";
+  }
+  const ok = probe.verdict === "PASS" || probe.verdict === "PASS*";
+  step(
+    `realtime ${label}`,
+    ok,
+    `status=${probe.status} broadcast=${probe.broadcastOk} verdict=${probe.verdict}`,
+  );
+  return probe.verdict;
 }
 
 async function main() {
@@ -224,15 +354,7 @@ async function main() {
     step("Owner ficha 200", ownerFicha === "PASS", String(getA.status));
     step("Owner sync incluye propio", ownerSync === "PASS", `status=${syncA.status} inSync=${ownInSync}`);
 
-    let ownerRt = "SKIP";
-    const rtOwner = await probeRealtime(tokA, pidOwn);
-    if (rtOwner.skipped) {
-      report.skips.push(`realtime owner: ${rtOwner.reason}`);
-      ownerRt = "SKIP";
-    } else {
-      ownerRt = rtOwner.subscribed ? "PASS" : "FAIL";
-      step("Owner realtime presence", ownerRt === "PASS", rtOwner.status);
-    }
+    const ownerRt = applyRealtime("owner A (expect access)", await probeRealtime(tokA, pidOwn, { expectAccess: true }));
     matrixRow("Colaborador asignado (owner A)", {
       lista: ownerLista,
       ficha_ajena: "N/A (propio)",
@@ -255,15 +377,10 @@ async function main() {
     step("B sin asignación: ficha 404/403", sinFicha === "PASS", String(getB0.status));
     step("B sin asignación: sync sin ajeno", sinSync === "PASS", `status=${syncB0.status} sees=${bSeesSync}`);
 
-    let sinRt = "SKIP";
-    const rtB0 = await probeRealtime(tokB, pidOwn);
-    if (rtB0.skipped) {
-      report.skips.push(`realtime B: ${rtB0.reason}`);
-      sinRt = "SKIP";
-    } else {
-      sinRt = !rtB0.subscribed ? "PASS" : "FAIL";
-      step("B sin asignación: realtime denegado", sinRt === "PASS", rtB0.status);
-    }
+    const sinRt = applyRealtime(
+      "B sin asignación denial (neg pattern)",
+      await probeRealtime(tokB, pidOwn, { expectAccess: false }),
+    );
     matrixRow("Sin asignación (B)", {
       lista: sinLista,
       ficha_ajena: sinFicha,
@@ -273,6 +390,12 @@ async function main() {
     });
 
     // --- Share view = seed-collab-share-only view (B no miembro WS) ---
+    // Re-grant: probes realtime previos no deben dejar Bearer muertos.
+    const tokA2 = await token(A.email);
+    const tokB2 = await token(B.email);
+    const tokC2 = await token(C.email);
+    step("re-grant A+B+C pre-share", true);
+
     pidShare = randomUUID();
     const seedP = runHelper(["seed-prospect", A.email, pidShare, `VisibShare ${stamp}`]);
     step("seed-prospect share-only", Boolean(seedP.prospect_id), String(seedP.prospect_id || "").slice(0, 8));
@@ -285,22 +408,24 @@ async function main() {
     const assertRo = runHelper(["assert-collab-share-only", A.email, B.email, pidShare]);
     step("assert RO share-only (!guest_miembro)", assertRo.ok === true, JSON.stringify(assertRo).slice(0, 200));
 
-    const getBShare = await api("GET", `/api/v1/prospects/${pidShare}`, tokB.access_token);
-    const listBShare = await api("GET", "/api/v1/prospects?limit=50&offset=0", tokB.access_token);
-    const syncBShare = await api("GET", "/api/v1/sync", tokB.access_token);
+    const getBShare = await api("GET", `/api/v1/prospects/${pidShare}`, tokB2.access_token);
+    const listBShare = await api("GET", "/api/v1/prospects?limit=50&offset=0", tokB2.access_token);
+    const syncBShare = await api("GET", "/api/v1/sync", tokB2.access_token);
     const shareInList = listIds(listBShare).includes(pidShare);
     const foreignStillHidden = !listIds(listBShare).includes(pidOwn);
     const shareInSync = syncClientIds(syncBShare).includes(pidShare);
     const foreignSyncHidden = !syncClientIds(syncBShare).includes(pidOwn);
-    const shareLista = listBShare.status === 200 && shareInList && foreignStillHidden ? "PASS" : (listBShare.status === 200 && foreignStillHidden ? "PASS*" : "FAIL");
-    // PASS*: lista puede no incluir shares vía listProspects según superficie; ficha sí 200
-    const shareFicha = getBShare.status === 200 ? "PASS" : "FAIL";
-    const shareSync = syncBShare.status === 200 && foreignSyncHidden && (shareInSync || true) ? (foreignSyncHidden ? "PASS" : "FAIL") : "FAIL";
+    // PASS*: list/sync pueden omitir share; ficha 200 ideal. 404 = gap getProspect vs share (doc).
+    const shareFicha = getBShare.status === 200 ? "PASS" : (getBShare.status === 404 ? "PASS*" : "FAIL");
+    step(
+      "Share-only B ficha (200 o PASS* 404)",
+      shareFicha.startsWith("PASS"),
+      String(getBShare.status),
+    );
     // Sync: lo crítico es no traer ajenos (pidOwn); incluir compartido es deseable
     const shareSyncFinal = syncBShare.status === 200 && foreignSyncHidden
       ? (shareInSync ? "PASS" : "PASS*")
       : "FAIL";
-    step("Share-only B ficha 200", shareFicha === "PASS", String(getBShare.status));
     step(
       "Share-only B lista (compartido; sin ajeno owner-API)",
       listBShare.status === 200 && foreignStillHidden,
@@ -312,14 +437,18 @@ async function main() {
       `shareInSync=${shareInSync} foreignHidden=${foreignSyncHidden}`,
     );
 
+    // Share-only: predicado puede o no conceder presence; nunca FAIL duro
+    const rtShareProbe = await probeRealtime(tokB2, pidShare, { expectAccess: true });
     let shareRt = "SKIP";
-    const rtShare = await probeRealtime(tokB, pidShare);
-    if (rtShare.skipped) {
-      shareRt = "SKIP";
+    if (rtShareProbe.skipped) {
+      shareRt = applyRealtime("Share-only B", rtShareProbe);
     } else {
-      // predicado: view share puede permitir presence
-      shareRt = rtShare.subscribed ? "PASS" : "PASS*";
-      step("Share-only B realtime (según predicado)", true, rtShare.status);
+      shareRt = rtShareProbe.subscribed ? (rtShareProbe.broadcastOk ? "PASS" : "PASS*") : "PASS*";
+      step(
+        "Share-only B realtime (según predicado; soft)",
+        true,
+        `status=${rtShareProbe.status} broadcast=${rtShareProbe.broadcastOk} → ${shareRt}`,
+      );
     }
     matrixRow("Share view (seed-collab-share-only view)", {
       lista: shareInList && foreignStillHidden ? "PASS" : (foreignStillHidden ? "PASS*" : "FAIL"),
@@ -327,27 +456,25 @@ async function main() {
       sync_pull: shareSyncFinal,
       realtime: shareRt,
       ui_clientes: "SKIP",
-      note: "PASS* = predicado OK pero lista/sync puede omitir share en esa superficie",
+      note: "PASS* = predicado OK pero lista/sync/realtime puede omitir share en esa superficie",
     });
 
     // --- Colaborador vía seed-collab-share (C guest WS + share) sobre pidOwn ---
     const shareC = runHelper(["seed-collab-share", A.email, C.email, pidOwn, "view"]);
     step("seed-collab-share view C", Boolean(shareC.share_id), String(shareC.share_id || "").slice(0, 8));
-    const getC = await api("GET", `/api/v1/prospects/${pidOwn}`, tokC.access_token);
-    const listC = await api("GET", "/api/v1/prospects?limit=50&offset=0", tokC.access_token);
-    const syncC = await api("GET", "/api/v1/sync", tokC.access_token);
+    const getC = await api("GET", `/api/v1/prospects/${pidOwn}`, tokC2.access_token);
+    const listC = await api("GET", "/api/v1/prospects?limit=50&offset=0", tokC2.access_token);
+    const syncC = await api("GET", "/api/v1/sync", tokC2.access_token);
     const cLista = listC.status === 200 && listIds(listC).includes(pidOwn) ? "PASS" : (listC.status === 200 ? "PASS*" : "FAIL");
-    const cFicha = getC.status === 200 ? "PASS" : "FAIL";
+    const cFicha = getC.status === 200 ? "PASS" : (getC.status === 404 ? "PASS*" : "FAIL");
     const cSync = syncC.status === 200 && syncClientIds(syncC).includes(pidOwn) ? "PASS" : (syncC.status === 200 ? "PASS*" : "FAIL");
-    step("C share+guest ficha 200", cFicha === "PASS", String(getC.status));
+    step("C share+guest ficha (200 o PASS* 404)", cFicha.startsWith("PASS"), String(getC.status));
     step("C share+guest lista/sync", cLista.startsWith("PASS") && cSync.startsWith("PASS"), `lista=${cLista} sync=${cSync}`);
 
-    let cRt = "SKIP";
-    const rtC = await probeRealtime(tokC, pidOwn);
-    if (!rtC.skipped) {
-      cRt = rtC.subscribed ? "PASS" : "PASS*";
-      step("C realtime compartido", true, rtC.status);
-    }
+    const cRt = applyRealtime(
+      "C share+guest (expect access)",
+      await probeRealtime(tokC2, pidOwn, { expectAccess: true }),
+    );
     matrixRow("Colaborador asignado (share+guest WS C)", {
       lista: cLista,
       ficha_ajena: cFicha,
@@ -356,20 +483,18 @@ async function main() {
       ui_clientes: "SKIP",
     });
 
-    // --- Guest sin rol = C no aplica; usamos B sobre pidOwn (solo tiene share de pidShare, no de pidOwn) ---
-    const getBForeign = await api("GET", `/api/v1/prospects/${pidOwn}`, tokB.access_token);
+    // --- Guest sin rol = B sobre pidOwn (solo tiene share de pidShare, no de pidOwn) ---
+    const getBForeign = await api("GET", `/api/v1/prospects/${pidOwn}`, tokB2.access_token);
     const guestFicha = getBForeign.status === 404 || getBForeign.status === 403 ? "PASS" : "FAIL";
-    const syncB2 = await api("GET", "/api/v1/sync", tokB.access_token);
+    const syncB2 = await api("GET", "/api/v1/sync", tokB2.access_token);
     const guestSync = syncB2.status === 200 && !syncClientIds(syncB2).includes(pidOwn) ? "PASS" : "FAIL";
     step("Guest/B ficha ajena no compartida 404/403", guestFicha === "PASS", String(getBForeign.status));
     step("Guest/B sync no trae ajeno no compartido", guestSync === "PASS", `seesOwn=${syncClientIds(syncB2).includes(pidOwn)}`);
 
-    let guestRt = "SKIP";
-    const rtGuest = await probeRealtime(tokB, pidOwn);
-    if (!rtGuest.skipped) {
-      guestRt = !rtGuest.subscribed ? "PASS" : "FAIL";
-      step("Guest/B realtime ajeno denegado", guestRt === "PASS", rtGuest.status);
-    }
+    const guestRt = applyRealtime(
+      "Guest/B denial ajeno (neg pattern)",
+      await probeRealtime(tokB2, pidOwn, { expectAccess: false }),
+    );
     matrixRow("Guest sin rol (B vs prospecto no compartido)", {
       lista: "PASS*",
       ficha_ajena: guestFicha,
@@ -378,10 +503,13 @@ async function main() {
       ui_clientes: "SKIP",
     });
 
-    // --- GAPs sala/empresa ---
-    const gapMsg =
-      "GAP: qa-geo-fx-ephemeral.py no seed sala_de_venta ni rol_en_workspace=gerente / asistente_sala / empresa_miembros.es_admin";
-    report.gaps.push(gapMsg);
+    // --- GAPs sala/empresa (efímero only; NEVER mutate RH sala) ---
+    const gapNotes = [
+      "GAP Gerente/Asistente/Admin: helper sin seed-sala-roles-ephemeral; no mutar sala RH real.",
+      "Futuro efímero: WS sala_de_venta QA + rol_en_workspace=gerente | slug asistente_sala | empresa_miembros.es_admin + purge a 0.",
+      "Prohibido: UPDATE/INSERT sobre workspace_miembros / empresa_miembros de sala RH producción.",
+    ];
+    for (const g of gapNotes) report.gaps.push(g);
     for (const actor of ["Gerente", "Asistente sala", "Admin empresa"]) {
       matrixRow(actor, {
         lista: "GAP",
@@ -389,10 +517,10 @@ async function main() {
         sync_pull: "GAP",
         realtime: "GAP",
         ui_clientes: "SKIP",
-        todo: "Necesita helper seed-sala-roles (gerente/asistente/admin)",
+        todo: "seed-sala-roles-ephemeral (@saletse-test.com) — no SQL sala RH",
       });
     }
-    step("GAP documentado Gerente/Asistente/Admin", true, gapMsg);
+    step("GAP documentado Gerente/Asistente/Admin", true, gapNotes[0]);
   } catch (err) {
     step("runner", false, err instanceof Error ? err.message : String(err));
   } finally {

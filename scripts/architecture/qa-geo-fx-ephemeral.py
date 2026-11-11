@@ -20,6 +20,11 @@ el cliente offline para evitar 403 en API).
 
 counts/purge también cubren shares (prospect_shares), share_invites y
 user_connections — necesarios para el gate collab de 2 QA.
+
+GAP matriz §6.4 Gerente / Asistente sala / Admin empresa: este helper NO siembra
+sala_de_venta ni roles empresa. Futuro seed-sala-roles-ephemeral solo con
+@saletse-test.com + purge a 0. PROHIBIDO mutar workspace_miembros /
+empresa_miembros / rol_en_workspace de sala RH real.
 """
 from __future__ import annotations
 
