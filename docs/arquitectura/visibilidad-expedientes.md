@@ -1,7 +1,7 @@
 # Visibilidad de expedientes en sala (diagnóstico — Fase 1)
 
 **Fecha:** 2026-11-10 (actualizado 2026-11-11, prod Etapas 1–3)  
-**Ramas / prod:** diagnóstico `bc1e067` (main); entrega visibilidad **`c9c1dfd`** (API + web, 2026-11-11). Etapa 1: migraciones `0101` + `0102`. Etapas 2–3: mismo SHA; backups `api/pre-20261111-104024`, `web-dist/pre-20261111-104134`.  
+**Ramas / prod:** diagnóstico `bc1e067` (main); entrega Etapas 1–3 **`c9c1dfd`** (2026-11-11). Residuales allowlist/Agenda/seed **`4f51a13`** (API + web, 2026-11-11); backups residuales `web-dist/pre-20261111-150241` (API vía reset a `4f51a13`). Etapa 1: `0101` + `0102`.  
 **Regla de negocio confirmada (usuario):** en un workspace `sala_de_venta`, un usuario solo ve y puede abrir los expedientes en los que está **asignado como colaborador**. **Excepción:** gerentes, asistentes de sala y administradores ven todos.  
 **Evidencia de incidente:** en prod, un usuario sin asignación ve los 9 expedientes de Sala Royal Holiday en Clientes y abre la ficha en solo lectura (“Sin permiso de edición”).
 
@@ -14,7 +14,7 @@
 | **Etapa 2** sync/caché | **Desplegada prod** (`c9c1dfd`) | Pull teamScope filtrado + purge blob; backup `api/pre-20261111-104024` |
 | **Etapa 3** UI | **Desplegada prod** (`c9c1dfd`) | Lista/buscador/ficha “sin acceso”; backup `web-dist/pre-20261111-104134` |
 
-**Residuales post-`c9c1dfd` (rama `arquitectura/visibilidad-residuos`):** allowlist UI vía caché del último `GET /prospects` + purge mirror; Agenda/Metas con `scopeClientsForDerivedViews` / `scopeCalMonthForDerivedViews`; seed `ver_equipo` estrecha en código (strip no-gerente) + plan RO `scripts/architecture/plan-estrechar-ver-equipo-seed-ro.md` (sin apply prod aún); matriz §6.4 residual OK (prospects+sync; realtime SKIP). Hook `use-visible-clients.js` sin imports hoy (huérfano; no borrar).
+**Residuales post-`c9c1dfd`:** desplegados en prod **`4f51a13`** — allowlist UI (`GET /prospects` cache + purge mirror); Agenda/Metas scoped; seed strip `*:ver_equipo` (re-seed/apply plan RO pendiente para drift BD); matriz §6.4 residual OK (realtime SKIP). Hook `use-visible-clients.js` huérfano (no borrar).
 
 Conteos de impacto: consultas RO en producción (`BEGIN READ ONLY` … `ROLLBACK`), agregados sin ids ni emails.
 
@@ -305,7 +305,7 @@ Hotfix `0102`: atajo dueño en SELECT para `INSERT … RETURNING`.
 
 Impacto post-apply (Sala RH, RO): cerrador 9→1; gerente/asistente sin pérdida.
 
-**Residuales post-cierre** (rama `arquitectura/visibilidad-residuos`): allowlist UI + Agenda/Metas scoped; seed strip `ver_equipo` en código + plan RO (apply prod pendiente); matriz §6.4 residual OK (realtime SKIP).
+**Residuales post-cierre:** desplegados **`4f51a13`** (allowlist UI + Agenda/Metas + seed strip en código); plan RO apply drift `ver_equipo` pendiente; matriz §6.4 residual OK (realtime SKIP).
 
 ---
 

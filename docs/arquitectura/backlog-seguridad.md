@@ -6,7 +6,7 @@ Consultas solo lectura sobre producción; conteos agregados, sin ids ni emails. 
 
 **Estado:** **cerrado** (2026-11-11) — Etapa 1: `0101` + hotfix `0102` en prod; Etapas 2–3: API + web `c9c1dfd` (sync filtrado + purge + UI). Predicado y superficies alineados. Ver [`visibilidad-expedientes.md`](./visibilidad-expedientes.md) §7–§9.
 
-**Residuales** (rama `arquitectura/visibilidad-residuos`): allowlist UI + Agenda/Metas scoped; seed strip `ver_equipo` en código + plan RO (apply prod pendiente); matriz §6.4 residual OK (realtime SKIP).
+**Residuales desplegados** (`4f51a13`): allowlist UI + Agenda/Metas scoped; seed strip `ver_equipo` en código + plan RO (apply drift BD pendiente); matriz §6.4 residual OK (realtime SKIP).
 
 **Modelo:** `user_can_access_prospect` (0052) concede acceso si el usuario es miembro del workspace del expediente (`user_in_workspace`). La rama de `prospect_shares` también exige membresía, y `createShare` solo permite compartir con miembros del mismo workspace. Consecuencia: cualquier miembro (incluido un "invitado" agregado para compartir) puede suscribirse a `expediente:{uuid}` de **cualquier** expediente del workspace. Con 0098 también podría emitir `field_lock` ahí.
 
