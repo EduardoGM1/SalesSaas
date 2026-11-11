@@ -9,6 +9,16 @@ import { ServiceError } from "../../../lib/service-error.js";
 import { logger } from "../../../lib/logger.js";
 import { getRequestWorkspaceContext, requireWorkspacePermission } from "../../../lib/workspace-scope.js";
 import { createServiceSupabaseClient } from "../../../lib/supabase-server.js";
+import { resolveSyncPullVisibility } from "../../expediente/servicios/visibilidad-expediente-servicio.js";
+
+async function pullOptsForSession(supabase, userId, ctx) {
+  const vis = await resolveSyncPullVisibility(supabase, userId, ctx.workspaceId, ctx.teamScope);
+  return {
+    teamScope: ctx.teamScope,
+    visibilityException: vis.visibilityException,
+    visibleProspectIds: vis.visibleProspectIds,
+  };
+}
 
 export const SYNC_PARTIAL_MESSAGE = "Algunos cambios no se pudieron sincronizar; se reintentará.";
 
@@ -17,7 +27,8 @@ export async function obtenerBaseDatosUsuario(supabase, userId) {
   const t0 = Date.now();
   try {
     const ctx = await getRequestWorkspaceContext(supabase, userId);
-    const db = await pullAll(supabase, userId, ctx.workspaceId, { teamScope: ctx.teamScope });
+    const pullOpts = await pullOptsForSession(supabase, userId, ctx);
+    const db = await pullAll(supabase, userId, ctx.workspaceId, pullOpts);
     logger.info("sync.pull.ok", { ms: Date.now() - t0, clients: Object.keys(db.clients || {}).length });
     return db;
   } catch (err) {
@@ -73,7 +84,8 @@ export async function reconciliarBaseDatosUsuario(supabase, userId, incoming, { 
     const canInsert = await resolverPermisosAlta(supabase, userId, ctx.workspaceId);
     const { db } = normalizeIds(incoming);
     report = await reconcile(supabase, db, userId, ctx.workspaceId, { canInsert });
-    result = await pullAll(supabase, userId, ctx.workspaceId, { teamScope: ctx.teamScope });
+    const pullOpts = await pullOptsForSession(supabase, userId, ctx);
+    result = await pullAll(supabase, userId, ctx.workspaceId, pullOpts);
   } catch (err) {
     logger.error("sync.reconcile.failed", { ms: Date.now() - t0, protocol, error: err });
     throw err;

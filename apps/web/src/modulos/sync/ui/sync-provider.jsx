@@ -160,6 +160,7 @@ export function SyncProvider({ children }) {
             const merged = mergeSyncDatabases(localNow, remote, {
               localSettings: localNow.settings,
               workspaceId: workspaceIdRef.current,
+              visibilityPurge: true,
             });
             applyRemote(merged, { clearPendingDeletes: false });
           }
@@ -292,6 +293,7 @@ export function SyncProvider({ children }) {
           const merged = mergeSyncDatabases(local, cloudDb, {
             localSettings: local.settings,
             workspaceId: workspaceIdRef.current,
+            visibilityPurge: true,
           });
           suspendRef.current = true;
           suspendCloudPersist(true);
