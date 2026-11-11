@@ -2,7 +2,8 @@
 
 **Estado:** baseline **0** fallos en `main` (18 → 1 en la Etapa 5 → 0 con `arquitectura/fix-sub-moneybox`). La baseline solo puede encoger.  
 **Regla de deploy:** workflow **Arquitectura** en VERDE + E2E con **0 fallos** en el SHA exacto.  
-**Cifra vigente:** **156 passed, 5 skipped, 0 failed**, con las 2 pruebas de `e2e/sync-partial-409.spec.js` (tramo 1 de sync). Medida en CI en `arquitectura/sync-fix-tramo1` `1f86f78` y en local con `CI=true` (2026-10-18). La anterior era 154/5/0.
+**Cifra vigente:** **157 passed, 5 skipped, 0 failed** (local `CI=true`, 2026-11-10) tras corregir la regresión Sync T2 (`6bcaf0f`): el seed E2E usaba id no-UUID y el init offline aplicaba `normalizeIds` antes del PUT, dejando el skeleton RH sin pestañas reales. Seed UUID + mock sync/prospects en helpers; aserciones intactas.  
+**Regresión histórica (cerrada):** 12 fallos en `main` desde `6bcaf0f` hasta `bc1e067` (money-box RH, flyback, hoja firmas×3, tables-mobile×4, video-corrections×3); último verde `19ef128`.
 
 ## Fallo histórico de `main` (1, corregido en `fix-sub-moneybox`)
 

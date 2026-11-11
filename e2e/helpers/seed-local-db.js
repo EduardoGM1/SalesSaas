@@ -1,6 +1,7 @@
 /** @typedef {import("../../apps/web/src/lib/storage/types.ts").AppDatabase} AppDatabase */
 
-export const E2E_CLIENT_ID = "e2e-video-pdf-client";
+/** UUID estable: Sync T2 llama normalizeIds antes del PUT y remapea ids no-UUID. */
+export const E2E_CLIENT_ID = "11111111-1111-4111-8111-111111111111";
 export const E2E_USER_ID = "e2e-user";
 export const E2E_WORKSPACE_ID = "e2e-workspace-personal";
 
@@ -35,7 +36,57 @@ export async function mockAuthenticatedSession(page, { workspaceId = E2E_WORKSPA
  * @param {Partial<AppDatabase>} [overrides]
  * @param {{ workspaceId?: string }} [opts]
  */
+/**
+ * Evita que SyncProvider (VITE_SUPABASE dummy) pise el blob sembrado:
+ * GET 401 → init offline; PUT ecoa el body para no reemplazar con vacío.
+ */
+export async function mockE2eSyncApi(page) {
+  await page.route("**/api/v1/sync", async (route) => {
+    const req = route.request();
+    if (req.method() === "GET") {
+      await route.fulfill({
+        status: 401,
+        contentType: "application/json",
+        body: JSON.stringify({ error: "e2e-unauthenticated" }),
+      });
+      return;
+    }
+    if (req.method() === "PUT") {
+      let data = {};
+      try {
+        data = JSON.parse(req.postData() || "{}")?.data || {};
+      } catch {
+        data = {};
+      }
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          data,
+          partial: false,
+          rejected: [],
+          syncedAt: new Date().toISOString(),
+        }),
+      });
+      return;
+    }
+    await route.fallback();
+  });
+  await page.route("**/api/v1/prospects**", async (route) => {
+    if (route.request().method() === "GET") {
+      await route.fulfill({
+        status: 401,
+        contentType: "application/json",
+        body: JSON.stringify({ error: "e2e-unauthenticated" }),
+      });
+      return;
+    }
+    await route.fallback();
+  });
+}
+
 export async function seedLocalDatabase(page, overrides = {}, { workspaceId = E2E_WORKSPACE_ID } = {}) {
+  await mockE2eSyncApi(page);
   await page.addInitScript(({ db, ws, userId }) => {
     if (sessionStorage.getItem("e2e-db-seeded") === "1") return;
     localStorage.setItem("sts4_schema", "2");

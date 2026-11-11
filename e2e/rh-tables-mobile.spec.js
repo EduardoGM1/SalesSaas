@@ -212,9 +212,10 @@ test.describe("RH tablas móviles", () => {
       }, { workspaceId: WORKSPACE_ID });
       await mockRh(page);
       await page.goto(`/clients/${E2E_CLIENT_ID}/worksheet`, { waitUntil: "domcontentloaded" });
-      await page.waitForSelector(".worksheet-rh-tabs", { timeout: 30000 });
-
-      await page.locator(".worksheet-rh-tabs .admin-subnav-item", { hasText: /Datos Venta/i }).click();
+      // El skeleton también usa .worksheet-rh-tabs; esperar ítems reales (ready).
+      const ventaTab = page.locator(".worksheet-rh-tabs .admin-subnav-item", { hasText: /Datos Venta/i });
+      await ventaTab.waitFor({ state: "visible", timeout: 30000 });
+      await ventaTab.click();
       const membership = page.locator(".rh-bl-membership-table");
       await expect(membership).toBeVisible({ timeout: 30000 });
       await expect(page.locator(".rh-bl-membership-table tbody tr.is-selected")).toContainText(/GOLD/);

@@ -160,8 +160,10 @@ test.describe("RH Flyback — carga dual", () => {
     }, { workspaceId: WORKSPACE_ID });
     await mockRh(page);
     await page.goto(`/clients/${E2E_CLIENT_ID}/worksheet`, { waitUntil: "domcontentloaded" });
-    await page.waitForSelector(".worksheet-rh-tabs", { timeout: 30000 });
-    await page.locator(".worksheet-rh-tabs .admin-subnav-item", { hasText: /Datos Venta/i }).click();
+    // El skeleton también usa .worksheet-rh-tabs; esperar ítems reales (ready).
+    const ventaTab = page.locator(".worksheet-rh-tabs .admin-subnav-item", { hasText: /Datos Venta/i });
+    await ventaTab.waitFor({ state: "visible", timeout: 30000 });
+    await ventaTab.click();
     await page.waitForSelector('[data-testid="rh-carga-flyback-venta"]', { timeout: 30000 });
 
     const venta = page.getByTestId("rh-carga-flyback-venta");

@@ -165,8 +165,9 @@ async function prepareRhPage(page, formOverrides) {
 
 async function openHojaTab(page) {
   await page.goto(`/clients/${E2E_CLIENT_ID}/worksheet`, { waitUntil: "domcontentloaded" });
-  await page.waitForSelector(".worksheet-rh-tabs", { timeout: 30000 });
+  // El skeleton también usa .worksheet-rh-tabs; esperar ítems reales (ready).
   const hojaTab = page.locator(".worksheet-rh-tabs .admin-subnav-item", { hasText: /^Worksheet$/ }).first();
+  await hojaTab.waitFor({ state: "visible", timeout: 30000 });
   await hojaTab.click();
   await page.waitForSelector(".worksheet-rh-hoja .rh-hoja-firmas", { timeout: 30000 });
 }
