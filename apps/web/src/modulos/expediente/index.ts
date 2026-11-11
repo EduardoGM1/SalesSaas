@@ -38,6 +38,7 @@ export {
 } from "./fachada-visibilidad.js";
 
 export { useClientActions } from "./hooks/use-client-actions.js";
+export { useVisibleClients } from "./hooks/use-visible-clients.js";
 export { useExpedienteFolderNav, EXPEDIENTE_TABS, WORKSHEET_RH_SUBS } from "./hooks/use-expediente-folder-nav.js";
 export {
   useExpedienteRealtime,

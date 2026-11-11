@@ -14,7 +14,7 @@
 | **Etapa 2** sync/caché | **Desplegada prod** (`c9c1dfd`) | Pull teamScope filtrado + purge blob; backup `api/pre-20261111-104024` |
 | **Etapa 3** UI | **Desplegada prod** (`c9c1dfd`) | Lista/buscador/ficha “sin acceso”; backup `web-dist/pre-20261111-104134` |
 
-**Residuales post-`c9c1dfd`:** desplegados en prod **`4f51a13`** — allowlist UI (`GET /prospects` cache + purge mirror); Agenda/Metas scoped; seed strip `*:ver_equipo` (re-seed/apply plan RO pendiente para drift BD); matriz §6.4 residual OK (realtime SKIP). Hook `use-visible-clients.js` huérfano (no borrar).
+**Residuales post-`c9c1dfd`:** desplegados en prod **`4f51a13`** — allowlist UI (`GET /prospects` cache + purge mirror); Agenda/Metas scoped; seed strip `*:ver_equipo` (re-seed/apply plan RO pendiente para drift BD); matriz §6.4 residual OK (realtime SKIP). Hook `useVisibleClients` cableado en `useClientActions` (lista/buscador) vía `scopeClientsForList`.
 
 Conteos de impacto: consultas RO en producción (`BEGIN READ ONLY` … `ROLLBACK`), agregados sin ids ni emails.
 
