@@ -12,6 +12,38 @@ import {
   persistProspectOnlineFirst,
   prospectRowToClient,
 } from "@/lib/prospects-persist.js";
+import {
+  filterCalMonthVisibles,
+  filterClientsVisibles,
+} from "../dominio/clientes-visibles.js";
+import { getVisibleProspectIds } from "../dominio/visible-prospects-cache.js";
+
+function salaAllowlist(workspaceId, isSala) {
+  return isSala && workspaceId ? getVisibleProspectIds(workspaceId) : null;
+}
+
+/** Lista/buscador: aplica allowlist sala antes de ordenar/filtrar por query. */
+export function scopeClientsForList(rawClients, { isSala = false, workspaceId = null } = {}) {
+  const remoteIds = salaAllowlist(workspaceId, isSala);
+  return filterClientsVisibles(rawClients, { isSala, remoteIds });
+}
+
+/** Tours/KPIs/agenda en sala: clientes + ids visibles; personal sin cambio. */
+export function scopeClientsForDerivedViews(rawClients, { isSala = false, workspaceId = null } = {}) {
+  const remoteIds = salaAllowlist(workspaceId, isSala);
+  const clients = filterClientsVisibles(rawClients, { isSala, remoteIds });
+  const visibleIds = isSala && remoteIds != null
+    ? new Set(Object.keys(clients))
+    : null;
+  return { clients, visibleIds, remoteIds };
+}
+
+/** Mes de agenda filtrado (misma regla que prune sync: sin prospecto se conserva). */
+export function scopeCalMonthForDerivedViews(calMonth, opts = {}) {
+  const { clients = {}, isSala = false, workspaceId = null } = opts;
+  const { visibleIds } = scopeClientsForDerivedViews(clients, { isSala, workspaceId });
+  return filterCalMonthVisibles(calMonth, visibleIds, { isSala });
+}
 
 function normalizeSearch(text) {
   return String(text ?? "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
@@ -66,6 +98,7 @@ export async function createProspectFromName(name, tipoTour, tourCuantificable, 
 
   const draft = createEmptyClient(trimmed, tourDate || undefined, tipoTour, tourCuantificable);
   draft.updatedAt = Date.now();
+  draft.pendingCreate = true;
 
   if (isCloudAvailable()) {
     try {
