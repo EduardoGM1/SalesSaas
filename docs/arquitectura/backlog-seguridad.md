@@ -24,6 +24,8 @@ Evidencia 2026-11-10 (Sala Royal Holiday, RO): 9 expedientes, 3 miembros, **los 
 
 **Cierre propuesto:** Etapa 1 del plan en [`visibilidad-expedientes.md`](./visibilidad-expedientes.md) (RLS + `user_can_access_prospect` + API), con OK de migración, backup y rollback. No aceptar “la sala es frontera de confianza” si la regla de negocio dice lo contrario.
 
+**Estado 2026-11-11:** implementado en rama `arquitectura/visibilidad-etapa-1` (`4341343`, migración `0101`). **No cerrado en prod** hasta apply verificado + matriz QA §6.4.
+
 ## 2. `sync.reconcile.failed` con errores de RLS (preexistente, multiusuario)
 
 Ruta: `PUT /api/v1/sync` → `reconciliarBaseDatosUsuario` → `reconcile` (`packages/shared/src/data/sync.js`).

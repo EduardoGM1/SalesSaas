@@ -726,6 +726,9 @@ Construido con `git log main` y `docs/arquitectura/`. Las fechas son las del com
 | 11-10 | `7d82e99` | Calendario REST=`expedientes:editar`; `0099` liner al registrarse; `0100` Tramo 3 ownership + unique code | Cerrar §5, rol por defecto y endurecer BD sync | **API** `7d82e99`; migraciones `0099`/`0100` aplicadas en prod (RO: 0 dups; trigger bloquea UPDATE de ownership). Web sin cambio | Rollbacks SQL `rollback-0099` / `rollback-0100`; `git revert` + redeploy API |
 | 11-11 | `351d702` | Fixes producto: alta móvil con borrador local + timeout/reintentos; abrir ficha vía GET si falta local; cola de ventas con reintento; reparar agenda de ventas huérfanas al hidratar | Crear/abrir en móvil fallaba; residual de ventas/calendario | **web** `351d702`; API sin cambio. Backup `web-dist/pre-20261111-003843` | `git revert` + redeploy web |
 | 11-11 | docs | Diagnóstico visibilidad de expedientes en sala (solo asignados; excepción gerente/asistente/admin) | Incidente: no asignado ve los 9 de RH en solo lectura | Solo docs; sin deploy. Plan Etapas 1–3 + OK BD pendiente | `git revert` del commit de docs |
+| 11-11 | `92f76bd` | E2E: seed UUID + mock sync tras Sync T2 (`6bcaf0f`) | 12 fallos en main (skeleton RH) | CI E2E 157/5/0 en `92f76bd` | `git revert` |
+| 11-11 | rama `4341343` | Visibilidad Etapa 1 (BD/API, migración 0101) | Regla solo asignados; D1–D6 | Código+CI verdes en rama; **sin apply prod** | rollback-0101 + redeploy API |
+| 11-11 | rama `0095a7a` | Visibilidad Etapa 2 sync (pull filtrado + purge) | teamScope no debe traer ajenos | **Sin deploy**; pendiente revisión | `git revert` + redeploy |
 | 10-18 | `1f86f78`, `4fe9465`, `3f75b3a`, `72a3ca4` | **Tramo 1 de `PUT /sync`** + smoke de roundtrip, guard de `sync:shared`, baseline 156, plan de deploy con backup lógico y criterios de rollback | Corregir la regresión de sync | **Desplegado `72a3ca4` (API) el 10-18**: CI verde, (a)–(e) en verde en producción, 0 errores 5xx | [`ROLLBACK-api-sync-tramo1.md`](./arquitectura/ROLLBACK-api-sync-tramo1.md) |
 
 ### Regresión de `PUT /sync`
@@ -769,7 +772,7 @@ Construido con `git log main` y `docs/arquitectura/`. Las fechas son las del com
 | Módulos 1–14 | **Cerrados** (contención B/A/C según inventario). Queda deuda de contención fina: OneSignal/toast, crons residuales, `db-store`/sync compartido, Survey 5b.7 |
 | Bloqueo de campos en varias pestañas | **Cerrado:** `tab_id` en `field_lock`/`field_unlock`; la otra pestaña del mismo usuario ve el campo bloqueado (`bloqueo-multi-pestana.js`) |
 | Survey 5b.7 | **Diferible:** ids colaborativos + realtime dentro del Survey (no iniciado) |
-| Alcance de los canales / visibilidad en sala | **Diagnóstico listo:** regla confirmada (solo asignados; excepción gerente/asistente/admin). Hallazgo guest/canales + teamScope/`ver_equipo` documentados en [`visibilidad-expedientes.md`](./arquitectura/visibilidad-expedientes.md); cierre pendiente Etapa 1 (OK BD) |
+| Alcance de los canales / visibilidad en sala | D1–D6 cerradas. Etapa 1 en rama `arquitectura/visibilidad-etapa-1` (CI verde); **apply prod pendiente**. Etapa 2 en `arquitectura/sync-visibilidad` sin deploy. Hallazgo backlog §1 se cierra al verificar apply |
 | HTTPS | **Ops:** pendiente de operaciones (cert/proxy) |
 | Retención de backups | **Ops:** inventario parcial en [`retencion-backups-vps.md`](./arquitectura/retencion-backups-vps.md); falta política general |
 | Rol por defecto al registrarse | **Cerrado** con `0099`: `handle_new_user` asigna liner de plataforma. Legacy sin `role_id` también asignados (2026-11-10). Rollback: [`rollback-0099-default-role-liner.sql`](./arquitectura/rollback-0099-default-role-liner.sql) |

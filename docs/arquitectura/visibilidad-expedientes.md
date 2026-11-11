@@ -1,10 +1,18 @@
 # Visibilidad de expedientes en sala (diagnóstico — Fase 1)
 
-**Fecha:** 2026-11-10  
-**Rama:** `arquitectura/visibilidad-expedientes-diagnostico`  
-**Alcance:** solo lectura / diseño. **Sin deploy, sin cambios de BD, sin código de producto.**  
+**Fecha:** 2026-11-10 (actualizado 2026-11-11)  
+**Ramas:** diagnóstico `bc1e067` (main); Etapa 1 `arquitectura/visibilidad-etapa-1` (`4341343`); Etapa 2 `arquitectura/sync-visibilidad` (`0095a7a`, **sin deploy**).  
 **Regla de negocio confirmada (usuario):** en un workspace `sala_de_venta`, un usuario solo ve y puede abrir los expedientes en los que está **asignado como colaborador**. **Excepción:** gerentes, asistentes de sala y administradores ven todos.  
 **Evidencia de incidente:** en prod, un usuario sin asignación ve los 9 expedientes de Sala Royal Holiday en Clientes y abre la ficha en solo lectura (“Sin permiso de edición”).
+
+### Estado de etapas
+
+| Etapa | Estado | Notas |
+|-------|--------|-------|
+| Diagnóstico | Cerrado en main | Docs; E2E main en 0 (`92f76bd`) tras fix seed Sync T2 |
+| **Etapa 1** servidor/BD | Código en rama; **apply prod pendiente** | Migración `0101` + rollback; API list/get/active; gates locales OK. Requiere matriz QA efímera antes/después + canary |
+| **Etapa 2** sync/caché | Código en rama; **sin deploy** | pull filtrado + purge local; revisión pendiente |
+| Etapa 3 UI | No iniciada | — |
 
 Conteos de impacto: consultas RO en producción (`BEGIN READ ONLY` … `ROLLBACK`), agregados sin ids ni emails.
 
@@ -76,8 +84,7 @@ Un usuario está **asignado** a un expediente de sala si cumple **cualquiera**:
 2. aparece en **cualquier** columna de persona de `prospect_workflows` listada en §1.1 (incl. collab 0093 + gerente + vendedor + cerrador), **o**
 3. tiene un `prospect_shares` activo hacia ese expediente (lectura según permission del share).
 
-**Decisión pendiente del usuario (D1):** ¿los campos 0093 (hostes, filtro, OPC, …) deben abrir **ver/abrir**, o solo vendedor/cerrador/gerente_id + dueño?  
-Hoy 0093 son etiquetas: en Sala RH **ninguno** está relleno (solo `representante_id` en 9/9). Ampliar a 0093 no cambia el impacto actual, pero sí el diseño de RLS/API.
+**D1 (decidido):** collab 0093 **sí** cuenta como asignado para ver/abrir (junto con gerente/rep/cerrador + dueño + share).
 
 ---
 
@@ -244,7 +251,7 @@ Matriz contra prod solo con QA + purga; no usar cuentas reales.
 | Rollback | SQL `rollback-0xxx-visibilidad-expedientes.sql` (restaurar función 0052 + policies 0056) + redeploy API anterior |
 | CI | `test:security`, checks arquitectura, E2E 0 fallos del SHA |
 | Prueba | Matriz QA efímera §6.4 (API + realtime) |
-| **OK usuario** | **Obligatorio** antes de apply en prod |
+| **OK usuario** | D6 concedido con condiciones; apply pendiente de matriz QA + canary |
 
 ### Etapa 2 — Sync / caché
 
@@ -271,16 +278,16 @@ Matriz contra prod solo con QA + purga; no usar cuentas reales.
 
 ---
 
-## 8. Decisiones que necesita el usuario
+## 8. Decisiones D1–D6 (cerradas 2026-11-10)
 
-| ID | Pregunta | Default propuesto |
-|----|----------|-------------------|
-| D1 | ¿Collab 0093 cuenta como “asignado” para ver/abrir? | Sí (alineado al texto de la regla) |
-| D2 | ¿Excepción = rol/slug/`es_admin` solamente, o también `expedientes:ver_equipo` tras limpiar seed? | Solo rol/slug/`es_admin`; luego estrechar seed de `ver_equipo` |
-| D3 | ¿Una venta registrada sin seguir asignado otorga ver? | No |
-| D4 | ¿Premanifiesto sigue listando nombres de no asignados? | Sí, superficie aparte (confirmar) |
-| D5 | ¿Crear clave nueva `expedientes:ver_todos`? | No en Fase 1; evaluar en Etapa 1 si el seed no se puede estrechar |
-| D6 | OK para migración BD Etapa 1 (backup + rollback preparados) | **Pendiente** |
+| ID | Decisión |
+|----|----------|
+| D1 | Collab 0093 **sí** cuenta como asignado |
+| D2 | Excepción **solo** `rol_en_workspace=gerente`, slug `asistente_sala`/`asistente_empresa`, `empresa_miembros.es_admin`, superadmin. **Nunca** por `ver_equipo`; seed de `ver_equipo` acotado a gerente (comentario en seed) |
+| D3 | Venta sin asignación **no** otorga ver |
+| D4 | Premanifiesto sigue aparte (excepción de producto; sin cambios en Etapa 1) |
+| D5 | **No** crear `expedientes:ver_todos`; función SQL `es_gerente_asistente_o_admin(uid, workspace)` |
+| D6 | OK de migración BD Etapa 1 **bajo condiciones** (backup, canary, impacto RO 9→1 solo cerrador, matriz QA, auto-rollback). **Apply prod aún no ejecutado** en esta sesión |
 
 ---
 
