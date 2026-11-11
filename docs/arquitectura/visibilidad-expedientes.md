@@ -244,7 +244,7 @@ Matriz contra prod solo con QA + purga; no usar cuentas reales.
 | Rollback | SQL `rollback-0xxx-visibilidad-expedientes.sql` (restaurar función 0052 + policies 0056) + redeploy API anterior |
 | CI | `test:security`, checks arquitectura, E2E 0 fallos del SHA |
 | Prueba | Matriz QA efímera §6.4 (API + realtime) |
-| **OK usuario** | **Obligatorio** antes de apply en prod |
+| **OK usuario** | **Hecho** (D6). Apply prod 2026-11-11: `0101` + hotfix `0102` (dueño en SELECT para INSERT RETURNING). API desplegada con predicado. |
 
 ### Etapa 2 — Sync / caché
 
@@ -280,15 +280,17 @@ Matriz contra prod solo con QA + purga; no usar cuentas reales.
 | D3 | ¿Una venta registrada sin seguir asignado otorga ver? | No |
 | D4 | ¿Premanifiesto sigue listando nombres de no asignados? | Sí, superficie aparte (confirmar) |
 | D5 | ¿Crear clave nueva `expedientes:ver_todos`? | No en Fase 1; evaluar en Etapa 1 si el seed no se puede estrechar |
-| D6 | OK para migración BD Etapa 1 (backup + rollback preparados) | **Pendiente** |
+| D6 | OK para migración BD Etapa 1 (backup + rollback preparados) | **OK** (apply 2026-11-11: `0101` + hotfix `0102`) |
 
 ---
 
 ## 9. Relación con backlog de seguridad
 
-El hallazgo abierto [`backlog-seguridad.md`](./backlog-seguridad.md) §1 (`user_can_access_prospect` = cualquier miembro del WS) es **la misma raíz** que permite presence/broadcast en expedientes ajenos. Este diagnóstico **enlaza** ese ítem a la regla de negocio y propone cerrarlo en **Etapa 1** (no en este PR de docs).
+El hallazgo [`backlog-seguridad.md`](./backlog-seguridad.md) §1 quedó **cerrado en Etapa 1** (2026-11-11): `user_can_access_prospect` + RLS SELECT + API usan el predicado de asignación/excepción. Queda **Etapa 2** (sync/caché, rama `arquitectura/sync-visibilidad`, sin deploy) y **Etapa 3** (UI).
 
-Exposición actual remedida (Sala RH): 9 expedientes × 3 miembros con `ver_equipo`; 1 miembro teamScope fuera de la excepción propuesta.
+Hotfix `0102`: la policy SELECT solo con `user_can_access_prospect(uid, id)` rompía `INSERT … RETURNING` (la función re-lee `prospects` y no ve la fila nueva). Atajo: `(user_id = auth.uid() ∧ user_in_workspace) ∨ user_can_access_prospect`.
+
+Impacto post-apply (Sala RH, RO): cerrador 9→1; gerente/asistente sin pérdida.
 
 ---
 

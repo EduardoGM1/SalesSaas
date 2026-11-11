@@ -4,7 +4,7 @@ Consultas solo lectura sobre producción; conteos agregados, sin ids ni emails. 
 
 ## 1. Miembros del workspace acceden a los canales (y a la lectura) de expedientes ajenos
 
-**Estado:** abierto — **enlazado al diagnóstico** [`visibilidad-expedientes.md`](./visibilidad-expedientes.md) (2026-11-10). No se implementa en el PR de docs.
+**Estado:** **cerrado en Etapa 1** (2026-11-11) — migraciones `0101` + hotfix `0102` en prod; predicado alineado en RLS/`user_can_access_prospect`/API. Ver [`visibilidad-expedientes.md`](./visibilidad-expedientes.md). Etapa 2 (sync/caché) pendiente; sin deploy de sync aún.
 
 **Modelo:** `user_can_access_prospect` (0052) concede acceso si el usuario es miembro del workspace del expediente (`user_in_workspace`). La rama de `prospect_shares` también exige membresía, y `createShare` solo permite compartir con miembros del mismo workspace. Consecuencia: cualquier miembro (incluido un "invitado" agregado para compartir) puede suscribirse a `expediente:{uuid}` de **cualquier** expediente del workspace. Con 0098 también podría emitir `field_lock` ahí.
 
@@ -22,7 +22,7 @@ Evidencia 2026-11-10 (Sala Royal Holiday, RO): 9 expedientes, 3 miembros, **los 
 | TeamScope sin excepción (gerente/asistente/admin) | — | **1** |
 | Shares reales | 0 | 0 |
 
-**Cierre propuesto:** Etapa 1 del plan en [`visibilidad-expedientes.md`](./visibilidad-expedientes.md) (RLS + `user_can_access_prospect` + API), con OK de migración, backup y rollback. No aceptar “la sala es frontera de confianza” si la regla de negocio dice lo contrario.
+**Cierre Etapa 1 (2026-11-11):** `0101_visibilidad_expedientes_asignacion.sql` + `0102_fix_prospects_select_insert_returning.sql` (atajo dueño en SELECT para `INSERT … RETURNING`). API en SHA de Etapa 1. Matriz QA efímera post-apply OK; impacto RO Sala RH: cerrador 9→1. Rollback: [`rollback-0101-visibilidad-expedientes.sql`](./rollback-0101-visibilidad-expedientes.sql) / [`rollback-0102-prospects-select-insert-returning.sql`](./rollback-0102-prospects-select-insert-returning.sql).
 
 ## 2. `sync.reconcile.failed` con errores de RLS (preexistente, multiusuario)
 
