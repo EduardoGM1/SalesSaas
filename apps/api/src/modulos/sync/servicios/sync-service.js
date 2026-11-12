@@ -46,7 +46,15 @@ export async function purgarTombstonesExpedientes() {
   return { deleted: data ?? 0 };
 }
 
-/** Mismo permiso de alta que REST por tabla; un 503 del RPC aborta el PUT completo. */
+/**
+ * Mismo permiso de alta que REST por tabla; un 503 del RPC aborta el PUT completo.
+ * Deny-by-default: tabla ausente de SYNC_INSERT_PERMISSIONS → false
+ * (antes `?? true` dejaba pasar entidades no mapeadas en la vía classify).
+ *
+ * C-13 goals/tool_calculations: `reconcile` las escribe con `upsertKeyed`, que
+ * hoy NO consulta canInsert. Cerrar eso exige editar packages/shared/src/data/sync.js
+ * (rama sync + ampliación del guard); ver ops propuesta C-13.
+ */
 async function resolverPermisosAlta(supabase, userId, workspaceId) {
   if (!workspaceId) return () => false;
   const entries = await Promise.all(
@@ -61,7 +69,7 @@ async function resolverPermisosAlta(supabase, userId, workspaceId) {
     }),
   );
   const allowed = new Map(entries);
-  return (table) => allowed.get(table) ?? true;
+  return (table) => allowed.get(table) ?? false;
 }
 
 /**
