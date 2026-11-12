@@ -1,0 +1,11 @@
+# Hook local de secretos (gitleaks binario vía pre-commit; no usa gitleaks-action).
+# Instalación (una vez por máquina de desarrollo):
+#   1) pip install pre-commit   # o: pipx install pre-commit
+#   2) pre-commit install
+#   3) (opcional) pre-commit run gitleaks --all-files
+# El hook descarga/cachea el binario de gitleaks en el entorno de pre-commit.
+repos:
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.30.1
+    hooks:
+      - id: gitleaks
