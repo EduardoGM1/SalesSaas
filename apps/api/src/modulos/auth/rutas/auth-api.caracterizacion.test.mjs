@@ -69,6 +69,15 @@ test("authenticateApi refresca cookies antes de 401 y getRealtimeSession tolera 
   assert.match(svc, /already used|invalid refresh token/i);
 });
 
+test("C-08 assertSessionNotRevoked fail-closed selectivo en escrituras/sensibles", () => {
+  const authMw = resolve(root, "src/middleware/auth.js");
+  const mw = readFileSync(authMw, "utf8");
+  assert.match(mw, /sessionRevocationFailClosed/);
+  assert.match(mw, /failClosed:\s*sessionRevocationFailClosed\(req\)/);
+  assert.match(mw, /status:\s*503/);
+  assert.match(mw, /No se pudo verificar la sesión/);
+});
+
 test("rate limits auth conservan cupos y mensaje", () => {
   assert.ok(limitsFile, "falta auth-rate-limits");
   const src = readFileSync(limitsFile, "utf8");
