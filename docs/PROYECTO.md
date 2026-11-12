@@ -75,33 +75,33 @@ Monorepo con **npm workspaces** (`apps/*`, `packages/*`), declarado en [`package
 <!-- versiones:inicio -->
 | Paquete | Declarado | Resuelto (lock) | Workspace |
 |---------|-----------|-----------------|-----------|
-| react | ^19.2.7 | 19.2.7 | apps/web |
-| react-dom | ^19.2.7 | 19.2.7 | apps/web |
-| react-router-dom | ^7.6.2 | 7.18.2 | apps/web |
-| zustand | ^5.0.14 | 5.0.14 | apps/web |
-| vite | ^6.3.5 | 6.4.3 | apps/web |
+| react | ^19.3.1 | 19.3.1 | apps/web |
+| react-dom | ^19.3.1 | 19.3.1 | apps/web |
+| react-router-dom | ^7.18.5 | 7.18.5 | apps/web |
+| zustand | ^5.1.0 | 5.1.0 | apps/web |
+| vite | ^6.4.6 | 6.4.6 | apps/web |
 | vite-plugin-pwa | ^1.0.0 | 1.3.0 | apps/web |
 | tailwindcss | ^3.4.1 | 3.4.19 | apps/web |
-| @supabase/ssr | ^0.10.3 | 0.10.3 | apps/web |
+| @supabase/ssr | ^0.12.7 | 0.12.7 | apps/web |
 | @sentry/browser | ^9.47.1 | 9.47.1 | apps/web |
-| recharts | ^3.8.1 | 3.8.1 | apps/web |
-| @base-ui/react | ^1.5.0 | 1.5.0 | apps/web |
-| lucide-react | ^1.17.0 | 1.17.0 | apps/web |
+| recharts | ^3.10.1 | 3.10.1 | apps/web |
+| @base-ui/react | ^1.9.0 | 1.9.0 | apps/web |
+| lucide-react | ^1.70.0 | 1.70.0 | apps/web |
 | express | ^4.21.2 | 4.22.3 | apps/api |
-| @supabase/supabase-js | ^2.107.0 | 2.107.0 | apps/api |
+| @supabase/supabase-js | ^2.107.0 | 2.119.0 | apps/api |
 | helmet | ^7.2.0 | 7.2.0 | apps/api |
-| ws | ^8.21.3 | 8.21.3 | apps/api |
-| resend | ^6.17.2 | 6.17.2 | apps/api |
+| ws | ^8.22.2 | 8.22.2 | apps/api |
+| resend | ^6.37.0 | 6.37.0 | apps/api |
 | compression | ^1.8.2 | 1.8.2 | apps/api |
 | cors | ^2.8.5 | 2.8.6 | apps/api |
 | cookie-parser | ^1.4.7 | 1.4.7 | apps/api |
-| @playwright/test | ^1.52.0 | 1.60.0 | raíz |
+| @playwright/test | ^1.65.0 | 1.65.0 | raíz |
 | typescript | ^5 | 5.9.3 | raíz |
 <!-- versiones:fin -->
 
 | Pieza | Uso | Versión |
 |-------|-----|---------|
-| Node.js | Runtime de la API, del build y de los scripts | CI usa **20** (`.github/workflows/*.yml`). No hay `engines` declarado; versión de producción **por confirmar** |
+| Node.js | Runtime de la API, del build y de los scripts | CI y producción: **20**. `engines.node` del root: `>=20` (permite desarrollo local en 20+; el VPS no se actualiza por ese campo) |
 | Supabase | Postgres, Auth (GoTrue), Realtime (Presence, Broadcast, Postgres Changes) y PostgREST | Autoalojado; versión **por confirmar** |
 | Nginx | Sirve el SPA, hace de proxy de `/api`, `/auth` y `/health`, cabeceras de seguridad y rate limit | Plantillas en [`deploy/`](../deploy/); versión **por confirmar** |
 | PM2 | Proceso de la API | Config en [`deploy/ecosystem.config.cjs`](../deploy/ecosystem.config.cjs); versión **por confirmar** |
@@ -402,6 +402,7 @@ sequenceDiagram
 - El web no envía Bearer: usa cookies (`@supabase/ssr`). La API también acepta `Authorization: Bearer` (scripts y smokes).
 - El workspace activo se resuelve en este orden: preferido, `workspace_activo_id`, personal, primero disponible ([`apps/api/src/services/session-service.js`](../apps/api/src/services/session-service.js)).
 - El logout revoca globalmente, limpia el estado local y avisa a las otras pestañas mediante `sts4_auth_sync`.
+- Si la comprobación de revocación no puede consultar el perfil, las **escrituras y rutas sensibles** fallan cerradas; las lecturas normales siguen (con aviso en logs).
 - Archivos: [`apps/web/src/pages/LoginPage.jsx`](../apps/web/src/pages/LoginPage.jsx), [`apps/web/src/lib/session-api.js`](../apps/web/src/lib/session-api.js), [`apps/web/src/lib/supabase/ensure-browser-session.js`](../apps/web/src/lib/supabase/ensure-browser-session.js), [`apps/api/src/routes/auth.js`](../apps/api/src/routes/auth.js), [`apps/api/src/controllers/auth-controller.js`](../apps/api/src/controllers/auth-controller.js), [`apps/api/src/routes/session.js`](../apps/api/src/routes/session.js), [`apps/api/src/middleware/auth.js`](../apps/api/src/middleware/auth.js).
 
 ### 7b. Arranque offline-first y almacenamiento local
@@ -534,6 +535,8 @@ flowchart TD
 ```
 
 - La UI solo **oculta**; quien **decide** es la API (y RLS detrás). Una herramienta visible por flag puede seguir rechazando acciones sin permiso.
+- En sala, `RhToolFlagGate` solo deja pasar si el flag es `true` explícito (alineado con `requireWorkspaceFlag` en la API).
+- El reconcile de sync aplica deny-by-default a tablas no mapeadas en el mapa de altas; el cierre de altas de metas/herramientas vía sync compartido queda pendiente de una rama sync (guard).
 - Archivos: [`packages/shared/src/auth/permission-catalog.js`](../packages/shared/src/auth/permission-catalog.js), [`packages/shared/src/auth/resolve-permissions.js`](../packages/shared/src/auth/resolve-permissions.js), [`apps/web/src/hooks/use-user-permissions.js`](../apps/web/src/hooks/use-user-permissions.js), [`apps/web/src/hooks/use-flag.js`](../apps/web/src/hooks/use-flag.js), [`apps/web/src/components/auth/ToolPermissionGate.jsx`](../apps/web/src/components/auth/ToolPermissionGate.jsx), [`apps/web/src/components/auth/RhToolFlagGate.jsx`](../apps/web/src/components/auth/RhToolFlagGate.jsx), [`apps/api/src/lib/workspace-scope.js`](../apps/api/src/lib/workspace-scope.js), [`apps/api/src/services/empresa-roles-seed.js`](../apps/api/src/services/empresa-roles-seed.js).
 
 ### 7h. Agenda / calendario
@@ -613,9 +616,10 @@ Los **smokes contra producción** (`scripts/architecture/smoke-*-qa.mjs`) usan c
 
 | Workflow | Cuándo corre | Qué hace |
 |----------|--------------|----------|
-| [`architecture.yml`](../.github/workflows/architecture.yml) (Arquitectura) | push a `main`, `test/arquitectura-red-seguridad` y `arquitectura/**`; PR a `main` | `npm ci`, `verificar:arquitectura:checks`, `test:security`, `build:web:ci` (Node 20) |
+| [`architecture.yml`](../.github/workflows/architecture.yml) (Arquitectura) | push a `main`, `test/arquitectura-red-seguridad` y `arquitectura/**`; PR a `main` | `npm ci`, `verificar:arquitectura:checks`, `test:security`, `build:web:ci` (Node 20; `engines` del root `>=20`) |
 | [`e2e.yml`](../.github/workflows/e2e.yml) (E2E) | push a `main` y `arquitectura/**`; PR a `main` | Playwright completo en Chromium (`CI=true`: 1 worker, 1 reintento) |
 | [`migrate.yml`](../.github/workflows/migrate.yml) (Migrate) | Solo manual (`workflow_dispatch`) | Aplica una migración por prefijo con el secreto de BD del repo; solo con OK explícito |
+| Dependabot | Semanal (npm + GitHub Actions) | Agrupa minors/patches; se mergean solo con CI verde. Los majors se listan para decisión humana y no se mergean automáticamente |
 
 ### Reglas vigentes
 
