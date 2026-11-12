@@ -56,6 +56,23 @@ test("supabase browser vive en modulos/auth con shims legacy", () => {
   assert.match(clientSrc, /export function createClient/);
 });
 
+test("ensureBrowserSession es single-flight y tolera refresh Already Used", () => {
+  const ensure = resolve(root, "src/modulos/auth/servicios/supabase/ensure-browser-session.js");
+  const presenceApi = resolve(root, "src/lib/presence-api.js");
+  const src = readFileSync(ensure, "utf8");
+  const apiSrc = readFileSync(presenceApi, "utf8");
+
+  assert.match(src, /let inflight/);
+  assert.match(src, /if \(inflight\) return inflight/);
+  assert.match(src, /already used|isRefreshRaceError/i);
+  assert.match(src, /primeRealtimeAuth/);
+  assert.match(src, /setSession/);
+
+  assert.match(apiSrc, /realtimeSessionInflight/);
+  assert.match(apiSrc, /res\.status === 401/);
+  assert.match(apiSrc, /return null/);
+});
+
 test("OneSignal/push viven en modulos/auth con shims legacy", () => {
   const onesignal = resolve(root, "src/modulos/auth/servicios/onesignal.js");
   const pushEnable = resolve(root, "src/modulos/auth/servicios/push-enable.js");

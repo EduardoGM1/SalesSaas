@@ -77,12 +77,30 @@ export async function authenticateApi(req, res) {
     return { ok: false, status: 503, message: "Supabase no configurado." };
   }
 
-  const { data: { user }, error } = await supabase.auth.getUser();
+  let { data: { user }, error } = await supabase.auth.getUser();
+  let accessToken = bearer;
+
+  // Cookie path: access JWT caducado → getUser falla aunque el refresh sea válido.
+  // Intentar getSession (puede refrescar y escribir Set-Cookie) antes del 401.
+  if ((error || !user) && !bearer) {
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    accessToken = session?.access_token ?? null;
+    if (accessToken) {
+      ({ data: { user }, error } = await supabase.auth.getUser(accessToken));
+    } else if (sessionError && /already used|invalid refresh token/i.test(sessionError.message || "")) {
+      // Otro request concurrente pudo rotar el refresh; reintentar getUser una vez.
+      ({ data: { user }, error } = await supabase.auth.getUser());
+      if (!accessToken) {
+        const { data: { session: again } } = await supabase.auth.getSession();
+        accessToken = again?.access_token ?? null;
+      }
+    }
+  }
+
   if (error || !user) {
     return { ok: false, status: 401, message: "No autenticado." };
   }
 
-  let accessToken = bearer;
   if (!accessToken) {
     const { data: { session } } = await supabase.auth.getSession();
     accessToken = session?.access_token ?? null;

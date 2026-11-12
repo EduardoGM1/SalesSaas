@@ -38,11 +38,14 @@ async function runExclusive(lockRef, fn) {
   }
 }
 
-/** Variante que lanza: el flujo de presencia no puede continuar sin sesión. */
+function isAuthNoise(err) {
+  const msg = String(err?.message || err || "");
+  return /no autenticado|sin sesión|not authenticated|invalid refresh|already used/i.test(msg);
+}
+
+/** null si aún no hay sesión (arranque / refresh en curso); no tumba el provider. */
 async function resolveSession(supabase) {
-  const session = await ensureBrowserSession(supabase);
-  if (!session?.access_token) throw new Error("Sin sesión para Realtime");
-  return session;
+  return ensureBrowserSession(supabase);
 }
 
 export function PresenceProvider({ children }) {
@@ -159,7 +162,13 @@ export function PresenceProvider({ children }) {
     contactsSyncingRef.current = true;
     try {
       return await runExclusive(presenceLockRef, async () => {
-        const connections = await networkApi.listConnections();
+        let connections;
+        try {
+          connections = await networkApi.listConnections();
+        } catch (err) {
+          if (isAuthNoise(err)) return null;
+          throw err;
+        }
         const contacts = connections
           .filter((c) => c.status === "accepted")
           .map((c) => c.peer)
@@ -203,6 +212,7 @@ export function PresenceProvider({ children }) {
 
     try {
       const session = await resolveSession(supabase);
+      if (!session?.access_token) return;
       primeRealtimeAuth(session.access_token);
       await ensureRealtimeReady(supabase, session.access_token);
 
@@ -212,7 +222,9 @@ export function PresenceProvider({ children }) {
 
       await loadContacts(supabase);
     } catch (err) {
-      console.warn("[presence] Re-suscripción fallida:", err);
+      if (!isAuthNoise(err)) {
+        console.warn("[presence] Re-suscripción fallida:", err);
+      }
     } finally {
       resubscribingRef.current = false;
     }
@@ -268,6 +280,11 @@ export function PresenceProvider({ children }) {
 
           const session = await resolveSession(supabase);
           if (!activeRef.current) return;
+          if (!session?.access_token) {
+            // Sesión cookie aún no lista (arranque / refresh): reintentar sin ruido.
+            scheduleResubscribeRef.current(true);
+            return;
+          }
 
           primeRealtimeAuth(session.access_token);
 
@@ -296,9 +313,11 @@ export function PresenceProvider({ children }) {
         });
 
         const sb = supabaseRef.current;
-        if (sb && activeRef.current) await loadContactsRef.current(sb);
+        if (sb && activeRef.current && userIdRef.current) await loadContactsRef.current(sb);
       } catch (err) {
-        console.warn("[presence] No se pudo iniciar Realtime Presence:", err);
+        if (!isAuthNoise(err)) {
+          console.warn("[presence] No se pudo iniciar Realtime Presence:", err);
+        }
         scheduleResubscribeRef.current(true);
       }
     };

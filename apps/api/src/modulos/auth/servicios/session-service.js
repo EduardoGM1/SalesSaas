@@ -233,7 +233,11 @@ export async function switchWorkspace(supabase, userId, workspaceId) {
 }
 
 export async function getRealtimeSession(supabase) {
-  const { data: { session }, error } = await supabase.auth.getSession();
+  let { data: { session }, error } = await supabase.auth.getSession();
+  if (error && /already used|invalid refresh token/i.test(error.message || "")) {
+    // Carrera de refresh concurrente: releer cookies ya rotadas por otro request.
+    ({ data: { session }, error } = await supabase.auth.getSession());
+  }
   if (error) throw new ServiceError(error.message, 500);
   if (!session?.access_token) throw new ServiceError("Sin sesión activa.", 401);
   return {

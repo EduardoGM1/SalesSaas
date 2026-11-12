@@ -40,7 +40,7 @@ export async function fetchToolCalculation({ id, tool, prospectId } = {}) {
   }
   const res = await fetch(url, { credentials: "include", cache: "no-store" });
   const body = await res.json().catch(() => ({}));
-  if (res.status === 404) return null;
+  if (res.status === 404 || res.status === 401 || res.status === 403) return null;
   if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
   return body.data ?? null;
 }

@@ -93,11 +93,15 @@ export function useToolSession({ clientId, shared, section }) {
         : [];
     let cancelled = false;
     (async () => {
-      const results = await Promise.all(
-        tools.map((tool) => ensureToolLoaded(tool, mode, clientId || null)),
-      );
-      if (cancelled) return;
-      if (results.some(Boolean)) setLocalToolsRevision((n) => n + 1);
+      try {
+        const results = await Promise.all(
+          tools.map((tool) => ensureToolLoaded(tool, mode, clientId || null).catch(() => false)),
+        );
+        if (cancelled) return;
+        if (results.some(Boolean)) setLocalToolsRevision((n) => n + 1);
+      } catch {
+        // Carga opcional: 401/red no debe tumbar la herramienta.
+      }
     })();
     return () => { cancelled = true; };
   }, [useShared, ready, toolSection, mode, clientId, ensureToolLoaded]);

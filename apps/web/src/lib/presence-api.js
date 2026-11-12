@@ -1,15 +1,27 @@
-async function apiFetch(path, options = {}) {
-  const res = await fetch(`/api/v1${path}`, {
-    credentials: "include",
-    ...options,
-  });
-  const body = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(body.error || "Error de red.");
-  return body.data ?? body;
-}
+/** @type {Promise<object | null> | null} */
+let realtimeSessionInflight = null;
 
+/**
+ * Tokens para Realtime. 401 → null (sin throw): el caller decide no suscribirse.
+ * Single-flight para no martillar getSession/refresh en el API.
+ */
 export async function fetchRealtimeSession() {
-  return apiFetch("/auth/realtime-session");
+  if (realtimeSessionInflight) return realtimeSessionInflight;
+
+  realtimeSessionInflight = (async () => {
+    const res = await fetch("/api/v1/auth/realtime-session", {
+      credentials: "include",
+      cache: "no-store",
+    });
+    if (res.status === 401 || res.status === 403) return null;
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(body.error || "Error de red.");
+    return body.data ?? body;
+  })().finally(() => {
+    realtimeSessionInflight = null;
+  });
+
+  return realtimeSessionInflight;
 }
 
 export function markPresenceOffline() {

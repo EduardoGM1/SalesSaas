@@ -233,9 +233,14 @@ export async function runCloudPersist(op) {
     const result = await op.run();
     return { ok: true, ...result };
   } catch (err) {
-    console.warn(`[cloud-persist] ${op.type}:`, err?.message || err);
-    queueFallback(op.reason || `error:${op.type}`);
-    return { ok: false, error: err };
+    const status = err?.status;
+    const authFail = status === 401 || status === 403
+      || /no autenticado|not authenticated/i.test(String(err?.message || ""));
+    if (!authFail) {
+      console.warn(`[cloud-persist] ${op.type}:`, err?.message || err);
+    }
+    queueFallback(op.reason || (authFail ? `auth:${op.type}` : `error:${op.type}`));
+    return { ok: false, error: err, auth: authFail || undefined };
   }
 }
 

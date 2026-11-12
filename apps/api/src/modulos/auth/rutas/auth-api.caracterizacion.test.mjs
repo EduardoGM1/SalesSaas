@@ -55,6 +55,20 @@ test("rutas session conservan paths /api/v1/auth/*", () => {
   assert.match(src, /\/auth\/realtime-session/);
 });
 
+test("authenticateApi refresca cookies antes de 401 y getRealtimeSession tolera Already Used", () => {
+  const authMw = resolve(root, "src/middleware/auth.js");
+  const sessionSvc = resolve(root, "src/modulos/auth/servicios/session-service.js");
+  assert.ok(existsSync(authMw), "falta middleware/auth.js");
+  assert.ok(existsSync(sessionSvc), "falta session-service.js");
+  const mw = readFileSync(authMw, "utf8");
+  const svc = readFileSync(sessionSvc, "utf8");
+  assert.match(mw, /getSession\(\)/);
+  assert.match(mw, /already used|invalid refresh token/i);
+  assert.match(mw, /No autenticado/);
+  assert.match(svc, /getRealtimeSession/);
+  assert.match(svc, /already used|invalid refresh token/i);
+});
+
 test("rate limits auth conservan cupos y mensaje", () => {
   assert.ok(limitsFile, "falta auth-rate-limits");
   const src = readFileSync(limitsFile, "utf8");
