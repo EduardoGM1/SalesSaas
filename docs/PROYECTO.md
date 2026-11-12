@@ -79,7 +79,7 @@ Monorepo con **npm workspaces** (`apps/*`, `packages/*`), declarado en [`package
 | react-dom | ^19.2.7 | 19.2.7 | apps/web |
 | react-router-dom | ^7.6.2 | 7.18.2 | apps/web |
 | zustand | ^5.0.14 | 5.0.14 | apps/web |
-| vite | ^6.3.5 | 6.4.3 | apps/web |
+| vite | ^6.4.6 | 6.4.6 | apps/web |
 | vite-plugin-pwa | ^1.0.0 | 1.3.0 | apps/web |
 | tailwindcss | ^3.4.1 | 3.4.19 | apps/web |
 | @supabase/ssr | ^0.10.3 | 0.10.3 | apps/web |
