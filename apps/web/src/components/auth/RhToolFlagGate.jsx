@@ -4,11 +4,12 @@ import { WORKSHEET_ROYAL_HOLIDAY_FLAG } from "@/lib/auth/tool-flags.js";
 import { PermissionsUnavailableNotice } from "@/components/auth/permissions-unavailable-notice.jsx";
 import { RouteFallback } from "@/components/layout/route-fallback.jsx";
 
-/** Misma regla que el hub RH: sin catálogo no ocultar; flag en false sí. */
+/**
+ * Alineado con requireWorkspaceFlag en sala: null/indeterminado NO abre la ruta.
+ * Solo true explícito deja pasar (API ya responde 403 si el flag no está activo).
+ */
 function flagOn(isEnabled, clave) {
-  const value = isEnabled(clave);
-  if (value === null || value === undefined) return true;
-  return value === true;
+  return isEnabled(clave) === true;
 }
 
 /**

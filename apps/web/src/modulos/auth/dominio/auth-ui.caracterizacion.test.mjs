@@ -73,6 +73,14 @@ test("ensureBrowserSession es single-flight y tolera refresh Already Used", () =
   assert.match(apiSrc, /return null/);
 });
 
+test("RhToolFlagGate deniega flag null/indeterminado (fail-closed)", () => {
+  const gate = resolve(root, "src/components/auth/RhToolFlagGate.jsx");
+  assert.ok(existsSync(gate), "falta RhToolFlagGate.jsx");
+  const src = readFileSync(gate, "utf8");
+  assert.match(src, /isEnabled\(clave\) === true/);
+  assert.doesNotMatch(src, /value === null \|\| value === undefined\) return true/);
+});
+
 test("OneSignal/push viven en modulos/auth con shims legacy", () => {
   const onesignal = resolve(root, "src/modulos/auth/servicios/onesignal.js");
   const pushEnable = resolve(root, "src/modulos/auth/servicios/push-enable.js");
