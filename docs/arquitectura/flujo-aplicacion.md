@@ -10,6 +10,72 @@ Imágenes renderizadas (sin motor Mermaid): carpeta [`flujo/`](./flujo/).
 
 ---
 
+## Vista general (un solo diagrama)
+
+Flujo de punta a punta: **identidad → workspace → permisos → pantallas → datos**.  
+Detalle por etapa en las secciones siguientes.
+
+![Vista general SalesApp](./flujo/00-vista-general.jpg)
+
+Versión vectorial (editable / zoom): [`flujo/00-vista-general.svg`](./flujo/00-vista-general.svg)
+
+```mermaid
+flowchart LR
+  subgraph S1["1 · Identidad"]
+    direction TB
+    A[PWA / App] --> B{Sesion?}
+    B -->|no| C[Login / Registro]
+    B -->|si| D[getSession]
+    C --> D
+    D --> E[Perfil · plan · rol]
+  end
+
+  subgraph S2["2 · Espacio"]
+    direction TB
+    F[Workspaces] --> G{Activo}
+    G --> H[Personal]
+    G --> I[Sala RH]
+  end
+
+  subgraph S3["3 · Autorizacion"]
+    direction TB
+    J[Permisos efectivos] --> K[Flags modulo]
+    K --> L{Permitir?}
+    L -->|no| M[Ocultar / 403 / 503]
+    L -->|si| N[Navegacion]
+  end
+
+  subgraph S4["4 · Producto"]
+    direction TB
+    N --> O[Agenda]
+    N --> P[Clientes / Expediente]
+    N --> Q[Tools / Ops RH]
+    N --> R[Metas / Admin]
+    P --> P2{Asignado D7?}
+    P2 -->|si| P3[Editar ficha]
+    P2 -->|no| P4[Solo lectura / oculto]
+  end
+
+  subgraph S5["5 · Datos"]
+    direction TB
+    T[UI + sts4 local] --> U[REST o PUT sync]
+    U --> V[API permisos]
+    V --> W[RLS Postgres]
+    W --> X[Pull / Realtime]
+    X --> T
+  end
+
+  E --> F
+  H --> J
+  I --> J
+  O --> T
+  P3 --> T
+  Q --> T
+  R --> T
+```
+
+---
+
 ## 1. Arranque y sesión
 
 ```mermaid
@@ -371,6 +437,7 @@ Detalle operativo (emails temporales, reportes): solo en apéndice privado local
 
 | Archivo | Contenido |
 |---------|-----------|
+| [`flujo/00-vista-general.jpg`](./flujo/00-vista-general.jpg) / [`.svg`](./flujo/00-vista-general.svg) | **Vista general** (un solo diagrama) |
 | [`flujo/01-arranque.svg`](./flujo/01-arranque.svg) | Arranque y sesión |
 | [`flujo/02-contexto-workspace.svg`](./flujo/02-contexto-workspace.svg) | Contexto API / errores |
 | [`flujo/03-permisos.svg`](./flujo/03-permisos.svg) | Capas `effective_workspace_permissions` |

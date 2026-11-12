@@ -1,0 +1,71 @@
+%%{init: {
+  "theme": "dark",
+  "themeVariables": {
+    "primaryColor": "#1e293b",
+    "primaryTextColor": "#e2e8f0",
+    "primaryBorderColor": "#94a3b8",
+    "lineColor": "#94a3b8",
+    "secondaryColor": "#0f172a",
+    "tertiaryColor": "#334155",
+    "background": "#0b1220",
+    "mainBkg": "#1e293b",
+    "nodeBorder": "#64748b",
+    "clusterBkg": "#111827",
+    "clusterBorder": "#475569",
+    "titleColor": "#f8fafc",
+    "edgeLabelBackground": "#0f172a",
+    "fontSize": "16px"
+  }
+}}%%
+flowchart LR
+  subgraph S1["1 · Identidad"]
+    direction TB
+    A[PWA / App] --> B{Sesion?}
+    B -->|no| C[Login / Registro]
+    B -->|si| D[getSession]
+    C --> D
+    D --> E[Perfil · plan · rol]
+  end
+
+  subgraph S2["2 · Espacio"]
+    direction TB
+    F[Workspaces] --> G{Activo}
+    G --> H[Personal]
+    G --> I[Sala RH]
+  end
+
+  subgraph S3["3 · Autorizacion"]
+    direction TB
+    J[Permisos efectivos] --> K[Flags modulo]
+    K --> L{Permitir?}
+    L -->|no| M[Ocultar / 403 / 503]
+    L -->|si| N[Navegacion]
+  end
+
+  subgraph S4["4 · Producto"]
+    direction TB
+    N --> O[Agenda]
+    N --> P[Clientes / Expediente]
+    N --> Q[Tools / Ops RH]
+    N --> R[Metas / Admin]
+    P --> P2{Asignado D7?}
+    P2 -->|si| P3[Editar ficha]
+    P2 -->|no| P4[Solo lectura / oculto]
+  end
+
+  subgraph S5["5 · Datos"]
+    direction TB
+    T[UI + sts4 local] --> U[REST o PUT sync]
+    U --> V[API permisos]
+    V --> W[RLS Postgres]
+    W --> X[Pull / Realtime]
+    X --> T
+  end
+
+  E --> F
+  H --> J
+  I --> J
+  O --> T
+  P3 --> T
+  Q --> T
+  R --> T
