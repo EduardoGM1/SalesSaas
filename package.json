@@ -57,8 +57,12 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.52.0",
-    "sharp": "^0.35.3",
+    "sharp": "^0.35.5",
     "ssim.js": "^3.5.0",
     "typescript": "^5"
+  },
+  "overrides": {
+    "body-parser": "1.20.9",
+    "qs": "6.16.2"
   }
 }
