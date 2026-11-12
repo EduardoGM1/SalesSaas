@@ -59,7 +59,7 @@
     "test:rh-regalos": "node scripts/test-rh-regalos-cantidad-total.mjs"
   },
   "devDependencies": {
-    "@playwright/test": "^1.52.0",
+    "@playwright/test": "^1.65.0",
     "sharp": "^0.35.5",
     "ssim.js": "^3.5.0",
     "typescript": "^5"
