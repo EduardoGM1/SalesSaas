@@ -906,6 +906,7 @@ Glosario ES/EN de la migración: [`arquitectura/glosario.md`](./arquitectura/glo
 | [`arquitectura/pendiente-bloqueo-campos-collab.md`](./arquitectura/pendiente-bloqueo-campos-collab.md), [`arquitectura/deploy-cliente-locks-pre-0098.md`](./arquitectura/deploy-cliente-locks-pre-0098.md) | Bloqueo de campos y 0098 |
 | [`arquitectura/deploy-fix-sub-moneybox.md`](./arquitectura/deploy-fix-sub-moneybox.md) | Fix `?sub=moneybox` |
 | [`arquitectura/backlog-seguridad.md`](./arquitectura/backlog-seguridad.md) | Backlog de seguridad |
+| [`seguridad/metodologia-auditoria.md`](./seguridad/metodologia-auditoria.md) | Metodología reutilizable de auditoría (FASE 1 solo lectura; sin hallazgos) |
 | [`arquitectura/visibilidad-expedientes.md`](./arquitectura/visibilidad-expedientes.md) | Diagnóstico: visibilidad por asignación en sala |
 | [`arquitectura/retencion-backups-vps.md`](./arquitectura/retencion-backups-vps.md) | Retención de backups |
 | [`../scripts/README.md`](../scripts/README.md) | Índice de scripts |
