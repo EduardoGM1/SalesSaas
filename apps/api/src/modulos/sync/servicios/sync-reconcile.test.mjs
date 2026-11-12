@@ -567,3 +567,28 @@ test("(c) el servicio aplica expedientes:crear como REST", async () => {
     permissionDenied.clear();
   }
 });
+
+test("(c) deny-by-default: canInsert false rechaza altas classify (prospects)", async () => {
+  // goals/tool_calculations usan upsertKeyed y aún no consultan canInsert (C-13 → sync.js).
+  permissionDenied.add("expedientes:crear");
+  try {
+    const rows = emptyRows();
+    rows.prospects.push(prospectRow(P_NEW, ME));
+    await assert.rejects(
+      service.reconciliarBaseDatosUsuario(memoryDb({ deny: new Set(["expedientes:crear"]) }), ME, rowsToDb(rows)),
+      (err) => err.status === 409 && err.details.rejected[0].code === "sin_permiso",
+    );
+  } finally {
+    permissionDenied.clear();
+  }
+});
+
+test("(c) sync.js upsertKeyed de goals/tools no consulta canInsert (gap C-13)", () => {
+  const syncSrc = readFileSync(resolve(HERE, "../../../../../../packages/shared/src/data/sync.js"), "utf8");
+  assert.match(syncSrc, /async function upsertKeyed/);
+  assert.match(syncSrc, /await upsertKeyed\(sb, "goals"/);
+  assert.match(syncSrc, /await upsertKeyed\(sb, "tool_calculations"/);
+  // upsertKeyed no recibe canInsert hoy — caracterización del gap.
+  const keyedFn = syncSrc.slice(syncSrc.indexOf("async function upsertKeyed"), syncSrc.indexOf("async function deleteByIds"));
+  assert.equal(keyedFn.includes("canInsert"), false);
+});
