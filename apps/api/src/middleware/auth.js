@@ -28,10 +28,26 @@ function bearerTokenFromRequest(req) {
 }
 
 /**
+ * Fail-closed selectivo (C-08): si falla la consulta a profiles.auth_revoked_at,
+ * rechazar escrituras y rutas sensibles; permitir lecturas con aviso en logs.
+ * No aplica a ausencia de columna (migración pendiente) — eso sigue fail-open.
+ */
+export function sessionRevocationFailClosed(req) {
+  const method = String(req?.method || "GET").toUpperCase();
+  if (method !== "GET" && method !== "HEAD" && method !== "OPTIONS") return true;
+  const path = String(req?.path || req?.url || "").split("?")[0];
+  // Lecturas sensibles: admin / roles / permisos / sync (aunque sync PUT ya cae arriba).
+  if (/\/admin(?:\/|$)/i.test(path)) return true;
+  if (/\/(?:roles|permissions|permisos)(?:\/|$)/i.test(path)) return true;
+  if (/\/sync(?:\/|$)/i.test(path)) return true;
+  return false;
+}
+
+/**
  * Tras signOut global el access JWT sigue válido hasta `exp`.
  * Si el perfil tiene auth_revoked_at > iat del token → sesión revocada.
  */
-async function assertSessionNotRevoked(supabase, userId, accessToken) {
+export async function assertSessionNotRevoked(supabase, userId, accessToken, { failClosed = false } = {}) {
   const iatMs = readJwtIatMs(accessToken);
   if (!iatMs || !userId) return { ok: true };
 
@@ -41,10 +57,16 @@ async function assertSessionNotRevoked(supabase, userId, accessToken) {
     .eq("id", userId)
     .maybeSingle();
 
-  // Columna aún no migrada / error temporal: no bloquear el login.
   if (error) {
+    // Columna aún no migrada: no bloquear.
     if (String(error.message || "").includes("auth_revoked_at")) return { ok: true };
-    logger.warn("auth.revoked_at_lookup_failed", { error: error.message });
+    logger.warn("auth.revoked_at_lookup_failed", {
+      error: error.message,
+      failClosed,
+    });
+    if (failClosed) {
+      return { ok: false, status: 503, message: "No se pudo verificar la sesión. Intenta de nuevo." };
+    }
     return { ok: true };
   }
 
@@ -106,7 +128,9 @@ export async function authenticateApi(req, res) {
     accessToken = session?.access_token ?? null;
   }
 
-  const revoked = await assertSessionNotRevoked(supabase, user.id, accessToken);
+  const revoked = await assertSessionNotRevoked(supabase, user.id, accessToken, {
+    failClosed: sessionRevocationFailClosed(req),
+  });
   if (!revoked.ok) return revoked;
 
   return { ok: true, supabase, userId: user.id };
