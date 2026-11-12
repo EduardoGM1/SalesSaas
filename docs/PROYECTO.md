@@ -613,9 +613,10 @@ Los **smokes contra producción** (`scripts/architecture/smoke-*-qa.mjs`) usan c
 
 | Workflow | Cuándo corre | Qué hace |
 |----------|--------------|----------|
-| [`architecture.yml`](../.github/workflows/architecture.yml) (Arquitectura) | push a `main`, `test/arquitectura-red-seguridad` y `arquitectura/**`; PR a `main` | `npm ci`, `verificar:arquitectura:checks`, `test:security`, `build:web:ci` (Node 20) |
+| [`architecture.yml`](../.github/workflows/architecture.yml) (Arquitectura) | push a `main`, `test/arquitectura-red-seguridad` y `arquitectura/**`; PR a `main` | `npm ci`, `verificar:arquitectura:checks`, `test:security`, `build:web:ci` (Node 20; `engines` del root `>=20 <21`, alineado al runtime del servidor) |
 | [`e2e.yml`](../.github/workflows/e2e.yml) (E2E) | push a `main` y `arquitectura/**`; PR a `main` | Playwright completo en Chromium (`CI=true`: 1 worker, 1 reintento) |
 | [`migrate.yml`](../.github/workflows/migrate.yml) (Migrate) | Solo manual (`workflow_dispatch`) | Aplica una migración por prefijo con el secreto de BD del repo; solo con OK explícito |
+| Dependabot | Semanal (npm + GitHub Actions) | Agrupa minors/patches; Actions fijadas por SHA en los workflows (comentario con el tag) |
 
 ### Reglas vigentes
 
